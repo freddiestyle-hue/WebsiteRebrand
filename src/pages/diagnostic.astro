@@ -89,7 +89,6 @@ const serviceJsonLd = {
     grid-template-columns: 1fr 380px;
     gap: 80px;
     padding: 72px 0 96px;
-    align-items: start;
   }
   @media (max-width: 980px) {
     .cols {
@@ -98,6 +97,7 @@ const serviceJsonLd = {
       padding: 48px 0 72px;
     }
   }
+  .col-card { align-self: stretch; }
   .col-card .sticky {
     position: sticky;
     top: 112px;
