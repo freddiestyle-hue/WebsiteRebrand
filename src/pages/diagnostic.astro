@@ -1,0 +1,122 @@
+---
+import Base from '../layouts/Base.astro';
+import BookingProvider from '../components/diagnostic/BookingProvider.astro';
+import DiagnosticHero from '../components/diagnostic/DiagnosticHero.astro';
+import WhatThisIs from '../components/diagnostic/WhatThisIs.astro';
+import FitGrid from '../components/diagnostic/FitGrid.astro';
+import ThreeQuestions from '../components/diagnostic/ThreeQuestions.astro';
+import DiagnosticCard from '../components/diagnostic/DiagnosticCard.astro';
+import AlternateRoutes from '../components/diagnostic/AlternateRoutes.astro';
+import { diagnostic } from '../content/diagnostic';
+
+const description = diagnostic.hero.dek.split('. ')[0].slice(0, 158);
+
+const serviceJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Service',
+  name: 'Rivett Diagnostic',
+  serviceType: 'Performance marketing diagnostic',
+  description: diagnostic.whatThisIs.body,
+  provider: {
+    '@type': 'Organization',
+    name: 'Rivett',
+    url: 'https://rivett.tech',
+    founder: { '@type': 'Person', name: 'Fred Style' },
+  },
+  areaServed: 'Worldwide',
+  offers: {
+    '@type': 'Offer',
+    price: '3500',
+    priceCurrency: 'USD',
+    priceSpecification: {
+      '@type': 'PriceSpecification',
+      price: '3500',
+      priceCurrency: 'USD',
+      valueAddedTaxIncluded: false,
+    },
+    availability: 'https://schema.org/InStock',
+  },
+};
+---
+<Base
+  title="Book a diagnostic · Rivett"
+  description={description}
+  fontWeights="Inter+Tight:wght@400;500;600;700;800"
+>
+  <BookingProvider />
+
+  <script type="application/ld+json" set:html={JSON.stringify(serviceJsonLd)} />
+
+  <div class="page">
+    <DiagnosticHero />
+
+    <div class="cols">
+      <div class="col-content">
+        <WhatThisIs />
+        <FitGrid />
+        <ThreeQuestions />
+      </div>
+      <div class="col-card">
+        <div class="sticky">
+          <DiagnosticCard />
+        </div>
+      </div>
+    </div>
+
+    <AlternateRoutes />
+
+    <footer class="page-foot">
+      <div>© 2026 Rivett · Operator's Practice</div>
+      <div>fred@rivett.tech · reply within 24 hours</div>
+    </footer>
+  </div>
+</Base>
+
+<script>
+  const w = window as any;
+  if (w.posthog) {
+    w.posthog.capture('diagnostic_view');
+  } else {
+    document.addEventListener('DOMContentLoaded', () => {
+      if ((window as any).posthog) (window as any).posthog.capture('diagnostic_view');
+    });
+  }
+</script>
+
+<style>
+  .cols {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 80px;
+    padding: 72px 0 96px;
+    align-items: start;
+  }
+  @media (max-width: 980px) {
+    .cols {
+      grid-template-columns: 1fr;
+      gap: 48px;
+      padding: 48px 0 72px;
+    }
+  }
+  .col-card .sticky {
+    position: sticky;
+    top: 112px;
+  }
+  @media (max-width: 980px) {
+    .col-card .sticky { position: static; }
+  }
+  .page-foot {
+    margin-top: 96px;
+    padding: 32px 0 64px;
+    border-top: 1px solid var(--line);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+</style>

@@ -1,0 +1,98 @@
+---
+import { diagnostic } from '../../content/diagnostic';
+const { questions } = diagnostic;
+---
+<section class="three-q">
+  <span class="eyebrow">Three questions</span>
+  <h2>
+    What to bring <span class="ital">to the call.</span>
+  </h2>
+  <div class="rows">
+    {questions.map((qa, i) => (
+      <div class="row">
+        <span class="num">№ {String(i + 1).padStart(2, '0')}</span>
+        <div class="body">
+          <p class="q">{qa.q}</p>
+          <p class="a">{qa.a}</p>
+        </div>
+      </div>
+    ))}
+  </div>
+</section>
+
+<style>
+  .three-q { padding: 72px 0 0; }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--accent-deep);
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .eyebrow::before {
+    content: '';
+    width: 8px;
+    height: 8px;
+    background: var(--accent);
+    border-radius: 50%;
+  }
+  h2 {
+    font-family: var(--grotesk);
+    font-weight: 700;
+    font-size: clamp(32px, 4vw, 52px);
+    line-height: 1.05;
+    letter-spacing: -0.04em;
+    margin: 0 0 32px;
+    color: var(--ink);
+    text-wrap: balance;
+  }
+  h2 .ital {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 400;
+    color: var(--ink-dim);
+  }
+  .rows { border-top: 2px solid var(--ink); }
+  .row {
+    display: grid;
+    grid-template-columns: 80px 1fr;
+    gap: 24px;
+    padding: 28px 0;
+    border-bottom: 1px solid var(--line);
+    align-items: baseline;
+  }
+  @media (max-width: 680px) {
+    .row { grid-template-columns: 1fr; gap: 8px; }
+  }
+  .num {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .q {
+    font-family: var(--grotesk);
+    font-weight: 600;
+    font-size: 19px;
+    line-height: 1.35;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    margin: 0;
+    text-wrap: pretty;
+  }
+  .a {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 17px;
+    line-height: 1.55;
+    color: var(--ink-dim);
+    margin: 12px 0 0;
+    max-width: 620px;
+    text-wrap: pretty;
+  }
+</style>

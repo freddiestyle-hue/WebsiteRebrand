@@ -1,0 +1,103 @@
+---
+import { diagnostic } from '../../content/diagnostic';
+const { hero } = diagnostic;
+---
+<section class="diagnostic-hero">
+  <div class="stamp">{hero.stamp}</div>
+  <h1 class="display">
+    {hero.headline.lead}
+    <span class="ital">{hero.headline.italic}</span>
+  </h1>
+  <p class="dek">{hero.dek}</p>
+  <div class="strip" role="list">
+    {hero.strip.map((cell) => (
+      <div class="cell" role="listitem">
+        <span class="k">{cell.label}</span>
+        <span class="v">{cell.value}</span>
+      </div>
+    ))}
+  </div>
+</section>
+
+<style>
+  .diagnostic-hero {
+    padding: 88px 0 48px;
+    border-bottom: 1px solid var(--line-strong);
+  }
+  .stamp {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--accent-deep);
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 32px;
+  }
+  .stamp::before {
+    content: '';
+    width: 8px;
+    height: 8px;
+    background: var(--accent);
+    border-radius: 50%;
+  }
+  .display {
+    font-family: var(--grotesk);
+    font-weight: 800;
+    font-size: clamp(48px, 7.4vw, 104px);
+    line-height: 0.94;
+    letter-spacing: -0.05em;
+    margin: 0;
+    color: var(--ink);
+    text-wrap: balance;
+    max-width: 1080px;
+  }
+  .display .ital {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    color: var(--ink-dim);
+  }
+  .dek {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 400;
+    font-size: clamp(20px, 2.2vw, 28px);
+    line-height: 1.4;
+    color: var(--ink-dim);
+    margin: 36px 0 0;
+    max-width: 780px;
+    text-wrap: pretty;
+  }
+  .strip {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 24px;
+    padding: 24px 0;
+    margin-top: 48px;
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+  @media (max-width: 680px) {
+    .strip { grid-template-columns: repeat(2, 1fr); }
+  }
+  .cell .k {
+    display: block;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .cell .v {
+    display: block;
+    color: var(--ink);
+    font-family: var(--grotesk);
+    font-weight: 600;
+    font-size: 14px;
+    letter-spacing: -0.01em;
+    margin-top: 6px;
+  }
+</style>

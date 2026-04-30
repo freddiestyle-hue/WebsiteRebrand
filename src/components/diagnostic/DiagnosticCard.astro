@@ -1,0 +1,165 @@
+---
+import { diagnostic } from '../../content/diagnostic';
+import BookButton from './BookButton.astro';
+const { card } = diagnostic;
+const { operator } = card;
+---
+<aside class="diag-card">
+  <div class="op">
+    <picture class="op-photo">
+      <source type="image/avif" srcset={`${operator.photoBase}-96.avif 1x, ${operator.photoBase}-192.avif 2x, ${operator.photoBase}-480.avif 5x`} />
+      <source type="image/webp" srcset={`${operator.photoBase}-96.webp 1x, ${operator.photoBase}-192.webp 2x, ${operator.photoBase}-480.webp 5x`} />
+      <img
+        src={`${operator.photoBase}-192.png`}
+        srcset={`${operator.photoBase}-96.png 1x, ${operator.photoBase}-192.png 2x, ${operator.photoBase}-480.png 5x`}
+        width="96"
+        height="96"
+        alt={operator.name}
+        loading="eager"
+        fetchpriority="high"
+        decoding="async"
+      />
+    </picture>
+    <div class="op-meta">
+      <div class="op-name">{operator.name}</div>
+      <div class="op-role">{operator.role}</div>
+    </div>
+  </div>
+
+  <div class="rule"></div>
+
+  <div class="price-row">
+    <span class="price">{card.price}</span>
+    <span class="unit">{card.unit}</span>
+  </div>
+  <p class="sub">{card.sub}</p>
+
+  <ol class="steps">
+    {card.steps.map((s) => (
+      <li>
+        <span class="step-num">{s.num}</span>
+        <span class="step-body">{s.body}</span>
+      </li>
+    ))}
+  </ol>
+
+  <BookButton variant="card" label={card.cta} source="diagnostic_card" />
+  <p class="fine">{card.fine}</p>
+</aside>
+
+<style>
+  .diag-card {
+    background: var(--paper-2);
+    border: 1px solid var(--ink);
+    padding: 28px 28px 32px;
+    display: flex;
+    flex-direction: column;
+  }
+  .op {
+    display: grid;
+    grid-template-columns: 72px 1fr;
+    gap: 16px;
+    align-items: center;
+  }
+  .op-photo {
+    display: block;
+    width: 72px;
+    height: 72px;
+    border: 1px solid var(--ink);
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .op-photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: top;
+    display: block;
+    filter: grayscale(100%);
+  }
+  .op-name {
+    font-family: var(--grotesk);
+    font-weight: 700;
+    font-size: 18px;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    line-height: 1.1;
+  }
+  .op-role {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-top: 6px;
+    line-height: 1.4;
+  }
+  .rule {
+    height: 1px;
+    background: var(--line);
+    margin: 24px 0;
+  }
+  .price-row {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+  .price {
+    font-family: var(--grotesk);
+    font-weight: 800;
+    font-size: 56px;
+    letter-spacing: -0.05em;
+    line-height: 1;
+    color: var(--ink);
+  }
+  .unit {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+  }
+  .sub {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 15px;
+    line-height: 1.5;
+    color: var(--ink-dim);
+    margin: 16px 0 0;
+  }
+  .steps {
+    list-style: none;
+    padding: 0;
+    margin: 28px 0 24px;
+    border-top: 1px solid var(--line);
+  }
+  .steps li {
+    display: grid;
+    grid-template-columns: 32px 1fr;
+    gap: 14px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--line);
+    align-items: baseline;
+  }
+  .step-num {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    color: var(--accent-deep);
+  }
+  .step-body {
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--ink-dim);
+  }
+  .fine {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 14px 0 0;
+    text-align: center;
+  }
+</style>

@@ -1,0 +1,58 @@
+---
+import { diagnostic } from '../../content/diagnostic';
+const { whatThisIs } = diagnostic;
+---
+<section class="what-this-is">
+  <span class="eyebrow">{whatThisIs.eyebrow}</span>
+  <h2>
+    {whatThisIs.headline.lead}
+    <span class="ital">{whatThisIs.headline.italic}</span>
+  </h2>
+  <p>{whatThisIs.body}</p>
+</section>
+
+<style>
+  .what-this-is { padding: 72px 0 0; }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--accent-deep);
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .eyebrow::before {
+    content: '';
+    width: 8px;
+    height: 8px;
+    background: var(--accent);
+    border-radius: 50%;
+  }
+  h2 {
+    font-family: var(--grotesk);
+    font-weight: 700;
+    font-size: clamp(32px, 4vw, 52px);
+    line-height: 1.05;
+    letter-spacing: -0.04em;
+    margin: 0;
+    color: var(--ink);
+    text-wrap: balance;
+    max-width: 720px;
+  }
+  h2 .ital {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 400;
+    color: var(--ink-dim);
+  }
+  p {
+    font-size: 17px;
+    line-height: 1.7;
+    color: var(--ink-dim);
+    margin: 28px 0 0;
+    max-width: 680px;
+  }
+</style>

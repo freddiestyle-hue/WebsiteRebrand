@@ -1,0 +1,154 @@
+---
+import { diagnostic } from '../../content/diagnostic';
+const { routes } = diagnostic;
+
+const isCalLink = (href: string) => href.startsWith('cal:');
+const calLinkOf = (href: string) => href.replace(/^cal:/, '');
+---
+<section class="alt-routes">
+  <span class="eyebrow">If not now</span>
+  <h2>Three other doors. <span class="ital">Same building.</span></h2>
+  <div class="grid">
+    {routes.map((r) => {
+      const cal = isCalLink(r.href);
+      const href = cal ? '#' : r.href;
+      const target = r.external ? '_blank' : undefined;
+      const rel = r.external ? 'noopener' : undefined;
+      const calLink = cal ? calLinkOf(r.href) : undefined;
+      return (
+        <a class="route" href={href} target={target} rel={rel} data-cal-link={calLink}>
+          <div class="head">
+            <h3>{r.title}</h3>
+            <span class="meta">{r.meta}</span>
+          </div>
+          <p>{r.body}</p>
+          <span class="link">{r.cta}</span>
+        </a>
+      );
+    })}
+  </div>
+</section>
+
+<script>
+  document.querySelectorAll<HTMLAnchorElement>('.route[data-cal-link]').forEach((a) => {
+    const link = a.dataset.calLink;
+    if (!link) return;
+    a.addEventListener('click', (e) => {
+      e.preventDefault();
+      const w = window as any;
+      if (w.posthog) {
+        w.posthog.capture('diagnostic_cta_click', { source: 'alt_route_short_call' });
+      }
+      const ns = w.__rivettCalNamespace;
+      if (w.Cal && ns && w.Cal.ns?.[ns]) {
+        w.Cal.ns[ns]('modal', { calLink: link });
+      } else {
+        window.location.href = `https://cal.com/${link}?overlayCalendar=true`;
+      }
+    });
+  });
+</script>
+
+<style>
+  .alt-routes { padding: 96px 0 0; }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--accent-deep);
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .eyebrow::before {
+    content: '';
+    width: 8px;
+    height: 8px;
+    background: var(--accent);
+    border-radius: 50%;
+  }
+  h2 {
+    font-family: var(--grotesk);
+    font-weight: 700;
+    font-size: clamp(32px, 4vw, 52px);
+    line-height: 1.05;
+    letter-spacing: -0.04em;
+    margin: 0 0 32px;
+    color: var(--ink);
+    text-wrap: balance;
+  }
+  h2 .ital {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 400;
+    color: var(--ink-dim);
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0;
+    border: 1px solid var(--ink);
+  }
+  @media (max-width: 880px) {
+    .grid { grid-template-columns: 1fr; }
+  }
+  .route {
+    display: flex;
+    flex-direction: column;
+    padding: 32px 28px 28px;
+    border-right: 1px solid var(--ink);
+    text-decoration: none;
+    color: inherit;
+    transition: background 0.15s;
+    cursor: pointer;
+  }
+  .route:last-child { border-right: 0; }
+  @media (max-width: 880px) {
+    .route { border-right: 0; border-bottom: 1px solid var(--ink); }
+    .route:last-child { border-bottom: 0; }
+  }
+  .route:hover { background: var(--paper-2); }
+  .head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .head h3 {
+    font-family: var(--grotesk);
+    font-weight: 700;
+    font-size: 22px;
+    letter-spacing: -0.025em;
+    color: var(--ink);
+    margin: 0;
+  }
+  .head .meta {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    white-space: nowrap;
+  }
+  .route p {
+    font-size: 15px;
+    line-height: 1.55;
+    color: var(--ink-dim);
+    margin: 0 0 24px;
+    flex: 1;
+  }
+  .link {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink);
+    border-bottom: 1px solid var(--accent);
+    padding-bottom: 4px;
+    align-self: flex-start;
+  }
+  .route:hover .link { color: var(--accent-deep); border-bottom-color: var(--accent-deep); }
+</style>

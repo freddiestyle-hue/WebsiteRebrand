@@ -12,4 +12,8 @@ export default defineConfig({
   markdown: {
     smartypants: false,
   },
+  redirects: {
+    '/contact': '/diagnostic',
+    '/book': '/diagnostic',
+  },
 });

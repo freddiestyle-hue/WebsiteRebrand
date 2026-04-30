@@ -1,0 +1,88 @@
+---
+import { diagnostic } from '../../content/diagnostic';
+const { fit, notFit } = diagnostic;
+---
+<section class="fit">
+  <div class="grid">
+    <div class="col col--fit">
+      <h3><span class="dot dot--fit"></span>Likely fit</h3>
+      <ul>
+        {fit.map((b) => <li>{b}</li>)}
+      </ul>
+    </div>
+    <div class="col col--not">
+      <h3><span class="dot dot--not"></span>Probably not</h3>
+      <ul>
+        {notFit.map((b) => <li>{b}</li>)}
+      </ul>
+    </div>
+  </div>
+</section>
+
+<style>
+  .fit { padding: 72px 0 0; }
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    border: 1px solid var(--ink);
+  }
+  @media (max-width: 780px) {
+    .grid { grid-template-columns: 1fr; }
+  }
+  .col {
+    padding: 36px 32px 32px;
+    border-right: 1px solid var(--ink);
+  }
+  .col:last-child { border-right: 0; }
+  @media (max-width: 780px) {
+    .col { border-right: 0; border-bottom: 1px solid var(--ink); }
+    .col:last-child { border-bottom: 0; }
+  }
+  .col--not { background: var(--paper-2); }
+  h3 {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink);
+    margin: 0 0 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+  .dot--fit { background: var(--accent); }
+  .dot--not { background: var(--ink-faint); }
+  ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    border-top: 1px solid var(--line);
+  }
+  li {
+    padding: 16px 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 15px;
+    line-height: 1.55;
+    color: var(--ink-dim);
+    display: flex;
+    gap: 12px;
+    align-items: baseline;
+  }
+  li:last-child { border-bottom: 0; }
+  li::before {
+    content: '';
+    flex-shrink: 0;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    transform: translateY(-2px);
+  }
+  .col--fit li::before { background: var(--accent); }
+  .col--not li::before { background: var(--ink-faint); }
+</style>

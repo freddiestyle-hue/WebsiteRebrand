@@ -1,0 +1,67 @@
+---
+import { CAL_LINK, CAL_NAMESPACE } from '../../content/diagnostic';
+---
+<script is:inline define:vars={{ CAL_LINK, CAL_NAMESPACE }}>
+  (function (C, A, L) {
+    let p = function (a, ar) { a.q.push(ar); };
+    let d = C.document;
+    C.Cal = C.Cal || function () {
+      let cal = C.Cal;
+      let ar = arguments;
+      if (!cal.loaded) {
+        cal.ns = {};
+        cal.q = cal.q || [];
+        d.head.appendChild(d.createElement("script")).src = A;
+        cal.loaded = true;
+      }
+      if (ar[0] === L) {
+        const api = function () { p(api, arguments); };
+        const namespace = ar[1];
+        api.q = api.q || [];
+        if (typeof namespace === "string") {
+          cal.ns[namespace] = cal.ns[namespace] || api;
+          p(cal.ns[namespace], ar);
+          p(cal, ["initNamespace", namespace]);
+        } else { p(cal, ar); }
+        return;
+      }
+      p(cal, ar);
+    };
+  })(window, "https://app.cal.com/embed/embed.js", "init");
+
+  Cal("init", CAL_NAMESPACE, { origin: "https://app.cal.com" });
+
+  Cal.ns[CAL_NAMESPACE]("ui", {
+    cssVarsPerTheme: {
+      light: {
+        "cal-brand": "#3F7553",
+        "cal-brand-emphasis": "#6FB582",
+        "cal-brand-text": "#FFFFFF",
+        "cal-bg": "#FFFFFF",
+        "cal-bg-emphasis": "#F4F2ED",
+        "cal-bg-muted": "#EBE6DC",
+        "cal-border": "rgba(14,26,44,0.14)",
+        "cal-border-default": "rgba(14,26,44,0.14)",
+        "cal-border-subtle": "rgba(14,26,44,0.08)",
+        "cal-text": "#0E1A2C",
+        "cal-text-emphasis": "#0E1A2C",
+        "cal-text-subtle": "#3A4658",
+        "cal-text-muted": "#7A8597",
+      },
+    },
+    hideEventTypeDetails: false,
+    layout: "month_view",
+  });
+
+  Cal.ns[CAL_NAMESPACE]("on", {
+    action: "bookingSuccessful",
+    callback: function (e) {
+      if (window.posthog) {
+        window.posthog.capture("diagnostic_booking_complete", { source: "cal_modal" });
+      }
+    },
+  });
+
+  window.__rivettCalLink = CAL_LINK;
+  window.__rivettCalNamespace = CAL_NAMESPACE;
+</script>

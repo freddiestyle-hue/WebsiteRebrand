@@ -1,0 +1,90 @@
+---
+interface Props {
+  variant?: 'primary' | 'ghost' | 'card';
+  label?: string;
+  source?: string;
+  class?: string;
+}
+const {
+  variant = 'primary',
+  label = 'Book a kick-off call',
+  source = 'unknown',
+  class: extraClass = '',
+} = Astro.props;
+---
+<button
+  type="button"
+  class:list={['book-btn', `book-btn--${variant}`, extraClass]}
+  data-book-source={source}
+>
+  <span>{label}</span>
+  <span class="book-btn__arrow" aria-hidden="true">→</span>
+</button>
+
+<script>
+  document.querySelectorAll<HTMLButtonElement>('.book-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const source = btn.dataset.bookSource ?? 'unknown';
+      const w = window as any;
+      if (w.posthog) {
+        w.posthog.capture('diagnostic_cta_click', { source });
+      }
+      const ns = w.__rivettCalNamespace;
+      const link = w.__rivettCalLink;
+      if (w.Cal && ns && w.Cal.ns?.[ns]) {
+        w.Cal.ns[ns]('modal', { calLink: link });
+      } else {
+        window.location.href = `https://cal.com/${link}?overlayCalendar=true`;
+      }
+    });
+  });
+</script>
+
+<style>
+  .book-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 24px;
+    border: 1px solid var(--ink);
+    text-decoration: none;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: transparent;
+    color: var(--ink);
+  }
+  .book-btn--primary {
+    background: var(--ink);
+    color: var(--paper);
+  }
+  .book-btn--primary:hover {
+    background: var(--accent-deep);
+    border-color: var(--accent-deep);
+  }
+  .book-btn--ghost:hover {
+    background: var(--ink);
+    color: var(--paper);
+  }
+  .book-btn--card {
+    background: var(--ink);
+    color: var(--paper);
+    width: 100%;
+    justify-content: center;
+    padding: 18px 24px;
+  }
+  .book-btn--card:hover {
+    background: var(--accent-deep);
+    border-color: var(--accent-deep);
+  }
+  .book-btn__arrow {
+    font-family: var(--grotesk);
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: none;
+    font-size: 14px;
+  }
+</style>
