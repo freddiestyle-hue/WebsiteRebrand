@@ -1,0 +1,19 @@
+---
+interface Props {
+  current?: 'home' | 'blog';
+}
+const { current } = Astro.props;
+---
+<nav class="top">
+  <a href="/" class="wordmark" aria-label="Rivett, home">
+    rivett<span class="dot-mark" aria-hidden="true"></span>
+  </a>
+  <ul>
+    <li><a href="/#modules">Modules</a></li>
+    <li><a href="/#approach">Approach</a></li>
+    <li class={current === 'blog' ? 'current-li' : ''}>
+      <a href="/blog" class={current === 'blog' ? 'current' : ''}>Field Notes</a>
+    </li>
+    <li><a href="/#contact" class="cta">Book diagnostic</a></li>
+  </ul>
+</nav>

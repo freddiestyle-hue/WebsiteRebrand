@@ -1,0 +1,16 @@
+:root {
+  --paper: #FFFFFF;
+  --paper-2: #F4F2ED;
+  --paper-3: #EBE6DC;
+  --sage: #E8F0D9;
+  --ink: #0E1A2C;
+  --ink-dim: #3A4658;
+  --ink-faint: #7A8597;
+  --line: rgba(14, 26, 44, 0.14);
+  --line-strong: rgba(14, 26, 44, 0.28);
+  --accent: #6FB582;
+  --accent-deep: #3F7553;
+  --grotesk: 'Inter Tight', 'Inter', system-ui, sans-serif;
+  --mono: 'DM Mono', ui-monospace, monospace;
+  --serif: 'Newsreader', Georgia, serif;
+}

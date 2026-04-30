@@ -1,0 +1,48 @@
+---
+import '../styles/global.css';
+import PostHog from '../components/PostHog.astro';
+import GoogleTags from '../components/GoogleTags.astro';
+import GtmNoscript from '../components/GtmNoscript.astro';
+
+interface Props {
+  title: string;
+  description?: string;
+  fontWeights?: string;
+}
+
+const {
+  title,
+  description = 'Performance marketing for operators. Fifteen years running paid acquisition. AI in the loop where it earns its place.',
+  fontWeights = 'Inter+Tight:wght@400;500;600;700;800',
+} = Astro.props;
+
+const fontHref = `https://fonts.googleapis.com/css2?family=${fontWeights}&family=DM+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&display=swap`;
+const canonical = new URL(Astro.url.pathname, Astro.site).toString();
+---
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>{title}</title>
+  <meta name="description" content={description} />
+  <link rel="canonical" href={canonical} />
+  <meta property="og:title" content={title} />
+  <meta property="og:description" content={description} />
+  <meta property="og:url" content={canonical} />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Rivett" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="alternate" type="application/rss+xml" title="Rivett Field Notes" href="/rss.xml" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href={fontHref} rel="stylesheet" />
+  <PostHog />
+  <GoogleTags />
+</head>
+<body>
+  <GtmNoscript />
+  <slot />
+</body>
+</html>

@@ -1,0 +1,297 @@
+---
+import { getCollection } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import Nav from '../../components/Nav.astro';
+import { parsePost } from '../../utils/parsePost';
+
+export async function getStaticPaths() {
+  const posts = await getCollection('blog');
+  return posts.map(post => ({
+    params: { slug: post.data.slug ?? post.id.replace(/\.md$/, '') },
+    props: { post },
+  }));
+}
+
+const { post } = Astro.props;
+const allPosts = (await getCollection('blog')).sort(
+  (a, b) => b.data.date.getTime() - a.data.date.getTime(),
+);
+
+const slugFor = (p: { data: { slug?: string }; id: string }) =>
+  p.data.slug ?? p.id.replace(/\.md$/, '');
+
+const total = allPosts.length;
+const positionFromNewest = allPosts.findIndex(p => slugFor(p) === slugFor(post));
+const issueNumber = total - positionFromNewest;
+
+const sameTag = allPosts.filter(
+  p => p.data.tag === post.data.tag && slugFor(p) !== slugFor(post),
+);
+const fallback = allPosts.filter(p => slugFor(p) !== slugFor(post));
+const related = (sameTag.length >= 3 ? sameTag : fallback).slice(0, 3);
+
+const fmtDate = (d: Date) =>
+  d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+
+const { tldrHtml, bodyHtml, faq, toc } = parsePost(post.body ?? '');
+---
+<Base
+  title={`${post.data.title} · Rivett Field Notes`}
+  description={post.data.metaDescription ?? post.data.excerpt}
+  fontWeights="Inter+Tight:wght@400;500;600;700;800"
+>
+  <div class="page">
+    <Nav current="blog" />
+
+    <div class="crumb">
+      <a href="/blog">← Field Notes</a>
+      <span class="sep">/</span>
+      <span class="tag">{post.data.tag}</span>
+      <span class="sep">/</span>
+      <span>No. {String(issueNumber).padStart(2, '0')}</span>
+    </div>
+
+    <header class="article-head">
+      <h1 class="title">{post.data.title}</h1>
+      <p class="dek">{post.data.excerpt}</p>
+      <div class="meta-strip" style="margin-top:56px">
+        <div>By<b>Fred Style</b></div>
+        <div>Published<b>{fmtDate(post.data.date)}</b></div>
+        <div>Read time<b>{post.data.readTime} minutes</b></div>
+        <div>Filed under<b>{post.data.tag}</b></div>
+      </div>
+    </header>
+
+    <div class="article-body">
+      <aside class="rail" aria-label="Article rail">
+        <div class="block">
+          <span class="label">In this note</span>
+          <nav class="toc-list" id="toc-list">
+            {toc.map((item, i) => (
+              <a href={`#${item.id}`} class={i === 0 ? 'active' : ''}>{item.label}</a>
+            ))}
+          </nav>
+        </div>
+        <div class="block">
+          <span class="label">Share</span>
+          <div class="share">
+            <a href="#" data-share="copy" aria-label="Copy link">Copy</a>
+            <a href={`https://www.linkedin.com/sharing/share-offsite/?url=https://rivett.tech/blog/${slugFor(post)}`} target="_blank" rel="noopener" aria-label="Share to LinkedIn">in</a>
+            <a href={`https://twitter.com/intent/tweet?url=https://rivett.tech/blog/${slugFor(post)}&text=${encodeURIComponent(post.data.title)}`} target="_blank" rel="noopener" aria-label="Share to X">x</a>
+          </div>
+        </div>
+        <div class="block">
+          <span class="label">Author</span>
+          <p style="font-family:var(--grotesk);font-size:14px;line-height:1.5;color:var(--ink-dim);text-transform:none;letter-spacing:-0.01em;margin:0">Fred Style runs Rivett, a one-operator performance marketing practice. Fifteen years in growth. Ran $100M+ of ad spend across four continents.</p>
+        </div>
+      </aside>
+
+      <article class="prose">
+        {tldrHtml && (
+          <div class="tldr" id="tldr">
+            <span class="stamp">TL;DR</span>
+            <p set:html={tldrHtml} />
+          </div>
+        )}
+
+        <div set:html={bodyHtml} />
+      </article>
+    </div>
+
+    {faq.length > 0 && (
+      <section class="faq-section" id="faq">
+        <div class="head">
+          <span class="label">Frequently asked</span>
+          <h2>The questions <span class="ital">that come up every time.</span></h2>
+        </div>
+        <div class="faq">
+          {faq.map((item, i) => (
+            <details open={i === 0}>
+              <summary set:html={item.q} />
+              <p class="a" set:html={item.a} />
+            </details>
+          ))}
+        </div>
+      </section>
+    )}
+  </div>
+
+  <section class="end-cta">
+    <div class="inner">
+      <h3>If this lands, the next move is not a download. <span class="ital">It's a diagnostic.</span></h3>
+      <div class="right">
+        <span class="label">Two weeks · $3,500 fixed</span>
+        <p>I read your last quarter, sit in your stack, talk to two of your customers, and write you a 12-page memo on what to stop, what to instrument, and what to build. No deck. No retainer.</p>
+        <a class="btn" href="/#contact">Book diagnostic →</a>
+        <a class="btn btn-ghost" href="/blog">Or read more Field Notes</a>
+      </div>
+    </div>
+  </section>
+
+  <div class="page">
+    <section class="related">
+      <span class="label">Related from the desk</span>
+      <h2>Three more <span class="ital">in the same key.</span></h2>
+      <div class="rel-grid">
+        {related.map(r => (
+          <a class="rel-card" href={`/blog/${slugFor(r)}`}>
+            <div class="meta"><span class="tag">{r.data.tag}</span><span>{r.data.readTime} min</span></div>
+            <h3>{r.data.title}</h3>
+            <p>{r.data.excerpt}</p>
+          </a>
+        ))}
+      </div>
+    </section>
+
+    <footer class="site">
+      <div class="row">
+        <a class="wordmark" href="/">rivett<span class="dot-mark" aria-hidden="true"></span></a>
+        <span>© 2026 Rivett · Operator's Practice</span>
+        <span>Set in Inter Tight, Newsreader &amp; DM Mono</span>
+      </div>
+    </footer>
+  </div>
+</Base>
+
+<script>
+  const links = [...document.querySelectorAll<HTMLAnchorElement>('#toc-list a')];
+  const sections = links
+    .map(a => document.querySelector(a.getAttribute('href') ?? ''))
+    .filter((s): s is HTMLElement => Boolean(s));
+  function onScroll() {
+    const y = window.scrollY + 120;
+    let active = sections[0];
+    for (const s of sections) if (s.offsetTop <= y) active = s;
+    links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + (active && active.id)));
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+
+  document.querySelectorAll<HTMLAnchorElement>('[data-share="copy"]').forEach(el => {
+    el.addEventListener('click', e => {
+      e.preventDefault();
+      navigator.clipboard.writeText(window.location.href);
+      const original = el.textContent;
+      el.textContent = 'Copied';
+      setTimeout(() => { el.textContent = original; }, 1500);
+    });
+  });
+</script>
+
+<style is:global>
+  .crumb{display:flex;gap:18px;align-items:center;padding:48px 0 0;font-family:var(--mono);font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:var(--ink-faint)}
+  .crumb a{color:inherit;text-decoration:none;border-bottom:1px solid var(--line);padding-bottom:2px}
+  .crumb a:hover{color:var(--ink);border-bottom-color:var(--ink)}
+  .crumb .sep{opacity:0.5}
+  .crumb .tag{color:var(--accent-deep)}
+  .crumb .tag::before{content:'';display:inline-block;width:6px;height:6px;background:var(--accent);border-radius:50%;margin-right:8px;transform:translateY(-1px)}
+
+  .article-head{padding:32px 0 56px;border-bottom:1px solid var(--line-strong);display:grid;grid-template-columns:1fr;gap:0}
+  .article-head .meta-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:24px;padding:24px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);font-family:var(--mono);font-size:10.5px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:48px}
+  .article-head .meta-strip b{display:block;color:var(--ink);font-family:var(--grotesk);font-weight:600;font-size:14px;letter-spacing:-0.01em;text-transform:none;margin-top:6px}
+  @media (max-width:680px){.article-head .meta-strip{grid-template-columns:repeat(2,1fr)}}
+
+  h1.title{font-family:var(--grotesk);font-weight:800;font-size:clamp(48px,7.6vw,108px);line-height:0.92;letter-spacing:-0.055em;margin:0;color:var(--ink);text-wrap:balance;max-width:1100px}
+
+  .dek{font-family:var(--serif);font-style:italic;font-weight:400;font-size:clamp(22px,2.4vw,30px);line-height:1.4;color:var(--ink-dim);margin:36px 0 0;max-width:780px;text-wrap:pretty}
+
+  .article-body{display:grid;grid-template-columns:240px 1fr;gap:64px;padding:64px 0 96px;border-bottom:1px solid var(--line-strong)}
+  @media (max-width:980px){.article-body{grid-template-columns:1fr;gap:32px;padding:48px 0 72px}}
+
+  aside.rail{position:sticky;top:32px;align-self:start;display:flex;flex-direction:column;gap:32px;font-family:var(--mono);font-size:10.5px;letter-spacing:0.2em;text-transform:uppercase;color:var(--ink-faint)}
+  aside.rail .block .label{display:block;color:var(--ink);font-weight:500;margin-bottom:10px;letter-spacing:0.22em}
+  aside.rail .toc-list{display:flex;flex-direction:column;gap:0;border-left:1px solid var(--line)}
+  aside.rail .toc-list a{display:block;padding:10px 0 10px 14px;color:var(--ink-faint);text-decoration:none;text-transform:none;letter-spacing:-0.01em;font-family:var(--grotesk);font-size:13px;line-height:1.35;border-left:2px solid transparent;margin-left:-1px;transition:all 0.15s}
+  aside.rail .toc-list a:hover{color:var(--ink)}
+  aside.rail .toc-list a.active{color:var(--ink);border-left-color:var(--accent);font-weight:500}
+  aside.rail .share{display:flex;gap:8px}
+  aside.rail .share a{padding:8px 12px;border:1px solid var(--line-strong);text-decoration:none;color:var(--ink);font-family:var(--mono);font-size:10px;letter-spacing:0.2em;text-transform:uppercase;cursor:pointer}
+  aside.rail .share a:hover{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+  @media (max-width:980px){aside.rail{position:static;flex-direction:row;flex-wrap:wrap;gap:24px;padding-bottom:24px;border-bottom:1px solid var(--line)}aside.rail .toc-list{display:none}}
+
+  article.prose{max-width:680px}
+  article.prose > *{margin:0}
+  article.prose > * + *{margin-top:24px}
+
+  .tldr{background:var(--paper-2);border:1px solid var(--ink);padding:28px 32px;display:grid;grid-template-columns:90px 1fr;gap:24px;align-items:start;margin-bottom:48px !important}
+  @media (max-width:680px){.tldr{grid-template-columns:1fr;gap:14px;padding:22px 24px}}
+  .tldr .stamp{font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--accent-deep)}
+  .tldr .stamp::before{content:'';display:inline-block;width:8px;height:8px;background:var(--accent);border-radius:50%;margin-right:10px;transform:translateY(-1px)}
+  .tldr p{margin:0;font-size:17px;line-height:1.6;color:var(--ink);font-family:var(--grotesk);font-weight:500;text-wrap:pretty}
+
+  article.prose p{font-size:19px;line-height:1.65;color:var(--ink);font-weight:400;text-wrap:pretty}
+  article.prose p strong{font-weight:600;color:var(--ink)}
+  article.prose p em,
+  article.prose li em,
+  article.prose blockquote em{font-family:var(--serif);font-style:italic;font-size:1.02em}
+  article.prose ul,
+  article.prose ol{padding-left:24px;font-size:19px;line-height:1.65;color:var(--ink)}
+  article.prose li{margin:8px 0}
+  article.prose blockquote{margin:32px 0;padding:0 0 0 20px;border-left:3px solid var(--accent-deep);font-family:var(--serif);font-style:italic;color:var(--ink-dim);font-size:21px;line-height:1.4}
+  article.prose a{color:var(--ink);text-decoration:underline;text-decoration-color:var(--accent);text-underline-offset:4px;text-decoration-thickness:2px}
+  article.prose code{font-family:var(--mono);font-size:0.9em;background:var(--paper-2);padding:2px 6px;border:1px solid var(--line)}
+  article.prose pre{background:var(--paper-2);border:1px solid var(--line);padding:18px 20px;overflow:auto;font-family:var(--mono);font-size:14px;line-height:1.5}
+  article.prose pre code{background:transparent;border:0;padding:0}
+
+  article.prose h2{font-family:var(--grotesk);font-weight:700;font-size:30px;line-height:1.15;letter-spacing:-0.03em;margin-top:64px !important;color:var(--ink);text-wrap:balance;max-width:620px;display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:baseline}
+  article.prose h2 .num{font-family:var(--mono);font-weight:400;font-size:11px;letter-spacing:0.22em;color:var(--accent-deep);text-transform:uppercase;align-self:start;padding-top:10px}
+  article.prose h2 .text{display:block}
+  article.prose h3{font-family:var(--grotesk);font-weight:700;font-size:22px;line-height:1.2;letter-spacing:-0.025em;color:var(--ink);margin-top:40px !important}
+
+  article.prose hr{border:0;border-top:1px solid var(--line);margin:48px 0 !important}
+
+  article.prose .lede-p::first-letter{font-family:var(--serif);font-weight:500;float:left;font-size:88px;line-height:0.85;padding:6px 14px 0 0;color:var(--ink)}
+
+  .faq-section{padding:72px 0;border-bottom:1px solid var(--line-strong)}
+  .faq-section .head{display:grid;grid-template-columns:240px 1fr;gap:64px;margin-bottom:24px;align-items:end}
+  @media (max-width:980px){.faq-section .head{grid-template-columns:1fr;gap:8px;margin-bottom:24px}}
+  .faq-section .head .label{font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--accent-deep)}
+  .faq-section .head .label::before{content:'';display:inline-block;width:8px;height:8px;background:var(--accent);border-radius:50%;margin-right:12px;transform:translateY(-1px)}
+  .faq-section .head h2{font-family:var(--grotesk);font-weight:700;font-size:clamp(36px,4.4vw,56px);line-height:1.02;letter-spacing:-0.04em;margin:0}
+  .faq-section .head h2 .ital{font-family:var(--serif);font-style:italic;font-weight:400;color:var(--ink-dim)}
+
+  .faq{max-width:880px;margin-left:auto;border-top:1px solid var(--line-strong)}
+  .faq details{border-bottom:1px solid var(--line);padding:0}
+  .faq summary{list-style:none;cursor:pointer;padding:24px 0;display:grid;grid-template-columns:1fr 24px;gap:24px;align-items:start;font-family:var(--grotesk);font-weight:600;font-size:21px;line-height:1.3;letter-spacing:-0.02em;color:var(--ink);text-wrap:pretty}
+  .faq summary::-webkit-details-marker{display:none}
+  .faq summary::after{content:'+';font-family:var(--mono);font-weight:400;font-size:24px;line-height:1;color:var(--accent-deep);align-self:start;justify-self:end;transition:transform 0.2s}
+  .faq details[open] summary::after{content:'−'}
+  .faq details[open]{padding-bottom:24px}
+  .faq .a{font-size:17px;line-height:1.6;color:var(--ink-dim);max-width:720px;margin:0;padding-right:48px}
+  .faq .a em{font-family:var(--serif);font-style:italic;color:var(--ink)}
+
+  .end-cta{background:var(--ink);color:var(--paper);padding:96px 0;margin-top:0}
+  .end-cta .inner{max-width:1280px;margin:0 auto;padding:0 56px;display:grid;grid-template-columns:1.4fr 1fr;gap:64px;align-items:center}
+  @media (max-width:880px){.end-cta .inner{grid-template-columns:1fr;gap:40px;padding:0 24px}}
+  .end-cta h3{font-family:var(--grotesk);font-weight:700;font-size:clamp(36px,4.6vw,60px);line-height:1.02;letter-spacing:-0.04em;margin:0;text-wrap:balance}
+  .end-cta h3 .ital{font-family:var(--serif);font-style:italic;font-weight:400;color:rgba(255,255,255,0.62)}
+  .end-cta .right{display:flex;flex-direction:column;gap:18px}
+  .end-cta .right .label{font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:rgba(255,255,255,0.55)}
+  .end-cta .right .label::before{content:'';display:inline-block;width:8px;height:8px;background:var(--accent);border-radius:50%;margin-right:12px;transform:translateY(-1px)}
+  .end-cta .right p{font-size:16px;line-height:1.55;color:rgba(255,255,255,0.78);margin:0;max-width:380px}
+  .end-cta .btn{display:inline-flex;align-items:center;gap:12px;padding:18px 26px;border:1px solid var(--paper);background:var(--paper);color:var(--ink);text-decoration:none;font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;align-self:flex-start;transition:all 0.15s}
+  .end-cta .btn:hover{background:var(--accent);border-color:var(--accent);color:var(--ink)}
+  .end-cta .btn-ghost{background:transparent;color:var(--paper);border-color:rgba(255,255,255,0.4)}
+  .end-cta .btn-ghost:hover{background:transparent;color:var(--paper);border-color:var(--paper)}
+
+  .related{padding:96px 0 64px}
+  .related .label{font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--accent-deep);margin-bottom:32px}
+  .related .label::before{content:'';display:inline-block;width:8px;height:8px;background:var(--accent);border-radius:50%;margin-right:12px;transform:translateY(-1px)}
+  .related h2{font-family:var(--grotesk);font-weight:700;font-size:clamp(34px,4vw,52px);line-height:1.02;letter-spacing:-0.04em;margin:0 0 48px;text-wrap:balance}
+  .related h2 .ital{font-family:var(--serif);font-style:italic;font-weight:400;color:var(--ink-dim)}
+  .rel-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border-top:1px solid var(--line-strong)}
+  @media (max-width:880px){.rel-grid{grid-template-columns:1fr}}
+  .rel-card{padding:28px 24px 32px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);text-decoration:none;color:inherit;display:flex;flex-direction:column;gap:14px;transition:background 0.15s}
+  .rel-grid > .rel-card:nth-child(3){border-right:0}
+  .rel-card:hover{background:var(--paper-2)}
+  .rel-card .meta{display:flex;align-items:center;gap:14px;font-family:var(--mono);font-size:10.5px;letter-spacing:0.2em;text-transform:uppercase;color:var(--ink-faint)}
+  .rel-card .meta .tag{color:var(--accent-deep)}
+  .rel-card .meta .tag::before{content:'';display:inline-block;width:5px;height:5px;background:var(--accent);border-radius:50%;margin-right:7px;transform:translateY(-1px)}
+  .rel-card h3{font-family:var(--grotesk);font-weight:700;font-size:22px;line-height:1.18;letter-spacing:-0.025em;margin:0;color:var(--ink);text-wrap:pretty}
+  .rel-card:hover h3{color:var(--accent-deep)}
+  .rel-card p{font-size:15px;line-height:1.5;color:var(--ink-dim);margin:0}
+
+  footer.site{padding:48px 0;border-top:1px solid var(--line)}
+  footer.site .row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;font-family:var(--mono);font-size:10.5px;letter-spacing:0.2em;text-transform:uppercase;color:var(--ink-faint)}
+  footer.site .wordmark{font-size:14px}
+</style>
