@@ -1,19 +1,23 @@
 ---
+import '../styles/tokens.css';
 import '../styles/global.css';
 import PostHog from '../components/PostHog.astro';
 import GoogleTags from '../components/GoogleTags.astro';
 import GtmNoscript from '../components/GtmNoscript.astro';
+import Nav from '../components/Nav.astro';
 
 interface Props {
   title: string;
   description?: string;
   fontWeights?: string;
+  currentNav?: 'home' | 'blog';
 }
 
 const {
   title,
   description = 'Performance marketing for operators. Fifteen years running paid acquisition. AI in the loop where it earns its place.',
   fontWeights = 'Inter+Tight:wght@400;500;600;700;800',
+  currentNav,
 } = Astro.props;
 
 const fontHref = `https://fonts.googleapis.com/css2?family=${fontWeights}&family=DM+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&display=swap`;
@@ -43,6 +47,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site).toString();
 </head>
 <body>
   <GtmNoscript />
+  <Nav current={currentNav} />
   <slot />
 </body>
 </html>

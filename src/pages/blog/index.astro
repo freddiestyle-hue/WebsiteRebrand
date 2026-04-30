@@ -1,7 +1,6 @@
 ---
 import { getCollection } from 'astro:content';
 import Base from '../../layouts/Base.astro';
-import Nav from '../../components/Nav.astro';
 
 const posts = (await getCollection('blog')).sort(
   (a, b) => b.data.date.getTime() - a.data.date.getTime(),
@@ -23,10 +22,9 @@ for (const p of posts) tagCounts[p.data.tag] = (tagCounts[p.data.tag] ?? 0) + 1;
   title="Field Notes · Rivett"
   description="Notes from the desk. Working ideas about pipelines that hold, agents that ship, and the operator math that decides whether either is worth doing."
   fontWeights="Inter+Tight:wght@400;500;600;700;800"
+  currentNav="blog"
 >
   <div class="page">
-    <Nav current="blog" />
-
     <header class="masthead">
       <span class="stamp">Field Notes · Vol. 01 · 2026</span>
       <h1>Field Notes <span class="ital">on pipelines,<br/>operators, and the work.</span></h1>
@@ -167,12 +165,12 @@ for (const p of posts) tagCounts[p.data.tag] = (tagCounts[p.data.tag] ?? 0) + 1;
   .masthead .sub{display:grid;grid-template-columns:1.4fr 1fr;gap:48px;align-items:end;margin-top:48px}
   @media (max-width:880px){.masthead .sub{grid-template-columns:1fr;gap:24px}}
   .masthead .lede{font-size:21px;line-height:1.5;color:var(--ink-dim);max-width:620px;margin:0}
-  .masthead .lede em{font-family:var(--serif);font-style:italic;color:var(--ink);font-weight:400}
+  .masthead .lede em{font-family:var(--serif);font-style:italic;font-weight:400}
   .masthead .meta{font-family:var(--mono);font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:var(--ink-faint);display:grid;grid-template-columns:repeat(2,1fr);gap:18px}
   .masthead .meta b{display:block;color:var(--ink);font-family:var(--grotesk);font-weight:600;font-size:14px;letter-spacing:-0.01em;text-transform:none;margin-top:4px}
 
   .rule{display:flex;align-items:center;gap:18px;padding:18px 0;border-bottom:1px solid var(--line);font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint)}
-  .rule .dot{width:6px;height:6px;border-radius:50%;background:var(--ink)}
+  .rule .dot{width:6px;height:6px;border-radius:50%;background:var(--accent)}
 
   .featured{padding:64px 0 32px;border-bottom:1px solid var(--line-strong)}
   .featured .lede-row{display:grid;grid-template-columns:5fr 4fr;gap:64px;align-items:start}

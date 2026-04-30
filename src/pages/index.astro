@@ -1,15 +1,13 @@
 ---
 import Base from '../layouts/Base.astro';
-import Nav from '../components/Nav.astro';
 ---
 <Base
   title="Rivett · Performance marketing for operators"
   description="Fifteen years running paid acquisition. A one-operator practice for US operators, at a fraction of US agency cost. AI in the loop where it earns its place."
   fontWeights="Inter+Tight:wght@400;500;600;700"
+  currentNav="home"
 >
   <div class="page">
-    <Nav current="home" />
-
     <section class="first" style="border-top:0;padding-top:0">
       <div class="hero">
         <div>
@@ -302,7 +300,7 @@ import Nav from '../components/Nav.astro';
   h1.display{font-family:var(--grotesk);font-weight:700;font-size:clamp(48px,7.4vw,104px);line-height:0.94;letter-spacing:-0.05em;margin:0;color:var(--ink)}
   h1.display .em{color:var(--ink)}
   h1.display .dim{color:var(--ink-faint)}
-  h1.display .ital{font-family:var(--serif);font-style:italic;font-weight:400;letter-spacing:-0.02em}
+  h1.display .ital{font-family:var(--serif);font-style:italic;font-weight:400;letter-spacing:-0.02em;color:var(--ink-dim)}
 
   h2.section-title{font-family:var(--grotesk);font-weight:700;font-size:clamp(36px,4.6vw,60px);line-height:1.02;letter-spacing:-0.04em;margin:0;color:var(--ink)}
   h3.sub{font-family:var(--grotesk);font-weight:700;font-size:clamp(26px,2.6vw,34px);line-height:1.1;letter-spacing:-0.03em;margin:0;color:var(--ink)}
@@ -345,7 +343,7 @@ import Nav from '../components/Nav.astro';
   .inherit{display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:start}
   @media (max-width:980px){.inherit{grid-template-columns:1fr;gap:40px}}
   .inherit .body{max-width:none}
-  .inherit .editorial{font-family:var(--serif);font-style:italic;font-weight:400;font-size:clamp(28px,3.2vw,40px);line-height:1.25;letter-spacing:-0.015em;color:var(--ink);margin:0 0 28px}
+  .inherit .editorial{font-family:var(--serif);font-style:italic;font-weight:400;font-size:clamp(28px,3.2vw,40px);line-height:1.25;letter-spacing:-0.015em;color:var(--ink-dim);margin:0 0 28px}
   .inherit .editorial .em{color:var(--accent-deep);font-style:italic}
 
   .roster{margin-top:40px;border-top:1px solid var(--line)}
@@ -427,7 +425,7 @@ import Nav from '../components/Nav.astro';
   .cta-block{background:var(--paper-2);border:1px solid var(--ink);padding:88px 64px;text-align:left;display:grid;grid-template-columns:1.2fr 1fr;gap:64px;align-items:end}
   @media (max-width:980px){.cta-block{grid-template-columns:1fr;padding:56px 32px;gap:40px}}
   .cta-block h2{font-family:var(--grotesk);font-weight:700;font-size:clamp(40px,5vw,72px);line-height:0.98;letter-spacing:-0.045em;margin:0;color:var(--ink)}
-  .cta-block h2 .em{font-family:var(--serif);font-style:italic;font-weight:400;letter-spacing:-0.02em}
+  .cta-block h2 .em{font-family:var(--serif);font-style:italic;font-weight:400;letter-spacing:-0.02em;color:var(--ink-dim)}
   .cta-block .lede{margin-top:24px;font-size:17px;line-height:1.6;color:var(--ink-dim);max-width:520px}
   .cta-block .actions{display:flex;flex-direction:column;gap:14px;align-items:flex-start}
   .cta-block .actions .meta{font-family:var(--mono);font-size:10px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint);margin-top:8px}

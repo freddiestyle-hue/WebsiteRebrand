@@ -1,7 +1,6 @@
 ---
 import { getCollection } from 'astro:content';
 import Base from '../../layouts/Base.astro';
-import Nav from '../../components/Nav.astro';
 import { parsePost } from '../../utils/parsePost';
 
 export async function getStaticPaths() {
@@ -39,10 +38,9 @@ const { tldrHtml, bodyHtml, faq, toc } = parsePost(post.body ?? '');
   title={`${post.data.title} · Rivett Field Notes`}
   description={post.data.metaDescription ?? post.data.excerpt}
   fontWeights="Inter+Tight:wght@400;500;600;700;800"
+  currentNav="blog"
 >
   <div class="page">
-    <Nav current="blog" />
-
     <div class="crumb">
       <a href="/blog">← Field Notes</a>
       <span class="sep">/</span>
@@ -221,7 +219,7 @@ const { tldrHtml, bodyHtml, faq, toc } = parsePost(post.body ?? '');
 
   article.prose p{font-size:19px;line-height:1.65;color:var(--ink);font-weight:400;text-wrap:pretty}
   article.prose p strong{font-weight:600;color:var(--ink)}
-  article.prose em{font-family:var(--serif);font-style:italic;font-size:1.02em}
+  article.prose em{font-family:var(--serif);font-style:italic;font-size:1.02em;color:var(--ink-dim)}
   article.prose ul,
   article.prose ol{padding-left:24px;font-size:19px;line-height:1.65;color:var(--ink)}
   article.prose li{margin:8px 0}
@@ -256,7 +254,7 @@ const { tldrHtml, bodyHtml, faq, toc } = parsePost(post.body ?? '');
   .faq details[open] summary::after{content:'−'}
   .faq details[open]{padding-bottom:24px}
   .faq .a{font-size:17px;line-height:1.6;color:var(--ink-dim);max-width:720px;margin:0;padding-right:48px}
-  .faq .a em{font-family:var(--serif);font-style:italic;color:var(--ink)}
+  .faq .a em{font-family:var(--serif);font-style:italic}
 
   .end-cta{background:var(--ink);color:var(--paper);padding:96px 0;margin-top:0}
   .end-cta .inner{max-width:1280px;margin:0 auto;padding:0 56px;display:grid;grid-template-columns:1.4fr 1fr;gap:64px;align-items:center}
