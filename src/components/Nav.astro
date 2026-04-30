@@ -24,7 +24,7 @@ const { current } = Astro.props;
   </nav>
 </header>
 
-<div id="mobile-menu" class="mobile-menu" hidden>
+<div id="mobile-menu" class="mobile-menu">
   <button class="mobile-close" type="button" aria-label="Close menu">×</button>
   <a href="/" class="wordmark mobile-wordmark" aria-label="Rivett, home">
     rivett<span class="dot-mark" aria-hidden="true"></span>
@@ -54,8 +54,7 @@ const { current } = Astro.props;
 
   function openMenu() {
     if (!menu || !toggle) return;
-    menu.hidden = false;
-    requestAnimationFrame(() => menu.classList.add('open'));
+    menu.classList.add('open');
     toggle.setAttribute('aria-expanded', 'true');
     document.body.style.overflow = 'hidden';
   }
@@ -64,7 +63,6 @@ const { current } = Astro.props;
     menu.classList.remove('open');
     toggle.setAttribute('aria-expanded', 'false');
     document.body.style.overflow = '';
-    setTimeout(() => { menu.hidden = true; }, 220);
   }
 
   toggle?.addEventListener('click', openMenu);
@@ -73,7 +71,7 @@ const { current } = Astro.props;
     a.addEventListener('click', () => closeMenu());
   });
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && menu && !menu.hidden) closeMenu();
+    if (e.key === 'Escape' && menu?.classList.contains('open')) closeMenu();
   });
 </script>
 
@@ -172,9 +170,15 @@ const { current } = Astro.props;
     display: flex;
     flex-direction: column;
     opacity: 0;
-    transition: opacity 200ms ease;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 200ms ease, visibility 200ms ease;
   }
-  .mobile-menu.open { opacity: 1; }
+  .mobile-menu.open {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+  }
   .mobile-close {
     position: absolute;
     top: 18px;
