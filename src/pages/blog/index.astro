@@ -56,7 +56,7 @@ for (const p of posts) tagCounts[p.data.tag] = (tagCounts[p.data.tag] ?? 0) + 1;
               <span>{fmtDate(lead.data.date)}</span>
               <span>{lead.data.readTime} min read</span>
             </div>
-            <h2 set:html={lead.data.title} />
+            <h2>{lead.data.title}</h2>
             <p class="dek">{lead.data.excerpt}</p>
             <div class="by"><span>By<b>Fred Style</b></span><span>Read<b>Note →</b></span></div>
           </a>
@@ -65,7 +65,7 @@ for (const p of posts) tagCounts[p.data.tag] = (tagCounts[p.data.tag] ?? 0) + 1;
             {sides.map(p => (
               <a class="side-art" href={`/blog/${slugFor(p)}`}>
                 <div class="meta"><span class="tag">{p.data.tag}</span><span>{fmtDate(p.data.date)}</span><span>{p.data.readTime} min</span></div>
-                <h3 set:html={p.data.title} />
+                <h3>{p.data.title}</h3>
                 <p>{p.data.excerpt}</p>
               </a>
             ))}
@@ -94,7 +94,7 @@ for (const p of posts) tagCounts[p.data.tag] = (tagCounts[p.data.tag] ?? 0) + 1;
             <a class="row" data-tag={p.data.tag} href={`/blog/${slugFor(p)}`}>
               <span class="idx">№ {String(num).padStart(2, '0')}</span>
               <span class="date">{fmtDate(p.data.date)}</span>
-              <span class="title" set:html={p.data.title} />
+              <span class="title">{p.data.title}</span>
               <span class="tag">{p.data.tag}</span>
               <span class="read">{p.data.readTime} min</span>
             </a>
