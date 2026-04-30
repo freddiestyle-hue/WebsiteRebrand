@@ -51,6 +51,17 @@ import Base from '../layouts/Base.astro';
 
       <div class="inherit">
         <div>
+          <div class="op-byline">
+            <picture>
+              <source type="image/avif" srcset="/img/portrait/fred-96.avif 1x, /img/portrait/fred-192.avif 2x" />
+              <source type="image/webp" srcset="/img/portrait/fred-96.webp 1x, /img/portrait/fred-192.webp 2x" />
+              <img src="/img/portrait/fred-96.png" srcset="/img/portrait/fred-96.png 1x, /img/portrait/fred-192.png 2x" width="48" height="48" alt="Fred Style" loading="lazy" decoding="async" />
+            </picture>
+            <div>
+              <div class="op-name">Fred Style</div>
+              <div class="op-role">Founder · Operator · Sole point of contact</div>
+            </div>
+          </div>
           <p class="editorial">A senior operator. <span class="em">Not an agency.</span> One person on the work, with AI doing the busywork underneath.</p>
           <p class="body">
             Fifteen years inside paid acquisition for brands across consumer, B2B and DTC. Most recently a year as ex-growth at <strong>Somewhere.com</strong>, the global recruiting platform. Before that, in-house performance leadership across four continents and roughly $100M in managed spend.
@@ -343,6 +354,11 @@ import Base from '../layouts/Base.astro';
   .inherit{display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:start}
   @media (max-width:980px){.inherit{grid-template-columns:1fr;gap:40px}}
   .inherit .body{max-width:none}
+  .op-byline{display:flex;align-items:center;gap:14px;margin:0 0 28px}
+  .op-byline picture{display:block}
+  .op-byline img{width:48px;height:48px;object-fit:cover;object-position:top;border:1px solid var(--ink);filter:grayscale(100%);display:block}
+  .op-byline .op-name{font-family:var(--grotesk);font-weight:700;font-size:14px;letter-spacing:-0.01em;color:var(--ink);line-height:1.1}
+  .op-byline .op-role{font-family:var(--mono);font-size:9.5px;letter-spacing:0.2em;text-transform:uppercase;color:var(--ink-faint);margin-top:5px;line-height:1.3}
   .inherit .editorial{font-family:var(--serif);font-style:italic;font-weight:400;font-size:clamp(28px,3.2vw,40px);line-height:1.25;letter-spacing:-0.015em;color:var(--ink-dim);margin:0 0 28px}
   .inherit .editorial .em{color:var(--accent-deep);font-style:italic}
 

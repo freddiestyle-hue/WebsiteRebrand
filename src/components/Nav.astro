@@ -9,7 +9,7 @@ const { current } = Astro.props;
     <a href="/" class="wordmark" aria-label="Rivett, home">
       rivett<span class="dot-mark" aria-hidden="true"></span>
     </a>
-    <ul>
+    <ul class="nav-links">
       <li><a href="/#modules">Modules</a></li>
       <li><a href="/#approach">Approach</a></li>
       <li class={current === 'blog' ? 'current-li' : ''}>
@@ -17,8 +17,26 @@ const { current } = Astro.props;
       </li>
       <li><a href="/diagnostic" class="cta">Book diagnostic</a></li>
     </ul>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="mobile-menu" aria-label="Open menu">
+      <span class="menu-bar"></span>
+      <span class="menu-bar"></span>
+    </button>
   </nav>
 </header>
+
+<div id="mobile-menu" class="mobile-menu" hidden>
+  <button class="mobile-close" type="button" aria-label="Close menu">×</button>
+  <a href="/" class="wordmark mobile-wordmark" aria-label="Rivett, home">
+    rivett<span class="dot-mark" aria-hidden="true"></span>
+  </a>
+  <ul class="mobile-links">
+    <li><a href="/#modules">Modules</a></li>
+    <li><a href="/#approach">Approach</a></li>
+    <li><a href="/blog">Field Notes</a></li>
+    <li><a href="/diagnostic" class="mobile-cta">Book diagnostic</a></li>
+  </ul>
+  <div class="mobile-foot">fred@rivett.tech</div>
+</div>
 
 <script>
   const header = document.querySelector<HTMLElement>('.site-header');
@@ -29,6 +47,34 @@ const { current } = Astro.props;
     window.addEventListener('scroll', onScroll, { passive: true });
     onScroll();
   }
+
+  const toggle = document.querySelector<HTMLButtonElement>('.menu-toggle');
+  const menu = document.getElementById('mobile-menu');
+  const close = document.querySelector<HTMLButtonElement>('.mobile-close');
+
+  function openMenu() {
+    if (!menu || !toggle) return;
+    menu.hidden = false;
+    requestAnimationFrame(() => menu.classList.add('open'));
+    toggle.setAttribute('aria-expanded', 'true');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeMenu() {
+    if (!menu || !toggle) return;
+    menu.classList.remove('open');
+    toggle.setAttribute('aria-expanded', 'false');
+    document.body.style.overflow = '';
+    setTimeout(() => { menu.hidden = true; }, 220);
+  }
+
+  toggle?.addEventListener('click', openMenu);
+  close?.addEventListener('click', closeMenu);
+  menu?.querySelectorAll<HTMLAnchorElement>('a').forEach((a) => {
+    a.addEventListener('click', () => closeMenu());
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && menu && !menu.hidden) closeMenu();
+  });
 </script>
 
 <style is:global>
@@ -62,7 +108,7 @@ const { current } = Astro.props;
     .header-inner { padding: 20px 24px; }
   }
   .header-inner .wordmark { font-size: 28px; }
-  .header-inner ul {
+  .nav-links {
     list-style: none;
     margin: 0;
     padding: 0;
@@ -91,7 +137,93 @@ const { current } = Astro.props;
     text-transform: uppercase;
   }
   .header-inner .cta:hover { background: var(--ink); color: var(--paper); }
+
+  .menu-toggle {
+    display: none;
+    background: transparent;
+    border: 0;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    cursor: pointer;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+  }
+  .menu-bar {
+    display: block;
+    width: 22px;
+    height: 1.5px;
+    background: var(--ink);
+  }
+
   @media (max-width: 780px) {
-    .header-inner ul li:not(:last-child):not(.current-li) { display: none; }
+    .nav-links { display: none; }
+    .menu-toggle { display: inline-flex; }
+  }
+
+  .mobile-menu {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    background: var(--paper);
+    padding: 28px 24px 32px;
+    display: flex;
+    flex-direction: column;
+    opacity: 0;
+    transition: opacity 200ms ease;
+  }
+  .mobile-menu.open { opacity: 1; }
+  .mobile-close {
+    position: absolute;
+    top: 18px;
+    right: 24px;
+    background: transparent;
+    border: 0;
+    font-family: var(--grotesk);
+    font-weight: 300;
+    font-size: 36px;
+    line-height: 1;
+    color: var(--ink);
+    cursor: pointer;
+    padding: 4px 12px;
+  }
+  .mobile-wordmark {
+    font-size: 28px;
+    align-self: flex-start;
+  }
+  .mobile-links {
+    list-style: none;
+    margin: 56px 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    border-top: 1px solid var(--line);
+  }
+  .mobile-links li {
+    border-bottom: 1px solid var(--line);
+  }
+  .mobile-links a {
+    display: block;
+    padding: 22px 0;
+    font-family: var(--grotesk);
+    font-weight: 600;
+    font-size: 28px;
+    letter-spacing: -0.025em;
+    color: var(--ink);
+    text-decoration: none;
+  }
+  .mobile-links .mobile-cta {
+    color: var(--accent-deep);
+  }
+  .mobile-foot {
+    margin-top: auto;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
   }
 </style>

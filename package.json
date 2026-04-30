@@ -10,7 +10,8 @@
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",
-    "portrait": "node scripts/build-portrait.mjs"
+    "portrait": "node scripts/build-portrait.mjs",
+    "og": "node scripts/build-og.mjs"
   },
   "dependencies": {
     "@astrojs/rss": "^4.0.18",
