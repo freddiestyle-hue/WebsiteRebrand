@@ -1,0 +1,125 @@
+---
+import Base from '../../layouts/Base.astro';
+---
+<Base
+  title="Field Kits · Rivett"
+  description="Practical operator tools for building agentic marketing systems: brand memory, operating maps, approval gates, and campaign workflows."
+  currentNav="field-kits"
+>
+  <main class="kits-page">
+    <section class="kits-hero">
+      <div class="page hero-grid">
+        <div>
+          <div class="stamp">Field Kits · Operator tools</div>
+          <h1>Tools for operators who are done <span class="ital">prompting from scratch.</span></h1>
+          <p class="lede">Practical working documents for turning AI from a pile of faster tabs into a marketing system with memory, roles, approvals, and a heartbeat.</p>
+          <div class="hero-actions">
+            <a class="btn primary" href="/field-kits/brand-memory-vault">Start with memory →</a>
+            <a class="btn ghost" href="/field-kits/agentic-marketing-os-map">Map the system</a>
+          </div>
+        </div>
+        <aside class="manifest">
+          <div class="manifest-head">Inside the register</div>
+          <div class="metric"><span>02</span><b>Live kits</b></div>
+          <div class="metric"><span>06</span><b>System layers</b></div>
+          <div class="metric"><span>05</span><b>Memory files</b></div>
+          <div class="metric"><span>01</span><b>Diagnostic next step</b></div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="page kit-register">
+      <div class="section-head">
+        <span class="label">The first two</span>
+        <h2>Start where AI marketing usually breaks.</h2>
+      </div>
+
+      <div class="kit-list">
+        <article class="kit-row">
+          <span class="idx">FK 01</span>
+          <span class="title">Brand Memory Vault</span>
+          <span class="desc">A five-file memory system for audience, offer, proof, voice, and objections.</span>
+          <span class="row-actions">
+            <a href="/field-kits/brand-memory-vault">Open</a>
+            <a href="/field-kits/brand-memory-vault.pdf" download>PDF</a>
+          </span>
+        </article>
+        <article class="kit-row">
+          <span class="idx">FK 02</span>
+          <span class="title">Agentic Marketing OS Map</span>
+          <span class="desc">A six-layer map for turning AI tools into a marketing operating layer.</span>
+          <span class="row-actions">
+            <a href="/field-kits/agentic-marketing-os-map">Open</a>
+            <a href="/field-kits/agentic-marketing-os-map.pdf" download>PDF</a>
+          </span>
+        </article>
+      </div>
+    </section>
+
+    <section class="method-band">
+      <div class="page method-grid">
+        <div>
+          <span class="label">How to use them</span>
+          <h2>Do not download them and let them die in a folder.</h2>
+        </div>
+        <div class="steps">
+          <div><b>01</b><span>Fill the memory from real customer language.</span></div>
+          <div><b>02</b><span>Score the six OS layers honestly.</span></div>
+          <div><b>03</b><span>Build one workflow that produces a review-ready output every week.</span></div>
+        </div>
+      </div>
+    </section>
+  </main>
+</Base>
+
+<style is:global>
+  .kits-page .stamp,
+  .kits-page .label{font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--accent-deep)}
+  .kits-page .stamp::before,
+  .kits-page .label::before{content:'';display:inline-block;width:8px;height:8px;background:var(--accent);border-radius:50%;margin-right:12px;transform:translateY(-1px)}
+  .kits-hero{padding:84px 0 72px;border-top:1px solid var(--line);border-bottom:1px solid var(--line-strong)}
+  .hero-grid{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:72px;align-items:end}
+  .kits-hero h1{font-size:clamp(56px,7.5vw,112px);line-height:0.92;letter-spacing:-0.055em;margin:28px 0 0;max-width:960px;text-wrap:balance}
+  .kits-hero .ital{font-family:var(--serif);font-style:italic;font-weight:400;letter-spacing:-0.02em;color:var(--ink-dim)}
+  .kits-hero .lede{font-size:22px;line-height:1.5;color:var(--ink-dim);max-width:660px;margin:34px 0 0}
+  .hero-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:34px}
+  .kits-page .btn{display:inline-flex;align-items:center;justify-content:center;min-height:46px;padding:13px 18px;border:1px solid var(--ink);font-family:var(--mono);font-size:11px;letter-spacing:0.16em;text-transform:uppercase;text-decoration:none}
+  .kits-page .btn.primary{background:var(--ink);color:var(--paper)}
+  .kits-page .btn.ghost{background:transparent;color:var(--ink)}
+  .manifest{border-top:2px solid var(--ink);border-bottom:1px solid var(--line-strong)}
+  .manifest-head{font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint);padding:16px 0;border-bottom:1px solid var(--line)}
+  .manifest .metric{display:grid;grid-template-columns:92px 1fr;gap:20px;align-items:baseline;padding:20px 0;border-bottom:1px solid var(--line)}
+  .manifest .metric:last-child{border-bottom:0}
+  .manifest .metric span{font-family:var(--serif);font-size:56px;line-height:0.9;color:var(--accent-deep)}
+  .manifest .metric b{font-size:18px;letter-spacing:-0.02em}
+  .kit-register{padding:72px 56px 96px}
+  .section-head{display:grid;grid-template-columns:240px 1fr;gap:64px;align-items:end;margin-bottom:36px}
+  .section-head h2{font-size:clamp(36px,4vw,56px);line-height:1.02;letter-spacing:-0.045em;margin:0;max-width:720px;text-wrap:balance}
+  .kit-list{border-top:2px solid var(--ink)}
+  .kit-row{display:grid;grid-template-columns:90px minmax(240px,0.85fr) minmax(280px,1fr) 164px;gap:28px;align-items:baseline;padding:28px 0;border-bottom:1px solid var(--line);text-decoration:none}
+  .kit-row:hover{background:var(--paper-2);padding-left:12px;padding-right:12px}
+  .kit-row .idx,.kit-row .row-actions{font-family:var(--mono);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:var(--ink-faint)}
+  .kit-row .title{font-size:28px;font-weight:700;letter-spacing:-0.035em;color:var(--ink)}
+  .kit-row:hover .title{color:var(--accent-deep)}
+  .kit-row .desc{font-size:17px;line-height:1.45;color:var(--ink-dim)}
+  .row-actions{display:flex;gap:14px;justify-content:flex-end}
+  .row-actions a{color:inherit;text-decoration:none;border-bottom:1px solid var(--line-strong);padding-bottom:4px}
+  .row-actions a:hover{color:var(--accent-deep);border-bottom-color:var(--accent-deep)}
+  .method-band{background:var(--ink);color:var(--paper);padding:76px 0;margin-top:20px}
+  .method-band .label{color:rgba(255,255,255,0.72)}
+  .method-band .label::before{background:var(--accent)}
+  .method-grid{display:grid;grid-template-columns:1fr 1.1fr;gap:64px;align-items:start}
+  .method-band h2{font-size:clamp(36px,4.8vw,64px);line-height:1;letter-spacing:-0.045em;margin:22px 0 0;max-width:620px;text-wrap:balance}
+  .steps{border-top:1px solid rgba(255,255,255,0.28)}
+  .steps div{display:grid;grid-template-columns:64px 1fr;gap:24px;padding:24px 0;border-bottom:1px solid rgba(255,255,255,0.18)}
+  .steps b{font-family:var(--mono);font-size:11px;letter-spacing:0.22em;color:var(--accent)}
+  .steps span{font-size:22px;line-height:1.25;letter-spacing:-0.02em}
+  @media (max-width:900px){
+    .hero-grid,.section-head,.method-grid{grid-template-columns:1fr;gap:36px}
+    .kit-register{padding-left:24px;padding-right:24px}
+    .kit-row{grid-template-columns:1fr auto;gap:10px 16px}
+    .kit-row .idx{grid-column:1}
+    .kit-row .row-actions{grid-column:2;grid-row:1}
+    .kit-row .title,.kit-row .desc{grid-column:1/-1}
+  }
+</style>
