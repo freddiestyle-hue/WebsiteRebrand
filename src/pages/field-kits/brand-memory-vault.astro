@@ -1,5 +1,6 @@
 ---
 import Base from '../../layouts/Base.astro';
+import FieldKitGate from '../../components/FieldKitGate.astro';
 ---
 <Base
   title="Brand Memory Vault · Rivett Field Kit"
@@ -14,7 +15,15 @@ import Base from '../../layouts/Base.astro';
           <h1>Your brand voice is trapped <span class="ital">in your head.</span></h1>
           <p class="lede">A five-file vault for turning customer language, proof, objections, offer boundaries, and founder taste into memory your agents can use before they write.</p>
           <div class="actions">
-            <a class="btn primary" href="/field-kits/brand-memory-vault.pdf" download>Download PDF →</a>
+            <button
+              class="btn primary"
+              type="button"
+              data-kit-download
+              data-kit-slug="brand-memory-vault"
+              data-kit-title="Brand Memory Vault"
+              data-kit-pdf="/field-kits/brand-memory-vault.pdf"
+              data-kit-copy="Tell me where to send the signal, then the Brand Memory Vault opens immediately."
+            >Download PDF →</button>
             <a class="btn ghost" href="/blog/brand-voice-trapped-in-head">Read the note</a>
             <a class="btn ghost" href="/diagnostic">Book diagnostic</a>
           </div>
@@ -99,6 +108,7 @@ Before writing, summarize:
       </div>
     </section>
   </main>
+  <FieldKitGate />
 </Base>
 
 <style is:global>
@@ -111,6 +121,7 @@ Before writing, summarize:
   .kit-hero .lede{font-size:22px;line-height:1.48;color:var(--ink-dim);max-width:680px;margin:34px 0 0}
   .kit-detail .actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:34px}
   .kit-detail .btn{display:inline-flex;align-items:center;justify-content:center;min-height:46px;padding:13px 18px;border:1px solid var(--ink);font-family:var(--mono);font-size:11px;letter-spacing:0.16em;text-transform:uppercase}
+  .kit-detail button.btn{appearance:none;border-radius:0}
   .kit-detail .btn.primary{background:var(--ink);color:var(--paper)}
   .kit-detail .btn.ghost{background:transparent;color:var(--ink)}
   .vault-visual{background:var(--paper-2);border:1px solid var(--ink);padding:24px;position:relative}

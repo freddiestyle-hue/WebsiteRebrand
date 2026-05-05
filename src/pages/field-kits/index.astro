@@ -1,5 +1,6 @@
 ---
 import Base from '../../layouts/Base.astro';
+import FieldKitGate from '../../components/FieldKitGate.astro';
 ---
 <Base
   title="Field Kits · Rivett"
@@ -41,7 +42,14 @@ import Base from '../../layouts/Base.astro';
           <span class="desc">A five-file memory system for audience, offer, proof, voice, and objections.</span>
           <span class="row-actions">
             <a href="/field-kits/brand-memory-vault">Open</a>
-            <a href="/field-kits/brand-memory-vault.pdf" download>PDF</a>
+            <button
+              type="button"
+              data-kit-download
+              data-kit-slug="brand-memory-vault"
+              data-kit-title="Brand Memory Vault"
+              data-kit-pdf="/field-kits/brand-memory-vault.pdf"
+              data-kit-copy="Tell me where to send the signal, then the Brand Memory Vault opens immediately."
+            >PDF</button>
           </span>
         </article>
         <article class="kit-row">
@@ -50,7 +58,14 @@ import Base from '../../layouts/Base.astro';
           <span class="desc">A six-layer map for turning AI tools into a marketing operating layer.</span>
           <span class="row-actions">
             <a href="/field-kits/agentic-marketing-os-map">Open</a>
-            <a href="/field-kits/agentic-marketing-os-map.pdf" download>PDF</a>
+            <button
+              type="button"
+              data-kit-download
+              data-kit-slug="agentic-marketing-os-map"
+              data-kit-title="Agentic Marketing OS Map"
+              data-kit-pdf="/field-kits/agentic-marketing-os-map.pdf"
+              data-kit-copy="Drop your details and the Agentic Marketing OS Map opens immediately."
+            >PDF</button>
           </span>
         </article>
       </div>
@@ -70,6 +85,7 @@ import Base from '../../layouts/Base.astro';
       </div>
     </section>
   </main>
+  <FieldKitGate />
 </Base>
 
 <style is:global>
@@ -103,8 +119,8 @@ import Base from '../../layouts/Base.astro';
   .kit-row:hover .title{color:var(--accent-deep)}
   .kit-row .desc{font-size:17px;line-height:1.45;color:var(--ink-dim)}
   .row-actions{display:flex;gap:14px;justify-content:flex-end}
-  .row-actions a{color:inherit;text-decoration:none;border-bottom:1px solid var(--line-strong);padding-bottom:4px}
-  .row-actions a:hover{color:var(--accent-deep);border-bottom-color:var(--accent-deep)}
+  .row-actions a,.row-actions button{color:inherit;text-decoration:none;border:0;border-bottom:1px solid var(--line-strong);background:transparent;padding:0 0 4px;font:inherit;letter-spacing:inherit;text-transform:inherit}
+  .row-actions a:hover,.row-actions button:hover{color:var(--accent-deep);border-bottom-color:var(--accent-deep)}
   .method-band{background:var(--ink);color:var(--paper);padding:76px 0;margin-top:20px}
   .method-band .label{color:rgba(255,255,255,0.72)}
   .method-band .label::before{background:var(--accent)}

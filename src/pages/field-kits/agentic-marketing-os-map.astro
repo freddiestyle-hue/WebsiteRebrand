@@ -1,5 +1,6 @@
 ---
 import Base from '../../layouts/Base.astro';
+import FieldKitGate from '../../components/FieldKitGate.astro';
 ---
 <Base
   title="Agentic Marketing OS Map · Rivett Field Kit"
@@ -14,7 +15,15 @@ import Base from '../../layouts/Base.astro';
           <h1>Your AI stack is not <span class="ital">a marketing OS.</span></h1>
           <p class="lede">Use this six-layer map to see where your campaign work still depends on you carrying every handoff.</p>
           <div class="actions">
-            <a class="btn primary" href="/field-kits/agentic-marketing-os-map.pdf" download>Download PDF →</a>
+            <button
+              class="btn primary"
+              type="button"
+              data-kit-download
+              data-kit-slug="agentic-marketing-os-map"
+              data-kit-title="Agentic Marketing OS Map"
+              data-kit-pdf="/field-kits/agentic-marketing-os-map.pdf"
+              data-kit-copy="Drop your details and the Agentic Marketing OS Map opens immediately."
+            >Download PDF →</button>
             <a class="btn ghost" href="/blog/ai-marketing-operating-system">Read the note</a>
             <a class="btn ghost" href="/diagnostic">Book diagnostic</a>
           </div>
@@ -110,6 +119,7 @@ For each layer, identify:
       </div>
     </section>
   </main>
+  <FieldKitGate />
 </Base>
 
 <style is:global>
@@ -122,6 +132,7 @@ For each layer, identify:
   .os-hero .lede{font-size:22px;line-height:1.48;color:var(--ink-dim);max-width:640px;margin:34px 0 0}
   .os-page .actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:34px}
   .os-page .btn{display:inline-flex;align-items:center;justify-content:center;min-height:46px;padding:13px 18px;border:1px solid var(--ink);font-family:var(--mono);font-size:11px;letter-spacing:0.16em;text-transform:uppercase}
+  .os-page button.btn{appearance:none;border-radius:0}
   .os-page .btn.primary{background:var(--ink);color:var(--paper)}
   .os-page .btn.ghost{background:transparent;color:var(--ink)}
   .os-diagram{border:1px solid var(--ink);background:var(--paper-2);padding:24px}
