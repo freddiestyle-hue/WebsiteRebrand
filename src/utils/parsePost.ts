@@ -7,7 +7,7 @@ export interface ParsedPost {
   toc: Array<{ id: string; label: string }>;
 }
 
-const SECTION_PREFIX = (n: number) => `§ ${String(n).padStart(2, '0')}`;
+const SECTION_PREFIX = (n: number) => String(n).padStart(2, '0');
 
 const slugify = (s: string) =>
   s
