@@ -15,9 +15,12 @@ export default defineConfig({
   redirects: {
     '/contact': '/diagnostic',
     '/book': '/diagnostic',
-    '/field-kits': '/tools',
-    '/field-kits/brand-memory-vault': '/tools/brand-memory-vault',
-    '/field-kits/agentic-marketing-os-map': '/tools/agentic-marketing-os-map',
-    '/revenue-leak-mri': '/tools/revenue-leak-mri',
+    '/tools': '/revenue-leak-mri',
+    '/tools/revenue-leak-mri': '/revenue-leak-mri',
+    '/tools/brand-memory-vault': '/revenue-leak-mri',
+    '/tools/agentic-marketing-os-map': '/revenue-leak-mri',
+    '/field-kits': '/revenue-leak-mri',
+    '/field-kits/brand-memory-vault': '/revenue-leak-mri',
+    '/field-kits/agentic-marketing-os-map': '/revenue-leak-mri',
   },
 });
