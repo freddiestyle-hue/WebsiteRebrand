@@ -37,7 +37,7 @@ export const diagnostic = {
       lead: 'Two weeks. One operator.',
       italic: 'A diagnostic that tells you the truth.',
     } as BicameralHeadline,
-    dek: 'A senior operator reads your last quarter, sits in your stack, talks to two of your customers, and writes you a 12-page memo on what to stop, what to instrument, and what to build. No deck. No retainer.',
+    dek: 'A senior operator reads your last quarter, sits in your stack, talks to two of your customers, and writes you a 12-page memo on where revenue is leaking, what is invisible, what to build, and what to stop funding. No deck. No retainer.',
     strip: [
       { label: 'Engagement', value: 'Diagnostic, fixed scope' },
       { label: 'Fee', value: '$3,500 USD' },
@@ -49,14 +49,14 @@ export const diagnostic = {
   whatThisIs: {
     eyebrow: 'What this is',
     headline: {
-      lead: 'A senior pair of eyes on your pipeline,',
+      lead: 'A senior pair of eyes on your growth system,',
       italic: 'for two weeks.',
     } as BicameralHeadline,
-    body: 'You bring the access. I bring fifteen years inside paid acquisition, in-house and consulting, across four continents and roughly $100M of managed spend. Two weeks later you have a written diagnosis: what is bleeding, what is invisible, what to build, and the order to do it in. The fee is fixed. The scope is fixed. The output is a memo you can act on without me.',
+    body: 'You bring the access. I bring fifteen years inside paid acquisition, in-house and consulting, across four continents and roughly $100M of managed spend. Two weeks later you have a written diagnosis: where revenue is leaking, what is invisible, what to build, what to stop funding, and the order to do it in. The fee is fixed. The scope is fixed. The output is a memo you can act on without me.',
   },
 
   fit: [
-    'You are running a profitable business and the marketing arm is underbuilt.',
+    'You are running a profitable business and the growth system is underbuilt.',
     'You have a team or an agency, and you are not sure they are pointed at the right things.',
     'You are about to spend serious money and want a senior operator to read the plan first.',
     'You inherited a stack you did not build and want to know what is worth keeping.',
@@ -73,7 +73,7 @@ export const diagnostic = {
 
   questions: [
     {
-      q: 'What is the single most expensive mistake your marketing is currently making?',
+      q: 'What is the single most expensive mistake your growth system is currently making?',
       a: 'You probably already know the answer. Write it down. The diagnostic confirms it or names a more expensive one.',
     },
     {
@@ -98,7 +98,7 @@ export const diagnostic = {
     steps: [
       { num: '01', body: 'Book a 30-min kick-off slot below. No payment up front.' },
       { num: '02', body: 'On the call we confirm scope, access, and the two customers I will speak to.' },
-      { num: '03', body: 'I read the data, sit in the stack, talk to your customers, write the memo.' },
+      { num: '03', body: 'I read the data, sit in the stack, talk to your customers, and write the memo.' },
       { num: '04', body: 'Memo delivered, week two. We walk through it on a call.' },
       { num: '05', body: 'Decide what is next. M02 build, or you take the memo and run.' },
     ] satisfies ProcessStep[],
