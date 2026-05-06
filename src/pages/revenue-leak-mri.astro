@@ -1,0 +1,492 @@
+---
+import Base from '../layouts/Base.astro';
+---
+<Base
+  title="Revenue Leak MRI · Rivett"
+  description="A free operator tool from Rivett that estimates where revenue is leaking across spend, leads, follow-up, conversion, and operating drag."
+  currentNav="tools"
+>
+  <main class="mri-page">
+    <section class="mri-console">
+      <div class="page mri-grid">
+        <form class="mri-inputs" data-mri-form>
+          <div class="mri-kicker">Engineering tool · Revenue Leak MRI</div>
+          <h1>Find the leak before you fund the next campaign.</h1>
+          <p class="mri-dek">A fast read on the gap between demand generated and revenue captured.</p>
+
+          <div class="control-grid">
+            <label class="control">
+              <span>Monthly ad spend</span>
+              <input data-mri-input="adSpend" type="number" min="0" step="500" value="28000" />
+            </label>
+            <label class="control">
+              <span>Monthly leads</span>
+              <input data-mri-input="monthlyLeads" type="number" min="1" step="1" value="90" />
+            </label>
+            <label class="control">
+              <span>Average deal value</span>
+              <input data-mri-input="avgDeal" type="number" min="500" step="500" value="18000" />
+            </label>
+            <label class="control">
+              <span>Agency / vendor cost</span>
+              <input data-mri-input="agencyCost" type="number" min="0" step="500" value="9000" />
+            </label>
+          </div>
+
+          <div class="range-stack">
+            <label class="range-control">
+              <span><b>Lead response time</b><output data-mri-output="responseHours">8 hrs</output></span>
+              <input data-mri-input="responseHours" type="range" min="0.08" max="48" step="0.25" value="8" />
+            </label>
+            <label class="range-control">
+              <span><b>Lead to opportunity</b><output data-mri-output="leadToOpp">18%</output></span>
+              <input data-mri-input="leadToOpp" type="range" min="3" max="55" step="1" value="18" />
+            </label>
+            <label class="range-control">
+              <span><b>Opportunity close rate</b><output data-mri-output="closeRate">24%</output></span>
+              <input data-mri-input="closeRate" type="range" min="3" max="60" step="1" value="24" />
+            </label>
+            <label class="range-control">
+              <span><b>Internal growth hours / month</b><output data-mri-output="internalHours">35 hrs</output></span>
+              <input data-mri-input="internalHours" type="range" min="0" max="160" step="5" value="35" />
+            </label>
+          </div>
+
+          <label class="control control-rate">
+            <span>Blended internal hourly cost</span>
+            <input data-mri-input="hourlyCost" type="number" min="25" step="5" value="145" />
+          </label>
+        </form>
+
+        <aside class="mri-readout" aria-live="polite">
+          <div class="readout-top">
+            <div>
+              <span class="readout-label">Estimated monthly leak</span>
+              <strong data-mri-result="totalLeak">$0</strong>
+            </div>
+            <div class="score-dial">
+              <span data-mri-result="score">0</span>
+              <small>score</small>
+            </div>
+          </div>
+
+          <div class="diagnosis-strip">
+            <span data-mri-result="severity">Scanning</span>
+            <b data-mri-result="biggestLeak">Calculating</b>
+          </div>
+
+          <div class="funnel-panel">
+            <div class="panel-title">Demand path</div>
+            <div class="funnel-stage">
+              <div><span>Leads</span><b data-mri-funnel="leads">0</b></div>
+              <i data-mri-bar="leads"></i>
+            </div>
+            <div class="funnel-stage">
+              <div><span>Contacted</span><b data-mri-funnel="contacted">0</b></div>
+              <i data-mri-bar="contacted"></i>
+            </div>
+            <div class="funnel-stage">
+              <div><span>Opportunities</span><b data-mri-funnel="opportunities">0</b></div>
+              <i data-mri-bar="opportunities"></i>
+            </div>
+            <div class="funnel-stage">
+              <div><span>Closed</span><b data-mri-funnel="closed">0</b></div>
+              <i data-mri-bar="closed"></i>
+            </div>
+          </div>
+
+          <div class="leak-stack">
+            <div class="leak-row" data-leak-row="response">
+              <span>Response decay</span>
+              <i><b data-leak-bar="response"></b></i>
+              <strong data-leak-value="response">$0</strong>
+            </div>
+            <div class="leak-row" data-leak-row="conversion">
+              <span>Conversion gap</span>
+              <i><b data-leak-bar="conversion"></b></i>
+              <strong data-leak-value="conversion">$0</strong>
+            </div>
+            <div class="leak-row" data-leak-row="closing">
+              <span>Sales handoff</span>
+              <i><b data-leak-bar="closing"></b></i>
+              <strong data-leak-value="closing">$0</strong>
+            </div>
+            <div class="leak-row" data-leak-row="drag">
+              <span>Operating drag</span>
+              <i><b data-leak-bar="drag"></b></i>
+              <strong data-leak-value="drag">$0</strong>
+            </div>
+          </div>
+
+          <div class="operator-note">
+            <span>Operator diagnosis</span>
+            <p data-mri-result="diagnosis">Enter the numbers and the readout will settle here.</p>
+          </div>
+
+          <form class="readout-gate" data-mri-gate>
+            <div>
+              <span>Get the operator readout</span>
+              <p>No newsletter trap. It records the readout and opens the next move.</p>
+            </div>
+            <div class="gate-fields">
+              <input name="name" autocomplete="name" placeholder="Name" required />
+              <input name="email" type="email" autocomplete="email" placeholder="Work email" required />
+              <input name="company" autocomplete="organization" placeholder="Company" />
+            </div>
+            <button type="submit">Unlock readout</button>
+          </form>
+
+          <div class="unlocked-readout" data-mri-unlocked hidden>
+            <div class="panel-title">First fix</div>
+            <ul data-mri-actions></ul>
+            <div class="readout-actions">
+              <a href="/diagnostic">Book the diagnostic</a>
+              <button type="button" data-mri-copy>Copy readout</button>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="mri-method">
+      <div class="page method-grid">
+        <div>
+          <span class="mri-kicker">What the MRI reads</span>
+          <h2>The expensive leak is usually between the click and the close.</h2>
+        </div>
+        <div class="method-list">
+          <div><b>01</b><span>Speed-to-lead decay turns paid demand into stale demand.</span></div>
+          <div><b>02</b><span>Weak qualification makes the ad platform optimize for the wrong signal.</span></div>
+          <div><b>03</b><span>Manual reporting, handoffs, and vendor layers tax every lead before revenue sees it.</span></div>
+        </div>
+      </div>
+    </section>
+  </main>
+</Base>
+
+<script>
+  type PostHogWindow = Window & {
+    posthog?: {
+      identify?: (id: string, properties?: Record<string, unknown>) => void;
+      capture?: (event: string, properties?: Record<string, unknown>) => void;
+    };
+  };
+
+  const money = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 0,
+  });
+  const whole = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
+
+  const inputs = Array.from(document.querySelectorAll<HTMLInputElement>('[data-mri-input]'));
+  const gate = document.querySelector<HTMLFormElement>('[data-mri-gate]');
+  const unlocked = document.querySelector<HTMLElement>('[data-mri-unlocked]');
+  const actionsList = document.querySelector<HTMLUListElement>('[data-mri-actions]');
+  const copyButton = document.querySelector<HTMLButtonElement>('[data-mri-copy]');
+  let currentReadout = '';
+  let currentActions: string[] = [];
+  let currentMetrics: Record<string, number | string> = {};
+
+  function valueOf(name: string) {
+    const input = document.querySelector<HTMLInputElement>(`[data-mri-input="${name}"]`);
+    return Number(input?.value ?? 0);
+  }
+
+  function setText(selector: string, value: string) {
+    const node = document.querySelector<HTMLElement>(selector);
+    if (node) node.textContent = value;
+  }
+
+  function setOutput(name: string, value: string) {
+    setText(`[data-mri-output="${name}"]`, value);
+  }
+
+  function clamp(value: number, min: number, max: number) {
+    return Math.min(max, Math.max(min, value));
+  }
+
+  function contactRate(hours: number) {
+    const h = Math.max(0.08, hours);
+    const decay = Math.min(0.52, (Math.log1p(h) / Math.log1p(48)) * 0.52);
+    return Math.max(0.38, 0.94 - decay);
+  }
+
+  function diagnosisFor(key: string) {
+    const map: Record<string, { text: string; actions: string[] }> = {
+      response: {
+        text: 'You do not have a traffic problem first. You have a speed-to-lead problem. Fix the handoff before increasing spend.',
+        actions: [
+          'Route new leads into one owner within 2 minutes.',
+          'Add enrichment before the first reply, not after the sales call.',
+          'Write response-time alerts into the weekly growth rhythm.',
+        ],
+      },
+      conversion: {
+        text: 'The middle of the funnel is absorbing demand. The platform is buying leads the revenue system is not converting.',
+        actions: [
+          'Separate good leads from cheap leads in the CRM.',
+          'Feed closed-won and disqualified reasons back to paid channels.',
+          'Rebuild landing page and follow-up copy around buyer intent.',
+        ],
+      },
+      closing: {
+        text: 'Demand is arriving, but the sales handoff is soft. The lost value is after qualification, not before it.',
+        actions: [
+          'Give sales the source, page, offer, and research context on every lead.',
+          'Turn reply handling and follow-up into a visible queue.',
+          'Review lost opportunities weekly for message and offer patterns.',
+        ],
+      },
+      drag: {
+        text: 'Your hidden cost is the operating layer around the work. Reporting, vendors, and manual checks are taxing every lead.',
+        actions: [
+          'Kill reports nobody uses for a decision.',
+          'Automate monitoring, enrichment, and first-draft reporting.',
+          'Move agency and internal work into one operating dashboard.',
+        ],
+      },
+    };
+    return map[key] ?? map.response;
+  }
+
+  function updateBars(values: Record<string, number>) {
+    const max = Math.max(...Object.values(values), 1);
+    Object.entries(values).forEach(([key, value]) => {
+      const bar = document.querySelector<HTMLElement>(`[data-leak-bar="${key}"]`);
+      const row = document.querySelector<HTMLElement>(`[data-leak-row="${key}"]`);
+      const label = document.querySelector<HTMLElement>(`[data-leak-value="${key}"]`);
+      if (bar) bar.style.width = `${clamp((value / max) * 100, 4, 100)}%`;
+      if (label) label.textContent = money.format(value);
+      row?.classList.remove('is-largest');
+    });
+  }
+
+  function updateFunnel(leads: number, contacted: number, opportunities: number, closed: number) {
+    const stages = { leads, contacted, opportunities, closed };
+    Object.entries(stages).forEach(([key, value]) => {
+      setText(`[data-mri-funnel="${key}"]`, whole.format(value));
+      const bar = document.querySelector<HTMLElement>(`[data-mri-bar="${key}"]`);
+      if (bar) bar.style.setProperty('--w', `${clamp((value / Math.max(leads, 1)) * 100, 3, 100)}%`);
+    });
+  }
+
+  function calculate() {
+    const adSpend = valueOf('adSpend');
+    const monthlyLeads = Math.max(1, valueOf('monthlyLeads'));
+    const avgDeal = valueOf('avgDeal');
+    const agencyCost = valueOf('agencyCost');
+    const responseHours = valueOf('responseHours');
+    const leadToOpp = valueOf('leadToOpp');
+    const closeRate = valueOf('closeRate');
+    const internalHours = valueOf('internalHours');
+    const hourlyCost = valueOf('hourlyCost');
+
+    setOutput('responseHours', responseHours < 1 ? `${Math.round(responseHours * 60)} min` : `${responseHours.toFixed(responseHours % 1 ? 1 : 0)} hrs`);
+    setOutput('leadToOpp', `${leadToOpp}%`);
+    setOutput('closeRate', `${closeRate}%`);
+    setOutput('internalHours', `${internalHours} hrs`);
+
+    const targetContactRate = contactRate(0.25);
+    const actualContactRate = contactRate(responseHours);
+    const contacted = monthlyLeads * actualContactRate;
+    const opportunities = contacted * (leadToOpp / 100);
+    const closed = opportunities * (closeRate / 100);
+    const manualCost = agencyCost + internalHours * hourlyCost;
+
+    const responseLeak = Math.max(0, monthlyLeads * (targetContactRate - actualContactRate)) * (leadToOpp / 100) * (closeRate / 100) * avgDeal;
+    const conversionLeak = contacted * (Math.max(0, 28 - leadToOpp) / 100) * (closeRate / 100) * avgDeal;
+    const closingLeak = opportunities * (Math.max(0, 27 - closeRate) / 100) * avgDeal * 0.55;
+    const dragLeak = Math.max(0, manualCost * 0.16 + adSpend * 0.045 + responseHours * 80);
+    const leaks = { response: responseLeak, conversion: conversionLeak, closing: closingLeak, drag: dragLeak };
+    const largest = Object.entries(leaks).sort((a, b) => b[1] - a[1])[0] ?? ['response', 0];
+    const largestKey = largest[0];
+    const totalLeak = Object.values(leaks).reduce((sum, value) => sum + value, 0);
+    const score = Math.round(clamp(
+      100
+        - Math.min(45, (totalLeak / Math.max(adSpend + manualCost + avgDeal, 1)) * 40)
+        - Math.min(20, responseHours * 0.65)
+        - Math.max(0, 28 - leadToOpp) * 0.9
+        - Math.max(0, 27 - closeRate) * 0.75,
+      8,
+      96,
+    ));
+    const severity = score >= 76 ? 'Controlled' : score >= 56 ? 'Leaking' : score >= 36 ? 'Critical' : 'Bleeding';
+    const labelMap: Record<string, string> = {
+      response: 'Biggest leak: response decay',
+      conversion: 'Biggest leak: conversion gap',
+      closing: 'Biggest leak: sales handoff',
+      drag: 'Biggest leak: operating drag',
+    };
+    const diagnosis = diagnosisFor(largestKey);
+
+    setText('[data-mri-result="totalLeak"]', money.format(totalLeak));
+    setText('[data-mri-result="score"]', String(score));
+    setText('[data-mri-result="severity"]', severity);
+    setText('[data-mri-result="biggestLeak"]', labelMap[largestKey] ?? labelMap.response);
+    setText('[data-mri-result="diagnosis"]', diagnosis.text);
+    updateFunnel(monthlyLeads, contacted, opportunities, closed);
+    updateBars(leaks);
+    document.querySelector<HTMLElement>(`[data-leak-row="${largestKey}"]`)?.classList.add('is-largest');
+
+    currentActions = diagnosis.actions;
+    currentMetrics = {
+      adSpend,
+      monthlyLeads,
+      avgDeal,
+      agencyCost,
+      responseHours,
+      leadToOpp,
+      closeRate,
+      internalHours,
+      hourlyCost,
+      totalLeak: Math.round(totalLeak),
+      score,
+      severity,
+      biggestLeak: largestKey,
+    };
+    currentReadout = [
+      `Revenue Leak MRI`,
+      `Estimated monthly leak: ${money.format(totalLeak)}`,
+      `Score: ${score}/100 (${severity})`,
+      `${labelMap[largestKey] ?? labelMap.response}`,
+      `Diagnosis: ${diagnosis.text}`,
+      `First fixes: ${diagnosis.actions.join(' ')}`,
+    ].join('\n');
+
+    if (unlocked && !unlocked.hidden) renderActions();
+  }
+
+  function renderActions() {
+    if (!actionsList) return;
+    actionsList.innerHTML = '';
+    currentActions.forEach((action) => {
+      const item = document.createElement('li');
+      item.textContent = action;
+      actionsList.append(item);
+    });
+  }
+
+  inputs.forEach((input) => input.addEventListener('input', calculate));
+  calculate();
+
+  gate?.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const data = new FormData(gate);
+    const name = String(data.get('name') ?? '').trim();
+    const email = String(data.get('email') ?? '').trim().toLowerCase();
+    const company = String(data.get('company') ?? '').trim();
+    const w = window as PostHogWindow;
+
+    w.posthog?.identify?.(email, {
+      email,
+      name,
+      company,
+      revenue_mri_score: currentMetrics.score,
+      revenue_mri_total_leak: currentMetrics.totalLeak,
+      revenue_mri_biggest_leak: currentMetrics.biggestLeak,
+    });
+    w.posthog?.capture?.('revenue_mri_readout_unlocked', {
+      company,
+      ...currentMetrics,
+    });
+
+    gate.hidden = true;
+    if (unlocked) unlocked.hidden = false;
+    renderActions();
+  });
+
+  copyButton?.addEventListener('click', async () => {
+    await navigator.clipboard.writeText(currentReadout);
+    copyButton.textContent = 'Copied';
+    window.setTimeout(() => {
+      copyButton.textContent = 'Copy readout';
+    }, 1400);
+  });
+</script>
+
+<style is:global>
+  .mri-page{background:var(--paper);color:var(--ink)}
+  .mri-console{border-top:1px solid var(--line);padding:56px 0 80px}
+  .mri-grid{display:grid;grid-template-columns:minmax(340px,0.78fr) minmax(520px,1.22fr);gap:28px;align-items:stretch}
+  .mri-kicker{font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--accent-deep);display:inline-flex;align-items:center;gap:12px}
+  .mri-kicker::before{content:'';width:8px;height:8px;background:var(--accent);border-radius:50%}
+  .mri-inputs{border:1px solid var(--ink);background:var(--paper-2);padding:34px;min-height:720px}
+  .mri-inputs h1{font-size:clamp(44px,5vw,72px);line-height:0.96;letter-spacing:-0.052em;margin:24px 0 0;max-width:640px}
+  .mri-dek{font-size:19px;line-height:1.5;color:var(--ink-dim);margin:22px 0 0;max-width:520px}
+  .control-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:34px}
+  .control,.range-control{display:grid;gap:8px}
+  .control span,.range-control span:first-child{font-family:var(--mono);font-size:10.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint)}
+  .control input{width:100%;border:1px solid var(--line-strong);background:var(--paper);color:var(--ink);font:inherit;font-size:18px;padding:13px 14px;border-radius:0}
+  .control input:focus{outline:2px solid var(--accent);outline-offset:2px}
+  .range-stack{display:grid;gap:22px;margin-top:28px;padding-top:28px;border-top:1px solid var(--line-strong)}
+  .range-control span:first-child{display:flex;justify-content:space-between;gap:16px;align-items:baseline}
+  .range-control b{font-weight:400;color:var(--ink-faint)}
+  .range-control output{font-family:var(--grotesk);font-size:17px;font-weight:700;letter-spacing:-0.02em;color:var(--ink)}
+  .range-control input{width:100%;accent-color:var(--accent-deep)}
+  .control-rate{margin-top:26px}
+  .mri-readout{background:var(--ink);color:var(--paper);padding:34px;display:grid;grid-template-rows:auto auto auto auto auto auto;gap:22px;min-height:720px}
+  .readout-top{display:grid;grid-template-columns:1fr 122px;gap:24px;align-items:start;border-bottom:1px solid rgba(255,255,255,0.16);padding-bottom:24px}
+  .readout-label,.operator-note span,.readout-gate span,.panel-title{font-family:var(--mono);font-size:10.5px;letter-spacing:0.2em;text-transform:uppercase;color:rgba(255,255,255,0.58)}
+  .readout-top strong{display:block;font-size:clamp(52px,7vw,98px);line-height:0.86;letter-spacing:-0.06em;margin-top:16px;color:var(--paper)}
+  .score-dial{aspect-ratio:1;border:1px solid rgba(255,255,255,0.34);display:grid;place-items:center;text-align:center}
+  .score-dial span{font-size:46px;font-weight:700;line-height:0.9;letter-spacing:-0.04em}
+  .score-dial small{display:block;font-family:var(--mono);font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:rgba(255,255,255,0.55);margin-top:4px}
+  .diagnosis-strip{display:flex;justify-content:space-between;gap:20px;align-items:center;background:rgba(111,181,130,0.12);border:1px solid rgba(111,181,130,0.36);padding:16px 18px}
+  .diagnosis-strip span{font-family:var(--serif);font-style:italic;font-size:28px;color:var(--accent)}
+  .diagnosis-strip b{font-family:var(--mono);font-size:10.5px;letter-spacing:0.18em;text-transform:uppercase;color:var(--paper);font-weight:500;text-align:right}
+  .funnel-panel{display:grid;gap:14px}
+  .funnel-stage{display:grid;grid-template-columns:160px 1fr;gap:16px;align-items:center}
+  .funnel-stage div{display:flex;justify-content:space-between;gap:12px;align-items:baseline}
+  .funnel-stage span{font-family:var(--mono);font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:rgba(255,255,255,0.52)}
+  .funnel-stage b{font-size:20px;letter-spacing:-0.03em}
+  .funnel-stage i{display:block;height:16px;background:rgba(255,255,255,0.11);position:relative;overflow:hidden}
+  .funnel-stage i::before{content:'';position:absolute;inset:0;width:var(--w,100%);background:var(--accent);transform-origin:left}
+  .leak-stack{display:grid;border-top:1px solid rgba(255,255,255,0.16)}
+  .leak-row{display:grid;grid-template-columns:150px minmax(120px,1fr) 92px;gap:16px;align-items:center;padding:13px 0;border-bottom:1px solid rgba(255,255,255,0.12)}
+  .leak-row span{font-family:var(--mono);font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:rgba(255,255,255,0.5)}
+  .leak-row i{height:10px;background:rgba(255,255,255,0.1);display:block}
+  .leak-row i b{height:100%;display:block;background:rgba(255,255,255,0.46);transition:width 180ms ease}
+  .leak-row strong{font-size:16px;text-align:right}
+  .leak-row.is-largest span,.leak-row.is-largest strong{color:var(--accent)}
+  .leak-row.is-largest i b{background:var(--accent)}
+  .operator-note{border-left:2px solid var(--accent);padding-left:18px}
+  .operator-note p{font-size:20px;line-height:1.42;color:rgba(255,255,255,0.84);margin:10px 0 0;letter-spacing:-0.015em}
+  .readout-gate{border:1px solid rgba(255,255,255,0.24);padding:18px;display:grid;gap:14px}
+  .readout-gate[hidden]{display:none}
+  .readout-gate p{font-size:14px;line-height:1.45;color:rgba(255,255,255,0.6);margin:6px 0 0}
+  .gate-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .gate-fields input{min-width:0;border:1px solid rgba(255,255,255,0.24);background:rgba(255,255,255,0.08);color:var(--paper);font:inherit;padding:12px;border-radius:0}
+  .gate-fields input::placeholder{color:rgba(255,255,255,0.45)}
+  .gate-fields input:last-child{grid-column:1/-1}
+  .readout-gate button,.readout-actions a,.readout-actions button{border:1px solid var(--accent);background:var(--accent);color:var(--ink);min-height:44px;padding:12px 14px;font-family:var(--mono);font-size:10.5px;letter-spacing:0.16em;text-transform:uppercase;cursor:pointer;text-align:center}
+  .unlocked-readout{border:1px solid rgba(111,181,130,0.45);padding:18px}
+  .unlocked-readout[hidden]{display:none}
+  .unlocked-readout ul{margin:16px 0 0;padding:0;list-style:none;display:grid;gap:12px}
+  .unlocked-readout li{font-size:17px;line-height:1.35;color:rgba(255,255,255,0.82);padding-left:22px;position:relative}
+  .unlocked-readout li::before{content:'';position:absolute;left:0;top:0.58em;width:8px;height:8px;background:var(--accent);border-radius:50%}
+  .readout-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+  .readout-actions button{background:transparent;color:var(--paper);border-color:rgba(255,255,255,0.28)}
+  .mri-method{background:var(--paper-2);border-top:1px solid var(--line);padding:80px 0}
+  .method-grid{display:grid;grid-template-columns:0.9fr 1.1fr;gap:72px;align-items:start}
+  .mri-method h2{font-size:clamp(38px,4.6vw,64px);line-height:1;letter-spacing:-0.045em;margin:22px 0 0;max-width:680px}
+  .method-list{border-top:2px solid var(--ink)}
+  .method-list div{display:grid;grid-template-columns:64px 1fr;gap:24px;padding:24px 0;border-bottom:1px solid var(--line)}
+  .method-list b{font-family:var(--mono);font-size:11px;letter-spacing:0.2em;color:var(--accent-deep)}
+  .method-list span{font-size:22px;line-height:1.25;letter-spacing:-0.02em;color:var(--ink-dim)}
+  @media (max-width:1040px){
+    .mri-grid,.method-grid{grid-template-columns:1fr}
+    .mri-inputs,.mri-readout{min-height:auto}
+  }
+  @media (max-width:700px){
+    .mri-console{padding-top:32px}
+    .mri-inputs,.mri-readout{padding:24px}
+    .control-grid,.gate-fields{grid-template-columns:1fr}
+    .readout-top{grid-template-columns:1fr}
+    .score-dial{width:118px}
+    .funnel-stage,.leak-row{grid-template-columns:1fr;gap:8px}
+    .leak-row strong{text-align:left}
+    .diagnosis-strip{align-items:flex-start;flex-direction:column}
+    .diagnosis-strip b{text-align:left}
+  }
+</style>

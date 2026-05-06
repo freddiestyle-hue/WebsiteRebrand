@@ -1,6 +1,6 @@
 ---
 interface Props {
-  current?: 'home' | 'blog' | 'field-kits';
+  current?: 'home' | 'blog' | 'tools';
 }
 const { current } = Astro.props;
 ---
@@ -10,13 +10,12 @@ const { current } = Astro.props;
       rivett<span class="dot-mark" aria-hidden="true"></span>
     </a>
     <ul class="nav-links">
-      <li><a href="/#modules">Modules</a></li>
-      <li><a href="/#approach">Approach</a></li>
+      <li><a href="/#modules">Work</a></li>
       <li class={current === 'blog' ? 'current-li' : ''}>
-        <a href="/blog" class={current === 'blog' ? 'current' : ''}>Field Notes</a>
+        <a href="/blog" class={current === 'blog' ? 'current' : ''}>Notes</a>
       </li>
-      <li class={current === 'field-kits' ? 'current-li' : ''}>
-        <a href="/field-kits" class={current === 'field-kits' ? 'current' : ''}>Field Kits</a>
+      <li class={current === 'tools' ? 'current-li' : ''}>
+        <a href="/field-kits" class={current === 'tools' ? 'current' : ''}>Tools</a>
       </li>
       <li><a href="/diagnostic" class="cta">Book diagnostic</a></li>
     </ul>
@@ -33,10 +32,9 @@ const { current } = Astro.props;
     rivett<span class="dot-mark" aria-hidden="true"></span>
   </a>
   <ul class="mobile-links">
-    <li><a href="/#modules">Modules</a></li>
-    <li><a href="/#approach">Approach</a></li>
-    <li><a href="/blog">Field Notes</a></li>
-    <li><a href="/field-kits">Field Kits</a></li>
+    <li><a href="/#modules">Work</a></li>
+    <li><a href="/blog">Notes</a></li>
+    <li><a href="/field-kits">Tools</a></li>
     <li><a href="/diagnostic" class="mobile-cta">Book diagnostic</a></li>
   </ul>
   <div class="mobile-foot">fred@rivett.tech</div>
