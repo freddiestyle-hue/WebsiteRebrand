@@ -6,12 +6,61 @@ import Base from '../layouts/Base.astro';
   description="A free operator tool from Rivett that estimates where revenue is leaking across spend, leads, follow-up, conversion, and operating drag."
 >
   <main class="mri-page">
-    <section class="mri-console">
+    <section class="mri-hero">
+      <div class="page mri-hero-grid">
+        <div class="mri-hero-copy">
+          <span class="mri-kicker">Revenue Leak MRI</span>
+          <h1>Find the revenue leak before you fund another campaign.</h1>
+          <p class="mri-hero-dek">
+            A free operator diagnostic for spotting whether paid demand is leaking through response speed,
+            qualification, sales handoff, or operating drag.
+          </p>
+          <div class="mri-hero-actions">
+            <a href="#mri-tool" class="primary-action">Run the MRI</a>
+            <a href="/diagnostic" class="secondary-action">Book diagnostic</a>
+          </div>
+        </div>
+
+        <aside class="mri-hero-panel" aria-label="Revenue Leak MRI preview">
+          <div class="hero-panel-top">
+            <span>Live MRI readout</span>
+            <b>Demand path scan</b>
+          </div>
+          <div class="hero-scan" aria-hidden="true">
+            <div style="--level:92%"><span>Leads</span><i></i></div>
+            <div style="--level:68%"><span>Contacted</span><i></i></div>
+            <div style="--level:31%"><span>Opportunities</span><i></i></div>
+            <div style="--level:12%"><span>Closed</span><i></i></div>
+          </div>
+          <div class="hero-panel-bottom">
+            <div>
+              <span>Output</span>
+              <b>Leak estimate and first fix</b>
+            </div>
+            <div>
+              <span>Built for</span>
+              <b>Operators spending on acquisition</b>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="mri-console" id="mri-tool">
+      <div class="page tool-heading">
+        <span class="mri-kicker">Run the numbers</span>
+        <h2>Start with last month, not guesses.</h2>
+        <p>
+          The MRI turns your current spend, lead volume, speed-to-lead, conversion, and operating cost into a
+          monthly leak estimate. No library. No maze. One page, one readout.
+        </p>
+      </div>
+
       <div class="page mri-grid">
         <form class="mri-inputs" data-mri-form>
-          <div class="mri-kicker">Engineering tool · Revenue Leak MRI</div>
-          <h1>Find the leak before you fund the next campaign.</h1>
-          <p class="mri-dek">A fast read on the gap between demand generated and revenue captured.</p>
+          <div class="mri-kicker">Inputs</div>
+          <h3>Model the system you already have.</h3>
+          <p class="mri-dek">Use honest monthly numbers. The readout updates as the operating picture changes.</p>
 
           <div class="control-grid">
             <label class="control">
@@ -160,6 +209,22 @@ import Base from '../layouts/Base.astro';
         </div>
       </div>
     </section>
+
+    <section class="mri-next">
+      <div class="page next-grid">
+        <div>
+          <span class="mri-kicker">Next move</span>
+          <h2>If the MRI shows a leak, turn it into a fix list.</h2>
+        </div>
+        <div class="next-copy">
+          <p>
+            The diagnostic maps the biggest leak into a practical operating plan: what to automate, what to
+            tighten, what to stop funding, and what should happen next week.
+          </p>
+          <a href="/diagnostic">Book diagnostic</a>
+        </div>
+      </div>
+    </section>
   </main>
 </Base>
 
@@ -203,6 +268,15 @@ import Base from '../layouts/Base.astro';
 
   function clamp(value: number, min: number, max: number) {
     return Math.min(max, Math.max(min, value));
+  }
+
+  function syncRangeFill(input: HTMLInputElement) {
+    if (input.type !== 'range') return;
+    const min = Number(input.min || 0);
+    const max = Number(input.max || 100);
+    const value = Number(input.value || min);
+    const percentage = max === min ? 0 : ((value - min) / (max - min)) * 100;
+    input.style.setProperty('--pct', `${clamp(percentage, 0, 100)}%`);
   }
 
   function contactRate(hours: number) {
@@ -366,7 +440,15 @@ import Base from '../layouts/Base.astro';
     });
   }
 
-  inputs.forEach((input) => input.addEventListener('input', calculate));
+  inputs.forEach((input) => {
+    const update = () => {
+      syncRangeFill(input);
+      calculate();
+    };
+    input.addEventListener('input', update);
+    input.addEventListener('change', update);
+    syncRangeFill(input);
+  });
   calculate();
 
   gate?.addEventListener('submit', (event) => {
@@ -406,59 +488,89 @@ import Base from '../layouts/Base.astro';
 
 <style is:global>
   .mri-page{background:var(--paper);color:var(--ink)}
-  .mri-console{border-top:1px solid var(--line);padding:56px 0 80px}
+  .mri-page *{letter-spacing:0}
+  .mri-hero{padding:74px 0 48px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,var(--paper) 0%,var(--paper-2) 100%)}
+  .mri-hero-grid{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(360px,0.78fr);gap:72px;align-items:center}
+  .mri-kicker{font-family:var(--mono);font-size:12px;text-transform:uppercase;color:var(--accent-deep);display:inline-flex;align-items:center;gap:12px}
+  .mri-kicker::before{content:'';width:8px;height:8px;background:var(--accent);border-radius:50%;flex:0 0 auto}
+  .mri-hero-copy h1{font-size:clamp(52px,4.8rem,82px);line-height:0.98;margin:24px 0 0;max-width:860px}
+  .mri-hero-dek{font-size:23px;line-height:1.38;color:var(--ink-dim);margin:26px 0 0;max-width:720px}
+  .mri-hero-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:34px}
+  .primary-action,.secondary-action{min-height:48px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--ink);padding:14px 18px;font-family:var(--mono);font-size:12px;text-transform:uppercase;text-decoration:none}
+  .primary-action{background:var(--ink);color:var(--paper)}
+  .secondary-action{background:transparent;color:var(--ink)}
+  .mri-hero-panel{background:var(--ink);color:var(--paper);padding:28px;min-height:470px;display:grid;align-content:space-between;gap:28px}
+  .hero-panel-top{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;border-bottom:1px solid rgba(255,255,255,0.16);padding-bottom:22px}
+  .hero-panel-top span,.hero-panel-bottom span{font-family:var(--mono);font-size:11px;text-transform:uppercase;color:rgba(255,255,255,0.58)}
+  .hero-panel-top b{font-size:30px;line-height:1;text-align:right;max-width:190px}
+  .hero-scan{display:grid;gap:18px}
+  .hero-scan div{display:grid;grid-template-columns:116px 1fr;gap:16px;align-items:center}
+  .hero-scan span{font-family:var(--mono);font-size:12px;text-transform:uppercase;color:rgba(255,255,255,0.58)}
+  .hero-scan i{height:18px;background:rgba(255,255,255,0.12);display:block;position:relative;overflow:hidden}
+  .hero-scan i::before{content:'';position:absolute;inset:0 auto 0 0;width:var(--level);background:var(--accent)}
+  .hero-panel-bottom{display:grid;grid-template-columns:1fr 1fr;gap:18px;border-top:1px solid rgba(255,255,255,0.16);padding-top:22px}
+  .hero-panel-bottom b{display:block;font-size:18px;line-height:1.22;margin-top:9px;color:rgba(255,255,255,0.88)}
+  .mri-console{padding:70px 0 90px}
+  .tool-heading{display:grid;grid-template-columns:minmax(280px,0.82fr) minmax(0,1.18fr);gap:48px;align-items:end;margin-bottom:30px}
+  .tool-heading h2{font-size:clamp(38px,3.6rem,58px);line-height:1;margin:18px 0 0;max-width:640px}
+  .tool-heading p{font-size:19px;line-height:1.5;color:var(--ink-dim);margin:0;max-width:720px}
   .mri-grid{display:grid;grid-template-columns:minmax(340px,0.78fr) minmax(520px,1.22fr);gap:28px;align-items:stretch}
-  .mri-kicker{font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--accent-deep);display:inline-flex;align-items:center;gap:12px}
-  .mri-kicker::before{content:'';width:8px;height:8px;background:var(--accent);border-radius:50%}
   .mri-inputs{border:1px solid var(--ink);background:var(--paper-2);padding:34px;min-height:720px}
-  .mri-inputs h1{font-size:clamp(44px,5vw,72px);line-height:0.96;letter-spacing:-0.052em;margin:24px 0 0;max-width:640px}
-  .mri-dek{font-size:19px;line-height:1.5;color:var(--ink-dim);margin:22px 0 0;max-width:520px}
+  .mri-inputs h3{font-size:clamp(34px,3.25rem,52px);line-height:1;margin:22px 0 0;max-width:620px}
+  .mri-dek{font-size:19px;line-height:1.5;color:var(--ink-dim);margin:20px 0 0;max-width:520px}
   .control-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:34px}
   .control,.range-control{display:grid;gap:8px}
-  .control span,.range-control span:first-child{font-family:var(--mono);font-size:10.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint)}
+  .control span,.range-control span:first-child{font-family:var(--mono);font-size:11px;text-transform:uppercase;color:var(--ink-faint)}
   .control input{width:100%;border:1px solid var(--line-strong);background:var(--paper);color:var(--ink);font:inherit;font-size:18px;padding:13px 14px;border-radius:0}
   .control input:focus{outline:2px solid var(--accent);outline-offset:2px}
   .range-stack{display:grid;gap:22px;margin-top:28px;padding-top:28px;border-top:1px solid var(--line-strong)}
   .range-control span:first-child{display:flex;justify-content:space-between;gap:16px;align-items:baseline}
   .range-control b{font-weight:400;color:var(--ink-faint)}
-  .range-control output{font-family:var(--grotesk);font-size:17px;font-weight:700;letter-spacing:-0.02em;color:var(--ink)}
-  .range-control input{width:100%;accent-color:var(--accent-deep)}
+  .range-control output{font-family:var(--grotesk);font-size:18px;font-weight:700;color:var(--ink);white-space:nowrap}
+  .range-control input[type="range"]{-webkit-appearance:none;appearance:none;width:100%;height:44px;margin:0;background:transparent;cursor:pointer;touch-action:pan-y}
+  .range-control input[type="range"]:focus{outline:none}
+  .range-control input[type="range"]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .range-control input[type="range"]::-webkit-slider-runnable-track{height:8px;border:1px solid var(--line-strong);background:linear-gradient(to right,var(--accent-deep) 0 var(--pct,0%),rgba(14,26,44,0.16) var(--pct,0%) 100%)}
+  .range-control input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:30px;height:30px;margin-top:-12px;border-radius:50%;background:var(--paper);border:6px solid var(--accent-deep);box-shadow:0 0 0 1px rgba(14,26,44,0.24)}
+  .range-control input[type="range"]::-moz-range-track{height:8px;border:1px solid var(--line-strong);background:rgba(14,26,44,0.16)}
+  .range-control input[type="range"]::-moz-range-progress{height:8px;background:var(--accent-deep)}
+  .range-control input[type="range"]::-moz-range-thumb{width:30px;height:30px;border-radius:50%;background:var(--paper);border:6px solid var(--accent-deep);box-shadow:0 0 0 1px rgba(14,26,44,0.24)}
   .control-rate{margin-top:26px}
   .mri-readout{background:var(--ink);color:var(--paper);padding:34px;display:grid;grid-template-rows:auto auto auto auto auto auto;gap:22px;min-height:720px}
   .readout-top{display:grid;grid-template-columns:1fr 122px;gap:24px;align-items:start;border-bottom:1px solid rgba(255,255,255,0.16);padding-bottom:24px}
-  .readout-label,.operator-note span,.readout-gate span,.panel-title{font-family:var(--mono);font-size:10.5px;letter-spacing:0.2em;text-transform:uppercase;color:rgba(255,255,255,0.58)}
-  .readout-top strong{display:block;font-size:clamp(52px,7vw,98px);line-height:0.86;letter-spacing:-0.06em;margin-top:16px;color:var(--paper)}
+  .readout-label,.operator-note span,.readout-gate span,.panel-title{font-family:var(--mono);font-size:11px;text-transform:uppercase;color:rgba(255,255,255,0.58)}
+  .readout-top strong{display:block;font-size:clamp(58px,5.7rem,92px);line-height:0.9;margin-top:16px;color:var(--paper)}
   .score-dial{aspect-ratio:1;border:1px solid rgba(255,255,255,0.34);display:grid;place-items:center;text-align:center}
-  .score-dial span{font-size:46px;font-weight:700;line-height:0.9;letter-spacing:-0.04em}
-  .score-dial small{display:block;font-family:var(--mono);font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:rgba(255,255,255,0.55);margin-top:4px}
+  .score-dial span{font-size:46px;font-weight:700;line-height:0.9}
+  .score-dial small{display:block;font-family:var(--mono);font-size:10px;text-transform:uppercase;color:rgba(255,255,255,0.55);margin-top:4px}
   .diagnosis-strip{display:flex;justify-content:space-between;gap:20px;align-items:center;background:rgba(111,181,130,0.12);border:1px solid rgba(111,181,130,0.36);padding:16px 18px}
   .diagnosis-strip span{font-family:var(--serif);font-style:italic;font-size:28px;color:var(--accent)}
-  .diagnosis-strip b{font-family:var(--mono);font-size:10.5px;letter-spacing:0.18em;text-transform:uppercase;color:var(--paper);font-weight:500;text-align:right}
+  .diagnosis-strip b{font-family:var(--mono);font-size:11px;text-transform:uppercase;color:var(--paper);font-weight:500;text-align:right}
   .funnel-panel{display:grid;gap:14px}
   .funnel-stage{display:grid;grid-template-columns:160px 1fr;gap:16px;align-items:center}
   .funnel-stage div{display:flex;justify-content:space-between;gap:12px;align-items:baseline}
-  .funnel-stage span{font-family:var(--mono);font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:rgba(255,255,255,0.52)}
-  .funnel-stage b{font-size:20px;letter-spacing:-0.03em}
+  .funnel-stage span{font-family:var(--mono);font-size:10px;text-transform:uppercase;color:rgba(255,255,255,0.52)}
+  .funnel-stage b{font-size:20px}
   .funnel-stage i{display:block;height:16px;background:rgba(255,255,255,0.11);position:relative;overflow:hidden}
   .funnel-stage i::before{content:'';position:absolute;inset:0;width:var(--w,100%);background:var(--accent);transform-origin:left}
   .leak-stack{display:grid;border-top:1px solid rgba(255,255,255,0.16)}
   .leak-row{display:grid;grid-template-columns:150px minmax(120px,1fr) 92px;gap:16px;align-items:center;padding:13px 0;border-bottom:1px solid rgba(255,255,255,0.12)}
-  .leak-row span{font-family:var(--mono);font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:rgba(255,255,255,0.5)}
+  .leak-row span{font-family:var(--mono);font-size:10px;text-transform:uppercase;color:rgba(255,255,255,0.5)}
   .leak-row i{height:10px;background:rgba(255,255,255,0.1);display:block}
   .leak-row i b{height:100%;display:block;background:rgba(255,255,255,0.46);transition:width 180ms ease}
   .leak-row strong{font-size:16px;text-align:right}
   .leak-row.is-largest span,.leak-row.is-largest strong{color:var(--accent)}
   .leak-row.is-largest i b{background:var(--accent)}
   .operator-note{border-left:2px solid var(--accent);padding-left:18px}
-  .operator-note p{font-size:20px;line-height:1.42;color:rgba(255,255,255,0.84);margin:10px 0 0;letter-spacing:-0.015em}
+  .operator-note p{font-size:20px;line-height:1.42;color:rgba(255,255,255,0.84);margin:10px 0 0}
   .readout-gate{border:1px solid rgba(255,255,255,0.24);padding:18px;display:grid;gap:14px}
   .readout-gate[hidden]{display:none}
   .readout-gate p{font-size:14px;line-height:1.45;color:rgba(255,255,255,0.6);margin:6px 0 0}
   .gate-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-  .gate-fields input{min-width:0;border:1px solid rgba(255,255,255,0.24);background:rgba(255,255,255,0.08);color:var(--paper);font:inherit;padding:12px;border-radius:0}
+  .gate-fields input{min-width:0;border:1px solid rgba(255,255,255,0.24);background:rgba(255,255,255,0.08);color:var(--paper);font:inherit;font-size:16px;padding:12px;border-radius:0}
   .gate-fields input::placeholder{color:rgba(255,255,255,0.45)}
   .gate-fields input:last-child{grid-column:1/-1}
-  .readout-gate button,.readout-actions a,.readout-actions button{border:1px solid var(--accent);background:var(--accent);color:var(--ink);min-height:44px;padding:12px 14px;font-family:var(--mono);font-size:10.5px;letter-spacing:0.16em;text-transform:uppercase;cursor:pointer;text-align:center}
+  .readout-gate button,.readout-actions a,.readout-actions button{border:1px solid var(--accent);background:var(--accent);color:var(--ink);min-height:44px;padding:12px 14px;font-family:var(--mono);font-size:11px;text-transform:uppercase;cursor:pointer;text-align:center}
   .unlocked-readout{border:1px solid rgba(111,181,130,0.45);padding:18px}
   .unlocked-readout[hidden]{display:none}
   .unlocked-readout ul{margin:16px 0 0;padding:0;list-style:none;display:grid;gap:12px}
@@ -467,25 +579,64 @@ import Base from '../layouts/Base.astro';
   .readout-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
   .readout-actions button{background:transparent;color:var(--paper);border-color:rgba(255,255,255,0.28)}
   .mri-method{background:var(--paper-2);border-top:1px solid var(--line);padding:80px 0}
-  .method-grid{display:grid;grid-template-columns:0.9fr 1.1fr;gap:72px;align-items:start}
-  .mri-method h2{font-size:clamp(38px,4.6vw,64px);line-height:1;letter-spacing:-0.045em;margin:22px 0 0;max-width:680px}
+  .method-grid,.next-grid{display:grid;grid-template-columns:0.9fr 1.1fr;gap:72px;align-items:start}
+  .mri-method h2,.mri-next h2{font-size:clamp(38px,3.9rem,62px);line-height:1;margin:22px 0 0;max-width:680px}
   .method-list{border-top:2px solid var(--ink)}
   .method-list div{display:grid;grid-template-columns:64px 1fr;gap:24px;padding:24px 0;border-bottom:1px solid var(--line)}
-  .method-list b{font-family:var(--mono);font-size:11px;letter-spacing:0.2em;color:var(--accent-deep)}
-  .method-list span{font-size:22px;line-height:1.25;letter-spacing:-0.02em;color:var(--ink-dim)}
+  .method-list b{font-family:var(--mono);font-size:11px;color:var(--accent-deep)}
+  .method-list span{font-size:22px;line-height:1.25;color:var(--ink-dim)}
+  .mri-next{padding:78px 0;background:var(--ink);color:var(--paper)}
+  .mri-next .mri-kicker{color:var(--accent)}
+  .mri-next h2{color:var(--paper)}
+  .next-copy p{font-size:21px;line-height:1.45;color:rgba(255,255,255,0.78);margin:0;max-width:720px}
+  .next-copy a{display:inline-flex;align-items:center;justify-content:center;min-height:48px;margin-top:26px;border:1px solid var(--accent);background:var(--accent);color:var(--ink);padding:14px 18px;font-family:var(--mono);font-size:12px;text-transform:uppercase}
   @media (max-width:1040px){
-    .mri-grid,.method-grid{grid-template-columns:1fr}
+    .mri-hero-grid,.tool-heading,.mri-grid,.method-grid,.next-grid{grid-template-columns:1fr}
+    .mri-hero-grid{gap:36px}
     .mri-inputs,.mri-readout{min-height:auto}
+    .mri-hero-panel{min-height:390px}
+    .tool-heading{gap:20px}
   }
   @media (max-width:700px){
-    .mri-console{padding-top:32px}
+    .mri-hero{padding:28px 0 18px}
+    .mri-hero-grid{gap:24px}
+    .mri-hero-copy h1{font-size:40px;line-height:1;margin-top:18px}
+    .mri-hero-dek{font-size:18px;line-height:1.36;margin-top:18px}
+    .mri-hero-actions{margin-top:22px}
+    .mri-hero-panel{padding:18px;min-height:220px;gap:16px}
+    .hero-panel-top,.hero-panel-bottom{grid-template-columns:1fr}
+    .hero-panel-top{padding-bottom:14px}
+    .hero-panel-top{display:grid}
+    .hero-panel-top b{font-size:24px;text-align:left;max-width:none}
+    .hero-scan{gap:10px}
+    .hero-scan div{grid-template-columns:88px 1fr;gap:12px}
+    .hero-scan i{height:12px}
+    .hero-panel-bottom{grid-template-columns:1fr 1fr;padding-top:14px;gap:12px}
+    .hero-panel-bottom b{font-size:15px;margin-top:5px}
+    .mri-console{padding:48px 0 62px}
     .mri-inputs,.mri-readout{padding:24px}
+    .mri-inputs h3,.tool-heading h2,.mri-method h2,.mri-next h2{font-size:38px}
     .control-grid,.gate-fields{grid-template-columns:1fr}
+    .control input{font-size:16px}
+    .range-control input[type="range"]{height:54px}
+    .range-control input[type="range"]::-webkit-slider-runnable-track{height:10px}
+    .range-control input[type="range"]::-webkit-slider-thumb{width:34px;height:34px;margin-top:-13px}
+    .range-control input[type="range"]::-moz-range-track,.range-control input[type="range"]::-moz-range-progress{height:10px}
+    .range-control input[type="range"]::-moz-range-thumb{width:34px;height:34px}
     .readout-top{grid-template-columns:1fr}
+    .readout-top strong{font-size:58px}
     .score-dial{width:118px}
     .funnel-stage,.leak-row{grid-template-columns:1fr;gap:8px}
     .leak-row strong{text-align:left}
     .diagnosis-strip{align-items:flex-start;flex-direction:column}
     .diagnosis-strip b{text-align:left}
+    .method-grid,.next-grid{gap:34px}
+    .method-list div{grid-template-columns:44px 1fr;gap:16px}
+  }
+  @media (max-width:430px){
+    .mri-hero-copy h1{font-size:38px}
+    .mri-hero-actions a{flex:1 1 145px}
+    .readout-top strong{font-size:50px}
+    .range-control span:first-child{align-items:flex-start;flex-direction:column;gap:6px}
   }
 </style>
