@@ -1,16 +1,174 @@
+/* ============================================================
+   RIVETT TOKENS · v0.2
+   Single source of truth. No inline values in component CSS.
+   ============================================================ */
+
 :root {
-  --paper: #FFFFFF;
-  --paper-2: #F4F2ED;
-  --paper-3: #EBE6DC;
-  --sage: #E8F0D9;
-  --ink: #0E1A2C;
-  --ink-dim: #3A4658;
-  --ink-faint: #7A8597;
-  --line: rgba(14, 26, 44, 0.14);
-  --line-strong: rgba(14, 26, 44, 0.28);
-  --accent: #6FB582;
-  --accent-deep: #3F7553;
+  /* ---------- Paper / surface ---------- */
+  --paper:        #FFFFFF;
+  --paper-2:      #F4F2ED;   /* warm off-white — cards, TLDR, hover wash */
+  --paper-3:      #EBE6DC;   /* deeper warm — section breaks, dividers     */
+  --sage:         #E8F0D9;   /* tinted callout — numbox, stat blocks       */
+
+  /* ---------- Ink / text ---------- */
+  --ink:          #0E1A2C;   /* primary text, dark bg                       */
+  --ink-dim:      #3A4658;   /* secondary text, italic serif                */
+  --ink-faint:    #5F6B7D;   /* mono labels, meta strip; AA on paper        */
+
+  /* ---------- On-ink (dark-bg foreground) ---------- */
+  --on-ink:                #FFFFFF;
+  --on-ink-dim:            rgba(255, 255, 255, 0.78);   /* body on dark    */
+  --on-ink-faint:          rgba(255, 255, 255, 0.55);   /* meta on dark    */
+  --on-ink-italic:         rgba(255, 255, 255, 0.62);   /* serif on dark   */
+  --on-ink-line:           rgba(255, 255, 255, 0.40);
+  --on-ink-line-faint:     rgba(255, 255, 255, 0.18);
+
+  /* ---------- Hairlines ---------- */
+  --line:         rgba(14, 26, 44, 0.14);
+  --line-strong:  rgba(14, 26, 44, 0.28);
+  --line-mid:     rgba(14, 26, 44, 0.20);
+
+  /* ---------- Accent ---------- */
+  --accent:       #8FBF3F;   /* dot mark, sage callouts                     */
+  --accent-deep:  #4A6E18;   /* mono labels, link emphasis (AA on paper)    */
+
+  /* ---------- Type families ---------- */
   --grotesk: 'Inter Tight', 'Inter', system-ui, sans-serif;
-  --mono: 'DM Mono', ui-monospace, monospace;
-  --serif: 'Newsreader', Georgia, serif;
+  --mono:    'DM Mono', ui-monospace, monospace;
+  --serif:   'Newsreader', Georgia, serif;
+
+  /* ---------- Type scale (named, fluid where useful) ---------- */
+  --fs-mono-xs:   10.5px;    /* meta strip                                  */
+  --fs-mono-sm:   11px;      /* default mono label                          */
+  --fs-mono-md:   12px;      /* read-next, footer accents                   */
+
+  --fs-body-sm:   13px;      /* TOC link, rail body                         */
+  --fs-body-md:   15px;      /* card lede                                   */
+  --fs-body-lg:   17px;      /* TLDR / FAQ answer                           */
+  --fs-body-xl:   19px;      /* article body                                */
+
+  --fs-h-sm:      21px;      /* FAQ question                                */
+  --fs-h-md:      22px;      /* related card title                          */
+  --fs-h-lg:      30px;      /* article H2                                  */
+  --fs-h-xl:      clamp(34px, 4vw, 52px);     /* section header             */
+  --fs-h-xxl:     clamp(36px, 4.6vw, 60px);   /* page hero                  */
+  --fs-h-display: clamp(48px, 7.6vw, 108px);  /* article title              */
+
+  /* ---------- Tracking + leading constants ---------- */
+  --track-mono:   0.22em;
+  --track-tight:  -0.025em;
+  --track-tighter:-0.03em;
+  --track-display:-0.055em;
+  --lh-display:   0.92;
+  --lh-tight:     1.02;
+  --lh-snug:      1.18;
+  --lh-body:      1.65;
+  --lh-prose:     1.6;
+
+  /* ---------- Spacing (4px base) ---------- */
+  --sp-1:  4px;
+  --sp-2:  8px;
+  --sp-3:  12px;
+  --sp-4:  16px;
+  --sp-5:  20px;
+  --sp-6:  24px;
+  --sp-7:  28px;
+  --sp-8:  32px;
+  --sp-10: 40px;
+  --sp-12: 48px;
+  --sp-14: 56px;
+  --sp-16: 64px;
+  --sp-18: 72px;
+  --sp-20: 80px;
+  --sp-24: 96px;
+
+  /* ---------- Radii ---------- */
+  --r-0:    0;          /* default — Rivett is square */
+  --r-sm:   2px;
+  --r-pill: 999px;      /* dot, share chips           */
+
+  /* ---------- Borders ---------- */
+  --bw-hair:   1px;
+  --bw-rule:   2px;
+  --bw-accent: 3px;     /* numbox left-rule           */
+
+  /* ---------- Layout ---------- */
+  --page-max:    1280px;
+  --page-pad-x:  56px;
+  --page-pad-x-sm: 24px;
+  --rail-w:      240px;
+  --rail-gap:    64px;
+  --prose-max:   680px;
+
+  /* ---------- Motion ---------- */
+  --ease:    cubic-bezier(0.2, 0.6, 0.2, 1);
+  --dur-1:   120ms;     /* hover, link colour          */
+  --dur-2:   200ms;     /* expand, transform           */
+  --dur-3:   320ms;     /* page transition             */
+
+  /* ---------- Focus ---------- */
+  --focus:        var(--accent-deep);
+  --focus-ring:   0 0 0 2px var(--paper), 0 0 0 4px var(--focus);
+
+  /* ---------- Elevation (used sparingly) ---------- */
+  --shadow-1: 0 1px 0 var(--line);
+  --shadow-2: 0 8px 24px rgba(14,26,44,0.08);
+}
+
+/* ============================================================
+   Global resets that depend on tokens.
+   ============================================================ */
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--grotesk);
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection { background: var(--ink); color: var(--on-ink); }
+
+a { color: inherit; text-decoration: none; }
+
+/* ---------- Focus-visible: applies to every interactive element ---------- */
+:focus { outline: none; }
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+/* dark-bg variant: invert the ring colour so it stays visible */
+.on-ink :focus-visible,
+.end-cta :focus-visible {
+  outline-color: var(--accent);
+}
+
+/* ---------- Reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ---------- Italic serif always renders in ink-dim on light bg ---------- */
+em,
+.ital,
+.dek {
+  color: var(--ink-dim);
+}
+/* dark-bg overrides explicitly opt out of this rule */
+.on-ink em,
+.on-ink .ital,
+.end-cta .ital {
+  color: var(--on-ink-italic);
 }

@@ -1,0 +1,4 @@
+User-agent: *
+Disallow: /q/
+
+Sitemap: https://rivett.tech/sitemap-index.xml

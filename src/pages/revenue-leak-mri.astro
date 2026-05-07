@@ -489,7 +489,7 @@ import Base from '../layouts/Base.astro';
 <style is:global>
   .mri-page{background:var(--paper);color:var(--ink)}
   .mri-page *{letter-spacing:0}
-  .mri-hero{padding:74px 0 48px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,var(--paper) 0%,var(--paper-2) 100%)}
+  .mri-hero{padding:74px 0 48px;border-bottom:1px solid var(--line);background:var(--paper)}
   .mri-hero-grid{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(360px,0.78fr);gap:72px;align-items:center}
   .mri-kicker{font-family:var(--mono);font-size:12px;text-transform:uppercase;color:var(--accent-deep);display:inline-flex;align-items:center;gap:12px}
   .mri-kicker::before{content:'';width:8px;height:8px;background:var(--accent);border-radius:50%;flex:0 0 auto}
@@ -543,7 +543,7 @@ import Base from '../layouts/Base.astro';
   .score-dial{aspect-ratio:1;border:1px solid rgba(255,255,255,0.34);display:grid;place-items:center;text-align:center}
   .score-dial span{font-size:46px;font-weight:700;line-height:0.9}
   .score-dial small{display:block;font-family:var(--mono);font-size:10px;text-transform:uppercase;color:rgba(255,255,255,0.55);margin-top:4px}
-  .diagnosis-strip{display:flex;justify-content:space-between;gap:20px;align-items:center;background:rgba(111,181,130,0.12);border:1px solid rgba(111,181,130,0.36);padding:16px 18px}
+  .diagnosis-strip{display:flex;justify-content:space-between;gap:20px;align-items:center;background:rgba(143,191,63,0.12);border:1px solid rgba(143,191,63,0.36);padding:16px 18px}
   .diagnosis-strip span{font-family:var(--serif);font-style:italic;font-size:28px;color:var(--accent)}
   .diagnosis-strip b{font-family:var(--mono);font-size:11px;text-transform:uppercase;color:var(--paper);font-weight:500;text-align:right}
   .funnel-panel{display:grid;gap:14px}
@@ -571,7 +571,7 @@ import Base from '../layouts/Base.astro';
   .gate-fields input::placeholder{color:rgba(255,255,255,0.45)}
   .gate-fields input:last-child{grid-column:1/-1}
   .readout-gate button,.readout-actions a,.readout-actions button{border:1px solid var(--accent);background:var(--accent);color:var(--ink);min-height:44px;padding:12px 14px;font-family:var(--mono);font-size:11px;text-transform:uppercase;cursor:pointer;text-align:center}
-  .unlocked-readout{border:1px solid rgba(111,181,130,0.45);padding:18px}
+  .unlocked-readout{border:1px solid rgba(143,191,63,0.45);padding:18px}
   .unlocked-readout[hidden]{display:none}
   .unlocked-readout ul{margin:16px 0 0;padding:0;list-style:none;display:grid;gap:12px}
   .unlocked-readout li{font-size:17px;line-height:1.35;color:rgba(255,255,255,0.82);padding-left:22px;position:relative}

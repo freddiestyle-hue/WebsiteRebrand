@@ -1,0 +1,25 @@
+---
+import QuestionnaireLayout from '../../layouts/QuestionnaireLayout.astro';
+import QuestionnaireEngine from '../../questionnaires/_engine';
+import { getQuestionnaireConfig, getQuestionnaireSlugs } from '../../questionnaires/_configs';
+import type { ProspectConfig } from '../../questionnaires/_types';
+
+export function getStaticPaths() {
+  return getQuestionnaireSlugs().map((slug) => ({
+    params: { slug },
+    props: { config: getQuestionnaireConfig(slug) },
+  }));
+}
+
+interface Props {
+  config: ProspectConfig;
+}
+
+const { config } = Astro.props;
+---
+<QuestionnaireLayout
+  title={`Rivett · ${config.prospect_name} questionnaire`}
+  description="Private Rivett pre-call questionnaire."
+>
+  <QuestionnaireEngine client:load config={config} />
+</QuestionnaireLayout>

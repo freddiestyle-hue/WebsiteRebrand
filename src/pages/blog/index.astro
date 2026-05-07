@@ -24,6 +24,7 @@ for (const p of posts) tagCounts[p.data.tag] = (tagCounts[p.data.tag] ?? 0) + 1;
   fontWeights="Inter+Tight:wght@400;500;600;700;800"
   currentNav="blog"
 >
+  <div class="blog-index">
   <div class="page">
     <header class="masthead">
       <span class="stamp">Field Notes · Vol. 01 · 2026</span>
@@ -42,12 +43,12 @@ for (const p of posts) tagCounts[p.data.tag] = (tagCounts[p.data.tag] ?? 0) + 1;
     <section class="featured">
       <div class="rule">
         <span class="dot"></span><span>This week</span>
-        <span style="flex:1"></span>
+        <span class="rule-spacer"></span>
         {lead && <span>{fmtDate(lead.data.date)}</span>}
       </div>
 
       {lead && (
-        <div class="lede-row" style="margin-top:48px">
+        <div class="lede-row lede-row--offset">
           <a class="lead-art" href={`/blog/${slugFor(lead)}`}>
             <div class="meta">
               <span class="tag">{lead.data.tag}</span>
@@ -72,11 +73,11 @@ for (const p of posts) tagCounts[p.data.tag] = (tagCounts[p.data.tag] ?? 0) + 1;
       )}
     </section>
 
-    <section style="padding:0 0 48px">
+    <section class="register">
       <div class="toc-head">
         <h2>The full <span class="ital">register.</span></h2>
-        <div class="filters" role="tablist" aria-label="Filter posts by tag">
-          <button class="on" data-filter="all">All <span style="opacity:0.5">· {total}</span></button>
+        <div class="filters" role="group" aria-label="Filter posts by tag">
+          <button class="on" data-filter="all">All <span class="filter-count">· {total}</span></button>
           <button data-filter="Strategy">Strategy</button>
           <button data-filter="Insights">Insights</button>
           <button data-filter="Engineering">Engineering</button>
@@ -114,26 +115,29 @@ for (const p of posts) tagCounts[p.data.tag] = (tagCounts[p.data.tag] ?? 0) + 1;
         <div class="col">
           <div class="label">Subscribe</div>
           <p>One note a week, on average. No newsletter pop-ups, no tracking pixel hot-takes. Plain text, signed, sent on Tuesdays.</p>
-          <a class="btn" style="background:transparent;color:var(--ink)" href="mailto:fred@rivett.tech?subject=Subscribe%20to%20Field%20Notes">field-notes@rivett →</a>
+          <a class="btn btn--outline" href="#toc">Read more Field Notes</a>
         </div>
         <div class="col">
           <div class="label">Tags</div>
-          <p style="font-family:var(--mono);font-size:12px;letter-spacing:0.1em;line-height:2.2">
-            <a href="?tag=Strategy" style="border-bottom:1px solid var(--line)">Strategy</a> &nbsp;
-            <a href="?tag=Insights" style="border-bottom:1px solid var(--line)">Insights</a> &nbsp;
-            <a href="?tag=Engineering" style="border-bottom:1px solid var(--line)">Engineering</a> &nbsp;
-            <a href="?tag=Company" style="border-bottom:1px solid var(--line)">Company</a>
+          <p class="tag-list">
+            <a href="?tag=Strategy">Strategy</a> &nbsp;
+            <a href="?tag=Insights">Insights</a> &nbsp;
+            <a href="?tag=Engineering">Engineering</a> &nbsp;
+            <a href="?tag=Company">Company</a>
           </p>
         </div>
       </div>
 
       <div class="footer-bottom">
-        <a class="wordmark" href="/">rivett<span class="dot-mark" aria-hidden="true"></span></a>
+        <a class="wordmark" href="/" aria-label="Rivett, home">
+          <img src="/img/marks/wordmark.svg" alt="" width="64" height="16" decoding="async" />
+        </a>
         <span>© 2026 Rivett · Operator's Practice</span>
         <span>Set in Inter Tight, Newsreader &amp; DM Mono</span>
       </div>
     </div>
   </footer>
+  </div>
 </Base>
 
 <script>
@@ -155,94 +159,3 @@ for (const p of posts) tagCounts[p.data.tag] = (tagCounts[p.data.tag] ?? 0) + 1;
   const initial = params.get('tag');
   if (initial) applyFilter(initial);
 </script>
-
-<style is:global>
-  .masthead{padding:88px 0 48px;border-bottom:1px solid var(--line-strong);position:relative}
-  .masthead .stamp{font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--accent-deep);display:inline-flex;align-items:center;gap:12px;margin-bottom:32px}
-  .masthead .stamp::before{content:'';width:8px;height:8px;background:var(--accent);border-radius:50%}
-  .masthead h1{font-weight:800;font-size:clamp(56px,8vw,120px);line-height:0.92;letter-spacing:-0.05em;margin:0;color:var(--ink);max-width:1080px}
-  .masthead h1 .ital{font-family:var(--serif);font-style:italic;font-weight:400;letter-spacing:-0.02em;color:var(--ink-dim)}
-  .masthead .sub{display:grid;grid-template-columns:1.4fr 1fr;gap:48px;align-items:end;margin-top:48px}
-  @media (max-width:880px){.masthead .sub{grid-template-columns:1fr;gap:24px}}
-  .masthead .lede{font-size:21px;line-height:1.5;color:var(--ink-dim);max-width:620px;margin:0}
-  .masthead .lede em{font-family:var(--serif);font-style:italic;font-weight:400}
-  .masthead .meta{font-family:var(--mono);font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:var(--ink-faint);display:grid;grid-template-columns:repeat(2,1fr);gap:18px}
-  .masthead .meta b{display:block;color:var(--ink);font-family:var(--grotesk);font-weight:600;font-size:14px;letter-spacing:-0.01em;text-transform:none;margin-top:4px}
-
-  .rule{display:flex;align-items:center;gap:18px;padding:18px 0;border-bottom:1px solid var(--line);font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint)}
-  .rule .dot{width:6px;height:6px;border-radius:50%;background:var(--accent)}
-
-  .featured{padding:64px 0 32px;border-bottom:1px solid var(--line-strong)}
-  .featured .lede-row{display:grid;grid-template-columns:5fr 4fr;gap:64px;align-items:start}
-  @media (max-width:980px){.featured .lede-row{grid-template-columns:1fr;gap:48px}}
-
-  .lead-art{display:block;text-decoration:none;color:inherit}
-  .lead-art .meta{display:flex;align-items:center;gap:14px;font-family:var(--mono);font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:24px}
-  .lead-art .meta .tag{color:var(--accent-deep)}
-  .lead-art .meta .tag::before{content:'';display:inline-block;width:6px;height:6px;background:var(--accent);border-radius:50%;margin-right:8px;transform:translateY(-1px)}
-  .lead-art h2{font-family:var(--grotesk);font-weight:700;font-size:clamp(40px,5.4vw,72px);line-height:0.96;letter-spacing:-0.045em;margin:0;color:var(--ink);text-wrap:balance}
-  .lead-art h2 .ital{font-family:var(--serif);font-style:italic;font-weight:400;letter-spacing:-0.02em;color:var(--ink-dim)}
-  .lead-art:hover h2{color:var(--accent-deep)}
-  .lead-art .dek{font-size:18px;line-height:1.55;color:var(--ink-dim);margin:24px 0 0;max-width:560px}
-  .lead-art .by{margin-top:28px;display:flex;gap:24px;font-family:var(--mono);font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:var(--ink-faint)}
-  .lead-art .by b{color:var(--ink);font-family:var(--grotesk);font-weight:600;text-transform:none;letter-spacing:-0.01em;font-size:13px;margin-left:6px}
-
-  .featured-side{display:flex;flex-direction:column;gap:0;border-top:1px solid var(--line-strong);border-bottom:1px solid var(--line-strong)}
-  .side-art{display:block;padding:28px 0;border-top:1px solid var(--line);text-decoration:none;color:inherit}
-  .side-art:first-child{border-top:0}
-  .side-art .meta{display:flex;align-items:center;gap:14px;font-family:var(--mono);font-size:10.5px;letter-spacing:0.2em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:14px}
-  .side-art .meta .tag{color:var(--accent-deep)}
-  .side-art .meta .tag::before{content:'';display:inline-block;width:5px;height:5px;background:var(--accent);border-radius:50%;margin-right:7px;transform:translateY(-1px)}
-  .side-art h3{font-family:var(--grotesk);font-weight:700;font-size:24px;line-height:1.12;letter-spacing:-0.025em;margin:0;color:var(--ink);text-wrap:pretty}
-  .side-art h3 .ital{font-family:var(--serif);font-style:italic;font-weight:400}
-  .side-art:hover h3{color:var(--accent-deep)}
-  .side-art p{font-size:15px;line-height:1.55;color:var(--ink-dim);margin:10px 0 0;max-width:480px}
-
-  .toc-head{padding:56px 0 24px;display:flex;align-items:end;justify-content:space-between;gap:24px;flex-wrap:wrap}
-  .toc-head h2{font-weight:700;font-size:clamp(32px,3.6vw,48px);line-height:1;letter-spacing:-0.04em;margin:0}
-  .toc-head h2 .ital{font-family:var(--serif);font-style:italic;font-weight:400;color:var(--ink-dim)}
-  .filters{display:flex;gap:0;font-family:var(--mono);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:var(--ink-faint);border:1px solid var(--ink)}
-  .filters button{background:transparent;border:0;border-left:1px solid var(--ink);padding:11px 16px;font:inherit;letter-spacing:inherit;text-transform:inherit;color:inherit;cursor:pointer;transition:all 0.15s}
-  .filters button:first-child{border-left:0}
-  .filters button:hover{color:var(--ink)}
-  .filters button.on{background:var(--ink);color:var(--paper)}
-  @media (max-width:680px){.filters{flex-wrap:wrap}.filters button{flex:1}}
-
-  .toc{border-top:2px solid var(--ink);margin-top:24px}
-  .toc .row{display:grid;grid-template-columns:80px 90px 1fr 100px 64px;gap:24px;align-items:baseline;padding:22px 0;border-bottom:1px solid var(--line);text-decoration:none;color:inherit;transition:background 0.12s, padding 0.18s}
-  .toc .row:hover{background:var(--paper-2);padding-left:12px;padding-right:12px}
-  .toc .row .idx{font-family:var(--mono);font-size:11px;letter-spacing:0.18em;color:var(--ink-faint)}
-  .toc .row .date{font-family:var(--mono);font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint)}
-  .toc .row .title{font-family:var(--grotesk);font-weight:600;font-size:22px;line-height:1.18;letter-spacing:-0.025em;color:var(--ink);text-wrap:pretty}
-  .toc .row .title .ital{font-family:var(--serif);font-style:italic;font-weight:400}
-  .toc .row .title em{font-style:normal;color:var(--ink-dim)}
-  .toc .row:hover .title{color:var(--accent-deep)}
-  .toc .row .tag{font-family:var(--mono);font-size:10.5px;letter-spacing:0.2em;text-transform:uppercase;color:var(--accent-deep)}
-  .toc .row .tag::before{content:'';display:inline-block;width:5px;height:5px;background:var(--accent);border-radius:50%;margin-right:7px;transform:translateY(-1px)}
-  .toc .row .read{font-family:var(--mono);font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint);text-align:right}
-  .toc .row .read::after{content:'  →';color:var(--ink-faint)}
-  .toc .row:hover .read::after{color:var(--accent-deep)}
-
-  @media (max-width:880px){
-    .toc .row{grid-template-columns:1fr auto;gap:8px 16px;padding:20px 0}
-    .toc .row .idx{display:none}
-    .toc .row .date{order:1;grid-column:1}
-    .toc .row .tag{order:2;grid-column:2;justify-self:end}
-    .toc .row .title{order:3;grid-column:1/-1;font-size:19px}
-    .toc .row .read{order:4;grid-column:1/-1;text-align:left}
-  }
-
-  .footer{margin-top:120px;padding:80px 0 48px;border-top:1px solid var(--ink);background:var(--paper-2)}
-  .footer-inner{max-width:1280px;margin:0 auto;padding:0 56px}
-  @media (max-width:780px){.footer-inner{padding:0 24px}}
-  .footer h3{font-family:var(--grotesk);font-weight:700;font-size:clamp(34px,4vw,52px);line-height:1.02;letter-spacing:-0.04em;margin:0;max-width:780px;text-wrap:balance}
-  .footer h3 .ital{font-family:var(--serif);font-style:italic;font-weight:400;color:var(--ink-dim)}
-  .footer .row{margin-top:48px;display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:48px;align-items:start;padding-top:32px;border-top:1px solid var(--line-strong)}
-  @media (max-width:880px){.footer .row{grid-template-columns:1fr;gap:32px}}
-  .footer .col .label{font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:14px}
-  .footer .col p{font-size:15px;line-height:1.55;color:var(--ink-dim);margin:0;max-width:380px}
-  .footer .btn{display:inline-flex;align-items:center;gap:12px;padding:14px 22px;border:1px solid var(--ink);background:var(--ink);color:var(--paper);font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;margin-top:16px}
-  .footer .btn:hover{background:var(--accent-deep);border-color:var(--accent-deep)}
-  .footer-bottom{margin-top:72px;padding-top:24px;border-top:1px solid var(--line);display:flex;justify-content:space-between;flex-wrap:wrap;gap:16px;font-family:var(--mono);font-size:10.5px;letter-spacing:0.2em;text-transform:uppercase;color:var(--ink-faint)}
-  .footer-bottom .wordmark{font-size:14px;color:var(--ink)}
-</style>

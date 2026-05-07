@@ -1,5 +1,6 @@
 ---
 import '../styles/tokens.css';
+import '../styles/components.css';
 import '../styles/global.css';
 import PostHog from '../components/PostHog.astro';
 import GoogleTags from '../components/GoogleTags.astro';
@@ -52,6 +53,8 @@ const canonical = new URL(Astro.url.pathname, Astro.site).toString();
 <body>
   <GtmNoscript />
   <Nav current={currentNav} />
-  <slot />
+  <main id="main">
+    <slot />
+  </main>
 </body>
 </html>

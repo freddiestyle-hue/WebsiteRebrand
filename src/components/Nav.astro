@@ -14,7 +14,7 @@ const { current } = Astro.props;
       <li class={current === 'blog' ? 'current-li' : ''}>
         <a href="/blog" class={current === 'blog' ? 'current' : ''}>Notes</a>
       </li>
-      <li><a href="/diagnostic" class="cta">Book diagnostic</a></li>
+      <li><a href="/diagnostic" class="cta">Book diagnostic →</a></li>
     </ul>
     <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="mobile-menu" aria-label="Open menu">
       <span class="menu-bar"></span>
@@ -31,7 +31,7 @@ const { current } = Astro.props;
   <ul class="mobile-links">
     <li><a href="/#modules">Work</a></li>
     <li><a href="/blog">Notes</a></li>
-    <li><a href="/diagnostic" class="mobile-cta">Book diagnostic</a></li>
+    <li><a href="/diagnostic" class="mobile-cta">Book diagnostic →</a></li>
   </ul>
   <div class="mobile-foot">fred@rivett.tech</div>
 </div>
@@ -72,160 +72,3 @@ const { current } = Astro.props;
     if (e.key === 'Escape' && menu?.classList.contains('open')) closeMenu();
   });
 </script>
-
-<style is:global>
-  .site-header {
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    background: transparent;
-    border-bottom: 1px solid transparent;
-    transition:
-      background-color 240ms ease,
-      backdrop-filter 240ms ease,
-      border-color 240ms ease;
-  }
-  .site-header[data-scrolled="true"] {
-    background: rgba(255, 255, 255, 0.88);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border-bottom-color: var(--line);
-  }
-
-  .header-inner {
-    max-width: 1280px;
-    margin: 0 auto;
-    padding: 28px 56px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-  @media (max-width: 780px) {
-    .header-inner { padding: 20px 24px; }
-  }
-  .header-inner .wordmark { font-size: 28px; }
-  .nav-links {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: flex;
-    gap: 36px;
-    align-items: center;
-    font-family: var(--mono);
-    font-size: 11px;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: var(--ink-dim);
-  }
-  .header-inner a { color: inherit; text-decoration: none; transition: color 0.15s; }
-  .header-inner a:hover { color: var(--ink); }
-  .header-inner a.current { color: var(--ink); }
-  .header-inner .cta {
-    display: inline-block;
-    white-space: nowrap;
-    padding: 11px 18px;
-    border: 1px solid var(--ink);
-    color: var(--ink);
-    background: transparent;
-    font-family: var(--mono);
-    font-size: 11px;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-  }
-  .header-inner .cta:hover { background: var(--ink); color: var(--paper); }
-
-  .menu-toggle {
-    display: none;
-    background: transparent;
-    border: 0;
-    width: 36px;
-    height: 36px;
-    padding: 0;
-    cursor: pointer;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    gap: 6px;
-  }
-  .menu-bar {
-    display: block;
-    width: 22px;
-    height: 1.5px;
-    background: var(--ink);
-  }
-
-  @media (max-width: 780px) {
-    .nav-links { display: none; }
-    .menu-toggle { display: inline-flex; }
-  }
-
-  .mobile-menu {
-    position: fixed;
-    inset: 0;
-    z-index: 200;
-    background: var(--paper);
-    padding: 28px 24px 32px;
-    display: flex;
-    flex-direction: column;
-    opacity: 0;
-    visibility: hidden;
-    pointer-events: none;
-    transition: opacity 200ms ease, visibility 200ms ease;
-  }
-  .mobile-menu.open {
-    opacity: 1;
-    visibility: visible;
-    pointer-events: auto;
-  }
-  .mobile-close {
-    position: absolute;
-    top: 18px;
-    right: 24px;
-    background: transparent;
-    border: 0;
-    font-family: var(--grotesk);
-    font-weight: 300;
-    font-size: 36px;
-    line-height: 1;
-    color: var(--ink);
-    cursor: pointer;
-    padding: 4px 12px;
-  }
-  .mobile-wordmark {
-    font-size: 28px;
-    align-self: flex-start;
-  }
-  .mobile-links {
-    list-style: none;
-    margin: 56px 0 0;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-    border-top: 1px solid var(--line);
-  }
-  .mobile-links li {
-    border-bottom: 1px solid var(--line);
-  }
-  .mobile-links a {
-    display: block;
-    padding: 22px 0;
-    font-family: var(--grotesk);
-    font-weight: 600;
-    font-size: 28px;
-    letter-spacing: -0.025em;
-    color: var(--ink);
-    text-decoration: none;
-  }
-  .mobile-links .mobile-cta {
-    color: var(--accent-deep);
-  }
-  .mobile-foot {
-    margin-top: auto;
-    font-family: var(--mono);
-    font-size: 11px;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: var(--ink-faint);
-  }
-</style>

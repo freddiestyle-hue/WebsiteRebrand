@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 210 80" role="img" aria-label="Rivett">
+  <title>Rivett</title>
+  <style>
+    .wm {
+      fill: #0E1A2C;
+      font-family: 'Inter Tight', 'Inter', Arial, sans-serif;
+      font-size: 72px;
+      font-weight: 700;
+      letter-spacing: -0.05em;
+    }
+  </style>
+  <text class="wm" x="0" y="62" textLength="174" lengthAdjust="spacingAndGlyphs">rivett</text>
+  <circle cx="191" cy="58" r="9" fill="#8FBF3F"></circle>
+</svg>

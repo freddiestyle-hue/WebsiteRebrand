@@ -1,11 +1,22 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
+import react from '@astrojs/react';
 import sitemap from '@astrojs/sitemap';
+import vercel from '@astrojs/vercel';
 
 export default defineConfig({
   site: 'https://rivett.tech',
   trailingSlash: 'never',
-  integrations: [sitemap()],
+  adapter: vercel(),
+  integrations: [
+    react(),
+    sitemap({
+      filter: (page) => {
+        const pathname = page.startsWith('http') ? new URL(page).pathname : page;
+        return !pathname.startsWith('/q/');
+      },
+    }),
+  ],
   build: {
     format: 'directory',
   },
