@@ -1,6 +1,6 @@
 ---
 interface Props {
-  current?: 'home' | 'blog';
+  current?: 'home' | 'blog' | 'mri';
 }
 const { current } = Astro.props;
 ---
@@ -11,6 +11,9 @@ const { current } = Astro.props;
     </a>
     <ul class="nav-links">
       <li><a href="/#modules">Work</a></li>
+      <li class={current === 'mri' ? 'current-li' : ''}>
+        <a href="/revenue-leak-mri" aria-label="Revenue Leak MRI" class={current === 'mri' ? 'current' : ''}>Revenue MRI</a>
+      </li>
       <li class={current === 'blog' ? 'current-li' : ''}>
         <a href="/blog" class={current === 'blog' ? 'current' : ''}>Notes</a>
       </li>
@@ -30,6 +33,7 @@ const { current } = Astro.props;
   </a>
   <ul class="mobile-links">
     <li><a href="/#modules">Work</a></li>
+    <li><a href="/revenue-leak-mri">Revenue MRI</a></li>
     <li><a href="/blog">Notes</a></li>
     <li><a href="/diagnostic" class="mobile-cta">Book diagnostic →</a></li>
   </ul>
