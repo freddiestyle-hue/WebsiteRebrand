@@ -1,675 +1,788 @@
 ---
-import Base from '../layouts/Base.astro';
 ---
-<Base
-  title="Revenue Leak MRI · Rivett"
-  description="A free operator tool from Rivett that estimates where revenue is leaking across spend, leads, follow-up, conversion, and operating drag."
-  currentNav="mri"
->
-  <main class="mri-page">
-    <section class="mri-hero">
-      <div class="page mri-hero-grid">
-        <div class="mri-hero-copy">
-          <span class="mri-kicker">Revenue Leak MRI</span>
-          <h1>Find the revenue leak before you fund another campaign.</h1>
-          <p class="mri-hero-dek">
-            A free operator diagnostic for spotting whether paid demand is leaking through response speed,
-            qualification, sales handoff, or operating drag.
-          </p>
-          <div class="mri-hero-actions">
-            <a href="#mri-tool" class="primary-action">Run the MRI</a>
-            <a href="/diagnostic" class="secondary-action">Book diagnostic</a>
-          </div>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Revenue Leak MRI · Rivett</title>
+    <meta name="description" content="A free operator diagnostic from Rivett. Nine honest numbers. One readout showing where paid demand is leaking and what to fix first." />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <style is:global>
+      @import '../styles/tokens.css';
+
+  :root { --sp-9: calc(var(--sp-8) + var(--sp-1)); }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: var(--paper); color: var(--ink); font-family: var(--grotesk); -webkit-font-smoothing: antialiased; }
+
+  /* ---------- chrome ---------- */
+  .progress { position: fixed; top: 0; left: 0; right: 0; height: 2px; background: var(--paper-2); z-index: 60; }
+  .progress .fill { height: 100%; background: var(--accent); width: 0%; transition: width 520ms cubic-bezier(.2,.8,.2,1); }
+
+  .topbar { position: fixed; top: 0; left: 0; right: 0; padding: 22px 32px; display: flex; justify-content: space-between; align-items: center; z-index: 50; pointer-events: none; }
+  .topbar > * { pointer-events: auto; }
+  .wordmark { display: inline-flex; align-items: center; gap: 0.12em; font-family: var(--grotesk); font-weight: 700; font-size: 18px; letter-spacing: -0.05em; color: var(--ink); text-decoration: none; }
+  .dot-mark { width: 0.32em; height: 0.32em; border-radius: var(--r-pill); background: var(--accent); transform: translateY(0.04em); display: inline-block; }
+  .counter { font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); display: flex; align-items: center; gap: 16px; }
+  .counter b { color: var(--ink); font-weight: 500; }
+
+  .botbar { position: fixed; bottom: 0; left: 0; right: 0; padding: 20px 32px; display: flex; justify-content: space-between; align-items: center; font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); z-index: 50; pointer-events: none; }
+  .botbar > * { pointer-events: auto; }
+  .botbar kbd { font-family: var(--mono); font-size: 10px; padding: 3px 7px; border: var(--bw-hair) solid var(--line-strong); background: var(--paper); color: var(--ink-dim); border-radius: 3px; margin: 0 2px; }
+  .botbar .nav-btns { display: flex; gap: 10px; }
+  .botbar button { font: inherit; font-size: 10.5px; letter-spacing: var(--track-mono); text-transform: uppercase; background: none; border: var(--bw-hair) solid var(--line-strong); color: var(--ink-dim); padding: 6px 12px; cursor: pointer; transition: all 160ms ease; font-family: var(--mono); }
+  .botbar button:hover:not(:disabled) { background: var(--ink); color: var(--on-ink); border-color: var(--ink); }
+  .botbar button:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  /* ---------- stage ---------- */
+  .stage { position: relative; width: 100%; height: 100%; }
+  .screen { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; padding: 100px 8vw; opacity: 0; pointer-events: none; transform: translateY(24px); transition: opacity 360ms cubic-bezier(.2,.8,.2,1), transform 540ms cubic-bezier(.2,.8,.2,1); overflow-y: auto; }
+  .screen.active { opacity: 1; pointer-events: auto; transform: translateY(0); }
+  .screen.exit { transform: translateY(-24px); opacity: 0; }
+
+  .inner { max-width: 920px; width: 100%; margin: 0 auto; }
+
+  /* ---------- type ---------- */
+  .stamp { font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--accent-deep); display: inline-flex; align-items: center; opacity: 0; animation: rise 600ms cubic-bezier(.2,.8,.2,1) 60ms forwards; }
+  .stamp::before { content: ''; display: inline-block; width: 8px; height: 8px; background: var(--accent); border-radius: var(--r-pill); margin-right: 12px; }
+  .stamp.dim { color: var(--ink-faint); }
+  .stamp.dim::before { background: var(--ink-dim); }
+  .stamp.halt { color: var(--signal-halt); }
+  .stamp.halt::before { background: var(--signal-halt); }
+  .stamp.on-ink { color: var(--on-ink-faint); }
+  .stamp.on-ink::before { background: var(--accent); }
+
+  .qnum { font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); margin-bottom: var(--sp-5); opacity: 0; animation: rise 540ms cubic-bezier(.2,.8,.2,1) 60ms forwards; }
+  .qnum b { color: var(--ink); font-weight: 500; }
+  .qnum .arrow { display: inline-block; width: 12px; height: 8px; margin-right: 8px; vertical-align: middle; }
+
+  h1.cover { font-family: var(--grotesk); font-weight: 800; font-size: clamp(56px, 8.5vw, 124px); line-height: 0.92; letter-spacing: var(--track-display); margin: var(--sp-5) 0 0; text-wrap: balance; opacity: 0; animation: rise 700ms cubic-bezier(.2,.8,.2,1) 200ms forwards; }
+  h1.cover .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); letter-spacing: -0.02em; }
+
+  h2.q { font-family: var(--grotesk); font-weight: 700; font-size: clamp(34px, 5.2vw, 64px); line-height: 1; letter-spacing: var(--track-display); margin: 0; text-wrap: balance; opacity: 0; animation: rise 640ms cubic-bezier(.2,.8,.2,1) 180ms forwards; }
+  h2.q .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); letter-spacing: -0.02em; }
+
+  .dek { font-family: var(--serif); font-style: italic; font-size: clamp(17px, 1.7vw, 21px); line-height: 1.45; color: var(--ink-dim); margin: var(--sp-6) 0 0; max-width: 660px; opacity: 0; animation: rise 600ms cubic-bezier(.2,.8,.2,1) 320ms forwards; }
+
+  .helptext { font-family: var(--grotesk); font-size: 14px; line-height: 1.5; color: var(--ink-faint); margin: var(--sp-4) 0 0; max-width: 560px; opacity: 0; animation: rise 600ms cubic-bezier(.2,.8,.2,1) 380ms forwards; }
+
+  /* ---------- inputs ---------- */
+  .field { margin: var(--sp-9) 0 0; max-width: 520px; opacity: 0; animation: rise 620ms cubic-bezier(.2,.8,.2,1) 420ms forwards; }
+  .field label { font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); display: block; margin-bottom: 10px; }
+  .field .input-row { display: flex; align-items: baseline; gap: 12px; border-bottom: 2px solid var(--ink); padding-bottom: 10px; }
+  .field .prefix, .field .suffix { font-family: var(--grotesk); font-weight: 700; font-size: 36px; color: var(--ink-faint); letter-spacing: -0.02em; }
+  .field input[type="number"] { font-family: var(--grotesk); font-weight: 700; font-size: clamp(40px, 5.5vw, 64px); letter-spacing: -0.02em; color: var(--ink); background: transparent; border: 0; outline: 0; padding: 0; flex: 1; min-width: 0; -moz-appearance: textfield; }
+  .field input[type="number"]::-webkit-outer-spin-button, .field input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .field input::placeholder { color: var(--ink-faint); opacity: 0.4; }
+
+  .slider-field { margin: var(--sp-9) 0 0; max-width: 620px; opacity: 0; animation: rise 620ms cubic-bezier(.2,.8,.2,1) 420ms forwards; }
+  .slider-field .label { font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); display: block; margin-bottom: 14px; }
+  .slider-field .value-row { display: flex; align-items: baseline; gap: 12px; margin-bottom: 24px; }
+  .slider-field .value { font-family: var(--grotesk); font-weight: 700; font-size: clamp(40px, 5.5vw, 64px); letter-spacing: -0.02em; color: var(--ink); }
+  .slider-field .unit { font-family: var(--serif); font-style: italic; font-size: 24px; color: var(--ink-dim); }
+  .slider-field input[type="range"] { width: 100%; -webkit-appearance: none; appearance: none; background: var(--paper-2); height: 4px; outline: 0; cursor: pointer; }
+  .slider-field input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 22px; height: 22px; background: var(--accent); border: 2px solid var(--ink); border-radius: 50%; cursor: grab; transition: transform 120ms ease; }
+  .slider-field input[type="range"]::-webkit-slider-thumb:active { transform: scale(1.15); cursor: grabbing; }
+  .slider-field input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; background: var(--accent); border: 2px solid var(--ink); border-radius: 50%; cursor: grab; }
+  .slider-field .ticks { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 10px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); margin-top: 12px; }
+  .slider-field .anno { font-family: var(--serif); font-style: italic; font-size: 14px; color: var(--ink-dim); margin-top: 16px; }
+
+  /* ---------- buttons ---------- */
+  .start { margin-top: var(--sp-9); display: inline-flex; align-items: center; gap: 12px; background: var(--ink); color: var(--on-ink); border: 0; padding: 18px 28px; font: inherit; font-weight: 600; font-size: 16px; letter-spacing: -0.005em; cursor: pointer; opacity: 0; animation: rise 600ms cubic-bezier(.2,.8,.2,1) 480ms forwards; transition: transform 160ms ease, background 160ms ease; }
+  .start:hover { background: var(--accent-deep); transform: translateY(-1px); }
+  .start kbd { font-family: var(--mono); font-size: 11px; padding: 3px 7px; background: var(--ink-2); color: var(--on-ink-dim); border-radius: 3px; }
+
+  .ok { display: inline-flex; align-items: center; gap: 10px; background: var(--ink); color: var(--on-ink); border: 0; padding: 12px 18px; font: inherit; font-weight: 500; font-size: 14px; cursor: pointer; margin-top: var(--sp-7); transition: transform 160ms ease, background 160ms ease; opacity: 0; animation: rise 600ms cubic-bezier(.2,.8,.2,1) 540ms forwards; font-family: var(--grotesk); }
+  .ok:hover { background: var(--accent-deep); transform: translateY(-1px); }
+  .ok kbd { font-family: var(--mono); font-size: 10px; padding: 2px 5px; background: var(--ink-2); color: var(--on-ink-dim); border-radius: 2px; }
+  .ok .ic { display: inline-block; width: 12px; }
+
+  /* ---------- reveal screen ---------- */
+  .reveal { background: var(--ink); color: var(--on-ink); padding-top: 96px; padding-bottom: 96px; }
+  body:has(.screen.reveal.active) .topbar .wordmark { color: var(--on-ink); }
+  body:has(.screen.reveal.active) .topbar .counter { color: var(--on-ink-faint); }
+  body:has(.screen.reveal.active) .topbar .counter b { color: var(--on-ink); }
+  body:has(.screen.reveal.active) .botbar { color: var(--on-ink-faint); }
+  body:has(.screen.reveal.active) .botbar kbd { background: var(--ink-2); color: var(--on-ink-dim); border-color: var(--ink-2); }
+  body:has(.screen.reveal.active) .botbar button { color: var(--on-ink-dim); border-color: var(--ink-2); }
+  body:has(.screen.reveal.active) .botbar button:hover:not(:disabled) { background: var(--accent); color: var(--ink); border-color: var(--accent); }
+  body:has(.screen.reveal.active) .progress { background: var(--ink-2); }
+  .reveal h2.q { color: var(--on-ink); font-size: clamp(28px, 3.4vw, 40px); }
+  .reveal h2.q .ital { color: var(--on-ink-dim); }
+  .reveal .reveal-head { display: flex; justify-content: flex-start; align-items: baseline; gap: var(--sp-7); margin-bottom: var(--sp-9); }
+  .reveal .reveal-head .ts-inline { color: var(--on-ink-faint); font-weight: 400; margin-left: 4px; text-transform: uppercase; letter-spacing: var(--track-mono); }
+
+  /* hero strip */
+  .leak-hero { display: grid; grid-template-columns: 1.55fr 1fr; gap: var(--sp-9); align-items: end; padding-bottom: var(--sp-9); border-bottom: var(--bw-hair) solid var(--ink-2); opacity: 0; animation: rise 700ms cubic-bezier(.2,.8,.2,1) 160ms forwards; }
+  .reveal .r-label { font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--on-ink); display: block; margin-bottom: 16px; opacity: 0.75; }
+  .leak-hero .amount { font-family: var(--grotesk); font-weight: 800; font-size: clamp(56px, 7.4vw, 104px); line-height: 0.92; letter-spacing: var(--track-display); color: var(--accent); }
+  .leak-hero .amount .unit { font-family: var(--serif); font-style: italic; font-weight: 400; font-size: 0.28em; color: var(--on-ink-dim); margin-left: 0.12em; letter-spacing: -0.02em; }
+  .leak-hero .annual { margin-top: var(--sp-5); font-family: var(--grotesk); font-size: 14px; color: var(--on-ink-dim); display: flex; gap: 10px; align-items: baseline; }
+  .leak-hero .annual b { color: var(--on-ink); font-weight: 600; }
+  .leak-hero .score-col { padding-left: var(--sp-7); border-left: var(--bw-hair) solid var(--ink-2); }
+  .leak-hero .score { font-family: var(--grotesk); font-weight: 700; font-size: clamp(40px, 5vw, 64px); letter-spacing: -0.02em; color: var(--on-ink); line-height: 1; }
+  .leak-hero .score em { font-family: var(--serif); font-weight: 400; font-style: italic; color: var(--on-ink-dim); font-size: 0.5em; margin-left: 4px; }
+  .leak-hero .score-bar { margin-top: 18px; height: 4px; background: var(--ink-2); position: relative; }
+  .leak-hero .score-bar .fill { position: absolute; inset: 0 auto 0 0; background: var(--accent); width: 0%; transition: width 1200ms cubic-bezier(.2,.8,.2,1); }
+  .leak-hero .verdict { margin-top: 14px; font-family: var(--serif); font-style: italic; font-size: 14px; color: var(--on-ink-dim); line-height: 1.45; }
+
+  /* funnel — compact strip */
+  .funnel { display: grid; grid-template-columns: 1fr 16px 1fr 16px 1fr 16px 1fr; align-items: center; gap: 14px; padding: var(--sp-6) 0; border-bottom: var(--bw-hair) solid var(--ink-2); opacity: 0; animation: rise 700ms cubic-bezier(.2,.8,.2,1) 240ms forwards; }
+  .funnel .cell { display: flex; flex-direction: column; gap: 6px; padding: 0; min-width: 0; }
+  .funnel .cell .key { font-family: var(--mono); font-size: 10px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--on-ink-faint); }
+  .funnel .cell .val { font-family: var(--grotesk); font-weight: 700; font-size: clamp(20px, 2.2vw, 28px); letter-spacing: -0.02em; color: var(--on-ink); }
+  .funnel .arr { color: var(--on-ink-faint); font-family: var(--mono); font-size: 14px; opacity: 0.5; }
+
+  /* leaks grid — 2x2, no big icons */
+  .leaks-grid { display: grid; grid-template-columns: repeat(2, 1fr); column-gap: var(--sp-8); row-gap: var(--sp-7); padding: var(--sp-7) 0; border-bottom: var(--bw-hair) solid var(--ink-2); opacity: 0; animation: rise 700ms cubic-bezier(.2,.8,.2,1) 320ms forwards; }
+  .leaks-grid .leak { padding: 2px 0 2px var(--sp-6); border-left: 2px solid var(--accent); display: flex; flex-direction: column; gap: 8px; }
+  .leaks-grid .leak .key { font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--on-ink-faint); }
+  .leaks-grid .leak .val { font-family: var(--grotesk); font-weight: 700; font-size: clamp(28px, 3.2vw, 38px); letter-spacing: -0.02em; color: var(--on-ink); line-height: 1; }
+  .leaks-grid .leak .val em { font-family: var(--serif); font-weight: 400; font-style: italic; color: var(--on-ink-dim); font-size: 0.5em; margin-left: 4px; }
+  .leaks-grid .leak .note { font-family: var(--serif); font-style: italic; font-size: 13.5px; color: var(--on-ink-dim); line-height: 1.45; margin: 6px 0 0; max-width: 360px; }
+
+  /* CTA bar — horizontal, no card */
+  .cta-bar { display: grid; grid-template-columns: 1fr auto; gap: var(--sp-7); align-items: center; padding: var(--sp-7) 0 0; opacity: 0; animation: rise 700ms cubic-bezier(.2,.8,.2,1) 420ms forwards; }
+  .cta-bar .copy h3 { font-family: var(--grotesk); font-weight: 600; font-size: clamp(18px, 1.8vw, 22px); line-height: 1.25; letter-spacing: var(--track-h-sm); margin: 0; color: var(--on-ink); text-wrap: balance; max-width: 520px; }
+  .cta-bar .copy h3 .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--on-ink-dim); }
+  .cta-bar .actions { display: flex; flex-direction: column; align-items: flex-end; gap: 12px; }
+  .cta-bar a.book { display: inline-flex; align-items: center; gap: 10px; background: var(--accent); color: var(--ink); padding: 14px 22px; font: inherit; font-weight: 600; font-size: 15px; text-decoration: none; transition: transform 160ms ease, background 160ms ease; font-family: var(--grotesk); }
+  .cta-bar a.book:hover { background: var(--paper); transform: translateY(-1px); }
+  .cta-bar .small-actions { display: flex; gap: 18px; font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); text-transform: uppercase; }
+  .cta-bar .small-actions button { background: none; border: 0; padding: 0; color: var(--on-ink-faint); cursor: pointer; font: inherit; font-family: var(--mono); transition: color 160ms ease; }
+  .cta-bar .small-actions button:hover { color: var(--on-ink); }
+
+  /* count-up flash */
+  @keyframes flash {
+    0% { color: var(--accent); }
+    100% { color: var(--on-ink); }
+  }
+  .leaks-grid .leak .val.flash, .leak-hero .score.flash { animation: flash 800ms ease-out; }
+
+  @media (max-width: 880px) {
+    .leak-hero { grid-template-columns: 1fr; gap: var(--sp-6); align-items: start; }
+    .leak-hero .score-col { padding-left: 0; border-left: 0; padding-top: var(--sp-6); border-top: var(--bw-hair) solid var(--ink-2); }
+    .leaks-grid { grid-template-columns: 1fr; }
+    .cta-bar { grid-template-columns: 1fr; }
+    .cta-bar .actions { align-items: flex-start; }
+    .funnel { grid-template-columns: repeat(2, 1fr); gap: 16px; }
+    .funnel .arr { display: none; }
+    .topbar, .botbar { padding: 14px 18px; }
+    .screen { padding: 80px 24px; }
+    h1.cover { font-size: 56px; }
+    h2.q { font-size: 32px; }
+    .botbar .hint { display: none; }
+  }
+
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .screen, * { transition: none !important; animation: none !important; }
+    .screen { opacity: 0; }
+    .screen.active { opacity: 1; }
+    .stamp, .qnum, h1.cover, h2.q, .dek, .helptext, .field, .slider-field, .start, .ok, .leak-hero, .funnel, .leaks-grid, .end-cta { opacity: 1 !important; }
+  }
+
+    </style>
+  </head>
+  <body>
+<div class="progress"><div class="fill" id="fill"></div></div>
+
+<div class="topbar">
+  <a href="#" class="wordmark">rivett<span class="dot-mark"></span></a>
+  <div class="counter">
+    <span>Revenue · MRI</span>
+    <span><b id="cur">01</b> / <span id="tot">11</span></span>
+  </div>
+</div>
+
+<div class="botbar">
+  <span class="hint"><kbd>↵</kbd> continue · <kbd>↑</kbd> back · <kbd>esc</kbd> reset</span>
+  <div class="nav-btns">
+    <button id="prev">← back</button>
+    <button id="next">continue ↵</button>
+  </div>
+</div>
+
+<div class="stage" id="stage">
+
+  <!-- ============ 00 · COVER ============ -->
+  <section class="screen active" data-i="0" data-step="cover">
+    <div class="inner">
+      <span class="stamp">Revenue Leak MRI</span>
+      <h1 class="cover">Find the revenue leak <span class="ital">before you fund another campaign.</span></h1>
+      <p class="dek" style="margin-top: var(--sp-8); font-size: clamp(19px, 1.9vw, 24px); max-width: 580px; line-height: 1.5;">A free operator diagnostic. <span style="color: var(--ink);">Nine honest numbers.</span> One readout — where paid demand is actually leaking, and what to fix first.</p>
+      <button class="start" data-action="next" style="margin-top: var(--sp-10);">Run the MRI <kbd>↵</kbd></button>
+      <p class="helptext" style="margin-top: var(--sp-6);">Takes 90 seconds. No newsletter trap. Nothing emailed unless you ask.</p>
+    </div>
+  </section>
+
+  <!-- ============ 01 · SPEND ============ -->
+  <section class="screen" data-i="1" data-step="q" data-key="spend">
+    <div class="inner">
+      <p class="qnum"><span class="arrow">→</span><b>01</b> · spend</p>
+      <h2 class="q">Monthly ad spend? <span class="ital">Honest number.</span></h2>
+      <p class="helptext">Across paid acquisition — Meta, Google, LinkedIn, sponsorships. Last full month.</p>
+      <div class="field">
+        <label>USD · per month</label>
+        <div class="input-row">
+          <span class="prefix">$</span>
+          <input type="number" min="0" step="100" placeholder="25,000" data-input="spend">
         </div>
-
-        <aside class="mri-hero-panel" aria-label="Revenue Leak MRI preview">
-          <div class="hero-panel-top">
-            <span>Live MRI readout</span>
-            <b>Demand path scan</b>
-          </div>
-          <div class="hero-scan" aria-hidden="true">
-            <div style="--level:92%"><span>Leads</span><i></i></div>
-            <div style="--level:68%"><span>Contacted</span><i></i></div>
-            <div style="--level:31%"><span>Opportunities</span><i></i></div>
-            <div style="--level:12%"><span>Closed</span><i></i></div>
-          </div>
-          <div class="hero-panel-bottom">
-            <div>
-              <span>Output</span>
-              <b>Leak estimate and first fix</b>
-            </div>
-            <div>
-              <span>Built for</span>
-              <b>Operators spending on acquisition</b>
-            </div>
-          </div>
-        </aside>
       </div>
-    </section>
+      <button class="ok" data-action="next">OK <kbd>↵</kbd></button>
+    </div>
+  </section>
 
-    <section class="mri-console" id="mri-tool">
-      <div class="page tool-heading">
-        <span class="mri-kicker">Run the numbers</span>
-        <h2>Start with last month, not guesses.</h2>
-        <p>
-          The MRI turns your current spend, lead volume, speed-to-lead, conversion, and operating cost into a
-          monthly leak estimate. No library. No maze. One page, one readout.
-        </p>
+  <!-- ============ 02 · LEADS ============ -->
+  <section class="screen" data-i="2" data-step="q" data-key="leads">
+    <div class="inner">
+      <p class="qnum"><span class="arrow">→</span><b>02</b> · volume</p>
+      <h2 class="q">How many leads <span class="ital">last month?</span></h2>
+      <p class="helptext">Count anyone who filled a form, called, or hand-raised. Don't pre-qualify.</p>
+      <div class="field">
+        <label>Leads · per month</label>
+        <div class="input-row">
+          <input type="number" min="0" step="10" placeholder="412" data-input="leads">
+        </div>
+      </div>
+      <button class="ok" data-action="next">OK <kbd>↵</kbd></button>
+    </div>
+  </section>
+
+  <!-- ============ 03 · DEAL VALUE ============ -->
+  <section class="screen" data-i="3" data-step="q" data-key="deal">
+    <div class="inner">
+      <p class="qnum"><span class="arrow">→</span><b>03</b> · deal · value</p>
+      <h2 class="q">Average deal value? <span class="ital">First-year revenue.</span></h2>
+      <p class="helptext">If it's a recurring product, use Year 1 contract value — not LTV.</p>
+      <div class="field">
+        <label>USD · first year</label>
+        <div class="input-row">
+          <span class="prefix">$</span>
+          <input type="number" min="0" step="100" placeholder="6,500" data-input="deal">
+        </div>
+      </div>
+      <button class="ok" data-action="next">OK <kbd>↵</kbd></button>
+    </div>
+  </section>
+
+  <!-- ============ 04 · VENDOR COST ============ -->
+  <section class="screen" data-i="4" data-step="q" data-key="vendor">
+    <div class="inner">
+      <p class="qnum"><span class="arrow">→</span><b>04</b> · drag</p>
+      <h2 class="q">Agency &amp; vendor cost? <span class="ital">Per month.</span></h2>
+      <p class="helptext">Retainers, tooling layers, freelancers attached to growth. The ledger items, not the politics.</p>
+      <div class="field">
+        <label>USD · per month</label>
+        <div class="input-row">
+          <span class="prefix">$</span>
+          <input type="number" min="0" step="100" placeholder="8,000" data-input="vendor">
+        </div>
+      </div>
+      <button class="ok" data-action="next">OK <kbd>↵</kbd></button>
+    </div>
+  </section>
+
+  <!-- ============ 05 · RESPONSE ============ -->
+  <section class="screen" data-i="5" data-step="q" data-key="responseHrs">
+    <div class="inner">
+      <p class="qnum"><span class="arrow">→</span><b>05</b> · response</p>
+      <h2 class="q">How fast does a new lead <span class="ital">get a human reply?</span></h2>
+      <p class="helptext">Median, not best-case. Including weekends.</p>
+      <div class="slider-field">
+        <span class="label">Lead · response · time</span>
+        <div class="value-row">
+          <span class="value" data-display="responseHrs">8</span>
+          <span class="unit">hours</span>
+        </div>
+        <input type="range" min="0" max="72" step="1" value="8" data-slider="responseHrs">
+        <div class="ticks"><span>&lt; 5 min</span><span>1 hr</span><span>8 hr</span><span>24 hr</span><span>72 hr+</span></div>
+        <p class="anno" data-anno="responseHrs">A reply in &lt; 1 hour is worth roughly 9× the same reply at 24 hours.</p>
+      </div>
+      <button class="ok" data-action="next">OK <kbd>↵</kbd></button>
+    </div>
+  </section>
+
+  <!-- ============ 06 · LEAD → OPP ============ -->
+  <section class="screen" data-i="6" data-step="q" data-key="leadToOpp">
+    <div class="inner">
+      <p class="qnum"><span class="arrow">→</span><b>06</b> · qualification</p>
+      <h2 class="q">What % of leads become <span class="ital">opportunities?</span></h2>
+      <p class="helptext">Of every 100 leads, how many actually qualify and enter the pipeline.</p>
+      <div class="slider-field">
+        <span class="label">Lead → opportunity</span>
+        <div class="value-row">
+          <span class="value" data-display="leadToOpp">18</span>
+          <span class="unit">%</span>
+        </div>
+        <input type="range" min="0" max="60" step="1" value="18" data-slider="leadToOpp">
+        <div class="ticks"><span>0%</span><span>15%</span><span>30%</span><span>45%</span><span>60%</span></div>
+        <p class="anno">Best-in-class operators land around 30%. Below 15% usually means handoff or qualification drag.</p>
+      </div>
+      <button class="ok" data-action="next">OK <kbd>↵</kbd></button>
+    </div>
+  </section>
+
+  <!-- ============ 07 · CLOSE ============ -->
+  <section class="screen" data-i="7" data-step="q" data-key="oppClose">
+    <div class="inner">
+      <p class="qnum"><span class="arrow">→</span><b>07</b> · close · rate</p>
+      <h2 class="q">Of opportunities, <span class="ital">how many close?</span></h2>
+      <p class="helptext">Trailing 90 days is honest. Quarter-best is not.</p>
+      <div class="slider-field">
+        <span class="label">Opportunity → won</span>
+        <div class="value-row">
+          <span class="value" data-display="oppClose">24</span>
+          <span class="unit">%</span>
+        </div>
+        <input type="range" min="0" max="80" step="1" value="24" data-slider="oppClose">
+        <div class="ticks"><span>0%</span><span>20%</span><span>40%</span><span>60%</span><span>80%</span></div>
+        <p class="anno">A close gap below 35% usually means weak conversation design — not bad sales.</p>
+      </div>
+      <button class="ok" data-action="next">OK <kbd>↵</kbd></button>
+    </div>
+  </section>
+
+  <!-- ============ 08 · INTERNAL HOURS ============ -->
+  <section class="screen" data-i="8" data-step="q" data-key="growthHrs">
+    <div class="inner">
+      <p class="qnum"><span class="arrow">→</span><b>08</b> · internal · drag</p>
+      <h2 class="q">Hours your team spends <span class="ital">on growth ops?</span></h2>
+      <p class="helptext">Reporting, lead routing, vendor management, paid-platform fiddling. Per month, total across people.</p>
+      <div class="slider-field">
+        <span class="label">Internal · hours / month</span>
+        <div class="value-row">
+          <span class="value" data-display="growthHrs">35</span>
+          <span class="unit">hrs</span>
+        </div>
+        <input type="range" min="0" max="200" step="5" value="35" data-slider="growthHrs">
+        <div class="ticks"><span>0</span><span>50</span><span>100</span><span>150</span><span>200</span></div>
+      </div>
+      <button class="ok" data-action="next">OK <kbd>↵</kbd></button>
+    </div>
+  </section>
+
+  <!-- ============ 09 · HOURLY ============ -->
+  <section class="screen" data-i="9" data-step="q" data-key="hourly">
+    <div class="inner">
+      <p class="qnum"><span class="arrow">→</span><b>09</b> · loaded · cost</p>
+      <h2 class="q">Blended internal hourly cost? <span class="ital">Loaded.</span></h2>
+      <p class="helptext">Salary + benefits + overhead, divided by hours. A ballpark is fine — typical knowledge work runs $80–$150.</p>
+      <div class="field">
+        <label>USD · per hour</label>
+        <div class="input-row">
+          <span class="prefix">$</span>
+          <input type="number" min="0" step="5" placeholder="120" data-input="hourly">
+          <span class="suffix">/ hr</span>
+        </div>
+      </div>
+      <button class="ok" data-action="next">See readout →</button>
+    </div>
+  </section>
+
+  <!-- ============ 10 · REVEAL ============ -->
+  <section class="screen reveal" data-i="10" data-step="reveal">
+    <div class="inner">
+      <div class="reveal-head">
+        <span class="stamp on-ink">Operator · readout <span class="ts-inline">— estimated · last month</span></span>
       </div>
 
-      <div class="page mri-grid">
-        <form class="mri-inputs" data-mri-form>
-          <div class="mri-kicker">Inputs</div>
-          <h3>Start with three numbers.</h3>
-          <p class="mri-dek">Spend, lead volume, and average deal value are enough for a 60-second pressure read. The full MRI tightens the diagnosis.</p>
-
-          <div class="express-scan">
-            <div>
-              <span>60-second express</span>
-              <p>Quick estimate from the first three inputs.</p>
-            </div>
-            <div>
-              <span>Express leak</span>
-              <strong data-mri-result="expressLeak">$0</strong>
-            </div>
-          </div>
-
-          <div class="control-grid control-grid--express">
-            <label class="control">
-              <span>Monthly ad spend</span>
-              <input data-mri-input="adSpend" type="text" inputmode="numeric" pattern="[0-9]*" value="28000" />
-            </label>
-            <label class="control">
-              <span>Monthly leads</span>
-              <input data-mri-input="monthlyLeads" type="text" inputmode="numeric" pattern="[0-9]*" value="90" />
-            </label>
-            <label class="control">
-              <span>Average deal value</span>
-              <input data-mri-input="avgDeal" type="text" inputmode="numeric" pattern="[0-9]*" value="18000" />
-            </label>
-          </div>
-
-          <div class="full-scan-head">
-            <span>Full MRI inputs</span>
-            <b>Sharper diagnosis, same readout.</b>
-          </div>
-
-          <div class="control-grid control-grid--single">
-            <label class="control">
-              <span>Agency / vendor cost</span>
-              <input data-mri-input="agencyCost" type="text" inputmode="numeric" pattern="[0-9]*" value="9000" />
-            </label>
-          </div>
-
-          <div class="range-stack">
-            <label class="range-control">
-              <span><b>Lead response time</b><output data-mri-output="responseHours">8 hrs</output></span>
-              <input data-mri-input="responseHours" type="range" min="0.08" max="48" step="0.25" value="8" />
-            </label>
-            <label class="range-control">
-              <span><b>Lead to opportunity</b><output data-mri-output="leadToOpp">18%</output></span>
-              <input data-mri-input="leadToOpp" type="range" min="3" max="55" step="1" value="18" />
-            </label>
-            <label class="range-control">
-              <span><b>Opportunity close rate</b><output data-mri-output="closeRate">24%</output></span>
-              <input data-mri-input="closeRate" type="range" min="3" max="60" step="1" value="24" />
-            </label>
-            <label class="range-control">
-              <span><b>Internal growth hours / month</b><output data-mri-output="internalHours">35 hrs</output></span>
-              <input data-mri-input="internalHours" type="range" min="0" max="160" step="5" value="35" />
-            </label>
-          </div>
-
-          <label class="control control-rate">
-            <span>Blended internal hourly cost</span>
-            <input data-mri-input="hourlyCost" type="text" inputmode="numeric" pattern="[0-9]*" value="145" />
-          </label>
-        </form>
-
-        <aside class="mri-readout" aria-live="polite">
-          <div class="readout-top">
-            <div>
-              <span class="readout-label">Estimated monthly leak</span>
-              <strong data-mri-result="totalLeak">$0</strong>
-            </div>
-            <div class="score-dial">
-              <span data-mri-result="score">0</span>
-              <small>score</small>
-            </div>
-          </div>
-
-          <div class="diagnosis-strip">
-            <span data-mri-result="severity">Scanning</span>
-            <b data-mri-result="biggestLeak">Calculating</b>
-          </div>
-
-          <div class="funnel-panel">
-            <div class="panel-title">Demand path</div>
-            <div class="funnel-stage">
-              <div><span>Leads</span><b data-mri-funnel="leads">0</b></div>
-              <i data-mri-bar="leads"></i>
-            </div>
-            <div class="funnel-stage">
-              <div><span>Contacted</span><b data-mri-funnel="contacted">0</b></div>
-              <i data-mri-bar="contacted"></i>
-            </div>
-            <div class="funnel-stage">
-              <div><span>Opportunities</span><b data-mri-funnel="opportunities">0</b></div>
-              <i data-mri-bar="opportunities"></i>
-            </div>
-            <div class="funnel-stage">
-              <div><span>Closed</span><b data-mri-funnel="closed">0</b></div>
-              <i data-mri-bar="closed"></i>
-            </div>
-          </div>
-
-          <div class="leak-stack">
-            <div class="leak-row" data-leak-row="response">
-              <span>Response decay</span>
-              <i><b data-leak-bar="response"></b></i>
-              <strong data-leak-value="response">$0</strong>
-            </div>
-            <div class="leak-row" data-leak-row="conversion">
-              <span>Conversion gap</span>
-              <i><b data-leak-bar="conversion"></b></i>
-              <strong data-leak-value="conversion">$0</strong>
-            </div>
-            <div class="leak-row" data-leak-row="closing">
-              <span>Sales handoff</span>
-              <i><b data-leak-bar="closing"></b></i>
-              <strong data-leak-value="closing">$0</strong>
-            </div>
-            <div class="leak-row" data-leak-row="drag">
-              <span>Operating drag</span>
-              <i><b data-leak-bar="drag"></b></i>
-              <strong data-leak-value="drag">$0</strong>
-            </div>
-          </div>
-
-          <div class="operator-note">
-            <span>Operator diagnosis</span>
-            <p data-mri-result="diagnosis">Enter the numbers and the readout will settle here.</p>
-          </div>
-
-          <form class="readout-gate" data-mri-gate>
-            <div>
-              <span>Get the operator readout</span>
-              <p>No newsletter trap. It records the readout and opens the next move.</p>
-            </div>
-            <div class="gate-fields">
-              <input name="name" autocomplete="name" placeholder="Name" required />
-              <input name="email" type="email" autocomplete="email" placeholder="Work email" required />
-              <input name="company" autocomplete="organization" placeholder="Company" />
-            </div>
-            <button type="submit">Unlock readout</button>
-          </form>
-
-          <div class="unlocked-readout" data-mri-unlocked hidden>
-            <div class="panel-title">First fix</div>
-            <ul data-mri-actions></ul>
-            <div class="readout-actions">
-              <a href="/diagnostic">Book the diagnostic</a>
-              <button type="button" data-mri-copy>Copy readout</button>
-            </div>
-          </div>
-        </aside>
-      </div>
-    </section>
-
-    <section class="mri-method">
-      <div class="page method-grid">
+      <div class="leak-hero">
         <div>
-          <span class="mri-kicker">What the MRI reads</span>
-          <h2>The expensive leak is usually between the click and the close.</h2>
+          <span class="r-label">Monthly · leak</span>
+          <div class="amount" data-out="total">$0<span class="unit">/ mo</span></div>
+          <div class="annual"><span>Annualised</span><b data-out="annual">$0</b></div>
         </div>
-        <div class="method-list">
-          <div><b>01</b><span>Speed-to-lead decay turns paid demand into stale demand.</span></div>
-          <div><b>02</b><span>Weak qualification makes the ad platform optimize for the wrong signal.</span></div>
-          <div><b>03</b><span>Manual reporting, handoffs, and vendor overhead tax every lead before revenue sees it.</span></div>
-        </div>
-      </div>
-    </section>
-
-    <section class="mri-next">
-      <div class="page next-grid">
-        <div>
-          <span class="mri-kicker">Next move</span>
-          <h2>If the MRI shows a leak, turn it into a fix list.</h2>
-        </div>
-        <div class="next-copy">
-          <p>
-            The diagnostic maps the biggest leak into a practical operating plan: what to automate, what to
-            tighten, what to stop funding, and what should happen next week.
-          </p>
-          <a href="/diagnostic">Book diagnostic</a>
+        <div class="score-col">
+          <span class="r-label">Operating · score</span>
+          <div class="score" data-out="score">0<em>/ 100</em></div>
+          <div class="score-bar"><div class="fill" data-out="scoreBar"></div></div>
+          <p class="verdict" data-out="verdict">Run the numbers above to see your readout.</p>
         </div>
       </div>
-    </section>
-  </main>
-</Base>
 
-<script>
-  type PostHogWindow = Window & {
-    posthog?: {
-      identify?: (id: string, properties?: Record<string, unknown>) => void;
-      capture?: (event: string, properties?: Record<string, unknown>) => void;
-    };
-  };
+      <div class="funnel">
+        <div class="cell"><span class="key">Leads</span><span class="val" data-out="fLeads">0</span></div>
+        <span class="arr">→</span>
+        <div class="cell"><span class="key">Contacted</span><span class="val" data-out="fContacted">0</span></div>
+        <span class="arr">→</span>
+        <div class="cell"><span class="key">Opps</span><span class="val" data-out="fOpps">0</span></div>
+        <span class="arr">→</span>
+        <div class="cell"><span class="key">Closed</span><span class="val" data-out="fClosed">0</span></div>
+      </div>
 
-  const money = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 0,
+      <div class="leaks-grid">
+        <div class="leak">
+          <span class="key">Response · decay</span>
+          <div class="val" data-out="leakResponse">$0<em>/ mo</em></div>
+          <p class="note" data-out="noteResponse">Slow first reply turns paid demand into stale demand.</p>
+        </div>
+        <div class="leak">
+          <span class="key">Conversion · gap</span>
+          <div class="val" data-out="leakConversion">$0<em>/ mo</em></div>
+          <p class="note" data-out="noteConversion">Close rate sits below the operator benchmark.</p>
+        </div>
+        <div class="leak">
+          <span class="key">Sales · handoff</span>
+          <div class="val" data-out="leakHandoff">$0<em>/ mo</em></div>
+          <p class="note" data-out="noteHandoff">Leads don't qualify at the rate they should — handoff or scoring is leaking.</p>
+        </div>
+        <div class="leak">
+          <span class="key">Operating · drag</span>
+          <div class="val" data-out="leakDrag">$0<em>/ mo</em></div>
+          <p class="note">Vendor cost plus internal hours on growth ops — overhead the revenue line never sees.</p>
+        </div>
+      </div>
+
+      <div class="cta-bar">
+        <div class="copy">
+          <h3>Turn the leak into a <span class="ital">fix list.</span></h3>
+        </div>
+        <div class="actions">
+          <a class="book" href="https://rivett.tech/diagnostic">Book diagnostic →</a>
+          <div class="small-actions">
+            <button data-action="copy">Copy readout</button>
+            <button data-action="restart">Run again</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+    <script is:inline>
+(function(){
+  const screens = [...document.querySelectorAll('.screen')];
+  const total = screens.length;
+  const fill = document.getElementById('fill');
+  const cur = document.getElementById('cur');
+  const tot = document.getElementById('tot');
+  const prevBtn = document.getElementById('prev');
+  const nextBtn = document.getElementById('next');
+
+  tot.textContent = String(total).padStart(2, '0');
+
+  // ---------- state ----------
+  const STATE_KEY = 'rivett-mri-state';
+  const POS_KEY = 'rivett-mri-pos';
+  const defaults = { spend: 25000, leads: 412, deal: 6500, vendor: 8000, responseHrs: 8, leadToOpp: 18, oppClose: 24, growthHrs: 35, hourly: 120 };
+  let state = { ...defaults };
+  try {
+    const saved = JSON.parse(localStorage.getItem(STATE_KEY) || 'null');
+    if (saved && typeof saved === 'object') state = { ...defaults, ...saved };
+  } catch(e){}
+  let i = 0;
+  try {
+    const p = parseInt(localStorage.getItem(POS_KEY) || '0', 10);
+    if (!isNaN(p) && p >= 0 && p < total) i = p;
+  } catch(e){}
+
+  // hydrate inputs
+  document.querySelectorAll('[data-input]').forEach(el => {
+    const k = el.dataset.input;
+    if (state[k] !== undefined && state[k] !== defaults[k]) el.value = state[k];
   });
-  const whole = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
-
-  const inputs = Array.from(document.querySelectorAll<HTMLInputElement>('[data-mri-input]'));
-  const gate = document.querySelector<HTMLFormElement>('[data-mri-gate]');
-  const unlocked = document.querySelector<HTMLElement>('[data-mri-unlocked]');
-  const actionsList = document.querySelector<HTMLUListElement>('[data-mri-actions]');
-  const copyButton = document.querySelector<HTMLButtonElement>('[data-mri-copy]');
-  let currentReadout = '';
-  let currentActions: string[] = [];
-  let currentMetrics: Record<string, number | string> = {};
-
-  function valueOf(name: string) {
-    const input = document.querySelector<HTMLInputElement>(`[data-mri-input="${name}"]`);
-    return Number(input?.value ?? 0);
-  }
-
-  function setText(selector: string, value: string) {
-    const node = document.querySelector<HTMLElement>(selector);
-    if (node) node.textContent = value;
-  }
-
-  function setOutput(name: string, value: string) {
-    setText(`[data-mri-output="${name}"]`, value);
-  }
-
-  function clamp(value: number, min: number, max: number) {
-    return Math.min(max, Math.max(min, value));
-  }
-
-  function syncRangeFill(input: HTMLInputElement) {
-    if (input.type !== 'range') return;
-    const min = Number(input.min || 0);
-    const max = Number(input.max || 100);
-    const value = Number(input.value || min);
-    const percentage = max === min ? 0 : ((value - min) / (max - min)) * 100;
-    input.style.setProperty('--pct', `${clamp(percentage, 0, 100)}%`);
-  }
-
-  function contactRate(hours: number) {
-    const h = Math.max(0.08, hours);
-    const decay = Math.min(0.52, (Math.log1p(h) / Math.log1p(48)) * 0.52);
-    return Math.max(0.38, 0.94 - decay);
-  }
-
-  function diagnosisFor(key: string) {
-    const map: Record<string, { text: string; actions: string[] }> = {
-      response: {
-        text: 'You do not have a traffic problem first. You have a speed-to-lead problem. Fix the handoff before increasing spend.',
-        actions: [
-          'Route new leads into one owner within 2 minutes.',
-          'Add enrichment before the first reply, not after the sales call.',
-          'Write response-time alerts into the weekly growth rhythm.',
-        ],
-      },
-      conversion: {
-        text: 'The middle of the funnel is absorbing demand. The platform is buying leads the revenue system is not converting.',
-        actions: [
-          'Separate good leads from cheap leads in the CRM.',
-          'Feed closed-won and disqualified reasons back to paid channels.',
-          'Rebuild landing page and follow-up copy around buyer intent.',
-        ],
-      },
-      closing: {
-        text: 'Demand is arriving, but the sales handoff is soft. The lost value is after qualification, not before it.',
-        actions: [
-          'Give sales the source, page, offer, and research context on every lead.',
-          'Turn reply handling and follow-up into a visible queue.',
-          'Review lost opportunities weekly for message and offer patterns.',
-        ],
-      },
-      drag: {
-        text: 'Your hidden cost is the drag around the work. Reporting, vendors, and manual checks are taxing every lead.',
-        actions: [
-          'Kill reports nobody uses for a decision.',
-          'Automate monitoring, enrichment, and first-draft reporting.',
-          'Move agency and internal work into one operating dashboard.',
-        ],
-      },
-    };
-    return map[key] ?? map.response;
-  }
-
-  function updateBars(values: Record<string, number>) {
-    const max = Math.max(...Object.values(values), 1);
-    Object.entries(values).forEach(([key, value]) => {
-      const bar = document.querySelector<HTMLElement>(`[data-leak-bar="${key}"]`);
-      const row = document.querySelector<HTMLElement>(`[data-leak-row="${key}"]`);
-      const label = document.querySelector<HTMLElement>(`[data-leak-value="${key}"]`);
-      if (bar) bar.style.width = `${clamp((value / max) * 100, 4, 100)}%`;
-      if (label) label.textContent = money.format(value);
-      row?.classList.remove('is-largest');
-    });
-  }
-
-  function updateFunnel(leads: number, contacted: number, opportunities: number, closed: number) {
-    const stages = { leads, contacted, opportunities, closed };
-    Object.entries(stages).forEach(([key, value]) => {
-      setText(`[data-mri-funnel="${key}"]`, whole.format(value));
-      const bar = document.querySelector<HTMLElement>(`[data-mri-bar="${key}"]`);
-      if (bar) bar.style.setProperty('--w', `${clamp((value / Math.max(leads, 1)) * 100, 3, 100)}%`);
-    });
-  }
-
-  function calculate() {
-    const adSpend = valueOf('adSpend');
-    const monthlyLeads = Math.max(1, valueOf('monthlyLeads'));
-    const avgDeal = valueOf('avgDeal');
-    const agencyCost = valueOf('agencyCost');
-    const responseHours = valueOf('responseHours');
-    const leadToOpp = valueOf('leadToOpp');
-    const closeRate = valueOf('closeRate');
-    const internalHours = valueOf('internalHours');
-    const hourlyCost = valueOf('hourlyCost');
-
-    setOutput('responseHours', responseHours < 1 ? `${Math.round(responseHours * 60)} min` : `${responseHours.toFixed(responseHours % 1 ? 1 : 0)} hrs`);
-    setOutput('leadToOpp', `${leadToOpp}%`);
-    setOutput('closeRate', `${closeRate}%`);
-    setOutput('internalHours', `${internalHours} hrs`);
-
-    const targetContactRate = contactRate(0.25);
-    const actualContactRate = contactRate(responseHours);
-    const contacted = monthlyLeads * actualContactRate;
-    const opportunities = contacted * (leadToOpp / 100);
-    const closed = opportunities * (closeRate / 100);
-    const manualCost = agencyCost + internalHours * hourlyCost;
-
-    const responseLeak = Math.max(0, monthlyLeads * (targetContactRate - actualContactRate)) * (leadToOpp / 100) * (closeRate / 100) * avgDeal;
-    const conversionLeak = contacted * (Math.max(0, 28 - leadToOpp) / 100) * (closeRate / 100) * avgDeal;
-    const closingLeak = opportunities * (Math.max(0, 27 - closeRate) / 100) * avgDeal * 0.55;
-    const dragLeak = Math.max(0, manualCost * 0.16 + adSpend * 0.045 + responseHours * 80);
-    const expressLeak = Math.max(0, adSpend * 0.22 + monthlyLeads * avgDeal * 0.035);
-    const leaks = { response: responseLeak, conversion: conversionLeak, closing: closingLeak, drag: dragLeak };
-    const largest = Object.entries(leaks).sort((a, b) => b[1] - a[1])[0] ?? ['response', 0];
-    const largestKey = largest[0];
-    const totalLeak = Object.values(leaks).reduce((sum, value) => sum + value, 0);
-    const score = Math.round(clamp(
-      100
-        - Math.min(45, (totalLeak / Math.max(adSpend + manualCost + avgDeal, 1)) * 40)
-        - Math.min(20, responseHours * 0.65)
-        - Math.max(0, 28 - leadToOpp) * 0.9
-        - Math.max(0, 27 - closeRate) * 0.75,
-      8,
-      96,
-    ));
-    const severity = score >= 76 ? 'Controlled' : score >= 56 ? 'Leaking' : score >= 36 ? 'Critical' : 'Bleeding';
-    const labelMap: Record<string, string> = {
-      response: 'Biggest leak: response decay',
-      conversion: 'Biggest leak: conversion gap',
-      closing: 'Biggest leak: sales handoff',
-      drag: 'Biggest leak: operating drag',
-    };
-    const diagnosis = diagnosisFor(largestKey);
-
-    setText('[data-mri-result="expressLeak"]', money.format(expressLeak));
-    setText('[data-mri-result="totalLeak"]', money.format(totalLeak));
-    setText('[data-mri-result="score"]', String(score));
-    setText('[data-mri-result="severity"]', severity);
-    setText('[data-mri-result="biggestLeak"]', labelMap[largestKey] ?? labelMap.response);
-    setText('[data-mri-result="diagnosis"]', diagnosis.text);
-    updateFunnel(monthlyLeads, contacted, opportunities, closed);
-    updateBars(leaks);
-    document.querySelector<HTMLElement>(`[data-leak-row="${largestKey}"]`)?.classList.add('is-largest');
-
-    currentActions = diagnosis.actions;
-    currentMetrics = {
-      adSpend,
-      monthlyLeads,
-      avgDeal,
-      agencyCost,
-      responseHours,
-      leadToOpp,
-      closeRate,
-      internalHours,
-      hourlyCost,
-      totalLeak: Math.round(totalLeak),
-      score,
-      severity,
-      biggestLeak: largestKey,
-    };
-    currentReadout = [
-      `Revenue Leak MRI`,
-      `Estimated monthly leak: ${money.format(totalLeak)}`,
-      `Score: ${score}/100 (${severity})`,
-      `${labelMap[largestKey] ?? labelMap.response}`,
-      `Diagnosis: ${diagnosis.text}`,
-      `First fixes: ${diagnosis.actions.join(' ')}`,
-    ].join('\n');
-
-    if (unlocked && !unlocked.hidden) renderActions();
-  }
-
-  function renderActions() {
-    if (!actionsList) return;
-    actionsList.innerHTML = '';
-    currentActions.forEach((action) => {
-      const item = document.createElement('li');
-      item.textContent = action;
-      actionsList.append(item);
-    });
-  }
-
-  inputs.forEach((input) => {
-    const update = () => {
-      syncRangeFill(input);
-      calculate();
-    };
-    input.addEventListener('input', update);
-    input.addEventListener('change', update);
-    syncRangeFill(input);
-  });
-  calculate();
-
-  gate?.addEventListener('submit', (event) => {
-    event.preventDefault();
-    const data = new FormData(gate);
-    const name = String(data.get('name') ?? '').trim();
-    const email = String(data.get('email') ?? '').trim().toLowerCase();
-    const company = String(data.get('company') ?? '').trim();
-    const w = window as PostHogWindow;
-
-    w.posthog?.identify?.(email, {
-      email,
-      name,
-      company,
-      revenue_mri_score: currentMetrics.score,
-      revenue_mri_total_leak: currentMetrics.totalLeak,
-      revenue_mri_biggest_leak: currentMetrics.biggestLeak,
-    });
-    w.posthog?.capture?.('revenue_mri_readout_unlocked', {
-      company,
-      ...currentMetrics,
-    });
-
-    gate.hidden = true;
-    if (unlocked) unlocked.hidden = false;
-    renderActions();
+  document.querySelectorAll('[data-slider]').forEach(el => {
+    const k = el.dataset.slider;
+    el.value = state[k];
+    const display = document.querySelector(`[data-display="${k}"]`);
+    if (display) display.textContent = state[k];
   });
 
-  copyButton?.addEventListener('click', async () => {
-    await navigator.clipboard.writeText(currentReadout);
-    copyButton.textContent = 'Copied';
-    window.setTimeout(() => {
-      copyButton.textContent = 'Copy readout';
-    }, 1400);
-  });
-</script>
+  // ---------- math ----------
+  function compute() {
+    const s = state;
+    const closed = s.leads * (s.leadToOpp/100) * (s.oppClose/100);
+    const currentRev = closed * s.deal;
 
-<style is:global>
-  .mri-page{background:var(--paper);color:var(--ink)}
-  .mri-page *{letter-spacing:0}
-  .mri-hero{padding:74px 0 48px;border-bottom:1px solid var(--line);background:var(--paper)}
-  .mri-hero-grid{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(360px,0.78fr);gap:72px;align-items:center}
-  .mri-kicker{font-family:var(--mono);font-size:12px;text-transform:uppercase;color:var(--accent-deep);display:inline-flex;align-items:center;gap:12px}
-  .mri-kicker::before{content:'';width:8px;height:8px;background:var(--accent);border-radius:50%;flex:0 0 auto}
-  .mri-hero-copy h1{font-size:clamp(52px,4.8rem,82px);line-height:0.98;margin:24px 0 0;max-width:860px}
-  .mri-hero-dek{font-size:23px;line-height:1.38;color:var(--ink-dim);margin:26px 0 0;max-width:720px}
-  .mri-hero-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:34px}
-  .primary-action,.secondary-action{min-height:48px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--ink);padding:14px 18px;font-family:var(--mono);font-size:12px;text-transform:uppercase;text-decoration:none}
-  .primary-action{background:var(--ink);color:var(--paper)}
-  .secondary-action{background:transparent;color:var(--ink)}
-  .mri-hero-panel{background:var(--ink);color:var(--paper);padding:28px;min-height:470px;display:grid;align-content:space-between;gap:28px}
-  .hero-panel-top{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;border-bottom:1px solid rgba(255,255,255,0.16);padding-bottom:22px}
-  .hero-panel-top span,.hero-panel-bottom span{font-family:var(--mono);font-size:11px;text-transform:uppercase;color:rgba(255,255,255,0.58)}
-  .hero-panel-top b{font-size:30px;line-height:1;text-align:right;max-width:190px}
-  .hero-scan{display:grid;gap:18px}
-  .hero-scan div{display:grid;grid-template-columns:116px 1fr;gap:16px;align-items:center}
-  .hero-scan span{font-family:var(--mono);font-size:12px;text-transform:uppercase;color:rgba(255,255,255,0.58)}
-  .hero-scan i{height:18px;background:rgba(255,255,255,0.12);display:block;position:relative;overflow:hidden}
-  .hero-scan i::before{content:'';position:absolute;inset:0 auto 0 0;width:var(--level);background:var(--accent)}
-  .hero-panel-bottom{display:grid;grid-template-columns:1fr 1fr;gap:18px;border-top:1px solid rgba(255,255,255,0.16);padding-top:22px}
-  .hero-panel-bottom b{display:block;font-size:18px;line-height:1.22;margin-top:9px;color:rgba(255,255,255,0.88)}
-  .mri-console{padding:70px 0 90px}
-  .tool-heading{display:grid;grid-template-columns:minmax(280px,0.82fr) minmax(0,1.18fr);gap:48px;align-items:end;margin-bottom:30px}
-  .tool-heading h2{font-size:clamp(38px,3.6rem,58px);line-height:1;margin:18px 0 0;max-width:640px}
-  .tool-heading p{font-size:19px;line-height:1.5;color:var(--ink-dim);margin:0;max-width:720px}
-  .mri-grid{display:grid;grid-template-columns:minmax(340px,0.78fr) minmax(520px,1.22fr);gap:28px;align-items:stretch}
-  .mri-inputs{border:1px solid var(--ink);background:var(--paper-2);padding:34px;min-height:720px}
-  .mri-inputs h3{font-size:clamp(34px,3.25rem,52px);line-height:1;margin:22px 0 0;max-width:620px}
-  .mri-dek{font-size:19px;line-height:1.5;color:var(--ink-dim);margin:20px 0 0;max-width:520px}
-  .express-scan{margin-top:28px;border:1px solid var(--ink);background:var(--sage);padding:18px;display:grid;grid-template-columns:1fr auto;gap:24px;align-items:end}
-  .express-scan span,.full-scan-head span{font-family:var(--mono);font-size:11px;text-transform:uppercase;color:var(--accent-deep)}
-  .express-scan p{font-size:15px;line-height:1.4;color:var(--ink-dim);margin:7px 0 0;max-width:300px}
-  .express-scan strong{display:block;font-size:36px;line-height:0.95;letter-spacing:-0.03em;color:var(--ink);margin-top:8px;text-align:right}
-  .control-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:34px}
-  .control-grid--express{grid-template-columns:repeat(3,1fr)}
-  .control-grid--single{grid-template-columns:1fr;margin-top:16px}
-  .full-scan-head{margin-top:30px;padding-top:22px;border-top:1px solid var(--line-strong);display:flex;justify-content:space-between;gap:18px;align-items:baseline}
-  .full-scan-head b{font-family:var(--grotesk);font-size:14px;font-weight:500;color:var(--ink-dim)}
-  .control,.range-control{display:grid;gap:8px}
-  .control span,.range-control span:first-child{font-family:var(--mono);font-size:11px;text-transform:uppercase;color:var(--ink-faint)}
-  .control input{width:100%;border:1px solid var(--line-strong);background:var(--paper);color:var(--ink);font:inherit;font-size:18px;padding:13px 14px;border-radius:0}
-  .control input:focus{outline:2px solid var(--accent);outline-offset:2px}
-  .range-stack{display:grid;gap:22px;margin-top:28px;padding-top:28px;border-top:1px solid var(--line-strong)}
-  .range-control span:first-child{display:flex;justify-content:space-between;gap:16px;align-items:baseline}
-  .range-control b{font-weight:400;color:var(--ink-faint)}
-  .range-control output{font-family:var(--grotesk);font-size:18px;font-weight:700;color:var(--ink);white-space:nowrap}
-  .range-control input[type="range"]{-webkit-appearance:none;appearance:none;width:100%;height:44px;margin:0;background:transparent;cursor:pointer;touch-action:pan-y}
-  .range-control input[type="range"]:focus{outline:none}
-  .range-control input[type="range"]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-  .range-control input[type="range"]::-webkit-slider-runnable-track{height:8px;border:1px solid var(--line-strong);background:linear-gradient(to right,var(--accent-deep) 0 var(--pct,0%),rgba(14,26,44,0.16) var(--pct,0%) 100%)}
-  .range-control input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:30px;height:30px;margin-top:-12px;border-radius:50%;background:var(--paper);border:6px solid var(--accent-deep);box-shadow:0 0 0 1px rgba(14,26,44,0.24)}
-  .range-control input[type="range"]::-moz-range-track{height:8px;border:1px solid var(--line-strong);background:rgba(14,26,44,0.16)}
-  .range-control input[type="range"]::-moz-range-progress{height:8px;background:var(--accent-deep)}
-  .range-control input[type="range"]::-moz-range-thumb{width:30px;height:30px;border-radius:50%;background:var(--paper);border:6px solid var(--accent-deep);box-shadow:0 0 0 1px rgba(14,26,44,0.24)}
-  .control-rate{margin-top:26px}
-  .mri-readout{background:var(--ink);color:var(--paper);padding:34px;display:grid;grid-template-rows:auto auto auto auto auto auto;gap:22px;min-height:720px}
-  .readout-top{display:grid;grid-template-columns:1fr 122px;gap:24px;align-items:start;border-bottom:1px solid rgba(255,255,255,0.16);padding-bottom:24px}
-  .readout-label,.operator-note span,.readout-gate span,.panel-title{font-family:var(--mono);font-size:11px;text-transform:uppercase;color:rgba(255,255,255,0.58)}
-  .readout-top strong{display:block;font-size:clamp(58px,5.7rem,92px);line-height:0.9;margin-top:16px;color:var(--paper)}
-  .score-dial{aspect-ratio:1;border:1px solid rgba(255,255,255,0.34);display:grid;place-items:center;text-align:center}
-  .score-dial span{font-size:46px;font-weight:700;line-height:0.9}
-  .score-dial small{display:block;font-family:var(--mono);font-size:10px;text-transform:uppercase;color:rgba(255,255,255,0.55);margin-top:4px}
-  .diagnosis-strip{display:flex;justify-content:space-between;gap:20px;align-items:center;background:rgba(143,191,63,0.12);border:1px solid rgba(143,191,63,0.36);padding:16px 18px}
-  .diagnosis-strip span{font-family:var(--serif);font-style:italic;font-size:28px;color:var(--accent)}
-  .diagnosis-strip b{font-family:var(--mono);font-size:11px;text-transform:uppercase;color:var(--paper);font-weight:500;text-align:right}
-  .funnel-panel{display:grid;gap:14px}
-  .funnel-stage{display:grid;grid-template-columns:160px 1fr;gap:16px;align-items:center}
-  .funnel-stage div{display:flex;justify-content:space-between;gap:12px;align-items:baseline}
-  .funnel-stage span{font-family:var(--mono);font-size:10px;text-transform:uppercase;color:rgba(255,255,255,0.52)}
-  .funnel-stage b{font-size:20px}
-  .funnel-stage i{display:block;height:16px;background:rgba(255,255,255,0.11);position:relative;overflow:hidden}
-  .funnel-stage i::before{content:'';position:absolute;inset:0;width:var(--w,100%);background:var(--accent);transform-origin:left}
-  .leak-stack{display:grid;border-top:1px solid rgba(255,255,255,0.16)}
-  .leak-row{display:grid;grid-template-columns:150px minmax(120px,1fr) 92px;gap:16px;align-items:center;padding:13px 0;border-bottom:1px solid rgba(255,255,255,0.12)}
-  .leak-row span{font-family:var(--mono);font-size:10px;text-transform:uppercase;color:rgba(255,255,255,0.5)}
-  .leak-row i{height:10px;background:rgba(255,255,255,0.1);display:block}
-  .leak-row i b{height:100%;display:block;background:rgba(255,255,255,0.46);transition:width 180ms ease}
-  .leak-row strong{font-size:16px;text-align:right}
-  .leak-row.is-largest span,.leak-row.is-largest strong{color:var(--accent)}
-  .leak-row.is-largest i b{background:var(--accent)}
-  .operator-note{border-left:2px solid var(--accent);padding-left:18px}
-  .operator-note p{font-size:20px;line-height:1.42;color:rgba(255,255,255,0.84);margin:10px 0 0}
-  .readout-gate{border:1px solid rgba(255,255,255,0.24);padding:18px;display:grid;gap:14px}
-  .readout-gate[hidden]{display:none}
-  .readout-gate p{font-size:14px;line-height:1.45;color:rgba(255,255,255,0.6);margin:6px 0 0}
-  .gate-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-  .gate-fields input{min-width:0;border:1px solid rgba(255,255,255,0.24);background:rgba(255,255,255,0.08);color:var(--paper);font:inherit;font-size:16px;padding:12px;border-radius:0}
-  .gate-fields input::placeholder{color:rgba(255,255,255,0.45)}
-  .gate-fields input:last-child{grid-column:1/-1}
-  .readout-gate button,.readout-actions a,.readout-actions button{border:1px solid var(--accent);background:var(--accent);color:var(--ink);min-height:44px;padding:12px 14px;font-family:var(--mono);font-size:11px;text-transform:uppercase;cursor:pointer;text-align:center}
-  .unlocked-readout{border:1px solid rgba(143,191,63,0.45);padding:18px}
-  .unlocked-readout[hidden]{display:none}
-  .unlocked-readout ul{margin:16px 0 0;padding:0;list-style:none;display:grid;gap:12px}
-  .unlocked-readout li{font-size:17px;line-height:1.35;color:rgba(255,255,255,0.82);padding-left:22px;position:relative}
-  .unlocked-readout li::before{content:'';position:absolute;left:0;top:0.58em;width:8px;height:8px;background:var(--accent);border-radius:50%}
-  .readout-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
-  .readout-actions button{background:transparent;color:var(--paper);border-color:rgba(255,255,255,0.28)}
-  .mri-method{background:var(--paper-2);border-top:1px solid var(--line);padding:80px 0}
-  .method-grid,.next-grid{display:grid;grid-template-columns:0.9fr 1.1fr;gap:72px;align-items:start}
-  .mri-method h2,.mri-next h2{font-size:clamp(38px,3.9rem,62px);line-height:1;margin:22px 0 0;max-width:680px}
-  .method-list{border-top:2px solid var(--ink)}
-  .method-list div{display:grid;grid-template-columns:64px 1fr;gap:24px;padding:24px 0;border-bottom:1px solid var(--line)}
-  .method-list b{font-family:var(--mono);font-size:11px;color:var(--accent-deep)}
-  .method-list span{font-size:22px;line-height:1.25;color:var(--ink-dim)}
-  .mri-next{padding:78px 0;background:var(--ink);color:var(--paper)}
-  .mri-next .mri-kicker{color:var(--accent)}
-  .mri-next h2{color:var(--paper)}
-  .next-copy p{font-size:21px;line-height:1.45;color:rgba(255,255,255,0.78);margin:0;max-width:720px}
-  .next-copy a{display:inline-flex;align-items:center;justify-content:center;min-height:48px;margin-top:26px;border:1px solid var(--accent);background:var(--accent);color:var(--ink);padding:14px 18px;font-family:var(--mono);font-size:12px;text-transform:uppercase}
-  @media (max-width:1040px){
-    .mri-hero-grid,.tool-heading,.mri-grid,.method-grid,.next-grid{grid-template-columns:1fr}
-    .mri-hero-grid{gap:36px}
-    .mri-inputs,.mri-readout{min-height:auto}
-    .mri-hero-panel{min-height:390px}
-    .tool-heading{gap:20px}
+    // response decay: leads beyond 1hr lose conversion. ~3% per hour, capped at 55%.
+    const decayPct = Math.min(0.55, Math.max(0, (s.responseHrs - 1) * 0.03));
+    const leakResponse = currentRev * decayPct / (1 - decayPct || 1);
+    // simpler: estimate the closed deals you'd have at <1hr response, minus what you have
+    const idealClosed = s.leads * Math.min(0.6, (s.leadToOpp/100) * (1 + decayPct/(1-decayPct||1))) * (s.oppClose/100);
+    const responseLeak = Math.max(0, (idealClosed - closed) * s.deal);
+
+    // conversion gap: assume target oppClose 35%
+    const targetClose = 0.35;
+    const closeShortfall = Math.max(0, targetClose - s.oppClose/100);
+    const conversionLeak = s.leads * (s.leadToOpp/100) * closeShortfall * s.deal;
+
+    // sales handoff: assume target leadToOpp 30%
+    const targetLTO = 0.30;
+    const ltoShortfall = Math.max(0, targetLTO - s.leadToOpp/100);
+    const handoffLeak = s.leads * ltoShortfall * (s.oppClose/100) * s.deal;
+
+    // operating drag
+    const opDrag = (s.vendor || 0) + (s.growthHrs * s.hourly);
+
+    const totalLeak = responseLeak + conversionLeak + handoffLeak + opDrag;
+    const annualised = totalLeak * 12;
+
+    // score: 100 = no leak. drops with leak ratio vs (rev + leak)
+    const ratio = totalLeak / Math.max(1, currentRev + totalLeak);
+    const score = Math.max(0, Math.min(100, Math.round(100 - ratio * 100)));
+
+    // funnel
+    const fLeads = Math.round(s.leads);
+    const fContacted = Math.round(s.leads * Math.max(0.5, 1 - decayPct * 0.4));
+    const fOpps = Math.round(s.leads * s.leadToOpp/100);
+    const fClosed = Math.round(closed);
+
+    return {
+      leakResponse: responseLeak, leakConversion: conversionLeak, leakHandoff: handoffLeak, leakDrag: opDrag,
+      total: totalLeak, score, annualised,
+      fLeads, fContacted, fOpps, fClosed
+    };
   }
-  @media (max-width:700px){
-    .mri-hero{padding:28px 0 18px}
-    .mri-hero-grid{gap:24px}
-    .mri-hero-copy h1{font-size:40px;line-height:1;margin-top:18px}
-    .mri-hero-dek{font-size:18px;line-height:1.36;margin-top:18px}
-    .mri-hero-actions{margin-top:22px}
-    .mri-hero-panel{padding:18px;min-height:220px;gap:16px}
-    .hero-panel-top,.hero-panel-bottom{grid-template-columns:1fr}
-    .hero-panel-top{padding-bottom:14px}
-    .hero-panel-top{display:grid}
-    .hero-panel-top b{font-size:24px;text-align:left;max-width:none}
-    .hero-scan{gap:10px}
-    .hero-scan div{grid-template-columns:88px 1fr;gap:12px}
-    .hero-scan i{height:12px}
-    .hero-panel-bottom{grid-template-columns:1fr 1fr;padding-top:14px;gap:12px}
-    .hero-panel-bottom b{font-size:15px;margin-top:5px}
-    .mri-console{padding:48px 0 62px}
-    .mri-inputs,.mri-readout{padding:24px}
-    .mri-inputs h3,.tool-heading h2,.mri-method h2,.mri-next h2{font-size:38px}
-    .control-grid,.control-grid--express,.gate-fields{grid-template-columns:1fr}
-    .express-scan{grid-template-columns:1fr;align-items:start}
-    .express-scan strong{text-align:left;font-size:32px}
-    .full-scan-head{display:grid;gap:5px}
-    .control input{font-size:16px}
-    .range-control input[type="range"]{height:54px}
-    .range-control input[type="range"]::-webkit-slider-runnable-track{height:10px}
-    .range-control input[type="range"]::-webkit-slider-thumb{width:34px;height:34px;margin-top:-13px}
-    .range-control input[type="range"]::-moz-range-track,.range-control input[type="range"]::-moz-range-progress{height:10px}
-    .range-control input[type="range"]::-moz-range-thumb{width:34px;height:34px}
-    .readout-top{grid-template-columns:1fr}
-    .readout-top strong{font-size:58px}
-    .score-dial{width:118px}
-    .funnel-stage,.leak-row{grid-template-columns:1fr;gap:8px}
-    .leak-row strong{text-align:left}
-    .diagnosis-strip{align-items:flex-start;flex-direction:column}
-    .diagnosis-strip b{text-align:left}
-    .method-grid,.next-grid{gap:34px}
-    .method-list div{grid-template-columns:44px 1fr;gap:16px}
+
+  function fmtMoney(n) {
+    if (!isFinite(n) || n <= 0) return '$0';
+    if (n >= 1000000) return '$' + (n/1000000).toFixed(1).replace(/\.0$/,'') + 'M';
+    if (n >= 10000) return '$' + Math.round(n/1000) + 'k';
+    if (n >= 1000) return '$' + (n/1000).toFixed(1).replace(/\.0$/,'') + 'k';
+    return '$' + Math.round(n).toLocaleString();
   }
-  @media (max-width:430px){
-    .mri-hero-copy h1{font-size:38px}
-    .mri-hero-actions a{flex:1 1 145px}
-    .readout-top strong{font-size:50px}
-    .range-control span:first-child{align-items:flex-start;flex-direction:column;gap:6px}
+  function fmtMoneyFull(n) {
+    if (!isFinite(n) || n <= 0) return '$0';
+    return '$' + Math.round(n).toLocaleString();
   }
-</style>
+  function fmtNum(n) { return isFinite(n) ? Math.round(n).toLocaleString() : '0'; }
+
+  // count-up animation
+  function animateValue(el, from, to, fmt, dur=1200) {
+    const start = performance.now();
+    function step(t){
+      const p = Math.min(1, (t - start) / dur);
+      const eased = 1 - Math.pow(1 - p, 3); // easeOutCubic
+      const v = from + (to - from) * eased;
+      el.textContent = fmt(v);
+      if (p < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  function renderReveal() {
+    const r = compute();
+    const out = (k) => document.querySelector(`[data-out="${k}"]`);
+
+    // total
+    const totalEl = out('total');
+    totalEl.innerHTML = '';
+    const totSpan = document.createElement('span');
+    totalEl.appendChild(totSpan);
+    const unitSpan = document.createElement('span');
+    unitSpan.className = 'unit';
+    unitSpan.textContent = ' / mo';
+    totalEl.appendChild(unitSpan);
+    animateValue(totSpan, 0, r.total, fmtMoneyFull, 1400);
+
+    animateValue(out('annual'), 0, r.annualised, fmtMoney, 1400);
+
+    // score
+    const scoreEl = out('score');
+    scoreEl.innerHTML = '';
+    const scoreNum = document.createElement('span');
+    scoreEl.appendChild(scoreNum);
+    const scoreUnit = document.createElement('em');
+    scoreUnit.textContent = ' / 100';
+    scoreEl.appendChild(scoreUnit);
+    animateValue(scoreNum, 0, r.score, (v) => Math.round(v).toString(), 1400);
+    scoreEl.classList.add('flash');
+    const scoreBar = out('scoreBar');
+    if (scoreBar) setTimeout(() => { scoreBar.style.width = r.score + '%'; }, 200);
+    const verdictEl = out('verdict');
+    if (verdictEl) {
+      if (r.score >= 80) verdictEl.textContent = 'Tight operation. The leak is small relative to revenue.';
+      else if (r.score >= 60) verdictEl.textContent = 'Workable, but real money is escaping. Worth a closer look.';
+      else if (r.score >= 40) verdictEl.textContent = 'Significant leak. Funding more campaigns will scale the problem, not the revenue.';
+      else verdictEl.textContent = 'Severe leak. Stop spending on top-of-funnel until the holes below are plugged.';
+    }
+
+    // funnel
+    animateValue(out('fLeads'), 0, r.fLeads, fmtNum, 1100);
+    animateValue(out('fContacted'), 0, r.fContacted, fmtNum, 1100);
+    animateValue(out('fOpps'), 0, r.fOpps, fmtNum, 1100);
+    animateValue(out('fClosed'), 0, r.fClosed, fmtNum, 1100);
+
+    // leak categories
+    ['leakResponse','leakConversion','leakHandoff','leakDrag'].forEach((k, idx) => {
+      const el = out(k);
+      const val = r[k];
+      el.innerHTML = '';
+      const numSpan = document.createElement('span');
+      el.appendChild(numSpan);
+      const em = document.createElement('em');
+      em.textContent = ' / mo';
+      el.appendChild(em);
+      setTimeout(() => animateValue(numSpan, 0, val, fmtMoneyFull, 1100), 200 + idx * 120);
+      el.classList.add('flash');
+    });
+
+    // notes — adapt to inputs
+    const noteR = out('noteResponse');
+    if (state.responseHrs <= 1) noteR.textContent = 'Response time is at or near best-in-class. Hold the line.';
+    else if (state.responseHrs >= 24) noteR.textContent = 'A reply at ' + state.responseHrs + 'hr is roughly 9× less effective than at <1hr.';
+    else noteR.textContent = 'A first reply at ' + state.responseHrs + 'hr loses meaningful conversion vs <1hr.';
+
+    const noteC = out('noteConversion');
+    if (state.oppClose >= 35) noteC.textContent = 'Close rate is above the operator benchmark.';
+    else noteC.textContent = 'Close rate sits ' + (35 - state.oppClose) + ' pts below the 35% benchmark — usually a conversation-design issue.';
+
+    const noteH = out('noteHandoff');
+    if (state.leadToOpp >= 30) noteH.textContent = 'Lead → opportunity rate is at benchmark.';
+    else noteH.textContent = 'Lead → opp at ' + state.leadToOpp + '% leaves ' + (30 - state.leadToOpp) + ' pts on the table — handoff or scoring is leaking.';
+  }
+
+  // ---------- nav ----------
+  function persist() {
+    localStorage.setItem(STATE_KEY, JSON.stringify(state));
+    localStorage.setItem(POS_KEY, String(i));
+  }
+
+  function commitCurrent() {
+    const cur = screens[i];
+    if (!cur) return;
+    cur.querySelectorAll('[data-input]').forEach(el => {
+      const k = el.dataset.input;
+      const v = parseFloat(el.value);
+      if (!isNaN(v)) state[k] = v;
+    });
+    cur.querySelectorAll('[data-slider]').forEach(el => {
+      const k = el.dataset.slider;
+      const v = parseFloat(el.value);
+      if (!isNaN(v)) state[k] = v;
+    });
+  }
+
+  function render() {
+    screens.forEach((s, idx) => {
+      s.classList.remove('active', 'exit');
+      if (idx === i) {
+        // replay animations
+        s.querySelectorAll('.stamp, .qnum, h1.cover, h2.q, .dek, .helptext, .field, .slider-field, .start, .ok, .leak-hero, .funnel, .leaks-grid, .end-cta').forEach(el => {
+          el.style.animation = 'none';
+          void el.offsetWidth;
+          el.style.animation = '';
+        });
+        s.classList.add('active');
+        // focus first input
+        setTimeout(() => {
+          const inp = s.querySelector('input');
+          if (inp) inp.focus({ preventScroll: true });
+        }, 380);
+        // if reveal screen, compute
+        if (s.dataset.step === 'reveal') renderReveal();
+      } else if (idx < i) {
+        s.classList.add('exit');
+      }
+    });
+    fill.style.width = ((i) / (total - 1) * 100) + '%';
+    cur.textContent = String(i + 1).padStart(2, '0');
+    prevBtn.disabled = i === 0;
+    nextBtn.disabled = i === total - 1;
+    nextBtn.textContent = i === total - 1 ? 'fin' : (i === total - 2 ? 'see readout →' : 'continue ↵');
+    persist();
+  }
+
+  function go(n) {
+    if (n > i) commitCurrent();
+    const next = Math.max(0, Math.min(total - 1, n));
+    if (next === i) return;
+    i = next;
+    render();
+  }
+
+  // keyboard
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      go(i + 1);
+    } else if (e.key === 'ArrowUp' || (e.key === 'ArrowLeft' && document.activeElement.tagName !== 'INPUT')) {
+      e.preventDefault();
+      go(i - 1);
+    } else if (e.key === 'ArrowDown') {
+      // allow if not on a slider
+      if (document.activeElement.type !== 'range') {
+        e.preventDefault();
+        go(i + 1);
+      }
+    } else if (e.key === 'Escape') {
+      if (confirm('Reset MRI and start over?')) {
+        state = { ...defaults };
+        localStorage.removeItem(STATE_KEY);
+        localStorage.removeItem(POS_KEY);
+        location.reload();
+      }
+    }
+  });
+
+  prevBtn.addEventListener('click', () => go(i - 1));
+  nextBtn.addEventListener('click', () => go(i + 1));
+
+  // sliders live update
+  document.querySelectorAll('[data-slider]').forEach(el => {
+    const k = el.dataset.slider;
+    const display = document.querySelector(`[data-display="${k}"]`);
+    el.addEventListener('input', () => {
+      const v = parseFloat(el.value);
+      state[k] = v;
+      if (display) display.textContent = v;
+      persist();
+    });
+  });
+
+  // inputs live update
+  document.querySelectorAll('[data-input]').forEach(el => {
+    el.addEventListener('input', () => {
+      const k = el.dataset.input;
+      const v = parseFloat(el.value);
+      if (!isNaN(v)) state[k] = v;
+      persist();
+    });
+  });
+
+  // action buttons
+  document.querySelectorAll('[data-action="next"]').forEach(b => {
+    b.addEventListener('click', (e) => { e.preventDefault(); go(i + 1); });
+  });
+
+  // copy + restart on reveal
+  document.addEventListener('click', (e) => {
+    const a = e.target.closest('[data-action]');
+    if (!a) return;
+    if (a.dataset.action === 'copy') {
+      const r = compute();
+      const txt = [
+        'Rivett · Revenue Leak MRI · readout',
+        '',
+        'Total monthly leak · ' + fmtMoneyFull(r.total),
+        'Implied annualised · ' + fmtMoneyFull(r.annualised),
+        'Operating score · ' + r.score + ' / 100',
+        '',
+        'Response decay · ' + fmtMoneyFull(r.leakResponse) + ' / mo',
+        'Conversion gap · ' + fmtMoneyFull(r.leakConversion) + ' / mo',
+        'Sales handoff · ' + fmtMoneyFull(r.leakHandoff) + ' / mo',
+        'Operating drag · ' + fmtMoneyFull(r.leakDrag) + ' / mo',
+        '',
+        'Inputs · spend ' + fmtMoneyFull(state.spend) + ' / leads ' + state.leads + ' / deal ' + fmtMoneyFull(state.deal) + ' / response ' + state.responseHrs + 'hr / lead→opp ' + state.leadToOpp + '% / close ' + state.oppClose + '%',
+      ].join('\n');
+      navigator.clipboard.writeText(txt);
+      a.textContent = 'Copied ✓';
+      setTimeout(() => a.textContent = 'Copy readout', 1800);
+    } else if (a.dataset.action === 'restart') {
+      state = { ...defaults };
+      localStorage.removeItem(STATE_KEY);
+      localStorage.removeItem(POS_KEY);
+      location.reload();
+    }
+  });
+
+  render();
+})();
+    </script>
+  </body>
+</html>
