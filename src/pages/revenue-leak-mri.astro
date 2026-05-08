@@ -158,9 +158,13 @@ import PostHog from '../components/PostHog.astro';
   .cta-bar .small-actions { display: flex; gap: 18px; font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); text-transform: uppercase; }
   .cta-bar .small-actions button { background: none; border: 0; padding: 0; color: var(--on-ink-faint); cursor: pointer; font: inherit; font-family: var(--mono); transition: color 160ms ease; }
   .cta-bar .small-actions button:hover { color: var(--on-ink); }
-  .lead-capture { border: var(--bw-hair) solid var(--on-ink-line); display: grid; gap: 14px; padding: 18px; width: min(420px, 100%); text-align: left; }
+  .lead-modal { align-items: center; background: rgba(14,26,44,0.72); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); display: flex; inset: 0; justify-content: center; padding: 24px; position: fixed; z-index: 90; }
+  .lead-modal[hidden] { display: none; }
+  .lead-capture { background: var(--ink); border: var(--bw-hair) solid var(--on-ink-line-2); box-shadow: 0 26px 80px rgba(0,0,0,0.32); display: grid; gap: 16px; padding: 24px; position: relative; width: min(420px, 100%); text-align: left; }
   .lead-capture .lead-label { color: var(--on-ink); display: block; font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); line-height: 1.35; text-transform: uppercase; }
   .lead-capture p { color: var(--on-ink-dim); font-family: var(--serif); font-size: 13.5px; font-style: italic; line-height: 1.45; margin: 6px 0 0; }
+  .lead-close { align-items: center; background: transparent; border: 0; color: var(--on-ink-faint); cursor: pointer; display: inline-flex; font: inherit; font-family: var(--grotesk); font-size: 24px; justify-content: center; line-height: 1; min-height: 32px; padding: 0; position: absolute; right: 18px; top: 16px; width: 32px; }
+  .lead-close:hover { color: var(--on-ink); }
   .lead-fields { display: grid; gap: 10px; }
   .lead-fields input { background: rgba(255,255,255,0.08); border: var(--bw-hair) solid var(--on-ink-line); color: var(--on-ink); font: inherit; min-height: 46px; padding: 12px 13px; width: 100%; }
   .lead-fields input::placeholder { color: var(--on-ink-faint); }
@@ -462,21 +466,9 @@ import PostHog from '../components/PostHog.astro';
           <h3>Turn the leak into a <span class="ital">fix list.</span></h3>
         </div>
         <div class="actions">
-          <form class="lead-capture" data-lead-form>
-            <div>
-              <span class="lead-label">Get the first fix list</span>
-              <p>Leave the work email. Fred gets the MRI context, not a blind form fill.</p>
-            </div>
-            <div class="lead-fields">
-              <input name="email" type="email" autocomplete="email" placeholder="Work email" required />
-              <input name="company" autocomplete="organization" placeholder="Company (optional)" />
-              <input class="lead-hp" name="website" autocomplete="off" tabindex="-1" aria-hidden="true" />
-              <button type="submit">Send fix list</button>
-            </div>
-            <p class="lead-status" data-lead-status aria-live="polite"></p>
-          </form>
           <a class="book" href="https://rivett.tech/diagnostic">Book diagnostic →</a>
           <div class="small-actions">
+            <button data-action="open-lead">Email fix list</button>
             <button data-action="copy">Copy readout</button>
             <button data-action="restart">Run again</button>
           </div>
@@ -485,6 +477,22 @@ import PostHog from '../components/PostHog.astro';
     </div>
   </section>
 
+</div>
+<div class="lead-modal" data-lead-modal hidden>
+  <form class="lead-capture" data-lead-form novalidate>
+    <button type="button" class="lead-close" data-action="close-lead" aria-label="Close email capture">×</button>
+    <div>
+      <span class="lead-label">Email the first fix list</span>
+      <p>Work email only. Fred gets the MRI context, not a blind form fill.</p>
+    </div>
+    <div class="lead-fields">
+      <input name="email" type="email" autocomplete="email" placeholder="Work email" />
+      <input name="company" autocomplete="organization" placeholder="Company (optional)" />
+      <input class="lead-hp" name="website" autocomplete="off" tabindex="-1" aria-hidden="true" />
+      <button type="submit">Send fix list</button>
+    </div>
+    <p class="lead-status" data-lead-status aria-live="polite"></p>
+  </form>
 </div>
     <script is:inline>
 (function(){
@@ -495,6 +503,7 @@ import PostHog from '../components/PostHog.astro';
   const tot = document.getElementById('tot');
   const prevBtn = document.getElementById('prev');
   const nextBtn = document.getElementById('next');
+  const leadModal = document.querySelector('[data-lead-modal]');
   const leadForm = document.querySelector('[data-lead-form]');
   const leadStatus = document.querySelector('[data-lead-status]');
 
@@ -732,6 +741,11 @@ import PostHog from '../components/PostHog.astro';
 
   // keyboard
   document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && leadModal && !leadModal.hidden) {
+      e.preventDefault();
+      closeLeadModal();
+      return;
+    }
     if (e.key === 'Enter') {
       if (document.activeElement?.closest?.('a[href]')) return;
       if (document.activeElement?.closest?.('[data-lead-form]')) return;
@@ -784,6 +798,24 @@ import PostHog from '../components/PostHog.astro';
   // action buttons
   document.querySelectorAll('[data-action="next"]').forEach(b => {
     b.addEventListener('click', (e) => { e.preventDefault(); go(i + 1); });
+  });
+
+  function openLeadModal() {
+    if (!leadModal) return;
+    leadModal.hidden = false;
+    if (leadStatus) leadStatus.textContent = '';
+    requestAnimationFrame(() => {
+      leadForm?.querySelector('input[name="email"]')?.focus({ preventScroll: true });
+    });
+  }
+
+  function closeLeadModal() {
+    if (!leadModal) return;
+    leadModal.hidden = true;
+  }
+
+  leadModal?.addEventListener('click', (e) => {
+    if (e.target === leadModal) closeLeadModal();
   });
 
   leadForm?.addEventListener('submit', async (e) => {
@@ -866,7 +898,13 @@ import PostHog from '../components/PostHog.astro';
   document.addEventListener('click', (e) => {
     const a = e.target.closest('[data-action]');
     if (!a) return;
-    if (a.dataset.action === 'copy') {
+    if (a.dataset.action === 'open-lead') {
+      e.preventDefault();
+      openLeadModal();
+    } else if (a.dataset.action === 'close-lead') {
+      e.preventDefault();
+      closeLeadModal();
+    } else if (a.dataset.action === 'copy') {
       const r = compute();
       const txt = [
         'Rivett · Revenue Leak MRI · readout',
