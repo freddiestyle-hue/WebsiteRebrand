@@ -1,13 +1,18 @@
 ---
+import GoogleTags from '../components/GoogleTags.astro';
+import GtmNoscript from '../components/GtmNoscript.astro';
+import PostHog from '../components/PostHog.astro';
 ---
 <!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <GoogleTags />
     <title>Revenue Leak MRI · Rivett</title>
     <meta name="description" content="A free operator diagnostic from Rivett. Nine honest numbers. One readout showing where paid demand is leaking and what to fix first." />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <PostHog />
     <style is:global>
       @import '../styles/tokens.css';
 
@@ -153,6 +158,18 @@
   .cta-bar .small-actions { display: flex; gap: 18px; font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); text-transform: uppercase; }
   .cta-bar .small-actions button { background: none; border: 0; padding: 0; color: var(--on-ink-faint); cursor: pointer; font: inherit; font-family: var(--mono); transition: color 160ms ease; }
   .cta-bar .small-actions button:hover { color: var(--on-ink); }
+  .lead-capture { border: var(--bw-hair) solid var(--on-ink-line); display: grid; gap: 14px; padding: 18px; width: min(420px, 100%); text-align: left; }
+  .lead-capture .lead-label { color: var(--on-ink); display: block; font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); line-height: 1.35; text-transform: uppercase; }
+  .lead-capture p { color: var(--on-ink-dim); font-family: var(--serif); font-size: 13.5px; font-style: italic; line-height: 1.45; margin: 6px 0 0; }
+  .lead-fields { display: grid; gap: 10px; }
+  .lead-fields input { background: rgba(255,255,255,0.08); border: var(--bw-hair) solid var(--on-ink-line); color: var(--on-ink); font: inherit; min-height: 46px; padding: 12px 13px; width: 100%; }
+  .lead-fields input::placeholder { color: var(--on-ink-faint); }
+  .lead-fields button { background: var(--accent); border: var(--bw-hair) solid var(--accent); color: var(--ink); cursor: pointer; font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); min-height: 46px; padding: 12px 14px; text-transform: uppercase; transition: background 160ms ease, color 160ms ease, opacity 160ms ease; }
+  .lead-fields button:hover:not(:disabled) { background: var(--paper); border-color: var(--paper); }
+  .lead-fields button:disabled { cursor: wait; opacity: 0.62; }
+  .lead-hp { left: -100vw; position: absolute; top: auto; }
+  .lead-status { color: var(--on-ink-faint) !important; font-family: var(--mono) !important; font-size: 10px !important; font-style: normal !important; letter-spacing: var(--track-mono-tight); margin: 0 !important; min-height: 1.4em; text-transform: uppercase; }
+  .lead-capture[data-sent="true"] { border-color: var(--accent); }
 
   /* count-up flash */
   @keyframes flash {
@@ -190,6 +207,7 @@
     </style>
   </head>
   <body>
+<GtmNoscript />
 <div class="progress"><div class="fill" id="fill"></div></div>
 
 <div class="topbar">
@@ -444,6 +462,19 @@
           <h3>Turn the leak into a <span class="ital">fix list.</span></h3>
         </div>
         <div class="actions">
+          <form class="lead-capture" data-lead-form>
+            <div>
+              <span class="lead-label">Get the first fix list</span>
+              <p>Leave the work email. Fred gets the MRI context, not a blind form fill.</p>
+            </div>
+            <div class="lead-fields">
+              <input name="email" type="email" autocomplete="email" placeholder="Work email" required />
+              <input name="company" autocomplete="organization" placeholder="Company (optional)" />
+              <input class="lead-hp" name="website" autocomplete="off" tabindex="-1" aria-hidden="true" />
+              <button type="submit">Send fix list</button>
+            </div>
+            <p class="lead-status" data-lead-status aria-live="polite"></p>
+          </form>
           <a class="book" href="https://rivett.tech/diagnostic">Book diagnostic →</a>
           <div class="small-actions">
             <button data-action="copy">Copy readout</button>
@@ -464,6 +495,8 @@
   const tot = document.getElementById('tot');
   const prevBtn = document.getElementById('prev');
   const nextBtn = document.getElementById('next');
+  const leadForm = document.querySelector('[data-lead-form]');
+  const leadStatus = document.querySelector('[data-lead-status]');
 
   tot.textContent = String(total).padStart(2, '0');
 
@@ -701,6 +734,7 @@
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
       if (document.activeElement?.closest?.('a[href]')) return;
+      if (document.activeElement?.closest?.('[data-lead-form]')) return;
       e.preventDefault();
       go(i + 1);
     } else if (e.key === 'ArrowUp' || (e.key === 'ArrowLeft' && document.activeElement.tagName !== 'INPUT')) {
@@ -751,6 +785,82 @@
   document.querySelectorAll('[data-action="next"]').forEach(b => {
     b.addEventListener('click', (e) => { e.preventDefault(); go(i + 1); });
   });
+
+  leadForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const data = new FormData(leadForm);
+    const email = String(data.get('email') || '').trim().toLowerCase();
+    const company = String(data.get('company') || '').trim();
+    const website = String(data.get('website') || '').trim();
+    const button = leadForm.querySelector('button[type="submit"]');
+    const r = compute();
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      if (leadStatus) leadStatus.textContent = 'Use a valid work email.';
+      return;
+    }
+
+    if (button) {
+      button.disabled = true;
+      button.textContent = 'Sending...';
+    }
+    if (leadStatus) leadStatus.textContent = '';
+
+    try {
+      const response = await fetch('/api/mri-lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          company,
+          website,
+          source: 'revenue-leak-mri',
+          path: window.location.pathname,
+          submitted_at: new Date().toISOString(),
+          inputs: { ...state },
+          readout: { ...r },
+        }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'Could not send this yet.');
+
+      window.posthog?.identify?.(email, {
+        email,
+        company,
+        revenue_mri_score: r.score,
+        revenue_mri_total_leak: Math.round(r.total),
+        revenue_mri_annualised: Math.round(r.annualised),
+      });
+      window.posthog?.capture?.('revenue_mri_email_captured', {
+        company,
+        score: r.score,
+        total_leak: Math.round(r.total),
+        annualised: Math.round(r.annualised),
+        biggest_leak: biggestLeak(r),
+        source: 'revenue-leak-mri',
+      });
+
+      leadForm.dataset.sent = 'true';
+      if (leadStatus) leadStatus.textContent = 'Got it. Fred has the MRI context.';
+      if (button) button.textContent = 'Sent';
+    } catch (error) {
+      if (leadStatus) leadStatus.textContent = error instanceof Error ? error.message : 'Could not send this yet.';
+      if (button) {
+        button.disabled = false;
+        button.textContent = 'Send fix list';
+      }
+    }
+  });
+
+  function biggestLeak(r) {
+    const ranked = [
+      ['response_decay', r.leakResponse],
+      ['conversion_gap', r.leakConversion],
+      ['sales_handoff', r.leakHandoff],
+      ['operating_drag', r.leakDrag],
+    ].sort((a, b) => b[1] - a[1]);
+    return ranked[0]?.[0] || 'unknown';
+  }
 
   // copy + restart on reveal
   document.addEventListener('click', (e) => {
