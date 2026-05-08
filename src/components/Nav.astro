@@ -3,6 +3,10 @@ interface Props {
   current?: 'home' | 'blog' | 'mri';
 }
 const { current } = Astro.props;
+const path = Astro.url.pathname;
+const mriActive = current === 'mri' || path.startsWith('/revenue-leak-mri');
+const vanishActive = path.startsWith('/30-day-vanish-test');
+const toolsActive = mriActive || vanishActive;
 ---
 <header class="site-header" data-scrolled="false">
   <nav class="header-inner" aria-label="Primary">
@@ -11,8 +15,20 @@ const { current } = Astro.props;
     </a>
     <ul class="nav-links">
       <li><a href="/#modules">Work</a></li>
-      <li class={current === 'mri' ? 'current-li' : ''}>
-        <a href="/revenue-leak-mri" aria-label="Revenue Leak MRI" class={current === 'mri' ? 'current' : ''}>Revenue MRI</a>
+      <li class:list={['tools-item', toolsActive ? 'current-li' : '']}>
+        <details class="tools-menu">
+          <summary class={toolsActive ? 'current' : ''}>Tools</summary>
+          <div class="tools-panel" aria-label="Tools">
+            <a href="/revenue-leak-mri" class={mriActive ? 'current' : ''}>
+              <span>Revenue MRI</span>
+              <small>Find the leak between demand and revenue.</small>
+            </a>
+            <a href="/30-day-vanish-test" class={vanishActive ? 'current' : ''}>
+              <span>30-Day Vanish Test</span>
+              <small>See what breaks if you stop replying.</small>
+            </a>
+          </div>
+        </details>
       </li>
       <li class={current === 'blog' ? 'current-li' : ''}>
         <a href="/blog" class={current === 'blog' ? 'current' : ''}>Notes</a>
@@ -33,7 +49,13 @@ const { current } = Astro.props;
   </a>
   <ul class="mobile-links">
     <li><a href="/#modules">Work</a></li>
-    <li><a href="/revenue-leak-mri">Revenue MRI</a></li>
+    <li class="mobile-tools">
+      <span>Tools</span>
+      <ul>
+        <li><a href="/revenue-leak-mri">Revenue MRI</a></li>
+        <li><a href="/30-day-vanish-test">30-Day Vanish Test</a></li>
+      </ul>
+    </li>
     <li><a href="/blog">Notes</a></li>
     <li><a href="/diagnostic" class="mobile-cta">Book diagnostic →</a></li>
   </ul>
@@ -53,6 +75,7 @@ const { current } = Astro.props;
   const toggle = document.querySelector<HTMLButtonElement>('.menu-toggle');
   const menu = document.getElementById('mobile-menu');
   const close = document.querySelector<HTMLButtonElement>('.mobile-close');
+  const toolsMenu = document.querySelector<HTMLDetailsElement>('.tools-menu');
 
   function openMenu() {
     if (!menu || !toggle) return;
@@ -72,7 +95,12 @@ const { current } = Astro.props;
   menu?.querySelectorAll<HTMLAnchorElement>('a').forEach((a) => {
     a.addEventListener('click', () => closeMenu());
   });
+  document.addEventListener('click', (event) => {
+    if (!toolsMenu?.open || !event.target || toolsMenu.contains(event.target as Node)) return;
+    toolsMenu.open = false;
+  });
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && menu?.classList.contains('open')) closeMenu();
+    if (e.key === 'Escape' && toolsMenu?.open) toolsMenu.open = false;
   });
 </script>

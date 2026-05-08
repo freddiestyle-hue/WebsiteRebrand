@@ -1,0 +1,1443 @@
+---
+import Base from '../layouts/Base.astro';
+---
+<Base
+  title="30-Day Vanish Test · Rivett"
+  description="A free operator simulation from Rivett. See what breaks first if you stop replying for 30 days."
+>
+  <main class="vanish-page">
+    <section class="vanish-hero">
+      <div class="page vanish-hero-grid">
+        <div class="vanish-hero-copy">
+          <span class="vanish-kicker">30-Day Vanish Test</span>
+          <h1>Stop replying for 30 days. What breaks first?</h1>
+          <p>
+            A live operator simulation for owners, presidents, COOs, and directors who want to know whether the
+            company runs on systems or on their nervous system.
+          </p>
+          <div class="vanish-actions">
+            <a href="#vanish-test" class="vanish-btn vanish-btn-primary">Run the simulation</a>
+            <a href="/diagnostic" class="vanish-btn vanish-btn-secondary">Book diagnostic</a>
+          </div>
+        </div>
+
+        <aside class="vanish-hero-console" aria-label="30-day vanish preview">
+          <div class="console-head">
+            <span>Live simulation</span>
+            <b data-vanish-hero-score>43</b>
+          </div>
+          <div class="console-lines" aria-hidden="true">
+            <div class="console-line is-hot">
+              <span>Day 06</span>
+              <strong>Reporting confidence drops</strong>
+            </div>
+            <div class="console-line">
+              <span>Day 11</span>
+              <strong>Approval queue backs up</strong>
+            </div>
+            <div class="console-line">
+              <span>Day 16</span>
+              <strong>Follow-up slows down</strong>
+            </div>
+            <div class="console-line">
+              <span>Day 30</span>
+              <strong data-vanish-hero-break>The business is alive, but growth has slowed into waiting.</strong>
+            </div>
+          </div>
+          <div class="console-foot">
+            <span>First breakpoint</span>
+            <b data-vanish-hero-first>Reporting visibility</b>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section id="vanish-test" class="vanish-tool">
+      <div class="page vanish-tool-head">
+        <div>
+          <span class="vanish-kicker">Run the test</span>
+          <h2>Model the business without you in the room.</h2>
+        </div>
+        <p>
+          Answer like the week is actually happening. The readout updates as you change the pressure points.
+        </p>
+      </div>
+
+      <div class="page vanish-workbench">
+        <form class="vanish-controls" data-vanish-form>
+          <fieldset class="control-block role-block">
+            <legend>Your seat</legend>
+            <div class="role-grid">
+              <label>
+                <input type="radio" name="role" value="owner" checked data-vanish-role />
+                <span>Owner</span>
+              </label>
+              <label>
+                <input type="radio" name="role" value="president" data-vanish-role />
+                <span>President</span>
+              </label>
+              <label>
+                <input type="radio" name="role" value="coo" data-vanish-role />
+                <span>COO</span>
+              </label>
+              <label>
+                <input type="radio" name="role" value="cfo" data-vanish-role />
+                <span>CFO</span>
+              </label>
+              <label>
+                <input type="radio" name="role" value="director" data-vanish-role />
+                <span>Director</span>
+              </label>
+              <label>
+                <input type="radio" name="role" value="vp" data-vanish-role />
+                <span>VP</span>
+              </label>
+            </div>
+          </fieldset>
+
+          <fieldset class="control-block size-block">
+            <legend>Company size</legend>
+            <div class="size-grid">
+              <label>
+                <input type="radio" name="companySize" value="12" data-vanish-size />
+                <span>2-10</span>
+              </label>
+              <label>
+                <input type="radio" name="companySize" value="45" checked data-vanish-size />
+                <span>11-50</span>
+              </label>
+              <label>
+                <input type="radio" name="companySize" value="125" data-vanish-size />
+                <span>51-200</span>
+              </label>
+              <label>
+                <input type="radio" name="companySize" value="320" data-vanish-size />
+                <span>201-500</span>
+              </label>
+            </div>
+          </fieldset>
+
+          <div class="range-stack">
+            <label class="vanish-range">
+              <span><b>People needing your sign-off weekly</b><output data-vanish-output="decisionLoad">28</output></span>
+              <input data-vanish-input="decisionLoad" type="range" min="0" max="80" step="1" value="28" />
+            </label>
+            <label class="vanish-range">
+              <span><b>Direct reports or live threads</b><output data-vanish-output="directReports">7</output></span>
+              <input data-vanish-input="directReports" type="range" min="1" max="30" step="1" value="7" />
+            </label>
+            <label class="vanish-range">
+              <span><b>Decisions the team can make without you</b><output data-vanish-output="autonomy">44%</output></span>
+              <input data-vanish-input="autonomy" type="range" min="0" max="100" step="1" value="44" />
+            </label>
+            <label class="vanish-range">
+              <span><b>Work living in your head or inbox</b><output data-vanish-output="headWork">62%</output></span>
+              <input data-vanish-input="headWork" type="range" min="0" max="100" step="1" value="62" />
+            </label>
+            <label class="vanish-range">
+              <span><b>Reporting confidence without you</b><output data-vanish-output="reporting">48%</output></span>
+              <input data-vanish-input="reporting" type="range" min="0" max="100" step="1" value="48" />
+            </label>
+            <label class="vanish-range">
+              <span><b>Customers, vendors, or staff waiting on you</b><output data-vanish-output="customerWait">38%</output></span>
+              <input data-vanish-input="customerWait" type="range" min="0" max="100" step="1" value="38" />
+            </label>
+          </div>
+
+          <fieldset class="control-block surface-block">
+            <legend>Where people still wait on you</legend>
+            <div class="surface-grid">
+              <label><input type="checkbox" value="approvals" data-vanish-surface checked /><span>Approvals</span></label>
+              <label><input type="checkbox" value="sales" data-vanish-surface checked /><span>Sales</span></label>
+              <label><input type="checkbox" value="delivery" data-vanish-surface /><span>Delivery</span></label>
+              <label><input type="checkbox" value="reporting" data-vanish-surface checked /><span>Reporting</span></label>
+              <label><input type="checkbox" value="cash" data-vanish-surface /><span>Cash</span></label>
+              <label><input type="checkbox" value="people" data-vanish-surface /><span>People</span></label>
+            </div>
+          </fieldset>
+        </form>
+
+        <aside class="vanish-readout on-ink" aria-live="polite">
+          <div class="readout-topline">
+            <div>
+              <span>Vanish score</span>
+              <strong data-vanish-result="score">43</strong>
+            </div>
+            <div class="score-copy">
+              <b data-vanish-result="status">Owner-bound</b>
+              <p data-vanish-result="statusCopy">The company survives, but momentum waits for you.</p>
+            </div>
+          </div>
+
+          <div class="first-break">
+            <span>First breakpoint</span>
+            <b data-vanish-result="firstBreak">Reporting visibility</b>
+            <p data-vanish-result="firstBreakCopy">The company can act, but it cannot see clearly without you translating the numbers.</p>
+          </div>
+
+          <div class="vanish-timeline" aria-label="30-day breakage timeline">
+            <div class="timeline-row" data-day-row="0">
+              <span data-vanish-day="0">Day 01</span>
+              <p data-vanish-event="0">Inbox quiets. The team reroutes around the missing operator.</p>
+            </div>
+            <div class="timeline-row is-hot" data-day-row="1">
+              <span data-vanish-day="1">Day 06</span>
+              <p data-vanish-event="1">Reporting confidence drops and the team starts arguing from anecdotes.</p>
+            </div>
+            <div class="timeline-row" data-day-row="2">
+              <span data-vanish-day="2">Day 11</span>
+              <p data-vanish-event="2">Approvals start stacking up and the team begins waiting for permission.</p>
+            </div>
+            <div class="timeline-row" data-day-row="3">
+              <span data-vanish-day="3">Day 16</span>
+              <p data-vanish-event="3">Follow-up slows down and promising conversations lose momentum.</p>
+            </div>
+            <div class="timeline-row" data-day-row="4">
+              <span data-vanish-day="4">Day 30</span>
+              <p data-vanish-event="4">The business is alive, but growth has stalled.</p>
+            </div>
+          </div>
+
+          <div class="pressure-map">
+            <div class="pressure-head">
+              <span>System pressure</span>
+              <b data-vanish-result="hiddenBottleneck">Approval queue</b>
+            </div>
+            <div class="pressure-row" data-pressure-row="approvals">
+              <span>Approvals</span><i><b data-pressure-bar="approvals"></b></i><strong data-pressure-value="approvals">0</strong>
+            </div>
+            <div class="pressure-row" data-pressure-row="sales">
+              <span>Sales follow-up</span><i><b data-pressure-bar="sales"></b></i><strong data-pressure-value="sales">0</strong>
+            </div>
+            <div class="pressure-row" data-pressure-row="reporting">
+              <span>Reporting</span><i><b data-pressure-bar="reporting"></b></i><strong data-pressure-value="reporting">0</strong>
+            </div>
+            <div class="pressure-row" data-pressure-row="delivery">
+              <span>Delivery</span><i><b data-pressure-bar="delivery"></b></i><strong data-pressure-value="delivery">0</strong>
+            </div>
+            <div class="pressure-row" data-pressure-row="cash">
+              <span>Cash control</span><i><b data-pressure-bar="cash"></b></i><strong data-pressure-value="cash">0</strong>
+            </div>
+            <div class="pressure-row" data-pressure-row="people">
+              <span>People</span><i><b data-pressure-bar="people"></b></i><strong data-pressure-value="people">0</strong>
+            </div>
+          </div>
+
+          <div class="operator-diagnosis">
+            <span>Operator diagnosis</span>
+            <p data-vanish-result="diagnosis">You are not understaffed first. You are over-centralized.</p>
+          </div>
+
+          <form class="vanish-gate" data-vanish-gate>
+            <div>
+              <span>Unlock the fix list</span>
+              <p>Get the first three systems to pull out of your head.</p>
+            </div>
+            <div class="gate-fields">
+              <input name="name" autocomplete="name" placeholder="Name" required />
+              <input name="email" type="email" autocomplete="email" placeholder="Work email" required />
+              <input name="company" autocomplete="organization" placeholder="Company" />
+            </div>
+            <button type="submit">Unlock fix list</button>
+          </form>
+
+          <div class="vanish-unlocked" data-vanish-unlocked hidden>
+            <div class="pressure-head">
+              <span>First fixes</span>
+              <b>Make absence boring</b>
+            </div>
+            <ul data-vanish-actions></ul>
+            <div class="readout-actions">
+              <a href="/diagnostic">Book diagnostic</a>
+              <button type="button" data-vanish-copy>Copy readout</button>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="vanish-proof">
+      <div class="page vanish-proof-grid">
+        <div>
+          <span class="vanish-kicker">Why this works</span>
+          <h2>The test is not about vacation. It is about transferability.</h2>
+        </div>
+        <div class="proof-list">
+          <div><b>01</b><span>If approvals need you, speed is fake.</span></div>
+          <div><b>02</b><span>If reporting needs you, visibility is theater.</span></div>
+          <div><b>03</b><span>If customers wait on you, growth is still founder-led.</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="vanish-next">
+      <div class="page vanish-next-grid">
+        <div>
+          <span class="vanish-kicker">Next move</span>
+          <h2>Turn the breakpoints into operating infrastructure.</h2>
+        </div>
+        <div>
+          <p>
+            Rivett maps the fragile parts into decision rights, dashboards, follow-up systems, and weekly operating
+            rhythm. Less heroic effort. More company.
+          </p>
+          <a href="/diagnostic" class="vanish-btn vanish-btn-primary">Book diagnostic</a>
+        </div>
+      </div>
+    </section>
+  </main>
+</Base>
+
+<script>
+  type PostHogWindow = Window & {
+    posthog?: {
+      identify?: (id: string, properties?: Record<string, unknown>) => void;
+      capture?: (event: string, properties?: Record<string, unknown>) => void;
+    };
+  };
+
+  type AreaKey = 'approvals' | 'sales' | 'reporting' | 'delivery' | 'cash' | 'people';
+
+  const areaCopy: Record<AreaKey, { label: string; event: string; firstBreak: string; fix: string[] }> = {
+    approvals: {
+      label: 'Approval queue',
+      event: 'Approvals start stacking up and the team begins waiting for permission.',
+      firstBreak: 'People can keep moving for a few days, then decisions start stacking up.',
+      fix: [
+        'Write a decision-rights map for the five approvals that hit your desk every week.',
+        'Move recurring approvals into rules, thresholds, and named owners.',
+        'Create one weekly exception review so the team stops asking in real time.',
+      ],
+    },
+    sales: {
+      label: 'Sales follow-up',
+      event: 'Follow-up slows down and promising conversations lose momentum.',
+      firstBreak: 'Revenue conversations keep moving only when someone remembers to push them.',
+      fix: [
+        'Create one visible queue for open sales conversations and next actions.',
+        'Write the follow-up rules for hot, warm, and stalled opportunities.',
+        'Make missed follow-up visible in the weekly rhythm before it becomes lost revenue.',
+      ],
+    },
+    reporting: {
+      label: 'Reporting visibility',
+      event: 'Reporting confidence drops and the team starts arguing from anecdotes.',
+      firstBreak: 'The company can act, but it cannot see clearly without you translating the numbers.',
+      fix: [
+        'Create one operating dashboard that answers what happened, why, and what changes next.',
+        'Remove reports that do not change a decision.',
+        'Assign one owner to each number instead of making the founder explain it.',
+      ],
+    },
+    delivery: {
+      label: 'Delivery handoff',
+      event: 'Delivery work continues, but handoffs start losing context.',
+      firstBreak: 'The work still gets done, but quality depends on memory instead of process.',
+      fix: [
+        'Turn the recurring delivery path into a visible checklist with owners.',
+        'Define what good looks like before work moves to the next person.',
+        'Create an escalation rule so problems do not wait for your inbox.',
+      ],
+    },
+    cash: {
+      label: 'Cash control',
+      event: 'Cash, pricing, or margin calls begin waiting for a senior decision.',
+      firstBreak: 'The financial picture holds until a judgment call needs context only you have.',
+      fix: [
+        'Document the approval thresholds for spending, pricing, refunds, and exceptions.',
+        'Create a weekly cash and margin review that does not require your translation.',
+        'Separate judgment calls from routine approvals so finance can move.',
+      ],
+    },
+    people: {
+      label: 'People decisions',
+      event: 'People questions pile up and managers pause instead of deciding.',
+      firstBreak: 'The team is capable, but people decisions still route through one brain.',
+      fix: [
+        'Define decision rights for hiring, performance, compensation, and role changes.',
+        'Create manager operating rules for recurring people questions.',
+        'Move unclear ownership out of Slack and into the weekly leadership rhythm.',
+      ],
+    },
+  };
+
+  const roleWeights: Record<string, Record<AreaKey, number>> = {
+    owner: { approvals: 18, sales: 12, reporting: 12, delivery: 8, cash: 10, people: 8 },
+    president: { approvals: 16, sales: 9, reporting: 13, delivery: 10, cash: 8, people: 10 },
+    coo: { approvals: 10, sales: 6, reporting: 11, delivery: 19, cash: 5, people: 12 },
+    cfo: { approvals: 8, sales: 3, reporting: 18, delivery: 5, cash: 22, people: 5 },
+    director: { approvals: 10, sales: 7, reporting: 10, delivery: 14, cash: 4, people: 8 },
+    vp: { approvals: 9, sales: 15, reporting: 10, delivery: 9, cash: 4, people: 7 },
+  };
+
+  const inputs = Array.from(document.querySelectorAll<HTMLInputElement>('[data-vanish-input]'));
+  const roles = Array.from(document.querySelectorAll<HTMLInputElement>('[data-vanish-role]'));
+  const sizes = Array.from(document.querySelectorAll<HTMLInputElement>('[data-vanish-size]'));
+  const surfaces = Array.from(document.querySelectorAll<HTMLInputElement>('[data-vanish-surface]'));
+  const gate = document.querySelector<HTMLFormElement>('[data-vanish-gate]');
+  const unlocked = document.querySelector<HTMLElement>('[data-vanish-unlocked]');
+  const actionsList = document.querySelector<HTMLUListElement>('[data-vanish-actions]');
+  const copyButton = document.querySelector<HTMLButtonElement>('[data-vanish-copy]');
+  let currentReadout = '';
+  let currentActions: string[] = [];
+  let currentMetrics: Record<string, number | string> = {};
+
+  function clamp(value: number, min: number, max: number) {
+    return Math.min(max, Math.max(min, value));
+  }
+
+  function setText(selector: string, value: string) {
+    const node = document.querySelector<HTMLElement>(selector);
+    if (node) node.textContent = value;
+  }
+
+  function valueOf(name: string) {
+    const input = document.querySelector<HTMLInputElement>(`[data-vanish-input="${name}"]`);
+    return Number(input?.value ?? 0);
+  }
+
+  function checkedValue(name: string, fallback: string) {
+    const checked = document.querySelector<HTMLInputElement>(`input[name="${name}"]:checked`);
+    return checked?.value ?? fallback;
+  }
+
+  function selectedSurfaces() {
+    return surfaces.filter((surface) => surface.checked).map((surface) => surface.value as AreaKey);
+  }
+
+  function syncRangeFill(input: HTMLInputElement) {
+    const min = Number(input.min || 0);
+    const max = Number(input.max || 100);
+    const value = Number(input.value || min);
+    const percentage = max === min ? 0 : ((value - min) / (max - min)) * 100;
+    input.style.setProperty('--pct', `${clamp(percentage, 0, 100)}%`);
+  }
+
+  function setOutput(name: string, value: string) {
+    setText(`[data-vanish-output="${name}"]`, value);
+  }
+
+  function dayFor(pressure: number, maxPressure: number, index: number) {
+    const urgency = maxPressure <= 0 ? 0 : clamp(pressure / maxPressure, 0, 1);
+    return Math.round(clamp(30 - urgency * 24 + index * 4, 3, 30));
+  }
+
+  function statusFor(score: number) {
+    if (score >= 78) {
+      return {
+        label: 'Transferable',
+        text: 'The business has real operating muscle without you.',
+        diagnosis: 'You have useful independence. The next move is tightening the few decisions still trapped in senior heads.',
+      };
+    }
+    if (score >= 58) {
+      return {
+        label: 'Holding',
+        text: 'The company keeps moving, but a few rooms still wait for you.',
+        diagnosis: 'You are close. The system exists, but the team still needs a clearer map for exceptions and ownership.',
+      };
+    }
+    if (score >= 36) {
+      return {
+        label: 'Owner-bound',
+        text: 'The company survives, but momentum waits for you.',
+        diagnosis: 'You are not understaffed first. You are over-centralized.',
+      };
+    }
+    return {
+      label: 'Brittle',
+      text: 'The business is running on heroic effort and memory.',
+      diagnosis: 'The company has talent, but the operating system is still living in people instead of rules, dashboards, and handoffs.',
+    };
+  }
+
+  function calculate() {
+    const role = checkedValue('role', 'owner');
+    const companySize = Number(checkedValue('companySize', '45'));
+    const decisionLoad = valueOf('decisionLoad');
+    const directReports = valueOf('directReports');
+    const autonomy = valueOf('autonomy');
+    const headWork = valueOf('headWork');
+    const reporting = valueOf('reporting');
+    const customerWait = valueOf('customerWait');
+    const surfaceSet = new Set(selectedSurfaces());
+    const sizePressure = companySize <= 12 ? 4 : companySize <= 45 ? 10 : companySize <= 125 ? 18 : 26;
+    const roleWeight = roleWeights[role] ?? roleWeights.owner;
+
+    setOutput('decisionLoad', String(decisionLoad));
+    setOutput('directReports', String(directReports));
+    setOutput('autonomy', `${autonomy}%`);
+    setOutput('headWork', `${headWork}%`);
+    setOutput('reporting', `${reporting}%`);
+    setOutput('customerWait', `${customerWait}%`);
+
+    const areaScores: Record<AreaKey, number> = {
+      approvals: decisionLoad * 1.25 + (100 - autonomy) * 0.62 + directReports * 1.5 + sizePressure + roleWeight.approvals,
+      sales: customerWait * 0.9 + headWork * 0.45 + (100 - autonomy) * 0.32 + decisionLoad * 0.36 + roleWeight.sales,
+      reporting: (100 - reporting) * 1.05 + headWork * 0.46 + decisionLoad * 0.28 + sizePressure * 0.8 + roleWeight.reporting,
+      delivery: headWork * 0.58 + directReports * 1.7 + (100 - autonomy) * 0.36 + sizePressure + roleWeight.delivery,
+      cash: (100 - reporting) * 0.72 + decisionLoad * 0.3 + headWork * 0.25 + sizePressure * 0.55 + roleWeight.cash,
+      people: directReports * 2.25 + (100 - autonomy) * 0.52 + decisionLoad * 0.34 + sizePressure * 0.5 + roleWeight.people,
+    };
+
+    Object.keys(areaScores).forEach((key) => {
+      const area = key as AreaKey;
+      if (surfaceSet.has(area)) areaScores[area] += 18;
+    });
+
+    const sorted = (Object.entries(areaScores) as [AreaKey, number][]).sort((a, b) => b[1] - a[1]);
+    const [firstKey, firstPressure] = sorted[0];
+    const [secondKey] = sorted[1];
+    const maxPressure = Math.max(firstPressure, 1);
+    const overallPressure = sorted.reduce((sum, [, value]) => sum + value, 0) / sorted.length;
+    const score = Math.round(clamp(122 - overallPressure * 0.5 - firstPressure * 0.22, 6, 96));
+    const status = statusFor(score);
+    const firstDay = dayFor(firstPressure, maxPressure, 0);
+    const secondDay = dayFor(sorted[1][1], maxPressure, 1);
+    const thirdDay = dayFor(sorted[2][1], maxPressure, 2);
+    const day30 = score >= 70
+      ? 'The business holds. The weak points are visible, not fatal.'
+      : score >= 48
+        ? 'The business is alive, but growth has slowed into waiting.'
+        : 'The business still exists, but the operating rhythm has broken.';
+
+    setText('[data-vanish-result="score"]', String(score));
+    setText('[data-vanish-hero-score]', String(score));
+    setText('[data-vanish-result="status"]', status.label);
+    setText('[data-vanish-result="statusCopy"]', status.text);
+    setText('[data-vanish-result="firstBreak"]', areaCopy[firstKey].label);
+    setText('[data-vanish-hero-first]', areaCopy[firstKey].label);
+    setText('[data-vanish-result="firstBreakCopy"]', areaCopy[firstKey].firstBreak);
+    setText('[data-vanish-result="hiddenBottleneck"]', areaCopy[secondKey].label);
+    setText('[data-vanish-result="diagnosis"]', status.diagnosis);
+    setText('[data-vanish-hero-break]', day30);
+
+    const timeline = [
+      { day: 1, event: 'Inbox quiets. The team reroutes around the missing operator.' },
+      { day: firstDay, event: areaCopy[firstKey].event },
+      { day: secondDay, event: areaCopy[secondKey].event },
+      { day: thirdDay, event: areaCopy[sorted[2][0]].event },
+      { day: 30, event: day30 },
+    ];
+    timeline.forEach((item, index) => {
+      setText(`[data-vanish-day="${index}"]`, `Day ${String(item.day).padStart(2, '0')}`);
+      setText(`[data-vanish-event="${index}"]`, item.event);
+      const row = document.querySelector<HTMLElement>(`[data-day-row="${index}"]`);
+      row?.classList.toggle('is-hot', index === 1);
+    });
+
+    Object.entries(areaScores).forEach(([key, value]) => {
+      const area = key as AreaKey;
+      const width = clamp((value / maxPressure) * 100, 4, 100);
+      const bar = document.querySelector<HTMLElement>(`[data-pressure-bar="${area}"]`);
+      const row = document.querySelector<HTMLElement>(`[data-pressure-row="${area}"]`);
+      setText(`[data-pressure-value="${area}"]`, String(Math.round(value)));
+      if (bar) bar.style.width = `${width}%`;
+      row?.classList.toggle('is-largest', area === firstKey);
+    });
+
+    currentActions = areaCopy[firstKey].fix;
+    currentMetrics = {
+      role,
+      companySize,
+      decisionLoad,
+      directReports,
+      autonomy,
+      headWork,
+      reporting,
+      customerWait,
+      score,
+      status: status.label,
+      firstBreak: firstKey,
+      secondBreak: secondKey,
+    };
+    currentReadout = [
+      '30-Day Vanish Test',
+      `Vanish score: ${score}/100 (${status.label})`,
+      `First breakpoint: ${areaCopy[firstKey].label}`,
+      `Hidden bottleneck: ${areaCopy[secondKey].label}`,
+      `Diagnosis: ${status.diagnosis}`,
+      `First fixes: ${currentActions.join(' ')}`,
+    ].join('\n');
+
+    if (unlocked && !unlocked.hidden) renderActions();
+  }
+
+  function renderActions() {
+    if (!actionsList) return;
+    actionsList.innerHTML = '';
+    currentActions.forEach((action) => {
+      const item = document.createElement('li');
+      item.textContent = action;
+      actionsList.append(item);
+    });
+  }
+
+  function update() {
+    inputs.forEach(syncRangeFill);
+    calculate();
+  }
+
+  inputs.forEach((input) => {
+    input.addEventListener('input', update);
+    input.addEventListener('change', update);
+    syncRangeFill(input);
+  });
+  roles.forEach((role) => role.addEventListener('change', update));
+  sizes.forEach((size) => size.addEventListener('change', update));
+  surfaces.forEach((surface) => surface.addEventListener('change', update));
+  calculate();
+
+  gate?.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const data = new FormData(gate);
+    const name = String(data.get('name') ?? '').trim();
+    const email = String(data.get('email') ?? '').trim().toLowerCase();
+    const company = String(data.get('company') ?? '').trim();
+    const w = window as PostHogWindow;
+
+    w.posthog?.identify?.(email, {
+      email,
+      name,
+      company,
+      vanish_score: currentMetrics.score,
+      vanish_first_break: currentMetrics.firstBreak,
+      vanish_status: currentMetrics.status,
+    });
+    w.posthog?.capture?.('vanish_test_fix_list_unlocked', {
+      company,
+      ...currentMetrics,
+    });
+
+    gate.hidden = true;
+    if (unlocked) unlocked.hidden = false;
+    renderActions();
+  });
+
+  copyButton?.addEventListener('click', async () => {
+    await navigator.clipboard.writeText(currentReadout);
+    copyButton.textContent = 'Copied';
+    window.setTimeout(() => {
+      copyButton.textContent = 'Copy readout';
+    }, 1400);
+  });
+</script>
+
+<style is:global>
+  .vanish-page {
+    background: var(--paper);
+    color: var(--ink);
+  }
+
+  .vanish-page * {
+    letter-spacing: 0;
+  }
+
+  .vanish-hero {
+    background: var(--paper);
+    border-bottom: 1px solid var(--line-strong);
+    padding: 72px 0 52px;
+  }
+
+  .vanish-hero-grid {
+    align-items: center;
+    display: grid;
+    gap: 72px;
+    grid-template-columns: minmax(0, 1.06fr) minmax(360px, 0.74fr);
+  }
+
+  .vanish-kicker {
+    align-items: center;
+    color: var(--accent-deep);
+    display: inline-flex;
+    font-family: var(--mono);
+    font-size: 12px;
+    gap: 12px;
+    line-height: 1.4;
+    text-transform: uppercase;
+  }
+
+  .vanish-kicker::before {
+    background: var(--accent);
+    border-radius: 999px;
+    content: '';
+    flex: 0 0 auto;
+    height: 8px;
+    width: 8px;
+  }
+
+  .vanish-hero-copy h1 {
+    font-size: 82px;
+    line-height: 0.96;
+    margin: 24px 0 0;
+    max-width: 920px;
+  }
+
+  .vanish-hero-copy p {
+    color: var(--ink-dim);
+    font-family: var(--serif);
+    font-size: 27px;
+    font-style: italic;
+    line-height: 1.28;
+    margin: 28px 0 0;
+    max-width: 750px;
+  }
+
+  .vanish-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 34px;
+  }
+
+  .vanish-btn {
+    align-items: center;
+    border: 1px solid var(--ink);
+    display: inline-flex;
+    font-family: var(--mono);
+    font-size: 12px;
+    justify-content: center;
+    min-height: 50px;
+    padding: 14px 18px;
+    text-decoration: none;
+    text-transform: uppercase;
+  }
+
+  .vanish-btn-primary {
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  .vanish-btn-secondary {
+    background: transparent;
+    color: var(--ink);
+  }
+
+  .vanish-hero-console {
+    background: var(--ink);
+    color: var(--paper);
+    display: grid;
+    gap: 26px;
+    min-height: 520px;
+    padding: 30px;
+  }
+
+  .console-head,
+  .console-foot {
+    align-items: start;
+    border-bottom: 1px solid var(--on-ink-line-faint);
+    display: flex;
+    gap: 20px;
+    justify-content: space-between;
+    padding-bottom: 22px;
+  }
+
+  .console-foot {
+    align-items: end;
+    border-bottom: 0;
+    border-top: 1px solid var(--on-ink-line-faint);
+    padding: 22px 0 0;
+  }
+
+  .console-head span,
+  .console-foot span,
+  .console-line span,
+  .readout-topline span,
+  .first-break span,
+  .operator-diagnosis span,
+  .vanish-gate span,
+  .pressure-head span {
+    color: var(--on-ink-faint);
+    font-family: var(--mono);
+    font-size: 11px;
+    line-height: 1.4;
+    text-transform: uppercase;
+  }
+
+  .console-head b {
+    color: var(--accent);
+    font-size: 88px;
+    line-height: 0.78;
+  }
+
+  .console-lines {
+    display: grid;
+    gap: 0;
+  }
+
+  .console-line {
+    border-bottom: 1px solid var(--on-ink-line-faint);
+    display: grid;
+    gap: 16px;
+    grid-template-columns: 74px 1fr;
+    padding: 18px 0;
+  }
+
+  .console-line strong {
+    color: var(--on-ink-dim);
+    font-size: 22px;
+    line-height: 1.1;
+  }
+
+  .console-line.is-hot strong,
+  .console-line.is-hot span {
+    color: var(--accent);
+  }
+
+  .console-foot b {
+    color: var(--on-ink);
+    font-size: 26px;
+    line-height: 1.05;
+    max-width: 210px;
+    text-align: right;
+  }
+
+  .vanish-tool {
+    padding: 72px 0 96px;
+  }
+
+  .vanish-tool-head {
+    align-items: end;
+    display: grid;
+    gap: 48px;
+    grid-template-columns: minmax(0, 0.88fr) minmax(320px, 0.72fr);
+    margin-bottom: 30px;
+  }
+
+  .vanish-tool-head h2 {
+    font-size: 58px;
+    line-height: 1;
+    margin: 18px 0 0;
+    max-width: 720px;
+  }
+
+  .vanish-tool-head p {
+    color: var(--ink-dim);
+    font-size: 20px;
+    line-height: 1.48;
+    margin: 0;
+    max-width: 560px;
+  }
+
+  .vanish-workbench {
+    align-items: start;
+    display: grid;
+    gap: 28px;
+    grid-template-columns: minmax(340px, 0.8fr) minmax(520px, 1.2fr);
+  }
+
+  .vanish-controls {
+    background: var(--paper-2);
+    border: 1px solid var(--ink);
+    display: grid;
+    gap: 28px;
+    padding: 34px;
+  }
+
+  .control-block {
+    border: 0;
+    margin: 0;
+    padding: 0;
+  }
+
+  .control-block legend {
+    color: var(--accent-deep);
+    font-family: var(--mono);
+    font-size: 12px;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+  }
+
+  .role-grid,
+  .size-grid,
+  .surface-grid {
+    display: grid;
+    gap: 8px;
+  }
+
+  .role-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .size-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .surface-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .role-grid label,
+  .size-grid label,
+  .surface-grid label {
+    cursor: pointer;
+    display: block;
+    min-width: 0;
+  }
+
+  .role-grid input,
+  .size-grid input,
+  .surface-grid input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .role-grid span,
+  .size-grid span,
+  .surface-grid span {
+    align-items: center;
+    background: var(--paper);
+    border: 1px solid var(--line-strong);
+    color: var(--ink);
+    display: flex;
+    font-family: var(--mono);
+    font-size: 12px;
+    justify-content: center;
+    min-height: 44px;
+    padding: 10px 8px;
+    text-align: center;
+    text-transform: uppercase;
+  }
+
+  .surface-grid span {
+    justify-content: flex-start;
+    padding-inline: 12px;
+  }
+
+  .role-grid input:checked + span,
+  .size-grid input:checked + span,
+  .surface-grid input:checked + span {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: var(--paper);
+  }
+
+  .role-grid input:focus-visible + span,
+  .size-grid input:focus-visible + span,
+  .surface-grid input:focus-visible + span {
+    outline: 2px solid var(--accent-deep);
+    outline-offset: 2px;
+  }
+
+  .range-stack {
+    border-bottom: 1px solid var(--line-strong);
+    border-top: 1px solid var(--line-strong);
+    display: grid;
+    gap: 26px;
+    padding: 28px 0;
+  }
+
+  .vanish-range {
+    display: grid;
+    gap: 13px;
+  }
+
+  .vanish-range span {
+    align-items: end;
+    display: flex;
+    gap: 18px;
+    justify-content: space-between;
+  }
+
+  .vanish-range b,
+  .vanish-range output {
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.35;
+    text-transform: uppercase;
+  }
+
+  .vanish-range b {
+    color: var(--ink-faint);
+    font-weight: 400;
+  }
+
+  .vanish-range output {
+    color: var(--ink);
+    font-size: 18px;
+    font-weight: 700;
+    min-width: 58px;
+    text-align: right;
+  }
+
+  .vanish-range input[type='range'] {
+    appearance: none;
+    background: transparent;
+    cursor: pointer;
+    height: 46px;
+    margin: 0;
+    touch-action: pan-y;
+    width: 100%;
+  }
+
+  .vanish-range input[type='range']::-webkit-slider-runnable-track {
+    background: linear-gradient(to right, var(--accent-deep) 0 var(--pct, 0%), rgba(14, 26, 44, 0.18) var(--pct, 0%) 100%);
+    border: 1px solid var(--line-strong);
+    height: 8px;
+  }
+
+  .vanish-range input[type='range']::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    background: var(--paper);
+    border: 6px solid var(--accent-deep);
+    border-radius: 999px;
+    height: 30px;
+    margin-top: -12px;
+    width: 30px;
+  }
+
+  .vanish-range input[type='range']::-moz-range-track {
+    background: rgba(14, 26, 44, 0.18);
+    border: 1px solid var(--line-strong);
+    height: 8px;
+  }
+
+  .vanish-range input[type='range']::-moz-range-progress {
+    background: var(--accent-deep);
+    height: 8px;
+  }
+
+  .vanish-range input[type='range']::-moz-range-thumb {
+    background: var(--paper);
+    border: 6px solid var(--accent-deep);
+    border-radius: 999px;
+    height: 30px;
+    width: 30px;
+  }
+
+  .vanish-readout {
+    background: var(--ink);
+    color: var(--paper);
+    display: grid;
+    gap: 28px;
+    padding: 34px;
+    position: sticky;
+    top: 96px;
+  }
+
+  .readout-topline {
+    align-items: stretch;
+    border-bottom: 1px solid var(--on-ink-line-faint);
+    display: grid;
+    gap: 24px;
+    grid-template-columns: 220px 1fr;
+    padding-bottom: 28px;
+  }
+
+  .readout-topline strong {
+    color: var(--on-ink);
+    display: block;
+    font-size: 98px;
+    line-height: 0.86;
+    margin-top: 12px;
+  }
+
+  .score-copy {
+    align-content: center;
+    border-left: 1px solid var(--on-ink-line-faint);
+    display: grid;
+    padding-left: 28px;
+  }
+
+  .score-copy b {
+    color: var(--accent);
+    font-family: var(--serif);
+    font-size: 42px;
+    font-style: italic;
+    font-weight: 400;
+    line-height: 1;
+  }
+
+  .score-copy p,
+  .first-break p,
+  .operator-diagnosis p,
+  .vanish-gate p,
+  .vanish-next p {
+    color: var(--on-ink-dim);
+    font-size: 22px;
+    line-height: 1.32;
+    margin: 14px 0 0;
+  }
+
+  .first-break {
+    border: 1px solid rgba(143, 191, 63, 0.52);
+    padding: 24px;
+  }
+
+  .first-break b {
+    color: var(--on-ink);
+    display: block;
+    font-size: 32px;
+    line-height: 1.02;
+    margin-top: 12px;
+  }
+
+  .vanish-timeline {
+    border-bottom: 1px solid var(--on-ink-line-faint);
+    border-top: 1px solid var(--on-ink-line-faint);
+  }
+
+  .timeline-row {
+    display: grid;
+    gap: 18px;
+    grid-template-columns: 78px 1fr;
+    padding: 18px 0;
+  }
+
+  .timeline-row + .timeline-row {
+    border-top: 1px solid var(--on-ink-line-faint);
+  }
+
+  .timeline-row span {
+    color: var(--on-ink-faint);
+    font-family: var(--mono);
+    font-size: 12px;
+    text-transform: uppercase;
+  }
+
+  .timeline-row p {
+    color: var(--on-ink-dim);
+    font-size: 18px;
+    line-height: 1.28;
+    margin: 0;
+  }
+
+  .timeline-row.is-hot span,
+  .timeline-row.is-hot p {
+    color: var(--accent);
+  }
+
+  .pressure-map {
+    display: grid;
+    gap: 16px;
+  }
+
+  .pressure-head {
+    align-items: end;
+    display: flex;
+    gap: 20px;
+    justify-content: space-between;
+  }
+
+  .pressure-head b {
+    color: var(--on-ink);
+    font-size: 20px;
+    text-align: right;
+  }
+
+  .pressure-row {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: 128px 1fr 44px;
+    min-height: 26px;
+    align-items: center;
+  }
+
+  .pressure-row span,
+  .pressure-row strong {
+    color: var(--on-ink-faint);
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 400;
+    text-transform: uppercase;
+  }
+
+  .pressure-row strong {
+    text-align: right;
+  }
+
+  .pressure-row i {
+    background: rgba(255, 255, 255, 0.13);
+    display: block;
+    height: 12px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .pressure-row i b {
+    background: rgba(255, 255, 255, 0.55);
+    display: block;
+    height: 100%;
+    width: 0%;
+  }
+
+  .pressure-row.is-largest span,
+  .pressure-row.is-largest strong {
+    color: var(--accent);
+  }
+
+  .pressure-row.is-largest i b {
+    background: var(--accent);
+  }
+
+  .operator-diagnosis {
+    border-left: 3px solid var(--accent);
+    padding-left: 18px;
+  }
+
+  .vanish-gate {
+    border: 1px solid var(--on-ink-line);
+    display: grid;
+    gap: 20px;
+    padding: 22px;
+  }
+
+  .gate-fields {
+    display: grid;
+    gap: 10px;
+  }
+
+  .gate-fields input {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--on-ink-line);
+    color: var(--on-ink);
+    font: inherit;
+    min-height: 48px;
+    padding: 12px 14px;
+    width: 100%;
+  }
+
+  .gate-fields input::placeholder {
+    color: var(--on-ink-faint);
+  }
+
+  .vanish-gate button,
+  .readout-actions button,
+  .readout-actions a {
+    align-items: center;
+    background: var(--accent);
+    border: 1px solid var(--accent);
+    color: var(--ink);
+    cursor: pointer;
+    display: inline-flex;
+    font-family: var(--mono);
+    font-size: 12px;
+    justify-content: center;
+    min-height: 48px;
+    padding: 13px 16px;
+    text-decoration: none;
+    text-transform: uppercase;
+  }
+
+  .vanish-unlocked {
+    border: 1px solid var(--on-ink-line);
+    display: grid;
+    gap: 18px;
+    padding: 22px;
+  }
+
+  .vanish-unlocked[hidden] {
+    display: none;
+  }
+
+  .vanish-unlocked ul {
+    display: grid;
+    gap: 14px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .vanish-unlocked li {
+    border-top: 1px solid var(--on-ink-line-faint);
+    color: var(--on-ink-dim);
+    font-size: 18px;
+    line-height: 1.35;
+    padding-top: 14px;
+  }
+
+  .readout-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .readout-actions button {
+    background: transparent;
+    border-color: var(--on-ink-line);
+    color: var(--on-ink);
+  }
+
+  .vanish-proof {
+    background: var(--paper-2);
+    border-top: 1px solid var(--line);
+    padding: 82px 0;
+  }
+
+  .vanish-proof-grid,
+  .vanish-next-grid {
+    display: grid;
+    gap: 64px;
+    grid-template-columns: minmax(0, 0.95fr) minmax(360px, 0.82fr);
+  }
+
+  .vanish-proof h2,
+  .vanish-next h2 {
+    font-size: 58px;
+    line-height: 1;
+    margin: 20px 0 0;
+    max-width: 760px;
+  }
+
+  .proof-list {
+    border-top: 2px solid var(--ink);
+    display: grid;
+  }
+
+  .proof-list div {
+    align-items: start;
+    border-bottom: 1px solid var(--line-strong);
+    display: grid;
+    gap: 22px;
+    grid-template-columns: 42px 1fr;
+    padding: 26px 0;
+  }
+
+  .proof-list b {
+    color: var(--accent-deep);
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+
+  .proof-list span {
+    color: var(--ink-dim);
+    font-size: 27px;
+    line-height: 1.18;
+  }
+
+  .vanish-next {
+    background: var(--ink);
+    color: var(--on-ink);
+    padding: 82px 0 92px;
+  }
+
+  .vanish-next p {
+    font-size: 24px;
+    margin: 0 0 28px;
+    max-width: 620px;
+  }
+
+  .vanish-next .vanish-btn-primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--ink);
+  }
+
+  @media (max-width: 1080px) {
+    .vanish-hero-grid,
+    .vanish-workbench,
+    .vanish-tool-head,
+    .vanish-proof-grid,
+    .vanish-next-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .vanish-readout {
+      position: static;
+    }
+  }
+
+  @media (max-width: 760px) {
+    .vanish-hero {
+      padding: 48px 0 42px;
+    }
+
+    .vanish-hero-grid,
+    .vanish-tool-head,
+    .vanish-workbench,
+    .vanish-proof-grid,
+    .vanish-next-grid {
+      gap: 30px;
+    }
+
+    .vanish-hero-copy h1,
+    .vanish-tool-head h2,
+    .vanish-proof h2,
+    .vanish-next h2 {
+      font-size: 44px;
+      line-height: 1;
+    }
+
+    .vanish-hero-copy p,
+    .proof-list span,
+    .vanish-next p {
+      font-size: 21px;
+    }
+
+    .vanish-actions,
+    .readout-actions {
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    .vanish-btn,
+    .readout-actions a,
+    .readout-actions button {
+      width: 100%;
+    }
+
+    .vanish-hero-console,
+    .vanish-controls,
+    .vanish-readout {
+      padding: 24px;
+    }
+
+    .console-head b,
+    .readout-topline strong {
+      font-size: 72px;
+    }
+
+    .console-line,
+    .timeline-row {
+      grid-template-columns: 68px 1fr;
+    }
+
+    .role-grid,
+    .size-grid,
+    .surface-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .readout-topline {
+      grid-template-columns: 1fr;
+    }
+
+    .score-copy {
+      border-left: 0;
+      border-top: 1px solid var(--on-ink-line-faint);
+      padding: 24px 0 0;
+    }
+
+    .pressure-row {
+      grid-template-columns: 96px 1fr 34px;
+    }
+
+    .vanish-tool,
+    .vanish-proof,
+    .vanish-next {
+      padding: 56px 0;
+    }
+  }
+
+  @media (max-width: 420px) {
+    .role-grid span,
+    .size-grid span,
+    .surface-grid span {
+      font-size: 11px;
+      min-height: 42px;
+    }
+
+    .vanish-range span {
+      align-items: start;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .vanish-range output {
+      min-width: 0;
+      text-align: left;
+    }
+  }
+</style>
