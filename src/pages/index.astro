@@ -57,6 +57,74 @@ import StackIcon from '../components/icons/Stack.astro';
       </div>
     </section>
 
+    <section id="quick-scan" class="mri-entry">
+      <div class="mri-entry-grid">
+        <div class="mri-entry-copy">
+          <div class="label"><b>00</b> · Quick scan</div>
+          <h2 class="section-title">Start with the first leak.</h2>
+          <p class="lede lede-offset">
+            Three operator questions. The full Revenue MRI turns the answer into a number, a diagnosis, and the first fix.
+          </p>
+        </div>
+
+        <div class="mri-typeform" data-home-mri>
+          <div class="mri-progress" aria-label="Revenue MRI quick scan progress">
+            <span data-home-mri-count>01</span>
+            <i><b data-home-mri-progress></b></i>
+            <span>03</span>
+          </div>
+
+          <div class="mri-question" data-home-mri-panel="0">
+            <div class="mri-question-head">
+              <span>Question 01</span>
+              <h3>Where does revenue go quiet first?</h3>
+            </div>
+            <div class="mri-options">
+              <button type="button" data-home-mri-answer="response">New leads wait too long.</button>
+              <button type="button" data-home-mri-answer="quality">The lead quality looks wrong.</button>
+              <button type="button" data-home-mri-answer="handoff">Sales loses the thread.</button>
+            </div>
+          </div>
+
+          <div class="mri-question" data-home-mri-panel="1" hidden>
+            <div class="mri-question-head">
+              <span>Question 02</span>
+              <h3>What did last month make heavier?</h3>
+            </div>
+            <div class="mri-options">
+              <button type="button" data-home-mri-next>Spend decisions.</button>
+              <button type="button" data-home-mri-next>Follow-up and routing.</button>
+              <button type="button" data-home-mri-next>Reporting and meetings.</button>
+            </div>
+          </div>
+
+          <div class="mri-question" data-home-mri-panel="2" hidden>
+            <div class="mri-question-head">
+              <span>Question 03</span>
+              <h3>What would make the next decision cleaner?</h3>
+            </div>
+            <div class="mri-options">
+              <button type="button" data-home-mri-next>A dollar leak estimate.</button>
+              <button type="button" data-home-mri-next>A prioritized fix list.</button>
+              <button type="button" data-home-mri-next>A senior read on the system.</button>
+            </div>
+          </div>
+
+          <div class="mri-result" data-home-mri-panel="3" hidden>
+            <span>Likely first leak</span>
+            <strong data-home-mri-result>Speed-to-lead decay</strong>
+            <p data-home-mri-copy>
+              The first fix is usually response time, routing, and ownership before another dollar goes into acquisition.
+            </p>
+            <div class="mri-result-actions">
+              <button type="button" data-home-mri-back>Back</button>
+              <a href="/revenue-leak-mri">Run full MRI →</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section id="modules">
       <div class="sec-head">
         <div class="label"><b>01</b> · The work</div>
@@ -357,3 +425,67 @@ import StackIcon from '../components/icons/Stack.astro';
     </footer>
   </div>
 </Base>
+
+<script>
+  const homeMri = document.querySelector<HTMLElement>('[data-home-mri]');
+
+  if (homeMri) {
+    const panels = Array.from(homeMri.querySelectorAll<HTMLElement>('[data-home-mri-panel]'));
+    const count = homeMri.querySelector<HTMLElement>('[data-home-mri-count]');
+    const progress = homeMri.querySelector<HTMLElement>('[data-home-mri-progress]');
+    const result = homeMri.querySelector<HTMLElement>('[data-home-mri-result]');
+    const copy = homeMri.querySelector<HTMLElement>('[data-home-mri-copy]');
+    const answers = {
+      response: {
+        label: 'Speed-to-lead decay',
+        copy: 'The first fix is usually response time, routing, and ownership before another dollar goes into acquisition.',
+      },
+      quality: {
+        label: 'Signal quality leak',
+        copy: 'The platform may be buying activity the revenue system cannot use. Fix the qualifying signal before scaling spend.',
+      },
+      handoff: {
+        label: 'Sales handoff leak',
+        copy: 'Demand is arriving, but ownership is breaking between capture, follow-up, and close. The fix starts with the handoff.',
+      },
+    };
+    let current = 0;
+    let selected = answers.response;
+
+    const showPanel = (index: number) => {
+      current = index;
+      panels.forEach((panel) => {
+        panel.hidden = panel.dataset.homeMriPanel !== String(index);
+      });
+      const step = Math.min(index + 1, 3);
+      if (count) count.textContent = String(step).padStart(2, '0');
+      if (progress) progress.style.setProperty('--mri-home-progress', `${(step / 3) * 100}%`);
+    };
+
+    homeMri.querySelectorAll<HTMLButtonElement>('[data-home-mri-answer]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const key = button.dataset.homeMriAnswer as keyof typeof answers;
+        selected = answers[key] ?? answers.response;
+        showPanel(1);
+      });
+    });
+
+    homeMri.querySelectorAll<HTMLButtonElement>('[data-home-mri-next]').forEach((button) => {
+      button.addEventListener('click', () => {
+        if (current === 2) {
+          if (result) result.textContent = selected.label;
+          if (copy) copy.textContent = selected.copy;
+          showPanel(3);
+          return;
+        }
+        showPanel(current + 1);
+      });
+    });
+
+    homeMri.querySelector<HTMLButtonElement>('[data-home-mri-back]')?.addEventListener('click', () => {
+      showPanel(0);
+    });
+
+    showPanel(0);
+  }
+</script>
