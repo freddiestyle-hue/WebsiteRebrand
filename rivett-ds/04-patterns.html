@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Rivett · 04 Patterns</title>
+<link rel="stylesheet" href="tokens.css" />
+<style>
+  /* numbox */
+  .numbox {
+    background: var(--sage); padding: var(--sp-7) var(--sp-8);
+    display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-6);
+    border-left: var(--bw-thick) solid var(--accent-deep);
+  }
+  .numbox.cols-4 { grid-template-columns: repeat(4, 1fr); }
+  @media (max-width: 780px) { .numbox.cols-4 { grid-template-columns: repeat(2, 1fr); } }
+  .numbox .k {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono);
+    text-transform: uppercase; color: var(--accent-deep);
+    display: block; margin-bottom: 6px;
+  }
+  .numbox .v {
+    font-family: var(--grotesk); font-weight: 700; font-size: 32px; line-height: 1;
+    letter-spacing: var(--track-tighter);
+  }
+  .numbox .v .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); }
+
+  /* tldr */
+  .tldr {
+    background: var(--paper-2); border: var(--bw-hair) solid var(--ink);
+    padding: var(--sp-7) var(--sp-8);
+    display: grid; grid-template-columns: 90px 1fr; gap: var(--sp-6);
+    align-items: start;
+  }
+  .tldr p { margin: 0; font-size: 17px; line-height: 1.6; font-family: var(--grotesk); font-weight: 500; }
+
+  /* pull */
+  .pull { padding: var(--sp-8) 0; border-top: var(--bw-hair) solid var(--ink); border-bottom: var(--bw-hair) solid var(--ink); }
+  .pull blockquote {
+    margin: 0; font-family: var(--serif); font-style: italic;
+    font-size: 32px; line-height: 1.25; letter-spacing: -0.02em;
+  }
+  .pull cite {
+    display: block; margin-top: 18px; font-style: normal;
+    font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono);
+    text-transform: uppercase; color: var(--ink-faint);
+  }
+
+  /* end-cta */
+  .end-cta {
+    background: var(--ink); color: var(--on-ink);
+    padding: var(--sp-12);
+    display: grid; grid-template-columns: 1.4fr 1fr; gap: 64px; align-items: center;
+  }
+  @media (max-width: 880px) { .end-cta { grid-template-columns: 1fr; gap: var(--sp-8); padding: var(--sp-8); } }
+  .end-cta h3 {
+    font-family: var(--grotesk); font-weight: 700; font-size: 36px; line-height: 1.04;
+    letter-spacing: -0.04em; margin: 0; color: var(--on-ink);
+  }
+  .end-cta h3 .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--on-ink-italic); }
+  .end-cta .right { display: flex; flex-direction: column; gap: 18px; }
+  .end-cta .stamp { color: var(--on-ink-faint); }
+  .end-cta .stamp::before { background: var(--accent); }
+  .end-cta p { color: var(--on-ink-dim); margin: 0; font-size: 16px; line-height: 1.55; max-width: 360px; }
+  .btn-inv { display: inline-flex; padding: 11px 18px; border: 1px solid var(--paper); background: var(--paper); color: var(--ink); font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; gap: var(--sp-3); }
+  .btn-inv:hover { background: var(--accent); border-color: var(--accent); }
+
+  /* migration */
+  .migration {
+    background: var(--ink); color: var(--on-ink); padding: var(--sp-7) var(--sp-10);
+    display: grid; grid-template-columns: 1fr auto; gap: var(--sp-8); align-items: center;
+  }
+  .migration .label {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono);
+    text-transform: uppercase; color: var(--on-ink-faint); display: block; margin-bottom: var(--sp-3);
+  }
+  .migration h3 { font-family: var(--grotesk); font-weight: 700; font-size: 22px; letter-spacing: -0.02em; margin: 0; color: var(--on-ink); }
+  .migration .diff { font-family: var(--mono); font-size: 12px; line-height: 1.7; }
+  .migration .diff .old { color: var(--on-ink-faint); text-decoration: line-through; }
+  .migration .diff .new { color: var(--accent); }
+
+  /* numbered section heads */
+  .sec-head {
+    display: grid; grid-template-columns: 240px 1fr; gap: 64px;
+    border-top: var(--bw-rule) solid var(--ink); padding: var(--sp-12) 0 var(--sp-8);
+  }
+  .sec-head .lbl {
+    font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono);
+    text-transform: uppercase; color: var(--ink-faint);
+  }
+  .sec-head .lbl .num { display: block; font-family: var(--grotesk); font-weight: 700; font-size: 56px; line-height: 1; color: var(--ink); margin-top: var(--sp-3); letter-spacing: var(--track-tighter); }
+  .sec-head h2 { font-family: var(--grotesk); font-weight: 700; font-size: 44px; line-height: 1.04; letter-spacing: -0.04em; margin: 0; }
+  .sec-head h2 .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); }
+
+  /* hero pattern */
+  .hero-pattern {
+    padding: var(--sp-16) 0 var(--sp-12);
+    border-bottom: var(--bw-hair) solid var(--line-strong);
+  }
+  .hero-pattern h1 {
+    font-family: var(--grotesk); font-weight: 800; font-size: clamp(48px, 7vw, 96px);
+    line-height: 0.92; letter-spacing: var(--track-display); margin: var(--sp-6) 0 0; text-wrap: balance;
+  }
+  .hero-pattern h1 .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); }
+  .hero-pattern .dek { font-family: var(--serif); font-style: italic; font-size: 24px; color: var(--ink-dim); margin: var(--sp-7) 0 0; max-width: 700px; line-height: 1.4; }
+
+  /* audience cards */
+  .audience { display: grid; grid-template-columns: repeat(3, 1fr); border: var(--bw-hair) solid var(--line); }
+  @media (max-width: 880px) { .audience { grid-template-columns: 1fr; } }
+  .audience .col { padding: var(--sp-8); border-right: var(--bw-hair) solid var(--line); }
+  .audience .col:last-child { border-right: 0; }
+  .audience h4 { font-family: var(--grotesk); font-weight: 700; font-size: 20px; letter-spacing: var(--track-h-sm); margin: var(--sp-5) 0 var(--sp-3); }
+  .audience h4 .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); }
+  .audience p { margin: 0; font-size: 14.5px; line-height: 1.55; color: var(--ink-dim); }
+
+  .demo { padding: var(--sp-10); background: var(--paper-2); border: var(--bw-hair) solid var(--line); margin-bottom: var(--sp-3); }
+  .demo .caption { font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); margin-bottom: var(--sp-5); }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <nav class="system-nav">
+    <a href="Design System.html" class="wordmark">rivett<span class="dot-mark"></span></a>
+    <div class="meta">
+      <a href="03-components.html"><b>← 03 Components</b></a>
+      <span>04 / 09</span>
+      <a href="05-templates.html"><b>05 Templates →</b></a>
+    </div>
+  </nav>
+
+  <div class="system-bread">
+    <a href="Design System.html">Design system</a><span class="sep">/</span><b>04 Patterns</b>
+  </div>
+
+  <header class="hub-hero" style="padding: var(--sp-16) 0 var(--sp-14); border-bottom: var(--bw-hair) solid var(--line-strong);">
+    <span class="stamp">Section 04 · Composed blocks</span>
+    <h1 style="font-family: var(--grotesk); font-weight: 800; font-size: clamp(56px, 8vw, 112px); line-height: 0.92; letter-spacing: var(--track-display); margin: var(--sp-8) 0 0;">The page <span class="ital">writes itself.</span></h1>
+    <p class="dek" style="font-family: var(--serif); font-style: italic; font-size: clamp(22px, 2.4vw, 28px); line-height: 1.4; margin: var(--sp-8) 0 0; max-width: 780px; color: var(--ink-dim);">Long-form pages are assembled from a small kit of composed blocks. Hero, section head, TLDR, pull quote, numbox, migration callout, audience triad, dark closer.</p>
+  </header>
+
+  <!-- Hero pattern -->
+  <section class="spec" id="hero">
+    <div class="label">04 · 1<span class="num">Hero</span></div>
+    <div class="body">
+      <h2>Stamp, headline, dek. <span class="ital">Three lines.</span></h2>
+      <p class="lede">The hero is text-only. Stamp at top in mono. Display heading with one italic clause. Italic serif dek beneath capped at 700px. No image, no shape, no scroll-cue.</p>
+      <div class="demo">
+        <span class="caption">Hero · primary</span>
+        <div class="hero-pattern" style="border-bottom: 0; padding: var(--sp-8) 0 var(--sp-4);">
+          <span class="stamp">A senior growth practice · Cape Town &amp; remote</span>
+          <h1>Growth infrastructure <span class="ital">for operators.</span></h1>
+          <p class="dek">Two-week diagnostic. Six-week build. Twelve-week run. Fortnightly read-out. Specific numbers, not a deck.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section head -->
+  <section class="spec" id="sec-heads">
+    <div class="label">04 · 2<span class="num">Section heads</span></div>
+    <div class="body">
+      <h2>Numbered, <span class="ital">2-px ink rule above.</span></h2>
+      <p class="lede">Every long-form section opens with a 240/1fr split. Mono label and 56px numeral on the left, 44px headline on the right. The 2-pixel ink rule above the row carries the whole composition.</p>
+
+      <div class="demo demo--paper" style="background: var(--paper);">
+        <div class="sec-head" style="padding-top: var(--sp-8);">
+          <span class="lbl">Module<span class="num">02</span></span>
+          <h2>Build. <span class="ital">Stack, instrumentation, ten experiments.</span></h2>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TLDR -->
+  <section class="spec" id="tldr">
+    <div class="label">04 · 3<span class="num">TLDR</span></div>
+    <div class="body">
+      <h2>One paragraph. <span class="ital">Stamp on the left.</span></h2>
+      <p class="lede">The TLDR is the first block on every long-form page. 90px stamp column, 1fr paragraph. Inter Tight 17 medium, ink-pretty wrap. Never more than three sentences.</p>
+
+      <div class="tldr">
+        <span class="stamp">TL · DR</span>
+        <p>Four founders. Same growth question. The honest answer is rarely the loud one — and it's almost always cheaper than the playbook says.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pull quote -->
+  <section class="spec" id="pull">
+    <div class="label">04 · 4<span class="num">Pull quote</span></div>
+    <div class="body">
+      <h2>Italic serif, <span class="ital">two ink rules above and below.</span></h2>
+      <p class="lede">The pull quote is the only place a whole sentence is set in italic. 32px Newsreader, 1.25 line height. Cite on a new line in mono.</p>
+
+      <div class="pull">
+        <blockquote>"The work isn't to ship more. It's to ship the right thing, instrumented, on the right cadence — and to know within a fortnight whether it's bending the curve."</blockquote>
+        <cite>— field note 04 · Cadence over volume</cite>
+      </div>
+    </div>
+  </section>
+
+  <!-- Numbox -->
+  <section class="spec" id="numbox">
+    <div class="label">04 · 5<span class="num">Numbox</span></div>
+    <div class="body">
+      <h2>Sage background, <span class="ital">3-pixel deep-green rail.</span></h2>
+      <p class="lede">The numbox is where data lands inside prose. Sage tint. 3-pixel accent-deep rail on the left. Two or four columns. Mono key in accent-deep above a 32px Inter Tight 700 value with an italic serif unit.</p>
+
+      <div class="numbox cols-4">
+        <div><span class="k">Diagnostic</span><span class="v">02 <span class="ital">wks</span></span></div>
+        <div><span class="k">Build</span><span class="v">04–06 <span class="ital">wks</span></span></div>
+        <div><span class="k">Run</span><span class="v">£12k <span class="ital">/ mo</span></span></div>
+        <div><span class="k">First read</span><span class="v">14 <span class="ital">days</span></span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Migration -->
+  <section class="spec" id="migration">
+    <div class="label">04 · 6<span class="num">Migration</span></div>
+    <div class="body">
+      <h2>Ink callout, <span class="ital">old strikethrough, new in accent.</span></h2>
+      <p class="lede">The migration callout marks any version-bump in the system or any deprecated value on a page. Ink background. Mono diff body in two states — <code>--on-ink-faint</code> with strikethrough for old, <code>--accent</code> for new.</p>
+
+      <div class="migration">
+        <div>
+          <span class="label">v0.2 → v1.0</span>
+          <h3>Two values move. Everything else is additive.</h3>
+        </div>
+        <div class="diff">
+          <div><span class="old">--accent: #6FB582</span> → <span class="new">#8FBF3F</span></div>
+          <div><span class="old">--accent-deep: #3F7553</span> → <span class="new">#4A6E18</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Audience triad -->
+  <section class="spec" id="audience">
+    <div class="label">04 · 7<span class="num">Audience triad</span></div>
+    <div class="body">
+      <h2>Three columns, <span class="ital">hairline divider, no fill.</span></h2>
+      <p class="lede">Used on the homepage to address three audiences in one gesture. Each column is a stamp + headline + lede. No icons, no buttons, no backgrounds. Three is the count.</p>
+
+      <div class="audience">
+        <div class="col">
+          <span class="stamp">For founders</span>
+          <h4>Numbers are live, <span class="ital">next move unclear.</span></h4>
+          <p>You have revenue and a team. You are not sure where the next 90 days of effort should land. The diagnostic.</p>
+        </div>
+        <div class="col">
+          <span class="stamp">For operators</span>
+          <h4>You inherited <span class="ital">a stack.</span></h4>
+          <p>Marketing exists, sales exists, the data exists somewhere. Senior eyes, instrumentation, and a fortnightly read-out.</p>
+        </div>
+        <div class="col">
+          <span class="stamp">For boards</span>
+          <h4>You need <span class="ital">a sober read.</span></h4>
+          <p>The portfolio company is shipping but the curve is flat. A two-week independent diagnostic, written for a board pack.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Dark closer -->
+  <section class="spec" id="closer">
+    <div class="label">04 · 8<span class="num">Dark closer</span></div>
+    <div class="body">
+      <h2>Ink end-CTA, <span class="ital">used once per page.</span></h2>
+      <p class="lede">Dark surfaces are end-of-page furniture. The end-CTA is the only mandatory dark surface, and it is used at most once. Headline left at 1.4fr, supporting block right at 1fr.</p>
+
+      <div class="end-cta">
+        <h3>If your numbers are live but the next move is unclear, <span class="ital">that's the diagnostic.</span></h3>
+        <div class="right">
+          <span class="stamp">Two-week engagement</span>
+          <p>Senior eyes on your funnel, your spend, and the next 90 days. £4k. No retainer required to start.</p>
+          <a class="btn-inv">Book diagnostic →</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer pattern -->
+  <section class="spec" id="footer-pattern" style="border-bottom: 0;">
+    <div class="label">04 · 9<span class="num">Footer</span></div>
+    <div class="body">
+      <h2>Mono everywhere. <span class="ital">Wordmark, three columns, line.</span></h2>
+      <p class="lede">The site footer pairs the wordmark with three mono columns: The work, Field notes, Contact. No sub-stamps, no logos, no social rails. Bottom line is "v1.0 · 2026".</p>
+
+      <div class="demo demo--ink" style="padding: var(--sp-12) var(--sp-10); background: var(--ink); color: var(--on-ink);">
+        <div style="display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: var(--sp-10);">
+          <span class="wordmark" style="color: var(--on-ink); font-size: 28px;">rivett<span class="dot-mark"></span></span>
+          <div>
+            <div style="font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--on-ink-faint); margin-bottom: var(--sp-4);">The work</div>
+            <div style="display: flex; flex-direction: column; gap: 6px; font-family: var(--mono); font-size: 12px; color: var(--on-ink);">
+              <a>Diagnostic</a><a>Build</a><a>Run</a>
+            </div>
+          </div>
+          <div>
+            <div style="font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--on-ink-faint); margin-bottom: var(--sp-4);">Field notes</div>
+            <div style="display: flex; flex-direction: column; gap: 6px; font-family: var(--mono); font-size: 12px; color: var(--on-ink);">
+              <a>All notes</a><a>Cadence</a><a>Stack</a>
+            </div>
+          </div>
+          <div>
+            <div style="font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--on-ink-faint); margin-bottom: var(--sp-4);">Contact</div>
+            <div style="display: flex; flex-direction: column; gap: 6px; font-family: var(--mono); font-size: 12px; color: var(--on-ink);">
+              <a>tom@rivett.tech</a><a>Calendar</a>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top: var(--sp-12); padding-top: var(--sp-6); border-top: var(--bw-hair) solid var(--on-ink-line); font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--on-ink-faint); display: flex; justify-content: space-between;">
+          <span>© rivett · 2026</span>
+          <span>v1.0</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="system-foot">
+    <a class="wordmark wordmark--sm" href="Design System.html">rivett<span class="dot-mark"></span></a>
+    <span>04 Patterns · v1.0</span>
+    <a href="05-templates.html"><b>Next · 05 Templates →</b></a>
+  </footer>
+</div>
+</body>
+</html>

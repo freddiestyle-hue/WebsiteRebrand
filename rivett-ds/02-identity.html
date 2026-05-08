@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Rivett · 02 Identity &amp; Marks</title>
+<link rel="stylesheet" href="tokens.css" />
+<style>
+  .mark-plate { display: grid; grid-template-columns: 1fr 1fr; border: var(--bw-hair) solid var(--line); }
+  @media (max-width: 880px) { .mark-plate { grid-template-columns: 1fr; } }
+  .mark-plate .cell {
+    padding: var(--sp-12) var(--sp-8);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: var(--sp-6);
+    border-right: var(--bw-hair) solid var(--line);
+    border-bottom: var(--bw-hair) solid var(--line);
+    min-height: 280px; background: var(--paper);
+  }
+  .mark-plate .cell:nth-child(2n) { border-right: 0; }
+  .mark-plate .cell.dark { background: var(--ink); }
+  .mark-plate .cell.dark .lbl { color: var(--on-ink-faint); }
+  .mark-plate .cell.dark .wordmark { color: var(--on-ink); }
+  .mark-plate .cell .lbl {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono);
+    text-transform: uppercase; color: var(--ink-faint);
+  }
+
+  .clear-space {
+    background: var(--paper-2); padding: var(--sp-12); border: var(--bw-hair) solid var(--line);
+    display: flex; flex-direction: column; align-items: center; gap: var(--sp-4);
+    position: relative;
+  }
+  .clear-space .frame {
+    border: 1px dashed var(--accent-deep); padding: 32px;
+    position: relative;
+  }
+  .clear-space .x {
+    position: absolute; font-family: var(--mono); font-size: 10.5px;
+    color: var(--accent-deep); letter-spacing: 0.16em; text-transform: uppercase;
+  }
+  .clear-space .x.t { top: 8px; left: 50%; transform: translateX(-50%); }
+  .clear-space .x.b { bottom: 8px; left: 50%; transform: translateX(-50%); }
+  .clear-space .x.l { left: 8px; top: 50%; transform: translateY(-50%) rotate(-90deg); }
+  .clear-space .x.r { right: 8px; top: 50%; transform: translateY(-50%) rotate(-90deg); }
+
+  .misuse {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 0;
+    border: var(--bw-hair) solid var(--line);
+  }
+  @media (max-width: 880px) { .misuse { grid-template-columns: repeat(2, 1fr); } }
+  .misuse .item {
+    padding: var(--sp-8) var(--sp-6); border-right: var(--bw-hair) solid var(--line);
+    border-bottom: var(--bw-hair) solid var(--line);
+    display: flex; flex-direction: column; gap: var(--sp-5); align-items: center;
+    background: var(--paper); min-height: 200px; justify-content: center;
+    text-align: center;
+  }
+  .misuse .item .reason {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono);
+    text-transform: uppercase; color: var(--signal-halt);
+  }
+  .misuse .item .reason::before {
+    content: '✕'; margin-right: 8px;
+  }
+
+  .scale-row {
+    display: grid; grid-template-columns: repeat(5, 1fr); border: var(--bw-hair) solid var(--line);
+    align-items: end;
+  }
+  .scale-row .step {
+    padding: var(--sp-6) var(--sp-4); border-right: var(--bw-hair) solid var(--line);
+    display: flex; flex-direction: column; align-items: center; gap: var(--sp-3); min-height: 120px;
+    justify-content: end;
+  }
+  .scale-row .step:last-child { border-right: 0; }
+  .scale-row .meta {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--ink-faint);
+  }
+  .scale-row .meta b { color: var(--ink); font-family: var(--grotesk); font-weight: 600; font-size: 12px; letter-spacing: -0.01em; text-transform: none; display: block; margin-top: 2px; }
+
+  .og-card {
+    width: 100%; max-width: 600px;
+    aspect-ratio: 1.91 / 1; background: var(--paper);
+    border: var(--bw-hair) solid var(--line);
+    padding: var(--sp-12); display: flex; flex-direction: column; justify-content: space-between;
+    position: relative;
+  }
+  .og-card.dark { background: var(--ink); color: var(--on-ink); }
+  .og-card .head {
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .og-card .stamp { font-size: 11px; }
+  .og-card.dark .stamp { color: var(--on-ink-faint); }
+  .og-card h2 {
+    font-family: var(--grotesk); font-weight: 800; font-size: 48px; line-height: 0.95;
+    letter-spacing: var(--track-display); margin: 0; text-wrap: balance;
+  }
+  .og-card.dark h2 { color: var(--on-ink); }
+  .og-card .url {
+    font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono);
+    text-transform: uppercase; color: var(--ink-faint);
+  }
+  .og-card.dark .url { color: var(--on-ink-faint); }
+
+  .signature {
+    background: var(--paper-2); padding: var(--sp-7); border-left: 3px solid var(--accent-deep);
+    font-family: var(--grotesk); font-size: 14px; line-height: 1.55;
+  }
+  .signature b { font-weight: 600; }
+  .signature .meta { font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); }
+  .signature a { color: var(--accent-deep); }
+
+  .favicon-set {
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 0;
+    border: var(--bw-hair) solid var(--line);
+  }
+  @media (max-width: 880px) { .favicon-set { grid-template-columns: repeat(2, 1fr); } }
+  .favicon-set .icon-cell {
+    padding: var(--sp-7) var(--sp-4); border-right: var(--bw-hair) solid var(--line);
+    border-bottom: var(--bw-hair) solid var(--line);
+    display: flex; flex-direction: column; align-items: center; gap: var(--sp-3);
+  }
+  .favicon-set .icon-cell:last-child { border-right: 0; }
+  .favicon-set .icon-cell .lbl {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--ink-faint); text-align: center;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <nav class="system-nav">
+    <a href="Design System.html" class="wordmark">rivett<span class="dot-mark"></span></a>
+    <div class="meta">
+      <a href="01-foundations.html"><b>← 01 Foundations</b></a>
+      <span>02 / 09</span>
+      <a href="03-components.html"><b>03 Components →</b></a>
+    </div>
+  </nav>
+
+  <div class="system-bread">
+    <a href="Design System.html">Design system</a>
+    <span class="sep">/</span>
+    <b>02 Identity &amp; Marks</b>
+  </div>
+
+  <header class="hub-hero" style="padding: var(--sp-16) 0 var(--sp-14); border-bottom: var(--bw-hair) solid var(--line-strong);">
+    <span class="stamp">Section 02 · The signature</span>
+    <h1 style="font-family: var(--grotesk); font-weight: 800; font-size: clamp(56px, 8vw, 112px); line-height: 0.92; letter-spacing: var(--track-display); margin: var(--sp-8) 0 0; text-wrap: balance;">Wordmark, B1, <span class="ital">one dot between them.</span></h1>
+    <p class="dek" style="font-family: var(--serif); font-style: italic; font-size: clamp(22px, 2.4vw, 28px); line-height: 1.4; margin: var(--sp-8) 0 0; max-width: 780px; color: var(--ink-dim); text-wrap: pretty;">The wordmark is the primary signature. The rivet B1 is the favicon and small-scale fallback. The dot is sacred. Below 14px the wordmark is replaced by the B1.</p>
+  </header>
+
+  <!-- ===== Wordmark ===== -->
+  <section class="spec" id="wordmark">
+    <div class="label">02 · 1
+      <span class="num">Wordmark</span>
+    </div>
+    <div class="body">
+      <h2>Inter Tight 700, <span class="ital">−0.05em, dot at 0.32em.</span></h2>
+      <p class="lede">The wordmark is set in Inter Tight 700, tight-tracked. The dot is rendered as a perfect circle in <code>--accent</code>, sized at 0.32× the cap-height, with a 0.04em vertical nudge to sit on the baseline ink. Its position is fixed at <code>cx=288 cy=58 r=9</code> in the source SVG and is never adjusted independently of the type.</p>
+
+      <div class="mark-plate">
+        <div class="cell">
+          <span class="lbl">Wordmark · primary · on paper</span>
+          <span class="wordmark" style="font-size: 72px;">rivett<span class="dot-mark"></span></span>
+        </div>
+        <div class="cell dark">
+          <span class="lbl">Wordmark · on ink</span>
+          <span class="wordmark" style="font-size: 72px;">rivett<span class="dot-mark"></span></span>
+        </div>
+      </div>
+
+      <h3>Size scale</h3>
+      <div class="scale-row">
+        <div class="step"><span class="wordmark" style="font-size: 14px;">rivett<span class="dot-mark"></span></span><span class="meta">Min<b>14 / 0px</b></span></div>
+        <div class="step"><span class="wordmark" style="font-size: 18px;">rivett<span class="dot-mark"></span></span><span class="meta">Footer<b>18 / 0px</b></span></div>
+        <div class="step"><span class="wordmark" style="font-size: 28px;">rivett<span class="dot-mark"></span></span><span class="meta">Nav<b>28 / 0px</b></span></div>
+        <div class="step"><span class="wordmark" style="font-size: 48px;">rivett<span class="dot-mark"></span></span><span class="meta">Hero<b>48 / 0px</b></span></div>
+        <div class="step"><span class="wordmark" style="font-size: 72px;">rivett<span class="dot-mark"></span></span><span class="meta">Plate<b>72 / 0px</b></span></div>
+      </div>
+      <p class="body-md" style="margin-top: var(--sp-4);">Below 14px the wordmark is replaced by the B1 mark — character spacing collapses and the dot loses fidelity. Maximum size has no cap, but above 144px the dot diameter must be hand-checked.</p>
+
+      <h3>Clear space</h3>
+      <p class="body-md">Minimum clear space on every side is the height of the lowercase <b>e</b> — i.e., 0.5em. Nothing crosses this margin. Stamp-style mono labels and arrow callouts may sit at the boundary if they read as a separate cluster.</p>
+      <div class="clear-space" style="margin-top: var(--sp-6);">
+        <div class="frame">
+          <span class="x t">x</span><span class="x b">x</span><span class="x l">x</span><span class="x r">x</span>
+          <span class="wordmark" style="font-size: 56px;">rivett<span class="dot-mark"></span></span>
+        </div>
+        <span class="mono-lbl" style="margin-top: var(--sp-4);">x = 0.5em · the height of lowercase e</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== B1 mark ===== -->
+  <section class="spec" id="b1-mark">
+    <div class="label">02 · 2
+      <span class="num">Rivet B1</span>
+    </div>
+    <div class="body">
+      <h2>The square, <span class="ital">the rivet, the dot.</span></h2>
+      <p class="lede">Rivet B1 is the small-scale identity. It carries an internal R-stroke and a green dot at the 62/60 grid position. Used as favicon, app icon, social avatar, and anywhere the wordmark cannot read.</p>
+
+      <div class="mark-plate">
+        <div class="cell">
+          <span class="lbl">Primary · 80 grid</span>
+          <svg width="160" height="160" viewBox="0 0 80 80" role="img" aria-label="Rivett B1 mark">
+            <rect width="80" height="80" fill="#0E1A2C"></rect>
+            <path d="M22 60 V20 H44 a12 12 0 0 1 12 12 v0 a12 12 0 0 1 -12 12 H30 l16 16" fill="none" stroke="#FFFFFF" stroke-width="6" stroke-linecap="square" stroke-linejoin="miter"></path>
+            <circle cx="62" cy="60" r="6" fill="#8FBF3F"></circle>
+          </svg>
+        </div>
+        <div class="cell">
+          <span class="lbl">Inverse · paper bg</span>
+          <svg width="160" height="160" viewBox="0 0 80 80" role="img" aria-label="Rivett B1 mark — inverse">
+            <rect width="80" height="80" fill="#F4F2ED"></rect>
+            <path d="M22 60 V20 H44 a12 12 0 0 1 12 12 v0 a12 12 0 0 1 -12 12 H30 l16 16" fill="none" stroke="#0E1A2C" stroke-width="6" stroke-linecap="square" stroke-linejoin="miter"></path>
+            <circle cx="62" cy="60" r="6" fill="#4A6E18"></circle>
+          </svg>
+        </div>
+      </div>
+
+      <h3>Geometry · the source numbers</h3>
+      <ul style="font-family: var(--grotesk); font-size: 15px; line-height: 1.7; padding-left: 20px; max-width: 680px;">
+        <li>Container: <code>80×80</code> with a 6-px stroke. Always square. No padding inside the container — the stroke kisses an 8px boundary.</li>
+        <li>Stroke: <code>square</code> caps, <code>mitre</code> joins. Stroke-width <code>6</code>. Path: <code>M22 60 V20 H44 a12 12 0 0 1 12 12 v0 a12 12 0 0 1 -12 12 H30 l16 16</code></li>
+        <li>Dot: <code>cx=62 cy=60 r=6</code>. Fill <code>#8FBF3F</code> on dark, <code>#4A6E18</code> on light.</li>
+        <li>Locked. The path, the dot position, and the radius do not change between releases.</li>
+      </ul>
+
+      <h3>Favicon set · the export sizes</h3>
+      <div class="favicon-set">
+        <div class="icon-cell">
+          <svg width="64" height="64" viewBox="0 0 80 80"><rect width="80" height="80" fill="#0E1A2C"/><path d="M22 60 V20 H44 a12 12 0 0 1 12 12 v0 a12 12 0 0 1 -12 12 H30 l16 16" fill="none" stroke="#fff" stroke-width="6"/><circle cx="62" cy="60" r="6" fill="#8FBF3F"/></svg>
+          <span class="lbl">512<br>app icon</span>
+        </div>
+        <div class="icon-cell">
+          <svg width="48" height="48" viewBox="0 0 80 80"><rect width="80" height="80" fill="#0E1A2C"/><path d="M22 60 V20 H44 a12 12 0 0 1 12 12 v0 a12 12 0 0 1 -12 12 H30 l16 16" fill="none" stroke="#fff" stroke-width="6"/><circle cx="62" cy="60" r="6" fill="#8FBF3F"/></svg>
+          <span class="lbl">180<br>apple-touch</span>
+        </div>
+        <div class="icon-cell">
+          <svg width="36" height="36" viewBox="0 0 80 80"><rect width="80" height="80" fill="#0E1A2C"/><path d="M22 60 V20 H44 a12 12 0 0 1 12 12 v0 a12 12 0 0 1 -12 12 H30 l16 16" fill="none" stroke="#fff" stroke-width="6"/><circle cx="62" cy="60" r="6" fill="#8FBF3F"/></svg>
+          <span class="lbl">64<br>fav-svg</span>
+        </div>
+        <div class="icon-cell">
+          <svg width="32" height="32" viewBox="0 0 80 80"><rect width="80" height="80" fill="#0E1A2C"/><path d="M22 60 V20 H44 a12 12 0 0 1 12 12 v0 a12 12 0 0 1 -12 12 H30 l16 16" fill="none" stroke="#fff" stroke-width="6"/><circle cx="62" cy="60" r="6" fill="#8FBF3F"/></svg>
+          <span class="lbl">32<br>fav-png</span>
+        </div>
+        <div class="icon-cell">
+          <svg width="16" height="16" viewBox="0 0 80 80"><rect width="80" height="80" fill="#0E1A2C"/><path d="M22 60 V20 H44 a12 12 0 0 1 12 12 v0 a12 12 0 0 1 -12 12 H30 l16 16" fill="none" stroke="#fff" stroke-width="3"/><circle cx="62" cy="60" r="9" fill="#8FBF3F"/></svg>
+          <span class="lbl">16<br>tab-favicon</span>
+        </div>
+      </div>
+      <p class="body-md" style="margin-top: var(--sp-4);">At 16px, stroke widens to 3 and the dot widens to <code>r=9</code> — the only legal hand-tuning of the geometry, used for tab-bar legibility. Every other size renders the master path unmodified.</p>
+    </div>
+  </section>
+
+  <!-- ===== The dot ===== -->
+  <section class="spec" id="dot">
+    <div class="label">02 · 3
+      <span class="num">The dot</span>
+    </div>
+    <div class="body">
+      <h2>The dot is sacred. <span class="ital">It has rules.</span></h2>
+      <p class="lede">One green dot per page in the wordmark. The 8px stamp dot before mono labels is the only allowed echo. Every other use is a misuse.</p>
+
+      <ul style="font-family: var(--grotesk); font-size: 16px; line-height: 1.7; padding-left: 20px; max-width: 680px;">
+        <li>Always rendered in <code>--accent</code> (#8FBF3F), never the deep variant.</li>
+        <li>Always trailing the wordmark, never leading.</li>
+        <li>Always a perfect circle. Never replaced with a bullet, en-dot, middot character, or square.</li>
+        <li>Never animated, stroked, gradiented, or outlined.</li>
+        <li>Never sized below 8px (it stops being a dot and becomes a fleck).</li>
+        <li>Never appears alone in a layout. The dot is paired — with a wordmark, with a stamp, with a label.</li>
+      </ul>
+
+      <h3>Misuse</h3>
+      <div class="misuse">
+        <div class="item">
+          <span class="wordmark" style="font-size: 28px;"><span class="dot-mark"></span>rivett</span>
+          <span class="reason">Dot leading</span>
+        </div>
+        <div class="item">
+          <span class="wordmark" style="font-size: 28px;">rivett<span class="dot-mark" style="background: #4A6E18;"></span></span>
+          <span class="reason">Wrong green</span>
+        </div>
+        <div class="item">
+          <span class="wordmark" style="font-size: 28px;">rivett<span class="dot-mark" style="border-radius: 0;"></span></span>
+          <span class="reason">Squared dot</span>
+        </div>
+        <div class="item">
+          <span class="wordmark" style="font-size: 28px;">rivett<span class="dot-mark" style="background: linear-gradient(45deg, #8FBF3F, #4A6E18);"></span></span>
+          <span class="reason">Gradient fill</span>
+        </div>
+        <div class="item">
+          <span class="wordmark" style="font-size: 28px; color: var(--accent-deep);">rivett<span class="dot-mark"></span></span>
+          <span class="reason">Coloured wordmark</span>
+        </div>
+        <div class="item">
+          <span class="wordmark" style="font-size: 28px; font-style: italic;">rivett<span class="dot-mark"></span></span>
+          <span class="reason">Italic wordmark</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Social / OG ===== -->
+  <section class="spec" id="social">
+    <div class="label">02 · 4
+      <span class="num">Social</span>
+    </div>
+    <div class="body">
+      <h2>Open Graph cards, <span class="ital">two layouts only.</span></h2>
+      <p class="lede">1200×630 cards. Hero kind for the homepage and big essays. Stamp kind for everything else (Field Notes, MRI report, diagnostic). No images, no photos, no decoration. Type, dot, URL.</p>
+
+      <h3>Hero card · ink</h3>
+      <div class="og-card dark" style="margin-top: var(--sp-6);">
+        <div class="head">
+          <span class="wordmark" style="color: var(--on-ink); font-size: 22px;">rivett<span class="dot-mark"></span></span>
+          <span class="stamp" style="color: var(--on-ink-faint);">A senior growth practice</span>
+        </div>
+        <h2 style="color: var(--on-ink);">Growth infrastructure <span class="ital" style="color: var(--on-ink-italic);">for operators.</span></h2>
+        <span class="url" style="color: var(--on-ink-faint);">rivett.tech</span>
+      </div>
+
+      <h3>Stamp card · paper</h3>
+      <div class="og-card" style="margin-top: var(--sp-6);">
+        <div class="head">
+          <span class="wordmark" style="font-size: 22px;">rivett<span class="dot-mark"></span></span>
+          <span class="stamp">Field note · 04</span>
+        </div>
+        <h2>Cadence <span class="ital">over volume.</span></h2>
+        <span class="url">rivett.tech/field-notes/cadence-over-volume</span>
+      </div>
+
+      <h3>Card rules</h3>
+      <ul style="font-family: var(--grotesk); font-size: 15px; line-height: 1.7; padding-left: 20px; max-width: 680px;">
+        <li>1200×630 export. SVG source, PNG flatten with subpixel AA.</li>
+        <li>Wordmark top-left at 22px equivalent. Stamp top-right.</li>
+        <li>Headline bottom-left at 48–64px display, balanced wrap, italic on the second clause.</li>
+        <li>URL bottom-left under headline at 11px mono. No <code>https://</code> prefix.</li>
+        <li>Page title and OG title may differ. The OG title is shorter and sharper.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ===== Email signature ===== -->
+  <section class="spec" id="email">
+    <div class="label">02 · 5
+      <span class="num">Email</span>
+    </div>
+    <div class="body">
+      <h2>One signature. <span class="ital">Plain text, no images.</span></h2>
+      <p class="lede">No logo image. No banner. No "Sent from my…" footer. The email signature is a four-line block in plain text — name, role, URL, line. Inter Tight or system stack.</p>
+
+      <div class="signature">
+        <div><b>Tom Rivett</b></div>
+        <div class="meta">SENIOR GROWTH OPERATOR · CAPE TOWN &amp; REMOTE</div>
+        <div style="margin-top: var(--sp-3);"><a href="https://rivett.tech">rivett.tech</a></div>
+        <div style="margin-top: var(--sp-2); color: var(--ink-dim); font-size: 13px;">If you want a diagnostic, the slot is in the calendar.</div>
+      </div>
+
+      <h3>Rules</h3>
+      <ul style="font-family: var(--grotesk); font-size: 15px; line-height: 1.7; padding-left: 20px; max-width: 680px;">
+        <li>No logo image. Email clients strip them and the result reads broken.</li>
+        <li>No social icons.</li>
+        <li>No quote, no "let's connect", no "best".</li>
+        <li>The closing line above the signature is a sentence, not a tag. It may say what's true today.</li>
+        <li>Reply-to <code>tom@rivett.tech</code>. From-name <b>Tom Rivett</b>.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer class="system-foot">
+    <a class="wordmark wordmark--sm" href="Design System.html">rivett<span class="dot-mark"></span></a>
+    <span>02 Identity · v1.0</span>
+    <a href="03-components.html"><b>Next · 03 Components →</b></a>
+  </footer>
+
+</div>
+</body>
+</html>

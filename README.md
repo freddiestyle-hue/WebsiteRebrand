@@ -71,15 +71,9 @@ The `## FAQ` section at the bottom is parsed into the typographic accordion. Q i
 
 ## Design source of truth
 
-`src/styles/tokens.css` is the canonical visual source of truth. The reference HTML files in `design-spec/` are historical references and must not override production tokens or current component patterns.
+`rivett-ds/design.md` is gospel. `rivett-ds/tokens.css` is the only token source. The production `src/styles/tokens.css` file is a compatibility bridge that imports those canonical tokens and maps site variable names without redefining the system.
 
-## Voice rules (non-negotiable)
-
-- No em dashes. Use commas, periods, sentence breaks, or hyphens.
-- No emoji.
-- Lowercase wordmark with forest-green dot: `rivett·`
-- Posts are called "notes," not "essays" or "articles."
-- Author byline: Fred Style.
+Do not add parallel style guides, old reference folders, or competing token files. Voice rules live in `rivett-ds/design.md` and `rivett-ds/06-voice.html`.
 
 ## Deploy
 

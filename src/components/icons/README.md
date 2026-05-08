@@ -1,6 +1,6 @@
 # Rivett Icons
 
-Production Astro components extracted from `design-spec-v2/icons.html` per `CC-BRIEF-ICONS.md`.
+Production Astro components governed by `rivett-ds/07-icons.html`.
 
 - Slugs: ico-diagnostic, ico-pipeline, ico-signal, ico-approval, ico-memo, ico-operator, ico-stack, ico-outreach, ico-decline, ico-cadence, ico-numbers, ico-halt.
 - Sizes: 16, 20, 24, 44.

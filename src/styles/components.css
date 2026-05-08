@@ -1,6 +1,6 @@
 /* ============================================================
-   RIVETT COMPONENTS · v0.2
-   Token-driven, no magic numbers.
+   RIVETT SITE COMPONENTS
+   Backed by rivett-ds v1.0 tokens.
    ============================================================ */
 
 /* ---------- Page shell ---------- */
@@ -1215,7 +1215,7 @@ footer.site .wordmark { font-size: 14px; }
     color: var(--ink-faint);
   }
 
-/* ---------- v0.2 port adjustments ---------- */
+/* ---------- Site implementation adjustments ---------- */
 .wordmark img {
   display: block;
   width: auto;

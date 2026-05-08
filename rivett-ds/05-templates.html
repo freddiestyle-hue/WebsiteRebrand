@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Rivett · 05 Templates</title>
+<link rel="stylesheet" href="tokens.css" />
+<style>
+  .frame-row { display: grid; grid-template-columns: 240px 1fr; gap: 64px; padding: var(--sp-12) 0; border-top: var(--bw-rule) solid var(--ink); }
+  @media (max-width: 980px) { .frame-row { grid-template-columns: 1fr; gap: var(--sp-6); } }
+  .frame-row .meta { font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); position: sticky; top: 24px; align-self: start; }
+  .frame-row .meta .num { display: block; font-family: var(--grotesk); font-weight: 700; font-size: 56px; line-height: 1; color: var(--ink); margin-top: var(--sp-3); letter-spacing: -0.03em; }
+  .frame-row .meta h2 { font-family: var(--grotesk); font-weight: 700; font-size: 32px; line-height: 1.1; letter-spacing: -0.03em; margin: var(--sp-7) 0 var(--sp-5); color: var(--ink); text-transform: none; letter-spacing: -0.03em; }
+  .frame-row .meta h2 .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); }
+  .frame-row .meta p { font-family: var(--grotesk); font-size: 14px; line-height: 1.55; color: var(--ink-dim); margin: 0 0 var(--sp-5); text-transform: none; letter-spacing: 0; max-width: 220px; }
+  .frame-row .meta a.open { display: inline-flex; padding: 9px 14px; border: var(--bw-hair) solid var(--ink); font-family: var(--mono); font-size: 10px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink); }
+  .frame-row .meta a.open:hover { background: var(--ink); color: var(--on-ink); }
+  .frame-row .anatomy { font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); display: flex; flex-direction: column; gap: 6px; margin-top: var(--sp-7); }
+  .frame-row .anatomy span { padding: 3px 0; border-bottom: var(--bw-hair) solid var(--line); }
+  .frame-row .anatomy span b { color: var(--ink); font-weight: 500; }
+  .frame { width: 100%; aspect-ratio: 16 / 11; border: var(--bw-hair) solid var(--ink); background: var(--paper-2); position: relative; overflow: hidden; }
+  .frame iframe { position: absolute; top: 0; left: 0; width: 1280px; height: 880px; border: 0; transform: scale(0.5625); transform-origin: 0 0; pointer-events: none; }
+  .frame .top-bar { position: absolute; bottom: 0; left: 0; right: 0; padding: 8px 12px; background: var(--ink); color: var(--on-ink); display: flex; justify-content: space-between; font-family: var(--mono); font-size: 10px; letter-spacing: var(--track-mono-tight); text-transform: uppercase; z-index: 2; }
+  .frame .top-bar .live { color: var(--accent); }
+  /* anatomy-only frame */
+  .anat-frame { width: 100%; aspect-ratio: 16/11; border: var(--bw-hair) solid var(--line); background: var(--paper-2); display: flex; align-items: center; justify-content: center; position: relative; }
+  .anat-frame .map { font-family: var(--grotesk); display: grid; grid-template-rows: 56px 1fr 88px; width: 92%; height: 92%; gap: 8px; }
+  .anat-frame .map .seg { background: var(--paper); border: var(--bw-hair) solid var(--line); display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); }
+  .anat-frame .map .seg.ink { background: var(--ink); color: var(--on-ink); border-color: var(--ink); }
+  .anat-frame .map .seg.sage { background: var(--sage); border-color: var(--sage); color: var(--accent-deep); }
+  .anat-frame .map .body-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .anat-frame .label-tag { position: absolute; top: 8px; right: 8px; font-family: var(--mono); font-size: 9.5px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); background: var(--paper); padding: 3px 7px; border: var(--bw-hair) solid var(--line); }
+</style>
+</head>
+<body>
+<div class="page">
+  <nav class="system-nav">
+    <a href="Design System.html" class="wordmark">rivett<span class="dot-mark"></span></a>
+    <div class="meta">
+      <a href="04-patterns.html"><b>← 04 Patterns</b></a>
+      <span>05 / 09</span>
+      <a href="06-voice.html"><b>06 Voice →</b></a>
+    </div>
+  </nav>
+  <div class="system-bread"><a href="Design System.html">Design system</a><span class="sep">/</span><b>05 Templates</b></div>
+
+  <header class="hub-hero" style="padding: var(--sp-16) 0 var(--sp-14); border-bottom: var(--bw-hair) solid var(--line-strong);">
+    <span class="stamp">Section 05 · Composition reference</span>
+    <h1 style="font-family: var(--grotesk); font-weight: 800; font-size: clamp(56px, 8vw, 112px); line-height: 0.92; letter-spacing: var(--track-display); margin: var(--sp-8) 0 0;">Six templates. <span class="ital">No seventh.</span></h1>
+    <p class="dek" style="font-family: var(--serif); font-style: italic; font-size: clamp(22px, 2.4vw, 28px); line-height: 1.4; margin: var(--sp-8) 0 0; max-width: 780px; color: var(--ink-dim);">Every page rivett ships is one of these. Home. Field note. Revenue MRI. Field-notes index. Diagnostic intake. 404. Three are built; three are anatomy-only and ship when needed.</p>
+  </header>
+
+  <!-- T1 Home -->
+  <div class="frame-row">
+    <div class="meta">
+      <span class="num">T1</span>
+      Home
+      <h2>Hero, modules, <span class="ital">Tuesday list, audience, notes, dark close.</span></h2>
+      <p>The single canonical home page. Stamp. Display. Italic dek. Three modules. The Tuesday list. Audience triad. Pull quote. Three field notes. Dark closer. Site footer.</p>
+      <a class="open" href="templates/home.html" target="_blank">Open template ↗</a>
+      <div class="anatomy">
+        <span>Hero · <b>display 124px</b></span>
+        <span>3-up modules · <b>hairline grid</b></span>
+        <span>Tuesday list · <b>2-col, icons</b></span>
+        <span>Numbox · <b>4 cells, sage</b></span>
+        <span>Audience · <b>3-col triad</b></span>
+        <span>Pull quote · <b>full bleed</b></span>
+        <span>Notes · <b>3-up cards</b></span>
+        <span>End-CTA · <b>ink, mandatory</b></span>
+      </div>
+    </div>
+    <div class="frame">
+      <iframe src="templates/home.html" loading="lazy"></iframe>
+      <div class="top-bar"><span>templates/home.html</span><span class="live">Live preview · 0.56×</span></div>
+    </div>
+  </div>
+
+  <!-- T2 Field note -->
+  <div class="frame-row">
+    <div class="meta">
+      <span class="num">T2</span>
+      Field note
+      <h2>Drop cap, <span class="ital">two-column scaffold, end rail.</span></h2>
+      <p>Long-form post template. Sticky TOC on the left, prose on the right capped at 700px. Drop cap on the first paragraph. Numbered H2s. Pull quote, numbox, ordered list, code, hr. End rail with prev/next.</p>
+      <a class="open" href="templates/post.html" target="_blank">Open template ↗</a>
+      <div class="anatomy">
+        <span>Crumb strip · <b>mono, 4 cols</b></span>
+        <span>Headline · <b>96px display</b></span>
+        <span>TOC · <b>sticky, 240px</b></span>
+        <span>Drop cap · <b>5em, serif</b></span>
+        <span>Prose · <b>19/1.65 ink</b></span>
+        <span>Italic · <b>ink-dim, second clause</b></span>
+        <span>End rail · <b>prev/index/next</b></span>
+        <span>Adjacent · <b>2 rels max</b></span>
+      </div>
+    </div>
+    <div class="frame">
+      <iframe src="templates/post.html" loading="lazy"></iframe>
+      <div class="top-bar"><span>templates/post.html</span><span class="live">Live preview · 0.56×</span></div>
+    </div>
+  </div>
+
+  <!-- T3 Revenue MRI -->
+  <div class="frame-row">
+    <div class="meta">
+      <span class="num">T3</span>
+      Revenue MRI
+      <h2>The named tool. <span class="ital">Vitals, timeline, two doors.</span></h2>
+      <p>Dedicated landing for the diagnostic instrument. Split hero with live composite read on the right (ink panel). Twelve vitals scored against the v1.0 rubric. Four-step timeline. Two-door pricing.</p>
+      <a class="open" href="templates/mri.html" target="_blank">Open template ↗</a>
+      <div class="anatomy">
+        <span>Split hero · <b>1.25 / 1, ink right</b></span>
+        <span>Composite · <b>96px numeral, 5-seg scale</b></span>
+        <span>Vitals · <b>12 cells, 3 score states</b></span>
+        <span>Timeline · <b>4 steps, sage rail</b></span>
+        <span>Pricing · <b>2-door, ink-second</b></span>
+        <span>FAQ · <b>plus → cross 200ms</b></span>
+        <span>End-CTA · <b>same as home</b></span>
+      </div>
+    </div>
+    <div class="frame">
+      <iframe src="templates/mri.html" loading="lazy"></iframe>
+      <div class="top-bar"><span>templates/mri.html</span><span class="live">Live preview · 0.56×</span></div>
+    </div>
+  </div>
+
+  <!-- T4 Notes index — anatomy only -->
+  <div class="frame-row">
+    <div class="meta">
+      <span class="num">T4</span>
+      Field-notes index
+      <h2>List, <span class="ital">filter rail, no card grid.</span></h2>
+      <p>Notes index is a numbered list, not a grid. Year groups. Mono filter rail at top. The most-recent note gets a feature row. Pagination on hairlines.</p>
+      <a class="open" style="opacity: 0.5; pointer-events: none;">Anatomy only · ships when written</a>
+      <div class="anatomy">
+        <span>Filter rail · <b>mono tabs</b></span>
+        <span>Feature · <b>full-width row, dek</b></span>
+        <span>Index list · <b>numbered, hairline</b></span>
+        <span>Year heads · <b>sec-head pattern</b></span>
+        <span>Pager · <b>32px square boxes</b></span>
+      </div>
+    </div>
+    <div class="anat-frame">
+      <span class="label-tag">T4 · anatomy</span>
+      <div class="map">
+        <div class="seg">Site nav</div>
+        <div style="display: grid; grid-template-rows: 80px 120px 1fr; gap: 8px;">
+          <div class="seg">Filter rail · all · cadence · stack · decline · operator</div>
+          <div class="seg sage">Feature note · note 04 · cadence over volume · 7 min →</div>
+          <div style="display: grid; grid-template-rows: repeat(5, 1fr); gap: 6px;">
+            <div class="seg">2025 · 03 · the decline letter earns its keep · 5 min</div>
+            <div class="seg">2025 · 02 · instrumented before clever · 9 min</div>
+            <div class="seg">2025 · 01 · what a senior operator does on a tuesday · 6 min</div>
+            <div class="seg">2024 · 11 · halt as a feature · 4 min</div>
+            <div class="seg">2024 · 09 · the meeting that doesn't happen · 5 min</div>
+          </div>
+        </div>
+        <div class="seg ink">Pager · 01 02 03 …</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- T5 Intake — anatomy only -->
+  <div class="frame-row">
+    <div class="meta">
+      <span class="num">T5</span>
+      Diagnostic intake
+      <h2>One form. <span class="ital">Single column, mono labels.</span></h2>
+      <p>Lives at /book. Three sections: who, what, when. Submit lands on a confirm modal. No marketing copy below the form. Calendar embed loads after submit, never before.</p>
+      <a class="open" style="opacity: 0.5; pointer-events: none;">Anatomy only · ships when written</a>
+      <div class="anatomy">
+        <span>Single column · <b>520px wide</b></span>
+        <span>Sections · <b>3, mono numbered</b></span>
+        <span>Inputs · <b>component spec from 03</b></span>
+        <span>Submit · <b>btn-pri, full width</b></span>
+        <span>Confirm · <b>modal, the only one</b></span>
+        <span>Calendar · <b>after submit only</b></span>
+      </div>
+    </div>
+    <div class="anat-frame">
+      <span class="label-tag">T5 · anatomy</span>
+      <div class="map">
+        <div class="seg">Site nav</div>
+        <div style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 12px;">
+          <div style="display: grid; grid-template-rows: 1fr 1fr 1fr; gap: 6px;">
+            <div class="seg">Stamp · diagnostic intake · 02 wks · £4k</div>
+            <div class="seg">H1 · book the diagnostic.</div>
+            <div class="seg">Lede · senior eyes on your funnel.</div>
+          </div>
+          <div style="display: grid; grid-template-rows: 28px 56px 56px 90px 28px 56px 56px 28px 56px 48px; gap: 6px;">
+            <div class="seg sage">01 · who</div>
+            <div class="seg">Name · input</div>
+            <div class="seg">Email · input</div>
+            <div class="seg">Company · textarea</div>
+            <div class="seg sage">02 · what</div>
+            <div class="seg">Stage · select</div>
+            <div class="seg">Question · textarea</div>
+            <div class="seg sage">03 · when</div>
+            <div class="seg">Window · radio</div>
+            <div class="seg ink">Book diagnostic →</div>
+          </div>
+        </div>
+        <div class="seg">Site footer</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- T6 404 — anatomy only -->
+  <div class="frame-row">
+    <div class="meta">
+      <span class="num">T6</span>
+      404
+      <h2>Not a joke. <span class="ital">A redirect with a stamp.</span></h2>
+      <p>Centered. One stamp ("404 · halted"). One headline. One italic dek. Two ghost links: home and field notes. No illustration. No 60% black overlay over a photograph. No.</p>
+      <a class="open" style="opacity: 0.5; pointer-events: none;">Anatomy only · ships when written</a>
+      <div class="anatomy">
+        <span>Centered · <b>vertical and horizontal</b></span>
+        <span>Stamp · <b>404 · halted</b></span>
+        <span>Headline · <b>display 96px, italic clause</b></span>
+        <span>Links · <b>2 ghost, no buttons</b></span>
+      </div>
+    </div>
+    <div class="anat-frame">
+      <span class="label-tag">T6 · anatomy</span>
+      <div class="map" style="grid-template-rows: 56px 1fr 56px;">
+        <div class="seg">Site nav</div>
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; background: var(--paper); border: var(--bw-hair) solid var(--line);">
+          <span style="font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--accent-deep);">· 404 · halted</span>
+          <span style="font-family: var(--grotesk); font-weight: 800; font-size: 56px; letter-spacing: -0.04em; color: var(--ink);">The page <span style="font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim);">isn't here.</span></span>
+          <span style="font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint);">← rivett · field notes →</span>
+        </div>
+        <div class="seg">Site footer</div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="system-foot">
+    <a class="wordmark wordmark--sm" href="Design System.html">rivett<span class="dot-mark"></span></a>
+    <span>05 Templates · v1.0</span>
+    <a href="06-voice.html"><b>Next · 06 Voice →</b></a>
+  </footer>
+</div>
+</body></html>

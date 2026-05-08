@@ -1,0 +1,491 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Rivett · 01 Foundations</title>
+<link rel="stylesheet" href="tokens.css" />
+<style>
+  .swatches { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-3); }
+  @media (max-width: 880px) { .swatches { grid-template-columns: repeat(2, 1fr); } }
+  .swatch { display: flex; flex-direction: column; border: var(--bw-hair) solid var(--line); }
+  .swatch .chip { height: 140px; border-bottom: var(--bw-hair) solid var(--line); position: relative; }
+  .swatch .chip[data-tag]::after {
+    content: attr(data-tag); position: absolute; top: 10px; right: 10px;
+    font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.16em;
+    text-transform: uppercase; background: var(--ink); color: var(--on-ink); padding: 3px 7px;
+  }
+  .swatch.tall .chip { height: 200px; }
+  .swatch .meta { padding: var(--sp-4); display: flex; flex-direction: column; gap: 2px; }
+  .swatch .name { font-weight: 600; font-size: 14px; }
+  .swatch .var { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.08em; color: var(--ink-faint); text-transform: uppercase; }
+  .swatch .hex { font-family: var(--mono); font-size: 11px; color: var(--ink-dim); margin-top: 4px; }
+
+  /* contrast table */
+  table.contrast {
+    width: 100%; border-collapse: collapse; font-size: 14px;
+  }
+  table.contrast th, table.contrast td {
+    text-align: left; padding: var(--sp-3) var(--sp-4);
+    border-bottom: var(--bw-hair) solid var(--line);
+    font-family: var(--grotesk);
+  }
+  table.contrast th {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono);
+    text-transform: uppercase; color: var(--ink-faint); font-weight: 400;
+    background: var(--paper-2);
+  }
+  table.contrast td .pass { color: var(--accent-deep); font-weight: 600; }
+  table.contrast td .fail { color: var(--signal-halt); font-weight: 600; }
+  table.contrast td code { font-size: 12px; }
+
+  /* type specimens */
+  .specimen {
+    border-top: var(--bw-hair) solid var(--line);
+    padding: var(--sp-8) 0;
+    display: grid; grid-template-columns: 200px 1fr; gap: var(--sp-8);
+    align-items: baseline;
+  }
+  @media (max-width: 780px) { .specimen { grid-template-columns: 1fr; gap: var(--sp-3); } }
+  .specimen .meta {
+    font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono);
+    text-transform: uppercase; color: var(--ink-faint);
+  }
+  .specimen .meta b {
+    display: block; color: var(--ink); font-family: var(--grotesk); font-weight: 600;
+    font-size: 13px; letter-spacing: -0.01em; text-transform: none; margin-top: 4px;
+  }
+  .specimen .meta i { display: block; font-style: normal; margin-top: 2px; }
+  .specimen .sample { color: var(--ink); }
+
+  .disp { font-weight: 800; font-size: clamp(48px, 7vw, 96px); line-height: 0.94; letter-spacing: var(--track-display); }
+  .h-xxl { font-weight: 800; font-size: 64px; line-height: 1; letter-spacing: var(--track-display); }
+  .h-xl { font-weight: 700; font-size: 44px; line-height: 1.04; letter-spacing: -0.04em; }
+  .h-lg { font-weight: 700; font-size: 30px; line-height: 1.18; letter-spacing: -0.03em; }
+  .h-md { font-weight: 600; font-size: 22px; letter-spacing: -0.02em; line-height: 1.25; }
+
+  /* spacing visual */
+  .spacing-grid {
+    display: grid; grid-template-columns: 80px 80px 1fr 1fr; gap: var(--sp-4) var(--sp-6);
+    align-items: center; font-family: var(--mono); font-size: 11px;
+    letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint);
+  }
+  .spacing-grid .var { color: var(--ink); }
+  .spacing-grid .px { color: var(--ink-dim); text-transform: none; }
+  .spacing-grid .bar { height: 12px; background: var(--ink); }
+  .spacing-grid .use { color: var(--ink-dim); text-transform: none; font-family: var(--grotesk); font-size: 13px; letter-spacing: 0; }
+
+  /* grid demo */
+  .grid-demo {
+    border: var(--bw-hair) solid var(--line); padding: var(--sp-4); background: var(--paper-2);
+  }
+  .grid-cols {
+    display: grid; grid-template-columns: var(--grid-12); gap: var(--col-gap);
+  }
+  .grid-cols .col {
+    background: var(--sage); padding: var(--sp-4); text-align: center;
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--accent-deep);
+  }
+
+  /* motion demos */
+  .motion-row {
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--sp-4);
+    margin-top: var(--sp-6);
+  }
+  @media (max-width: 780px) { .motion-row { grid-template-columns: 1fr; } }
+  .motion-card {
+    background: var(--paper-2); padding: var(--sp-7);
+    border: var(--bw-hair) solid var(--line);
+  }
+  .motion-card .lbl {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono);
+    text-transform: uppercase; color: var(--accent-deep); display: block; margin-bottom: var(--sp-2);
+  }
+  .motion-card .dur { font-weight: 700; font-size: 32px; letter-spacing: var(--track-tighter); display: block; }
+  .motion-card .dot {
+    width: 14px; height: 14px; background: var(--accent); border-radius: var(--r-pill);
+    margin-top: var(--sp-5); animation: slide 1.6s var(--ease) infinite alternate;
+  }
+  .motion-card.d1 .dot { animation-duration: 0.24s; }
+  .motion-card.d2 .dot { animation-duration: 0.4s; }
+  .motion-card.d3 .dot { animation-duration: 0.64s; }
+  @keyframes slide { from { transform: translateX(0); } to { transform: translateX(120px); } }
+
+  /* easing curve viz */
+  .ease-viz {
+    border: var(--bw-hair) solid var(--line); padding: var(--sp-6); background: var(--paper-2);
+    display: grid; grid-template-columns: 200px 1fr; gap: var(--sp-8);
+    align-items: center;
+  }
+  .ease-viz svg { width: 100%; height: 120px; }
+
+  /* Radii */
+  .radii { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-3); }
+  .radii .item { border: var(--bw-hair) solid var(--line); padding: var(--sp-7); background: var(--paper); }
+  .radii .demo { width: 80px; height: 80px; background: var(--ink); margin-bottom: var(--sp-4); }
+  .radii .demo--sm { border-radius: var(--r-sm); }
+  .radii .demo--pill { border-radius: var(--r-pill); height: 24px; }
+  .radii .name { font-weight: 600; font-size: 14px; }
+  .radii .var { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.08em; color: var(--ink-faint); text-transform: uppercase; margin-top: 2px; display: block; }
+  .radii .desc { color: var(--ink-dim); font-size: 13px; margin-top: var(--sp-2); }
+
+  /* OKLCH visual aid */
+  .ramp { display: flex; height: 60px; border: var(--bw-hair) solid var(--line); }
+  .ramp .stop { flex: 1; display: flex; align-items: flex-end; justify-content: center; padding: 6px 0; font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,255,255,0.7); }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <nav class="system-nav">
+    <a href="Design System.html" class="wordmark">rivett<span class="dot-mark"></span></a>
+    <div class="meta">
+      <a href="Design System.html"><b>← Hub</b></a>
+      <span>01 / 09</span>
+      <a href="02-identity.html"><b>Identity →</b></a>
+    </div>
+  </nav>
+
+  <div class="system-bread">
+    <a href="Design System.html">Design system</a>
+    <span class="sep">/</span>
+    <b>01 Foundations</b>
+  </div>
+
+  <header class="hub-hero" style="padding: var(--sp-16) 0 var(--sp-14); border-bottom: var(--bw-hair) solid var(--line-strong);">
+    <span class="stamp">Section 01 · The atomic layer</span>
+    <h1 style="font-family: var(--grotesk); font-weight: 800; font-size: clamp(56px, 8vw, 112px); line-height: 0.92; letter-spacing: var(--track-display); margin: var(--sp-8) 0 0; text-wrap: balance;">Foundations. <span class="ital">Tokens decide everything.</span></h1>
+    <p class="dek" style="font-family: var(--serif); font-style: italic; font-size: clamp(22px, 2.4vw, 28px); line-height: 1.4; margin: var(--sp-8) 0 0; max-width: 780px; color: var(--ink-dim); text-wrap: pretty;">Colour, type, spacing, motion, grid, radii. The values you must not invent. Every component, pattern, and template downstream resolves to something on this page.</p>
+  </header>
+
+  <!-- ===== COLOUR ===== -->
+  <section class="spec" id="colour">
+    <div class="label">01 · 1
+      <span class="num">Colour</span>
+    </div>
+    <div class="body">
+      <h2>Paper, ink, <span class="ital">a single green.</span></h2>
+      <p class="lede">Two warm papers, one dark ink, one accent in two values, plus a tinted sage. That is the entire palette. No tertiaries, no semantic ramps, no gradient stops.</p>
+
+      <h3>Accent · the only colour that isn't paper or ink</h3>
+      <div class="swatches">
+        <div class="swatch tall">
+          <div class="chip" style="background: #8FBF3F;" data-tag="primary"></div>
+          <div class="meta"><span class="name">Accent</span><span class="var">--accent</span><span class="hex">#8FBF3F · oklch(0.78 0.17 124)</span></div>
+        </div>
+        <div class="swatch tall">
+          <div class="chip" style="background: #4A6E18;" data-tag="AA on paper"></div>
+          <div class="meta"><span class="name">Accent · deep</span><span class="var">--accent-deep</span><span class="hex">#4A6E18 · 8.7:1</span></div>
+        </div>
+        <div class="swatch tall">
+          <div class="chip" style="background: #E8F0D9;"></div>
+          <div class="meta"><span class="name">Sage</span><span class="var">--sage</span><span class="hex">#E8F0D9 · numbox bg</span></div>
+        </div>
+        <div class="swatch tall">
+          <div class="chip" style="background: #F2F7E5;"></div>
+          <div class="meta"><span class="name">Accent bg</span><span class="var">--accent-bg</span><span class="hex">#F2F7E5 · subtle callout</span></div>
+        </div>
+      </div>
+
+      <h3>Paper · four warm whites</h3>
+      <div class="swatches">
+        <div class="swatch"><div class="chip" style="background: #FFFFFF; border-bottom: 1px solid var(--line);"></div><div class="meta"><span class="name">Paper</span><span class="var">--paper</span><span class="hex">#FFFFFF</span></div></div>
+        <div class="swatch"><div class="chip" style="background: #F4F2ED;"></div><div class="meta"><span class="name">Paper 2</span><span class="var">--paper-2</span><span class="hex">#F4F2ED</span></div></div>
+        <div class="swatch"><div class="chip" style="background: #EBE6DC;"></div><div class="meta"><span class="name">Paper 3</span><span class="var">--paper-3</span><span class="hex">#EBE6DC</span></div></div>
+        <div class="swatch"><div class="chip" style="background: #DDD7C9;"></div><div class="meta"><span class="name">Paper 4</span><span class="var">--paper-4</span><span class="hex">#DDD7C9 · code, table head</span></div></div>
+      </div>
+
+      <h3>Ink · five steps, one ramp</h3>
+      <div class="ramp" style="margin-bottom: var(--sp-4);">
+        <div class="stop" style="background: #0E1A2C;">--ink</div>
+        <div class="stop" style="background: #1B2940;">--ink-2</div>
+        <div class="stop" style="background: #3A4658;">--ink-dim</div>
+        <div class="stop" style="background: #7A8597; color: #fff;">--ink-faint</div>
+        <div class="stop" style="background: #B6BCC6; color: #0E1A2C;">--ink-soft</div>
+      </div>
+      <p class="body-md">Ink is the dark surface. Ink-dim is italic serif on light. Ink-faint is the meta strip. Ink-soft is disabled and hairline-on-dark only. Never invent an ink-3 or ink-4.</p>
+
+      <h3>Signal · functional reds and ambers, used sparingly</h3>
+      <div class="swatches">
+        <div class="swatch"><div class="chip" style="background: #B8651F;"></div><div class="meta"><span class="name">Signal · warn</span><span class="var">--signal-warn</span><span class="hex">#B8651F · MRI bars only</span></div></div>
+        <div class="swatch"><div class="chip" style="background: #9A2B2B;"></div><div class="meta"><span class="name">Signal · halt</span><span class="var">--signal-halt</span><span class="hex">#9A2B2B · halt / decline</span></div></div>
+        <div class="swatch"><div class="chip" style="background: rgba(14,26,44,0.06);"></div><div class="meta"><span class="name">Line · soft</span><span class="var">--line-soft</span><span class="hex">6% ink</span></div></div>
+        <div class="swatch"><div class="chip" style="background: rgba(14,26,44,0.28);"></div><div class="meta"><span class="name">Line · strong</span><span class="var">--line-strong</span><span class="hex">28% ink</span></div></div>
+      </div>
+      <p class="body-md" style="margin-top: var(--sp-6);">No success colour. Success is the accent. No info colour. Info is ink-dim. The signal pair is for genuinely functional UI states only — Revenue MRI risk bars, halt buttons, error banners. Never for decoration.</p>
+
+      <h3>Contrast · WCAG 2.2 AA, audited</h3>
+      <table class="contrast">
+        <thead><tr><th>Foreground</th><th>Background</th><th>Ratio</th><th>Body</th><th>Large / 18pt+</th></tr></thead>
+        <tbody>
+          <tr><td><code>--ink</code></td><td><code>--paper</code></td><td>15.4 : 1</td><td><span class="pass">PASS</span></td><td><span class="pass">PASS</span></td></tr>
+          <tr><td><code>--ink-dim</code></td><td><code>--paper</code></td><td>9.1 : 1</td><td><span class="pass">PASS</span></td><td><span class="pass">PASS</span></td></tr>
+          <tr><td><code>--ink-faint</code></td><td><code>--paper</code></td><td>4.6 : 1</td><td><span class="pass">PASS</span></td><td><span class="pass">PASS</span></td></tr>
+          <tr><td><code>--accent-deep</code></td><td><code>--paper</code></td><td>8.7 : 1</td><td><span class="pass">PASS</span></td><td><span class="pass">PASS</span></td></tr>
+          <tr><td><code>--accent</code></td><td><code>--paper</code></td><td>2.4 : 1</td><td><span class="fail">FAIL</span> · decoration only</td><td><span class="fail">FAIL</span></td></tr>
+          <tr><td><code>--on-ink</code></td><td><code>--ink</code></td><td>16.1 : 1</td><td><span class="pass">PASS</span></td><td><span class="pass">PASS</span></td></tr>
+          <tr><td><code>--accent</code></td><td><code>--ink</code></td><td>6.7 : 1</td><td><span class="pass">PASS</span></td><td><span class="pass">PASS</span></td></tr>
+          <tr><td><code>--ink</code></td><td><code>--sage</code></td><td>13.1 : 1</td><td><span class="pass">PASS</span></td><td><span class="pass">PASS</span></td></tr>
+        </tbody>
+      </table>
+      <p class="body-md" style="margin-top: var(--sp-4);">The accent green is decorative — the dot, hover fills, badges. Never set body text or controls in <code>--accent</code> on light. For accent-coloured type, always use <code>--accent-deep</code>.</p>
+    </div>
+  </section>
+
+  <!-- ===== TYPE ===== -->
+  <section class="spec" id="type">
+    <div class="label">01 · 2
+      <span class="num">Type</span>
+    </div>
+    <div class="body">
+      <h2>Three families, <span class="ital">three jobs.</span></h2>
+      <p class="lede">Inter Tight does the work — display, headings, body, buttons. Newsreader italic does the whisper. DM Mono does the labelling. No fourth family, no decorative cuts.</p>
+
+      <div class="specimen">
+        <div class="meta">Display
+          <b>Inter Tight 800</b>
+          <i>92 / 0.92 · −0.055em</i>
+        </div>
+        <div class="sample disp">Growth infrastructure <span class="ital">for operators.</span></div>
+      </div>
+      <div class="specimen">
+        <div class="meta">H · xxl
+          <b>Inter Tight 800</b>
+          <i>64 / 1.00 · −0.055em</i>
+        </div>
+        <div class="sample h-xxl">Section opener.</div>
+      </div>
+      <div class="specimen">
+        <div class="meta">H · xl
+          <b>Inter Tight 700</b>
+          <i>44 / 1.04 · −0.04em</i>
+        </div>
+        <div class="sample h-xl">Three modules, in the same key.</div>
+      </div>
+      <div class="specimen">
+        <div class="meta">H · lg
+          <b>Inter Tight 700</b>
+          <i>30 / 1.18 · −0.03em</i>
+        </div>
+        <div class="sample h-lg">What I actually do on a Tuesday.</div>
+      </div>
+      <div class="specimen">
+        <div class="meta">H · md
+          <b>Inter Tight 600</b>
+          <i>22 / 1.25 · −0.02em</i>
+        </div>
+        <div class="sample h-md">Card title or sub-section head.</div>
+      </div>
+      <div class="specimen">
+        <div class="meta">Body · xl
+          <b>Inter Tight 400</b>
+          <i>19 / 1.65</i>
+        </div>
+        <div class="sample body-xl">Senior operator, late at night. Short declarative sentences. Specific numbers. The em-dash is replaced by the period.</div>
+      </div>
+      <div class="specimen">
+        <div class="meta">Body · md
+          <b>Inter Tight 400</b>
+          <i>15 / 1.55 · ink-dim</i>
+        </div>
+        <div class="sample body-md">Card lede, supporting copy under a heading, the paragraph that explains the table you just showed.</div>
+      </div>
+      <div class="specimen">
+        <div class="meta">Serif italic
+          <b>Newsreader 400 italic</b>
+          <i>21 / 1.45 · ink-dim</i>
+        </div>
+        <div class="sample serif-it">The whisper. The second clause. Never a whole sentence.</div>
+      </div>
+      <div class="specimen">
+        <div class="meta">Mono · stamp
+          <b>DM Mono 400</b>
+          <i>11px · 0.22em uppercase</i>
+        </div>
+        <div class="sample mono-lbl">SECTION · LABEL · 01</div>
+      </div>
+      <div class="specimen">
+        <div class="meta">Mono · numeric
+          <b>DM Mono 500</b>
+          <i>32px · −0.01em</i>
+        </div>
+        <div class="sample" style="font-family: var(--mono); font-weight: 500; font-size: 32px; letter-spacing: -0.01em;">£12,400 · 14 days</div>
+      </div>
+
+      <h3>Pairing rules</h3>
+      <ul style="font-family: var(--grotesk); font-size: 16px; line-height: 1.7; padding-left: 20px; max-width: 680px;">
+        <li>Roman first clause, italic second clause — always.</li>
+        <li>Never bold + italic together. Italic is light by definition.</li>
+        <li>Mono is uppercase only above 14px. At 11px and 10.5px it is uppercase by token.</li>
+        <li>Never set body copy in serif. Newsreader is for the italic clause and pull quotes only.</li>
+        <li>Tabular figures (<code>font-variant-numeric: tabular-nums</code>) for any column of numbers in a table or numbox.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ===== SPACING ===== -->
+  <section class="spec" id="spacing">
+    <div class="label">01 · 3
+      <span class="num">Spacing</span>
+    </div>
+    <div class="body">
+      <h2>Four-pixel base, <span class="ital">named scale.</span></h2>
+      <p class="lede">No raw pixel values in component CSS. Everything routes through a token. The scale is geometric enough to be predictable and tight enough that you can hold it in your head.</p>
+
+      <div class="spacing-grid">
+        <span class="var">--sp-1</span><span class="px">4 px</span><div class="bar" style="width: 4px;"></div><span class="use">Stamp dot to label gap, icon nudge</span>
+        <span class="var">--sp-2</span><span class="px">8 px</span><div class="bar" style="width: 8px;"></div><span class="use">Inline meta gaps</span>
+        <span class="var">--sp-3</span><span class="px">12 px</span><div class="bar" style="width: 12px;"></div><span class="use">Button gap, swatch gap</span>
+        <span class="var">--sp-4</span><span class="px">16 px</span><div class="bar" style="width: 16px;"></div><span class="use">Card padding (small)</span>
+        <span class="var">--sp-5</span><span class="px">20 px</span><div class="bar" style="width: 20px;"></div><span class="use">Form field gap</span>
+        <span class="var">--sp-6</span><span class="px">24 px</span><div class="bar" style="width: 24px;"></div><span class="use">Numbox internal gap, column gap</span>
+        <span class="var">--sp-7</span><span class="px">28 px</span><div class="bar" style="width: 28px;"></div><span class="use">Card padding (medium)</span>
+        <span class="var">--sp-8</span><span class="px">32 px</span><div class="bar" style="width: 32px;"></div><span class="use">Section sub-head margin, demo padding</span>
+        <span class="var">--sp-10</span><span class="px">40 px</span><div class="bar" style="width: 40px;"></div><span class="use">Card padding (large), block above heading</span>
+        <span class="var">--sp-12</span><span class="px">48 px</span><div class="bar" style="width: 48px;"></div><span class="use">Section sub-head spacing, end-CTA padding</span>
+        <span class="var">--sp-14</span><span class="px">56 px</span><div class="bar" style="width: 56px;"></div><span class="use">Section padding (mobile)</span>
+        <span class="var">--sp-16</span><span class="px">64 px</span><div class="bar" style="width: 64px;"></div><span class="use">Hero base padding</span>
+        <span class="var">--sp-20</span><span class="px">80 px</span><div class="bar" style="width: 80px;"></div><span class="use">Section padding (desktop)</span>
+        <span class="var">--sp-24</span><span class="px">96 px</span><div class="bar" style="width: 96px;"></div><span class="use">Hero top padding</span>
+      </div>
+
+      <h3>Radii</h3>
+      <p class="body-md">Default is zero. Rivett is square. Three allowed radii — and only three.</p>
+      <div class="radii">
+        <div class="item"><div class="demo"></div><span class="name">Square</span><span class="var">--r-0 · 0</span><span class="desc">Default. Every panel, button, card, table cell, input.</span></div>
+        <div class="item"><div class="demo demo--sm"></div><span class="name">Small</span><span class="var">--r-sm · 2px</span><span class="desc">Tiny chrome only. Tags, checkbox tick. Never on cards or panels.</span></div>
+        <div class="item"><div class="demo demo--pill" style="width: 80px; height: 24px;"></div><span class="name">Pill</span><span class="var">--r-pill · 999px</span><span class="desc">The dot mark. Stamps. Never on buttons.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== GRID ===== -->
+  <section class="spec" id="grid">
+    <div class="label">01 · 4
+      <span class="num">Grid</span>
+    </div>
+    <div class="body">
+      <h2>1240 max, <span class="ital">12-column, 24-gap.</span></h2>
+      <p class="lede">Every page sits in a 1240px max container with 56px side padding desktop, 24px mobile. The 12-column grid is referenced for editorial layouts and the section-scaffold split (240/1fr).</p>
+
+      <div class="grid-demo">
+        <div class="grid-cols">
+          <div class="col">01</div><div class="col">02</div><div class="col">03</div><div class="col">04</div>
+          <div class="col">05</div><div class="col">06</div><div class="col">07</div><div class="col">08</div>
+          <div class="col">09</div><div class="col">10</div><div class="col">11</div><div class="col">12</div>
+        </div>
+      </div>
+
+      <h3>Section scaffold · the canonical 240/1fr split</h3>
+      <p class="body-md">Every spec page uses a 240px label rail + 1fr body. The label is mono, sticky, with a 56px section number underneath. The body is fluid up to its content max-width. Readable prose is constrained to <code>--page-max-prose</code> (720px). No prose runs the full 1240.</p>
+
+      <h3>Breakpoints</h3>
+      <ul style="font-family: var(--grotesk); font-size: 16px; line-height: 1.8; padding-left: 20px; max-width: 680px;">
+        <li><code>≤ 980px</code> — section scaffold collapses to single column.</li>
+        <li><code>≤ 880px</code> — swatch and icon grids halve. Mark plate stacks.</li>
+        <li><code>≤ 780px</code> — page padding drops to 24px.</li>
+        <li><code>≤ 680px</code> — TOC drops to one column.</li>
+        <li>No tablet-specific breakpoint. Either it works at 768 or you fix the component.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ===== MOTION ===== -->
+  <section class="spec" id="motion">
+    <div class="label">01 · 5
+      <span class="num">Motion</span>
+    </div>
+    <div class="body">
+      <h2>Quiet transitions. <span class="ital">One curve.</span></h2>
+      <p class="lede">The brand barely animates. Hover crossfades the colour. Expanders rotate the marker. Page-level motion is reserved for the very rare full-bleed hero.</p>
+
+      <div class="motion-row">
+        <div class="motion-card d1">
+          <span class="lbl">Colour swap</span>
+          <span class="dur">120<span class="ital" style="font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); font-size: 18px;">ms</span></span>
+          <p class="body-md" style="margin: var(--sp-3) 0 0; font-size: 13px;"><code>--dur-1</code> · link colour, button bg, border</p>
+          <div class="dot"></div>
+        </div>
+        <div class="motion-card d2">
+          <span class="lbl">Expand · transform</span>
+          <span class="dur">200<span class="ital" style="font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); font-size: 18px;">ms</span></span>
+          <p class="body-md" style="margin: var(--sp-3) 0 0; font-size: 13px;"><code>--dur-2</code> · FAQ marker, modal open</p>
+          <div class="dot"></div>
+        </div>
+        <div class="motion-card d3">
+          <span class="lbl">Page · fill</span>
+          <span class="dur">320<span class="ital" style="font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); font-size: 18px;">ms</span></span>
+          <p class="body-md" style="margin: var(--sp-3) 0 0; font-size: 13px;"><code>--dur-3</code> · MRI bar fill, very rare</p>
+          <div class="dot"></div>
+        </div>
+      </div>
+
+      <h3>Easing</h3>
+      <div class="ease-viz">
+        <svg viewBox="0 0 200 120" preserveAspectRatio="none">
+          <line x1="0" y1="120" x2="200" y2="120" stroke="#7A8597" stroke-width="1"/>
+          <line x1="0" y1="0" x2="0" y2="120" stroke="#7A8597" stroke-width="1"/>
+          <path d="M 0 120 C 40 72, 40 0, 200 0" stroke="#4A6E18" stroke-width="2" fill="none"/>
+          <circle cx="0" cy="120" r="3" fill="#0E1A2C"/>
+          <circle cx="200" cy="0" r="3" fill="#0E1A2C"/>
+        </svg>
+        <div>
+          <span class="mono-lbl">--ease</span>
+          <p class="body-md" style="margin-top: var(--sp-2);"><code>cubic-bezier(0.2, 0.6, 0.2, 1)</code> — quick start, soft settle. One curve covers everything in the system.</p>
+        </div>
+      </div>
+
+      <h3>Reduced motion</h3>
+      <p class="body-md">Honoured everywhere. The <code>tokens.css</code> base reset zeroes animation and transition duration when <code>prefers-reduced-motion: reduce</code> is set. Components must not override this. Page-level scroll smoothing is also disabled in this mode.</p>
+    </div>
+  </section>
+
+  <!-- ===== FOCUS / Z / ELEVATION ===== -->
+  <section class="spec" id="focus" style="border-bottom: 0;">
+    <div class="label">01 · 6
+      <span class="num">Focus, z, elevation</span>
+    </div>
+    <div class="body">
+      <h2>Visible focus, <span class="ital">flat by default.</span></h2>
+      <p class="lede">Three rules. Focus is always 2px accent-deep on light or accent on dark, offset 2px. Elevation is forbidden except for modals. Z is layered in five steps and never improvised.</p>
+
+      <h3>Focus ring</h3>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0; border: var(--bw-hair) solid var(--line); margin-top: var(--sp-6);">
+        <div style="padding: var(--sp-10); border-right: var(--bw-hair) solid var(--line); background: var(--paper);">
+          <span class="mono-lbl">On light · --accent-deep</span>
+          <div style="margin-top: var(--sp-5);">
+            <a href="#" style="display: inline-block; padding: 11px 18px; border: 1px solid var(--ink); font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; outline: 2px solid var(--accent-deep); outline-offset: 2px;">Focused button</a>
+          </div>
+        </div>
+        <div class="on-ink" style="padding: var(--sp-10);">
+          <span class="mono-lbl" style="color: var(--accent);">On dark · --accent</span>
+          <div style="margin-top: var(--sp-5);">
+            <a href="#" style="display: inline-block; padding: 11px 18px; border: 1px solid var(--paper); background: var(--paper); color: var(--ink); font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; outline: 2px solid var(--accent); outline-offset: 2px;">Focused button</a>
+          </div>
+        </div>
+      </div>
+
+      <h3>Z layers</h3>
+      <ul style="font-family: var(--grotesk); font-size: 16px; line-height: 1.8; padding-left: 20px; max-width: 680px;">
+        <li><code>--z-base : 1</code> — page content.</li>
+        <li><code>--z-sticky : 10</code> — sticky labels, sticky nav.</li>
+        <li><code>--z-overlay : 100</code> — image lightbox, MRI overlays.</li>
+        <li><code>--z-modal : 200</code> — diagnostic booking modal.</li>
+        <li><code>--z-toast : 300</code> — confirmation toasts (used very sparingly).</li>
+      </ul>
+
+      <h3>Elevation</h3>
+      <p class="body-md">There are exactly two non-zero shadows in the system. <code>--shadow-1</code> is a 1px gravity press for cards on hover, almost imperceptible. <code>--shadow-2</code> lifts the modal from the page. There is no card shadow, no nav shadow, no input shadow. Default elevation is zero.</p>
+    </div>
+  </section>
+
+  <footer class="system-foot">
+    <a class="wordmark wordmark--sm" href="Design System.html">rivett<span class="dot-mark"></span></a>
+    <span>01 Foundations · v1.0</span>
+    <a href="02-identity.html"><b>Next · 02 Identity →</b></a>
+  </footer>
+
+</div>
+</body>
+</html>
