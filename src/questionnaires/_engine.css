@@ -30,6 +30,7 @@ textarea{resize:none;overflow-y:auto}
 .top-bar{position:fixed;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:24px 32px;z-index:40;pointer-events:none}
 .top-bar > *{pointer-events:auto}
 .wordmark{font-family:var(--grotesk);font-weight:700;letter-spacing:-0.05em;font-size:18px;color:var(--ink);display:inline-flex;align-items:center;gap:0.12em;text-decoration:none}
+.wordmark:focus-visible{outline:1px solid currentColor;outline-offset:6px}
 .wordmark .dot{width:0.32em;height:0.32em;border-radius:999px;background:var(--accent);display:inline-block;transform:translateY(0.04em)}
 .top-meta{font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint)}
 .top-meta .gd{color:var(--ink)}

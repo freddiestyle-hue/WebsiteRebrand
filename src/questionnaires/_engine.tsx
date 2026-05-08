@@ -142,6 +142,7 @@ export default function QuestionnaireEngine({ config }: QuestionnaireEngineProps
       if (event.key === 'Enter') {
         const target = event.target as HTMLElement | null;
         if (target?.tagName === 'TEXTAREA' && event.shiftKey) return;
+        if (target?.closest('a[href]')) return;
         event.preventDefault();
         void advance();
         return;
@@ -179,9 +180,9 @@ export default function QuestionnaireEngine({ config }: QuestionnaireEngineProps
       </div>
 
       <div className="top-bar">
-        <span className="wordmark" aria-label="Rivett">
+        <a className="wordmark" href="/" aria-label="Rivett, home">
           rivett<span className="dot" aria-hidden="true" />
-        </span>
+        </a>
         <div className="top-meta">{renderTopMeta(config.top_meta)}</div>
       </div>
 

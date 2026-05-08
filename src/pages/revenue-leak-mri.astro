@@ -23,6 +23,7 @@
   .topbar { position: fixed; top: 0; left: 0; right: 0; padding: 22px 32px; display: flex; justify-content: space-between; align-items: center; z-index: 50; pointer-events: none; }
   .topbar > * { pointer-events: auto; }
   .wordmark { display: inline-flex; align-items: center; gap: 0.12em; font-family: var(--grotesk); font-weight: 700; font-size: 18px; letter-spacing: -0.05em; color: var(--ink); text-decoration: none; }
+  .wordmark:focus-visible { outline: 1px solid currentColor; outline-offset: 6px; }
   .dot-mark { width: 0.32em; height: 0.32em; border-radius: var(--r-pill); background: var(--accent); transform: translateY(0.04em); display: inline-block; }
   .counter { font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); display: flex; align-items: center; gap: 16px; }
   .counter b { color: var(--ink); font-weight: 500; }
@@ -192,7 +193,7 @@
 <div class="progress"><div class="fill" id="fill"></div></div>
 
 <div class="topbar">
-  <a href="#" class="wordmark">rivett<span class="dot-mark"></span></a>
+  <a href="/" class="wordmark" aria-label="Rivett, home">rivett<span class="dot-mark" aria-hidden="true"></span></a>
   <div class="counter">
     <span>Revenue · MRI</span>
     <span><b id="cur">01</b> / <span id="tot">11</span></span>
@@ -699,6 +700,7 @@
   // keyboard
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
+      if (document.activeElement?.closest?.('a[href]')) return;
       e.preventDefault();
       go(i + 1);
     } else if (e.key === 'ArrowUp' || (e.key === 'ArrowLeft' && document.activeElement.tagName !== 'INPUT')) {
