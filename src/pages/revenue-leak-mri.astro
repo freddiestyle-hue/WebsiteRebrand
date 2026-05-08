@@ -60,25 +60,44 @@ import Base from '../layouts/Base.astro';
       <div class="page mri-grid">
         <form class="mri-inputs" data-mri-form>
           <div class="mri-kicker">Inputs</div>
-          <h3>Model the system you already have.</h3>
-          <p class="mri-dek">Use honest monthly numbers. The readout updates as the operating picture changes.</p>
+          <h3>Start with three numbers.</h3>
+          <p class="mri-dek">Spend, lead volume, and average deal value are enough for a 60-second pressure read. The full MRI tightens the diagnosis.</p>
 
-          <div class="control-grid">
+          <div class="express-scan">
+            <div>
+              <span>60-second express</span>
+              <p>Quick estimate from the first three inputs.</p>
+            </div>
+            <div>
+              <span>Express leak</span>
+              <strong data-mri-result="expressLeak">$0</strong>
+            </div>
+          </div>
+
+          <div class="control-grid control-grid--express">
             <label class="control">
               <span>Monthly ad spend</span>
-              <input data-mri-input="adSpend" type="number" min="0" step="500" value="28000" />
+              <input data-mri-input="adSpend" type="text" inputmode="numeric" pattern="[0-9]*" value="28000" />
             </label>
             <label class="control">
               <span>Monthly leads</span>
-              <input data-mri-input="monthlyLeads" type="number" min="1" step="1" value="90" />
+              <input data-mri-input="monthlyLeads" type="text" inputmode="numeric" pattern="[0-9]*" value="90" />
             </label>
             <label class="control">
               <span>Average deal value</span>
-              <input data-mri-input="avgDeal" type="number" min="500" step="500" value="18000" />
+              <input data-mri-input="avgDeal" type="text" inputmode="numeric" pattern="[0-9]*" value="18000" />
             </label>
+          </div>
+
+          <div class="full-scan-head">
+            <span>Full MRI inputs</span>
+            <b>Sharper diagnosis, same readout.</b>
+          </div>
+
+          <div class="control-grid control-grid--single">
             <label class="control">
               <span>Agency / vendor cost</span>
-              <input data-mri-input="agencyCost" type="number" min="0" step="500" value="9000" />
+              <input data-mri-input="agencyCost" type="text" inputmode="numeric" pattern="[0-9]*" value="9000" />
             </label>
           </div>
 
@@ -103,7 +122,7 @@ import Base from '../layouts/Base.astro';
 
           <label class="control control-rate">
             <span>Blended internal hourly cost</span>
-            <input data-mri-input="hourlyCost" type="number" min="25" step="5" value="145" />
+            <input data-mri-input="hourlyCost" type="text" inputmode="numeric" pattern="[0-9]*" value="145" />
           </label>
         </form>
 
@@ -206,7 +225,7 @@ import Base from '../layouts/Base.astro';
         <div class="method-list">
           <div><b>01</b><span>Speed-to-lead decay turns paid demand into stale demand.</span></div>
           <div><b>02</b><span>Weak qualification makes the ad platform optimize for the wrong signal.</span></div>
-          <div><b>03</b><span>Manual reporting, handoffs, and vendor layers tax every lead before revenue sees it.</span></div>
+          <div><b>03</b><span>Manual reporting, handoffs, and vendor overhead tax every lead before revenue sees it.</span></div>
         </div>
       </div>
     </section>
@@ -313,7 +332,7 @@ import Base from '../layouts/Base.astro';
         ],
       },
       drag: {
-        text: 'Your hidden cost is the operating layer around the work. Reporting, vendors, and manual checks are taxing every lead.',
+        text: 'Your hidden cost is the drag around the work. Reporting, vendors, and manual checks are taxing every lead.',
         actions: [
           'Kill reports nobody uses for a decision.',
           'Automate monitoring, enrichment, and first-draft reporting.',
@@ -372,6 +391,7 @@ import Base from '../layouts/Base.astro';
     const conversionLeak = contacted * (Math.max(0, 28 - leadToOpp) / 100) * (closeRate / 100) * avgDeal;
     const closingLeak = opportunities * (Math.max(0, 27 - closeRate) / 100) * avgDeal * 0.55;
     const dragLeak = Math.max(0, manualCost * 0.16 + adSpend * 0.045 + responseHours * 80);
+    const expressLeak = Math.max(0, adSpend * 0.22 + monthlyLeads * avgDeal * 0.035);
     const leaks = { response: responseLeak, conversion: conversionLeak, closing: closingLeak, drag: dragLeak };
     const largest = Object.entries(leaks).sort((a, b) => b[1] - a[1])[0] ?? ['response', 0];
     const largestKey = largest[0];
@@ -394,6 +414,7 @@ import Base from '../layouts/Base.astro';
     };
     const diagnosis = diagnosisFor(largestKey);
 
+    setText('[data-mri-result="expressLeak"]', money.format(expressLeak));
     setText('[data-mri-result="totalLeak"]', money.format(totalLeak));
     setText('[data-mri-result="score"]', String(score));
     setText('[data-mri-result="severity"]', severity);
@@ -519,7 +540,15 @@ import Base from '../layouts/Base.astro';
   .mri-inputs{border:1px solid var(--ink);background:var(--paper-2);padding:34px;min-height:720px}
   .mri-inputs h3{font-size:clamp(34px,3.25rem,52px);line-height:1;margin:22px 0 0;max-width:620px}
   .mri-dek{font-size:19px;line-height:1.5;color:var(--ink-dim);margin:20px 0 0;max-width:520px}
+  .express-scan{margin-top:28px;border:1px solid var(--ink);background:var(--sage);padding:18px;display:grid;grid-template-columns:1fr auto;gap:24px;align-items:end}
+  .express-scan span,.full-scan-head span{font-family:var(--mono);font-size:11px;text-transform:uppercase;color:var(--accent-deep)}
+  .express-scan p{font-size:15px;line-height:1.4;color:var(--ink-dim);margin:7px 0 0;max-width:300px}
+  .express-scan strong{display:block;font-size:36px;line-height:0.95;letter-spacing:-0.03em;color:var(--ink);margin-top:8px;text-align:right}
   .control-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:34px}
+  .control-grid--express{grid-template-columns:repeat(3,1fr)}
+  .control-grid--single{grid-template-columns:1fr;margin-top:16px}
+  .full-scan-head{margin-top:30px;padding-top:22px;border-top:1px solid var(--line-strong);display:flex;justify-content:space-between;gap:18px;align-items:baseline}
+  .full-scan-head b{font-family:var(--grotesk);font-size:14px;font-weight:500;color:var(--ink-dim)}
   .control,.range-control{display:grid;gap:8px}
   .control span,.range-control span:first-child{font-family:var(--mono);font-size:11px;text-transform:uppercase;color:var(--ink-faint)}
   .control input{width:100%;border:1px solid var(--line-strong);background:var(--paper);color:var(--ink);font:inherit;font-size:18px;padding:13px 14px;border-radius:0}
@@ -617,7 +646,10 @@ import Base from '../layouts/Base.astro';
     .mri-console{padding:48px 0 62px}
     .mri-inputs,.mri-readout{padding:24px}
     .mri-inputs h3,.tool-heading h2,.mri-method h2,.mri-next h2{font-size:38px}
-    .control-grid,.gate-fields{grid-template-columns:1fr}
+    .control-grid,.control-grid--express,.gate-fields{grid-template-columns:1fr}
+    .express-scan{grid-template-columns:1fr;align-items:start}
+    .express-scan strong{text-align:left;font-size:32px}
+    .full-scan-head{display:grid;gap:5px}
     .control input{font-size:16px}
     .range-control input[type="range"]{height:54px}
     .range-control input[type="range"]::-webkit-slider-runnable-track{height:10px}

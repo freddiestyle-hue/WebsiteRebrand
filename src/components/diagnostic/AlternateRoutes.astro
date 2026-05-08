@@ -11,10 +11,10 @@ const calLinkOf = (href: string) => href.replace(/^cal:/, '');
   <div class="grid">
     {routes.map((r) => {
       const cal = isCalLink(r.href);
-      const href = cal ? '#' : r.href;
+      const calLink = cal ? calLinkOf(r.href) : undefined;
+      const href = cal && calLink ? `https://cal.com/${calLink}?overlayCalendar=true` : r.href;
       const target = r.external ? '_blank' : undefined;
       const rel = r.external ? 'noopener' : undefined;
-      const calLink = cal ? calLinkOf(r.href) : undefined;
       return (
         <a class="route" href={href} target={target} rel={rel} data-cal-link={calLink}>
           <div class="head">
@@ -34,16 +34,14 @@ const calLinkOf = (href: string) => href.replace(/^cal:/, '');
     const link = a.dataset.calLink;
     if (!link) return;
     a.addEventListener('click', (e) => {
-      e.preventDefault();
       const w = window as any;
       if (w.posthog) {
         w.posthog.capture('diagnostic_cta_click', { source: 'alt_route_short_call' });
       }
       const ns = w.__rivettCalNamespace;
       if (w.Cal && ns && w.Cal.ns?.[ns]) {
+        e.preventDefault();
         w.Cal.ns[ns]('modal', { calLink: link });
-      } else {
-        window.location.href = `https://cal.com/${link}?overlayCalendar=true`;
       }
     });
   });

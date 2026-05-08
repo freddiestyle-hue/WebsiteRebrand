@@ -1,6 +1,7 @@
 ---
 import { getCollection } from 'astro:content';
 import Base from '../../layouts/Base.astro';
+import SubscribeBox from '../../components/SubscribeBox.astro';
 import { parsePost } from '../../utils/parsePost';
 
 export async function getStaticPaths() {
@@ -18,9 +19,10 @@ const allPosts = (await getCollection('blog')).sort(
 
 const slugFor = (p: { data: { slug?: string }; id: string }) =>
   p.data.slug ?? p.id.replace(/\.md$/, '');
+const slug = slugFor(post);
 
 const total = allPosts.length;
-const positionFromNewest = allPosts.findIndex(p => slugFor(p) === slugFor(post));
+const positionFromNewest = allPosts.findIndex(p => slugFor(p) === slug);
 const issueNumber = total - positionFromNewest;
 
 const sameTag = allPosts.filter(
@@ -74,13 +76,13 @@ const { tldrHtml, bodyHtml, faq, toc } = parsePost(post.body ?? '');
           <span class="label">Share</span>
           <div class="share">
             <a href="#" data-share="copy" aria-label="Copy link">Copy</a>
-            <a href={`https://www.linkedin.com/sharing/share-offsite/?url=https://rivett.tech/blog/${slugFor(post)}`} target="_blank" rel="noopener" aria-label="Share to LinkedIn">in</a>
-            <a href={`https://twitter.com/intent/tweet?url=https://rivett.tech/blog/${slugFor(post)}&text=${encodeURIComponent(post.data.title)}`} target="_blank" rel="noopener" aria-label="Share to X">x</a>
+            <a href={`https://www.linkedin.com/sharing/share-offsite/?url=https://rivett.tech/blog/${slug}`} target="_blank" rel="noopener" aria-label="Share to LinkedIn">in</a>
+            <a href={`https://twitter.com/intent/tweet?url=https://rivett.tech/blog/${slug}&text=${encodeURIComponent(post.data.title)}`} target="_blank" rel="noopener" aria-label="Share to X">x</a>
           </div>
         </div>
         <div class="block">
           <span class="label">Author</span>
-          <p class="author-note">Fred Style runs Rivett, a one-operator growth infrastructure practice. Fifteen years in growth. Ran $100M+ of ad spend across four continents.</p>
+          <p class="author-note">Fred Style runs Rivett, a one-operator revenue leak practice. Fifteen years in growth. Ran $100M+ of ad spend across four continents.</p>
         </div>
       </aside>
 
@@ -115,6 +117,10 @@ const { tldrHtml, bodyHtml, faq, toc } = parsePost(post.body ?? '');
         </div>
       </section>
     )}
+
+    <section class="note-subscribe" aria-label="Subscribe to Field Notes">
+      <SubscribeBox source={`note:${slug}`} />
+    </section>
   </div>
 
   <section class="end-cta on-ink">

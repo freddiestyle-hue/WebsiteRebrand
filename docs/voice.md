@@ -68,8 +68,8 @@ Newsreader italic is the brand's whisper. It carries the second clause of a thou
 
 The system has exactly three CTAs in rotation:
 
-1. `Book diagnostic →` — solid ink button, the primary action.
-2. `Read more Field Notes` — ghost or outline, the secondary.
+1. `Run the Revenue MRI →` — solid ink button, the cold-traffic primary action.
+2. `Book diagnostic →` — solid ink or outline button, the warm-traffic commercial action.
 3. `← Field Notes` — text-only crumb, the back-out.
 
-Never invent a fourth. If you need a fourth, the page is doing too much.
+`Read more Field Notes` can appear as a secondary editorial action. If a page needs more than those, the page is doing too much.

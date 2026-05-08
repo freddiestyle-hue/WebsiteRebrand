@@ -1,4 +1,6 @@
 ---
+import { CAL_LINK } from '../../content/diagnostic';
+
 interface Props {
   variant?: 'primary' | 'ghost' | 'card';
   label?: string;
@@ -11,19 +13,21 @@ const {
   source = 'unknown',
   class: extraClass = '',
 } = Astro.props;
+
+const fallbackUrl = `https://cal.com/${CAL_LINK}?overlayCalendar=true`;
 ---
-<button
-  type="button"
+<a
+  href={fallbackUrl}
   class:list={['book-btn', `book-btn--${variant}`, extraClass]}
   data-book-source={source}
 >
   <span>{label}</span>
   <span class="book-btn__arrow" aria-hidden="true">→</span>
-</button>
+</a>
 
 <script>
-  document.querySelectorAll<HTMLButtonElement>('.book-btn').forEach((btn) => {
-    btn.addEventListener('click', () => {
+  document.querySelectorAll<HTMLAnchorElement>('.book-btn').forEach((btn) => {
+    btn.addEventListener('click', (event) => {
       const source = btn.dataset.bookSource ?? 'unknown';
       const w = window as any;
       if (w.posthog) {
@@ -32,9 +36,8 @@ const {
       const ns = w.__rivettCalNamespace;
       const link = w.__rivettCalLink;
       if (w.Cal && ns && w.Cal.ns?.[ns]) {
+        event.preventDefault();
         w.Cal.ns[ns]('modal', { calLink: link });
-      } else {
-        window.location.href = `https://cal.com/${link}?overlayCalendar=true`;
       }
     });
   });
@@ -53,6 +56,7 @@ const {
     letter-spacing: 0.22em;
     text-transform: uppercase;
     cursor: pointer;
+    box-sizing: border-box;
     transition: all 0.15s;
     background: transparent;
     color: var(--ink);

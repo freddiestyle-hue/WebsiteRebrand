@@ -1,6 +1,7 @@
 ---
 import { getCollection } from 'astro:content';
 import Base from '../../layouts/Base.astro';
+import SubscribeBox from '../../components/SubscribeBox.astro';
 
 const posts = (await getCollection('blog')).sort(
   (a, b) => b.data.date.getTime() - a.data.date.getTime(),
@@ -114,16 +115,15 @@ for (const p of posts) tagCounts[p.data.tag] = (tagCounts[p.data.tag] ?? 0) + 1;
         </div>
         <div class="col">
           <div class="label">Subscribe</div>
-          <p>One note a week, on average. No newsletter pop-ups, no tracking pixel hot-takes. Plain text, signed, sent on Tuesdays.</p>
-          <a class="btn btn--outline" href="#toc">Read more Field Notes</a>
+          <SubscribeBox source="blog-index-footer" compact />
         </div>
         <div class="col">
           <div class="label">Tags</div>
           <p class="tag-list">
-            <a href="?tag=Strategy">Strategy</a> &nbsp;
-            <a href="?tag=Insights">Insights</a> &nbsp;
-            <a href="?tag=Engineering">Engineering</a> &nbsp;
-            <a href="?tag=Company">Company</a>
+            <a href="#toc" data-filter-link="Strategy">Strategy</a> &nbsp;
+            <a href="#toc" data-filter-link="Insights">Insights</a> &nbsp;
+            <a href="#toc" data-filter-link="Engineering">Engineering</a> &nbsp;
+            <a href="#toc" data-filter-link="Company">Company</a>
           </p>
         </div>
       </div>
@@ -154,6 +154,13 @@ for (const p of posts) tagCounts[p.data.tag] = (tagCounts[p.data.tag] ?? 0) + 1;
   }
 
   buttons.forEach(b => b.addEventListener('click', () => applyFilter(b.dataset.filter ?? 'all')));
+  document.querySelectorAll<HTMLAnchorElement>('[data-filter-link]').forEach(link => {
+    link.addEventListener('click', event => {
+      event.preventDefault();
+      applyFilter(link.dataset.filterLink ?? 'all');
+      toc?.scrollIntoView({ block: 'start' });
+    });
+  });
 
   const params = new URLSearchParams(window.location.search);
   const initial = params.get('tag');

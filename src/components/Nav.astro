@@ -15,6 +15,7 @@ const toolsActive = mriActive || vanishActive;
     </a>
     <ul class="nav-links">
       <li><a href="/#modules">Work</a></li>
+      <li><a href="/diagnostic">Diagnostic</a></li>
       <li class:list={['tools-item', toolsActive ? 'current-li' : '']}>
         <details class="tools-menu">
           <summary class={toolsActive ? 'current' : ''}>Tools</summary>
@@ -33,7 +34,7 @@ const toolsActive = mriActive || vanishActive;
       <li class={current === 'blog' ? 'current-li' : ''}>
         <a href="/blog" class={current === 'blog' ? 'current' : ''}>Notes</a>
       </li>
-      <li><a href="/diagnostic" class="cta">Book diagnostic →</a></li>
+      <li><a href="/revenue-leak-mri" class="cta">Run MRI →</a></li>
     </ul>
     <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="mobile-menu" aria-label="Open menu">
       <span class="menu-bar"></span>
@@ -49,6 +50,7 @@ const toolsActive = mriActive || vanishActive;
   </a>
   <ul class="mobile-links">
     <li><a href="/#modules">Work</a></li>
+    <li><a href="/diagnostic">Diagnostic</a></li>
     <li class="mobile-tools">
       <span>Tools</span>
       <ul>
@@ -57,7 +59,7 @@ const toolsActive = mriActive || vanishActive;
       </ul>
     </li>
     <li><a href="/blog">Notes</a></li>
-    <li><a href="/diagnostic" class="mobile-cta">Book diagnostic →</a></li>
+    <li><a href="/revenue-leak-mri" class="mobile-cta">Run MRI →</a></li>
   </ul>
   <div class="mobile-foot">fred@rivett.tech</div>
 </div>

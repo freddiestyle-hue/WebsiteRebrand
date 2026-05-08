@@ -103,7 +103,7 @@ function buildHtmlEmail(
           ${index + 1} &rarr; ${escapeHtml(question.text)}
         </div>
         <div style="font-family:Inter,Arial,sans-serif;font-size:17px;line-height:1.6;color:#0E1A2C;white-space:pre-wrap;">
-          ${answer || '<span style="color:#7A8597;font-style:italic;">Skipped</span>'}
+          ${answer || '<span style="color:#5F6B7D;font-style:italic;">Skipped</span>'}
         </div>
       </section>
     `;

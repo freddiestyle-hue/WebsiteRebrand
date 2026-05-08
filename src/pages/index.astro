@@ -10,8 +10,8 @@ import SignalIcon from '../components/icons/Signal.astro';
 import StackIcon from '../components/icons/Stack.astro';
 ---
 <Base
-  title="Rivett · Growth infrastructure for operator-led companies"
-  description="A senior growth practice for profitable US operators. Diagnose, rebuild, and run the systems between demand and revenue, with AI below the judgment layer."
+  title="Rivett · Find and fix revenue leaks"
+  description="A senior growth practice for profitable US operators. Run the Revenue MRI, diagnose the leaks, and rebuild the system between demand and revenue."
   fontWeights="Inter+Tight:wght@400;500;600;700"
   currentNav="home"
 >
@@ -19,88 +19,50 @@ import StackIcon from '../components/icons/Stack.astro';
     <section class="first">
       <div class="hero">
         <div>
-          <div class="stamp">A senior growth practice · Cape Town &amp; remote</div>
+          <div class="stamp">Ran growth at Somewhere.com · $100M+ managed · Cape Town &amp; remote</div>
           <h1 class="display display--hero">
-            Growth<br/>
-            infrastructure<br/>
-            for <span class="ital">operators<span class="accent-dot">.</span></span>
+            I find where<br/>
+            revenue leaks.<br/>
+            <span class="ital">Then I fix the system<span class="accent-dot">.</span></span>
           </h1>
           <p class="lede">
-            I work with profitable US operators to find where growth is leaking, rebuild the systems underneath, and install the reporting, handoffs, workflows, and AI-assisted operating layer that keeps revenue moving.
+            I work with profitable US operators to find the expensive leaks between demand and revenue, then rebuild the reporting, handoffs, follow-up, and AI-assisted workflows that keep money moving.
           </p>
           <div class="hero-cta">
-            <a href="/diagnostic" class="btn primary">Book diagnostic →</a>
-            <a href="/revenue-leak-mri" class="btn ghost">Run the Revenue MRI</a>
+            <a href="/revenue-leak-mri" class="btn primary">Run the Revenue MRI →</a>
+            <a href="/diagnostic" class="btn ghost">Book diagnostic</a>
           </div>
-          <div class="meta">
-            <div>Principal<b>Fred Style</b></div>
-            <div>Spend run<b>$100M+ managed</b></div>
-            <div>Markets<b>4 continents</b></div>
-            <div>Proof<b>15 yrs · $100M+</b></div>
+          <div class="industry-strip" aria-label="Industries Rivett works with">
+            <span>Works with</span>
+            <b>Self-storage</b>
+            <b>Multifamily</b>
+            <b>Contractors</b>
+            <b>Agencies</b>
+            <b>Professional services</b>
           </div>
         </div>
 
-        <aside class="hero-r">
+        <aside class="hero-r" aria-label="Rivett proof and next step">
           <div class="availability">Taking 3 new clients · Q3 2026</div>
-          <div class="row"><span class="k">M01 · Diagnostic</span><span class="v">$3,500 · 2 wks</span></div>
-          <div class="row"><span class="k">M02 · Build</span><span class="v">Scoped after M01</span></div>
-          <div class="row"><span class="k">M03 · Run</span><span class="v">Monthly retainer</span></div>
-          <div class="row"><span class="k">Workhours</span><span class="v">SAST overlap with US ET / GMT</span></div>
-          <div class="row"><span class="k">Reply window</span><span class="v">Inside 24 hours</span></div>
+          <div class="proof-kicker">Proof from the work</div>
+          <p class="proof-copy">
+            Before selling the system, Rivett ran it on its own pipeline for 90 days. The first hard failure was caught internally, rebuilt, and turned into the approval discipline clients get.
+          </p>
+          <div class="row"><span class="k">Throughput</span><span class="v">10 prospects / hr to review queue</span></div>
+          <div class="row"><span class="k">Review rhythm</span><span class="v">80 decisions / day at pace</span></div>
+          <div class="row"><span class="k">Calibration</span><span class="v">60% to 85% approval by week 12</span></div>
+          <div class="row"><span class="k">Failure caught</span><span class="v">0 / 15 ICP miss before client work</span></div>
+          <a href="/blog/90-days-sdr-agent-results" class="proof-link">Read the 90-day note →</a>
         </aside>
-      </div>
-    </section>
-
-    <section id="about">
-      <div class="sec-head">
-        <div class="label"><b>01</b> · Track record</div>
-        <h2 class="section-title">Fifteen years inside acquisition. Now applied to the whole system.</h2>
-      </div>
-
-      <div class="inherit">
-        <div>
-          <div class="op-byline">
-            <picture>
-              <source type="image/avif" srcset="/img/portrait/fred-96.avif 1x, /img/portrait/fred-192.avif 2x" />
-              <source type="image/webp" srcset="/img/portrait/fred-96.webp 1x, /img/portrait/fred-192.webp 2x" />
-              <img src="/img/portrait/fred-96.png" srcset="/img/portrait/fred-96.png 1x, /img/portrait/fred-192.png 2x" width="48" height="48" alt="Fred Style" loading="lazy" decoding="async" />
-            </picture>
-            <div>
-              <div class="op-name">Fred Style</div>
-              <div class="op-role">Founder · Operator · Sole point of contact</div>
-            </div>
-          </div>
-          <p class="editorial">Paid acquisition is the proof. <span class="em">Growth infrastructure is the work.</span></p>
-          <p class="body">
-            Fifteen years inside paid acquisition for brands across consumer, B2B and DTC. Most recently a year as ex-growth at <strong>Somewhere.com</strong>, the global recruiting platform. Before that, in-house performance leadership across four continents and roughly $100M in managed spend.
-          </p>
-          <p class="body body-gap">
-            The work now is broader: the stack, the handoffs, the reporting, the follow-up, and the AI workflows underneath. <strong>One senior operator on the growth system</strong>, the way you would run it yourself if you had fifteen years of pattern recognition and the time to apply it.
-          </p>
-        </div>
-
-        <div>
-          <div class="label">By the numbers</div>
-          <div class="roster roster--tight">
-            <div class="row"><span class="nm">Career</span><span class="ds">Paid acquisition, in-house and consulting</span><span class="yr">15 yrs</span></div>
-            <div class="row"><span class="nm">Most recent</span><span class="ds">Ex-growth, Somewhere.com</span><span class="yr">1 yr</span></div>
-            <div class="row"><span class="nm">Managed spend</span><span class="ds">Paid search, social, programmatic</span><span class="yr">$100M+</span></div>
-            <div class="row"><span class="nm">Continents</span><span class="ds">USA, Africa, Europe, Asia</span><span class="yr">4</span></div>
-            <div class="row"><span class="nm">Sectors</span><span class="ds">Consumer, B2B, DTC, recruiting, media</span><span class="yr">5+</span></div>
-          </div>
-          <p class="body body-small body-loose">
-            Independent. Cape Town based. Available to a small number of operators per quarter.
-          </p>
-        </div>
       </div>
     </section>
 
     <section id="modules">
       <div class="sec-head">
-        <div class="label"><b>02</b> · The work</div>
+        <div class="label"><b>01</b> · The work</div>
         <div>
-          <h2 class="section-title">A fixed path from diagnosis to operating rhythm.</h2>
-          <p class="lede lede-offset">First I find the leaks. Then I build the highest-value fixes. If the rhythm matters enough to keep, I run the operating layer with dashboards, alerts, weekly decisions, and board-grade summaries.</p>
+          <h2 class="section-title">A fixed path from leak to operating rhythm.</h2>
+          <p class="lede lede-offset">First I find the leaks. Then I build the highest-value fixes. If the rhythm matters enough to keep, I run the system with dashboards, alerts, weekly decisions, and board-grade summaries.</p>
         </div>
       </div>
 
@@ -133,9 +95,9 @@ import StackIcon from '../components/icons/Stack.astro';
               <StackIcon size={24} class="module-icon" />
               <span class="num">M02 · Build</span>
             </span>
-            <span class="dur">04–06 wks</span>
+            <span class="dur">04-06 wks</span>
           </div>
-          <h3>Rebuild the acquisition and operating layer around the highest-value fixes.</h3>
+          <h3>Rebuild acquisition and revenue operations around the highest-value fixes.</h3>
           <p class="desc">Paid media, lifecycle, CRM, reporting, handoffs, and AI-assisted workflows rebuilt where they are worth rebuilding. You get the system, the dashboard, and the operating rules.</p>
           <ul>
             <li>Paid media rebuild · GA / Meta / LinkedIn</li>
@@ -158,7 +120,7 @@ import StackIcon from '../components/icons/Stack.astro';
             <span class="dur">monthly</span>
           </div>
           <h3>Maintain the weekly rhythm that keeps revenue moving.</h3>
-          <p class="desc">Optional. For operators who want senior growth judgment on the business without hiring a full in-house team or another agency layer. Weekly decisions, live dashboards, alerts, and board-grade summaries.</p>
+          <p class="desc">Optional. For operators who want senior growth judgment on the business without hiring a full in-house team or another agency. Weekly decisions, live dashboards, alerts, and board-grade summaries.</p>
           <ul>
             <li>Weekly working sessions</li>
             <li>Live dashboard &amp; alerting</li>
@@ -174,9 +136,116 @@ import StackIcon from '../components/icons/Stack.astro';
       <div class="modules-foot">M01 fee credits in full toward M02 if you continue. No long contracts. No retainer creep.</div>
     </section>
 
+    <section id="who">
+      <div class="sec-head">
+        <div class="label"><b>02</b> · Who this is for</div>
+        <div>
+          <h2 class="section-title">Operators of profitable, un-glamorous businesses. Real revenue, ready to compound.</h2>
+          <p class="lede lede-offset">You already have demand. The problem is what happens around it.</p>
+        </div>
+      </div>
+
+      <div class="who-grid">
+        <div class="who-cell">
+          <div class="tag">01</div>
+          <h3>Real estate operators &amp; brokerages.</h3>
+          <p>Self-storage, multifamily, brokerage, REPE. Capital raise, sphere and farm, leasing pipeline.</p>
+          <div class="examples">Self-storage · Brokerage · REPE · Property mgmt</div>
+        </div>
+        <div class="who-cell">
+          <div class="tag">02</div>
+          <h3>Service businesses &amp; agencies.</h3>
+          <p>Boring, profitable, growing. Construction, manufacturing, professional services, agency owners. 50-500 people, real revenue, ready to compound.</p>
+          <div class="examples">Contractors · Agencies · Professional services · Wholesale</div>
+        </div>
+        <div class="who-cell">
+          <div class="tag">03</div>
+          <h3>Founders &amp; operators of mid-market companies.</h3>
+          <p>50 to 500 people, profitable, ready to compound. You do not want a slick agency. You want senior judgment on the growth system underneath the business.</p>
+          <div class="examples">Founder-led · PE-backed · Family-owned</div>
+        </div>
+      </div>
+      <div class="fit-foot">
+        <p>If you do not see yourself here exactly, <a href="#contact">email me anyway</a>. I will tell you straight if I am the wrong call.</p>
+        <p><strong>Probably not:</strong> you want a junior to take orders, a yes-person, or a generic AI roadmap.</p>
+      </div>
+    </section>
+
+    <section id="about">
+      <div class="sec-head">
+        <div class="label"><b>03</b> · Track record</div>
+        <h2 class="section-title">Fifteen years inside acquisition. Now applied to the whole system.</h2>
+      </div>
+
+      <div class="inherit">
+        <div>
+          <div class="op-byline">
+            <picture>
+              <source type="image/avif" srcset="/img/portrait/fred-96.avif 1x, /img/portrait/fred-192.avif 2x" />
+              <source type="image/webp" srcset="/img/portrait/fred-96.webp 1x, /img/portrait/fred-192.webp 2x" />
+              <img src="/img/portrait/fred-96.png" srcset="/img/portrait/fred-96.png 1x, /img/portrait/fred-192.png 2x" width="48" height="48" alt="Fred Style" loading="lazy" decoding="async" />
+            </picture>
+            <div>
+              <div class="op-name">Fred Style</div>
+              <div class="op-role">Founder · Operator · Sole point of contact</div>
+            </div>
+          </div>
+          <p class="editorial">Paid acquisition is the proof. <span class="em">Revenue operations are the work.</span></p>
+          <p class="body">
+            Fifteen years inside paid acquisition for brands across consumer, B2B and DTC. Most recently running growth at <strong>Somewhere.com</strong>, the global recruiting platform. Before that, in-house performance leadership across four continents and roughly $100M in managed spend.
+          </p>
+          <p class="body body-gap">
+            The work now is broader: the stack, the handoffs, the reporting, the follow-up, and the AI workflows underneath. <strong>One senior operator on the growth system</strong>, the way you would run it yourself if you had fifteen years of pattern recognition and the time to apply it.
+          </p>
+        </div>
+
+        <div>
+          <div class="label">By the numbers</div>
+          <div class="roster roster--tight">
+            <div class="row"><span class="nm">Career</span><span class="ds">Paid acquisition, in-house and consulting</span><span class="yr">15 yrs</span></div>
+            <div class="row"><span class="nm">Most recent</span><span class="ds">Growth, Somewhere.com</span><span class="yr">1 yr</span></div>
+            <div class="row"><span class="nm">Managed spend</span><span class="ds">Paid search, social, programmatic</span><span class="yr">$100M+</span></div>
+            <div class="row"><span class="nm">Continents</span><span class="ds">USA, Africa, Europe, Asia</span><span class="yr">4</span></div>
+            <div class="row"><span class="nm">Sectors</span><span class="ds">Consumer, B2B, DTC, recruiting, media</span><span class="yr">5+</span></div>
+          </div>
+          <p class="body body-small body-loose">
+            Independent. Cape Town based. Available to a small number of operators per quarter.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section id="why-sa" class="section-flush">
+      <div class="geo">
+        <div class="inner">
+          <div>
+            <div class="sec-head sec-head--dark">
+              <div class="label"><b>04</b> · The deal</div>
+              <div>
+                <h2 class="section-title">Senior judgment. Different cost structure. <span class="em">No agency markup.</span></h2>
+                <p class="lede lede-offset">
+                  I work from Cape Town by design. The advantage is not "cheap." It is structural: direct access to the operator doing the work, senior growth judgment on the system, and AI-assisted execution underneath without paying for a US agency org chart.
+                </p>
+                <p class="body body-gap">
+                  You get the senior pattern recognition without the staffing model wrapped around it. Same caliber of judgment. Cleaner operating shape. <strong>That is why this works.</strong>
+                </p>
+              </div>
+            </div>
+          </div>
+          <div class="compare">
+            <div class="row head"><span class="lab">Senior growth support</span><span class="lab">Annualized</span></div>
+            <div class="row us"><span class="val">US agency, retainer</span><span class="val">$300–500k</span></div>
+            <div class="row us"><span class="val">In-house VP marketing</span><span class="val">$220–280k</span></div>
+            <div class="row us"><span class="val">Boutique consultancy</span><span class="val">$180–240k</span></div>
+            <div class="row rivett"><span class="lab">Rivett · M03 retainer</span><span class="val">~⅓ of the above</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section id="approach">
       <div class="sec-head">
-        <div class="label"><b>03</b> · Operating layer</div>
+        <div class="label"><b>05</b> · AI in the work</div>
         <div>
           <h2 class="section-title">AI belongs below the judgment layer.</h2>
           <p class="lede lede-offset">The valuable work is deciding what matters. AI belongs underneath that judgment, not in place of it.</p>
@@ -211,72 +280,12 @@ import StackIcon from '../components/icons/Stack.astro';
                 <li class="dim">Channel mix &amp; budget</li>
                 <li class="dim">Creative &amp; message strategy</li>
                 <li class="dim">Pricing &amp; offer design</li>
-                <li class="dim">The hard conversation about why it's not working</li>
+                <li class="dim">The hard conversation about why it is not working</li>
               </ul>
             </div>
           </div>
         </div>
       </div>
-    </section>
-
-    <section id="why-sa" class="section-flush">
-      <div class="geo">
-        <div class="inner">
-          <div>
-            <div class="sec-head sec-head--dark">
-              <div class="label"><b>04</b> · The deal</div>
-              <div>
-                <h2 class="section-title">Senior judgment. Different cost structure. <span class="em">No agency layer.</span></h2>
-                <p class="lede lede-offset">
-                  I work from Cape Town by design. The advantage is not "cheap." It is structural: direct access to the operator doing the work, senior growth judgment on the system, and AI-assisted execution underneath without paying for a US agency org chart.
-                </p>
-                <p class="body body-gap">
-                  You get the senior pattern recognition without the staffing model wrapped around it. Same caliber of judgment. Cleaner operating shape. <strong>That is why this works.</strong>
-                </p>
-              </div>
-            </div>
-          </div>
-          <div class="compare">
-            <div class="row head"><span class="lab">Senior growth layer</span><span class="lab">Annualized</span></div>
-            <div class="row us"><span class="val">US agency, retainer</span><span class="val">$300–500k</span></div>
-            <div class="row us"><span class="val">In-house VP marketing</span><span class="val">$220–280k</span></div>
-            <div class="row us"><span class="val">Boutique consultancy</span><span class="val">$180–240k</span></div>
-            <div class="row rivett"><span class="lab">Rivett · M03 retainer</span><span class="val">~⅓ of the above</span></div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section id="who">
-      <div class="sec-head">
-        <div class="label"><b>05</b> · Who this is for</div>
-        <div>
-          <h2 class="section-title">Operators of profitable, un-glamorous businesses. Real revenue, ready to compound.</h2>
-          <p class="lede lede-offset">You already have demand. The problem is what happens around it.</p>
-        </div>
-      </div>
-
-      <div class="who-grid">
-        <div class="who-cell">
-          <div class="tag">01</div>
-          <h3>Real estate operators &amp; brokerages.</h3>
-          <p>Self-storage, multifamily, brokerage, REPE. Capital raise, sphere and farm, leasing pipeline.</p>
-          <div class="examples">Self-storage · Brokerage · REPE · Property mgmt</div>
-        </div>
-        <div class="who-cell">
-          <div class="tag">02</div>
-          <h3>Service businesses &amp; agencies.</h3>
-          <p>Boring, profitable, growing. Construction, manufacturing, professional services, agency owners. 50–500 people, real revenue, ready to compound.</p>
-          <div class="examples">Contractors · Agencies · Professional services · Wholesale</div>
-        </div>
-        <div class="who-cell">
-          <div class="tag">03</div>
-          <h3>Founders &amp; operators of mid-market companies.</h3>
-          <p>50 to 500 people, profitable, ready to compound. You don't want a slick agency. You want senior judgment on the growth system underneath the business.</p>
-          <div class="examples">Founder-led · PE-backed · Family-owned</div>
-        </div>
-      </div>
-      <p class="who-foot">If you don't see yourself here exactly, <a href="#contact">email me anyway</a>. I'll tell you straight if I'm the wrong call.</p>
     </section>
 
     <section id="contact" class="section-borderless">
@@ -285,14 +294,14 @@ import StackIcon from '../components/icons/Stack.astro';
           <div class="sec-head cta-head">
             <div class="label"><b>06</b> · Next step</div>
             <div>
-              <h2 class="section-title">Start with the <span class="em">diagnostic.</span></h2>
-              <p class="lede lede-offset">Two weeks. $3,500, fixed. A written diagnosis of your growth system and a prioritized fix list. If we keep working together, the fee credits to the build. If not, you keep the diagnosis.</p>
+              <h2 class="section-title">Start with the <span class="em">MRI.</span></h2>
+              <p class="lede lede-offset">Run the free scan first. If it points at a real leak, the diagnostic turns that signal into a written fix list. Two weeks. $3,500, fixed. Credited to the build if we continue.</p>
             </div>
           </div>
         </div>
         <div class="actions">
-          <a href="/diagnostic" class="btn primary">Book diagnostic →</a>
-          <a href="/revenue-leak-mri" class="btn ghost">Run the Revenue MRI</a>
+          <a href="/revenue-leak-mri" class="btn primary">Run the Revenue MRI →</a>
+          <a href="/diagnostic" class="btn ghost">Book diagnostic</a>
           <div class="meta">fred@rivett.tech · reply within 24 hours</div>
         </div>
       </div>
@@ -332,14 +341,15 @@ import StackIcon from '../components/icons/Stack.astro';
         <div class="foot-label">About</div>
         <ul>
           <li><a href="#about">Track record</a></li>
-          <li><a href="#approach">Operating layer</a></li>
+          <li><a href="#approach">AI in the work</a></li>
           <li><a href="/blog">Field Notes</a></li>
         </ul>
       </div>
       <div class="col">
         <div class="foot-label">Contact</div>
         <ul>
-          <li><a href="/diagnostic">Book diagnostic →</a></li>
+          <li><a href="/revenue-leak-mri">Run MRI →</a></li>
+          <li><a href="/diagnostic">Book diagnostic</a></li>
           <li><a href="mailto:fred@rivett.tech">fred@rivett.tech</a></li>
           <li><a href="https://www.linkedin.com/in/fredstyle/">LinkedIn</a></li>
         </ul>

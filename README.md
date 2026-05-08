@@ -71,7 +71,7 @@ The `## FAQ` section at the bottom is parsed into the typographic accordion. Q i
 
 ## Design source of truth
 
-The reference HTML files in `design-spec/` are the canonical visual spec. Replicate them exactly. Tokens are in `src/styles/tokens.css`.
+`src/styles/tokens.css` is the canonical visual source of truth. The reference HTML files in `design-spec/` are historical references and must not override production tokens or current component patterns.
 
 ## Voice rules (non-negotiable)
 

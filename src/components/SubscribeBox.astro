@@ -1,0 +1,164 @@
+---
+interface Props {
+  source?: string;
+  compact?: boolean;
+}
+
+const { source = 'field-notes', compact = false } = Astro.props;
+---
+<form class:list={['subscribe-box', compact && 'subscribe-box--compact']} data-subscribe-box data-source={source}>
+  <div class="subscribe-copy">
+    <span>Field Notes by email</span>
+    <p>No newsletter trap. New notes when there is something worth sending.</p>
+  </div>
+  <div class="subscribe-fields">
+    <input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" />
+    <input name="name" autocomplete="name" placeholder="Name" />
+    <input name="email" type="email" autocomplete="email" placeholder="Work email" required />
+    <button type="submit">Subscribe</button>
+  </div>
+  <p class="subscribe-status" data-subscribe-status></p>
+</form>
+
+<script>
+  document.querySelectorAll<HTMLFormElement>('[data-subscribe-box]').forEach((form) => {
+    if (form.dataset.bound === 'true') return;
+    form.dataset.bound = 'true';
+    const status = form.querySelector<HTMLElement>('[data-subscribe-status]');
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const data = new FormData(form);
+      const button = form.querySelector<HTMLButtonElement>('button[type="submit"]');
+      const payload = {
+        email: String(data.get('email') ?? ''),
+        name: String(data.get('name') ?? ''),
+        website: String(data.get('website') ?? ''),
+        source: form.dataset.source ?? 'field-notes',
+        path: window.location.pathname,
+      };
+
+      if (button) button.disabled = true;
+      if (status) status.textContent = 'Sending.';
+
+      try {
+        const response = await fetch('/api/subscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || 'Try again.');
+
+        form.reset();
+        if (status) status.textContent = 'Subscribed. I will keep it useful.';
+        const w = window as Window & { posthog?: { capture?: (event: string, properties?: Record<string, unknown>) => void } };
+        w.posthog?.capture?.('field_notes_subscribe', { source: payload.source, path: payload.path });
+      } catch (error) {
+        if (status) status.textContent = error instanceof Error ? error.message : 'Try again.';
+      } finally {
+        if (button) button.disabled = false;
+      }
+    });
+  });
+</script>
+
+<style>
+  .subscribe-box {
+    border: 1px solid var(--ink);
+    background: var(--sage);
+    padding: 28px;
+    display: grid;
+    grid-template-columns: minmax(220px, 0.8fr) minmax(280px, 1.2fr);
+    gap: 28px;
+    align-items: end;
+  }
+  .subscribe-box--compact {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .subscribe-copy span {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--accent-deep);
+  }
+  .subscribe-copy p {
+    font-size: 16px;
+    line-height: 1.5;
+    color: var(--ink-dim);
+    margin: 10px 0 0;
+    max-width: 420px;
+  }
+  .subscribe-fields {
+    display: grid;
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1fr) auto;
+    gap: 10px;
+  }
+  .subscribe-fields input[name="website"] {
+    position: absolute;
+    left: -9999px;
+    opacity: 0;
+  }
+  .subscribe-fields input {
+    min-width: 0;
+    border: 1px solid var(--line-strong);
+    background: var(--paper);
+    color: var(--ink);
+    font: inherit;
+    font-size: 15px;
+    padding: 13px 14px;
+    border-radius: 0;
+  }
+  .subscribe-fields button {
+    border: 1px solid var(--ink);
+    background: var(--ink);
+    color: var(--paper);
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    padding: 13px 16px;
+    cursor: pointer;
+  }
+  .subscribe-fields button:hover,
+  .subscribe-fields button:focus-visible {
+    background: var(--accent-deep);
+    border-color: var(--accent-deep);
+  }
+  .subscribe-fields button:disabled {
+    cursor: wait;
+    opacity: 0.72;
+  }
+  .subscribe-status {
+    grid-column: 2;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    min-height: 1.4em;
+    margin: -12px 0 0;
+  }
+  .subscribe-box--compact .subscribe-status { grid-column: 1; margin: 0; }
+  .subscribe-box--compact .subscribe-fields {
+    grid-template-columns: 1fr;
+  }
+  @media (max-width: 780px) {
+    .subscribe-box {
+      grid-template-columns: 1fr;
+      padding: 24px;
+    }
+    .subscribe-fields {
+      grid-template-columns: 1fr;
+    }
+    .subscribe-status {
+      grid-column: 1;
+      margin: 0;
+    }
+  }
+</style>
