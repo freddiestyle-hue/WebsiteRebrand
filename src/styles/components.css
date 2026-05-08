@@ -968,23 +968,18 @@ footer.site .wordmark { font-size: 14px; }
   .home-page .hero-cta{margin-top:40px;display:flex;gap:16px;flex-wrap:wrap;align-items:center}
   .home-page .funnel-note{margin:20px 0 0;max-width:540px;font-family:var(--mono);font-size:11px;line-height:1.6;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink-faint)}
 
-  .home-page section.logos{border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--paper-2);margin-top:56px}
-  .home-page .logos-inner{padding:32px 0;display:grid;grid-template-columns:auto 1fr auto;gap:40px;align-items:center}
-  .home-page .logos-lbl,.home-page .logos-note{font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint);white-space:nowrap}
-  .home-page .logos-list{display:flex;gap:40px;align-items:center;list-style:none;margin:0;padding:0;flex-wrap:wrap;justify-content:center}
-  .home-page .logos-list li{font-family:var(--grotesk);font-weight:600;font-size:22px;color:var(--ink);letter-spacing:-0.02em;opacity:0.78;transition:opacity 0.15s}
-  .home-page .logos-list li:hover{opacity:1}
-  @media (max-width:980px){
-    .home-page .logos-inner{grid-template-columns:1fr;gap:16px;padding:24px 0}
-    .home-page .logos-list{justify-content:flex-start;gap:28px}
-    .home-page .logos-list li{font-size:18px}
+  .home-page .past-work-credit{margin:20px 0 0;padding-top:20px;border-top:1px solid var(--line);display:grid;grid-template-columns:auto 1fr;gap:24px;align-items:baseline;font-family:var(--grotesk);font-size:15px;line-height:1.55;color:var(--ink);text-wrap:pretty}
+  .home-page .past-work-credit .credit{display:block;max-width:640px}
+  .home-page .past-work-credit .ital{font-family:var(--serif);font-style:italic;color:var(--ink-dim)}
+  @media (max-width:780px){
+    .home-page .past-work-credit{grid-template-columns:1fr;gap:6px;font-size:14px}
   }
 
   .home-page .btn{display:inline-flex;align-items:center;gap:12px;padding:16px 24px;border:1px solid var(--ink);text-decoration:none;font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;transition:all 0.15s}
   .home-page .btn.primary{background:var(--ink);color:var(--paper)}
   .home-page .btn.primary:hover{background:var(--accent-deep);border-color:var(--accent-deep)}
-  .home-page .btn.ghost{background:transparent;color:var(--ink)}
-  .home-page .btn.ghost:hover{background:var(--ink);color:var(--paper)}
+  .home-page .btn.secondary{background:transparent;color:var(--ink)}
+  .home-page .btn.secondary:hover{background:var(--ink);color:var(--paper)}
   .home-page .btn .arrow{font-family:var(--grotesk);font-weight:500;letter-spacing:0;text-transform:none;font-size:14px}
 
   .home-page .mri-entry{padding:88px 0}

@@ -133,14 +133,14 @@ import PostHog from '../components/PostHog.astro';
   .leak-hero .score-bar .fill { position: absolute; inset: 0 auto 0 0; background: var(--accent); width: 0%; transition: width 1200ms cubic-bezier(.2,.8,.2,1); }
   .leak-hero .verdict { margin-top: 14px; font-family: var(--serif); font-style: italic; font-size: 14px; color: var(--on-ink-dim); line-height: 1.45; }
 
-  /* funnel — compact strip */
+  /* funnel: compact strip */
   .funnel { display: grid; grid-template-columns: 1fr 16px 1fr 16px 1fr 16px 1fr; align-items: center; gap: 14px; padding: var(--sp-6) 0; border-bottom: var(--bw-hair) solid var(--ink-2); opacity: 0; animation: rise 700ms cubic-bezier(.2,.8,.2,1) 240ms forwards; }
   .funnel .cell { display: flex; flex-direction: column; gap: 6px; padding: 0; min-width: 0; }
   .funnel .cell .key { font-family: var(--mono); font-size: 10px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--on-ink-faint); }
   .funnel .cell .val { font-family: var(--grotesk); font-weight: 700; font-size: clamp(20px, 2.2vw, 28px); letter-spacing: -0.02em; color: var(--on-ink); }
   .funnel .arr { color: var(--on-ink-faint); font-family: var(--mono); font-size: 14px; opacity: 0.5; }
 
-  /* leaks grid — 2x2, no big icons */
+  /* leaks grid: 2x2, no big icons */
   .leaks-grid { display: grid; grid-template-columns: repeat(2, 1fr); column-gap: var(--sp-8); row-gap: var(--sp-7); padding: var(--sp-7) 0; border-bottom: var(--bw-hair) solid var(--ink-2); opacity: 0; animation: rise 700ms cubic-bezier(.2,.8,.2,1) 320ms forwards; }
   .leaks-grid .leak { padding: 2px 0 2px var(--sp-6); border-left: 2px solid var(--accent); display: flex; flex-direction: column; gap: 8px; }
   .leaks-grid .leak .key { font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--on-ink-faint); }
@@ -148,7 +148,7 @@ import PostHog from '../components/PostHog.astro';
   .leaks-grid .leak .val em { font-family: var(--serif); font-weight: 400; font-style: italic; color: var(--on-ink-dim); font-size: 0.5em; margin-left: 4px; }
   .leaks-grid .leak .note { font-family: var(--serif); font-style: italic; font-size: 13.5px; color: var(--on-ink-dim); line-height: 1.45; margin: 6px 0 0; max-width: 360px; }
 
-  /* CTA bar — horizontal, no card */
+  /* CTA bar: horizontal, no card */
   .cta-bar { display: grid; grid-template-columns: 1fr auto; gap: var(--sp-7); align-items: center; padding: var(--sp-7) 0 0; opacity: 0; animation: rise 700ms cubic-bezier(.2,.8,.2,1) 420ms forwards; }
   .cta-bar .copy h3 { font-family: var(--grotesk); font-weight: 600; font-size: clamp(18px, 1.8vw, 22px); line-height: 1.25; letter-spacing: var(--track-h-sm); margin: 0; color: var(--on-ink); text-wrap: balance; max-width: 520px; }
   .cta-bar .copy h3 .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--on-ink-dim); }
@@ -237,7 +237,7 @@ import PostHog from '../components/PostHog.astro';
     <div class="inner">
       <span class="stamp">Revenue Leak MRI</span>
       <h1 class="cover">Find the revenue leak <span class="ital">before you fund another campaign.</span></h1>
-      <p class="dek" style="margin-top: var(--sp-8); font-size: clamp(19px, 1.9vw, 24px); max-width: 580px; line-height: 1.5;">A free operator diagnostic. <span style="color: var(--ink);">Nine honest numbers.</span> One readout — where paid demand is actually leaking, and what to fix first.</p>
+      <p class="dek" style="margin-top: var(--sp-8); font-size: clamp(19px, 1.9vw, 24px); max-width: 580px; line-height: 1.5;">A free operator diagnostic. <span style="color: var(--ink);">Nine honest numbers.</span> One readout. Where paid demand is actually leaking, and what to fix first.</p>
       <button class="start" data-action="next" style="margin-top: var(--sp-10);">Run the MRI <kbd>↵</kbd></button>
       <p class="helptext" style="margin-top: var(--sp-6);">Takes 90 seconds. No newsletter trap. Nothing emailed unless you ask.</p>
     </div>
@@ -247,8 +247,8 @@ import PostHog from '../components/PostHog.astro';
   <section class="screen" data-i="1" data-step="q" data-key="spend">
     <div class="inner">
       <p class="qnum"><span class="arrow">→</span><b>01</b> · spend</p>
-      <h2 class="q">Monthly ad spend? <span class="ital">Honest number.</span></h2>
-      <p class="helptext">Across paid acquisition — Meta, Google, LinkedIn, sponsorships. Last full month.</p>
+      <h2 class="q">Monthly ad spend. <span class="ital">Honest number.</span></h2>
+      <p class="helptext">Across paid acquisition. Meta, Google, LinkedIn, sponsorships. Last full month.</p>
       <div class="field">
         <label>USD · per month</label>
         <div class="input-row">
@@ -280,8 +280,8 @@ import PostHog from '../components/PostHog.astro';
   <section class="screen" data-i="3" data-step="q" data-key="deal">
     <div class="inner">
       <p class="qnum"><span class="arrow">→</span><b>03</b> · deal · value</p>
-      <h2 class="q">Average deal value? <span class="ital">First-year revenue.</span></h2>
-      <p class="helptext">If it's a recurring product, use Year 1 contract value — not LTV.</p>
+      <h2 class="q">Average deal value. <span class="ital">First-year revenue.</span></h2>
+      <p class="helptext">If it's a recurring product, use Year 1 contract value. Not LTV.</p>
       <div class="field">
         <label>USD · first year</label>
         <div class="input-row">
@@ -297,7 +297,7 @@ import PostHog from '../components/PostHog.astro';
   <section class="screen" data-i="4" data-step="q" data-key="vendor">
     <div class="inner">
       <p class="qnum"><span class="arrow">→</span><b>04</b> · drag</p>
-      <h2 class="q">Agency &amp; vendor cost? <span class="ital">Per month.</span></h2>
+      <h2 class="q">Agency and vendor cost. <span class="ital">Per month.</span></h2>
       <p class="helptext">Retainers, tooling layers, freelancers attached to growth. The ledger items, not the politics.</p>
       <div class="field">
         <label>USD · per month</label>
@@ -344,7 +344,7 @@ import PostHog from '../components/PostHog.astro';
         </div>
         <input type="range" min="0" max="60" step="1" value="18" data-slider="leadToOpp">
         <div class="ticks"><span>0%</span><span>15%</span><span>30%</span><span>45%</span><span>60%</span></div>
-        <p class="anno">Best-in-class operators land around 30%. Below 15% usually means handoff or qualification drag.</p>
+        <p class="anno">Top-quartile operators land around 30%. Below 15% usually means handoff or qualification drag.</p>
       </div>
       <button class="ok" data-action="next">OK <kbd>↵</kbd></button>
     </div>
@@ -364,7 +364,7 @@ import PostHog from '../components/PostHog.astro';
         </div>
         <input type="range" min="0" max="80" step="1" value="24" data-slider="oppClose">
         <div class="ticks"><span>0%</span><span>20%</span><span>40%</span><span>60%</span><span>80%</span></div>
-        <p class="anno">A close gap below 35% usually means weak conversation design — not bad sales.</p>
+        <p class="anno">A close gap below 35% usually means weak conversation design. Not bad sales.</p>
       </div>
       <button class="ok" data-action="next">OK <kbd>↵</kbd></button>
     </div>
@@ -393,8 +393,8 @@ import PostHog from '../components/PostHog.astro';
   <section class="screen" data-i="9" data-step="q" data-key="hourly">
     <div class="inner">
       <p class="qnum"><span class="arrow">→</span><b>09</b> · loaded · cost</p>
-      <h2 class="q">Blended internal hourly cost? <span class="ital">Loaded.</span></h2>
-      <p class="helptext">Salary + benefits + overhead, divided by hours. A ballpark is fine — typical knowledge work runs $80–$150.</p>
+      <h2 class="q">Blended internal hourly cost. <span class="ital">Loaded.</span></h2>
+      <p class="helptext">Salary + benefits + overhead, divided by hours. A ballpark is fine. Typical knowledge work runs $80–$150.</p>
       <div class="field">
         <label>USD · per hour</label>
         <div class="input-row">
@@ -411,7 +411,7 @@ import PostHog from '../components/PostHog.astro';
   <section class="screen reveal" data-i="10" data-step="reveal">
     <div class="inner">
       <div class="reveal-head">
-        <span class="stamp on-ink">Operator · readout <span class="ts-inline">— estimated · last month</span></span>
+        <span class="stamp on-ink">Operator · readout <span class="ts-inline">· estimated · last month</span></span>
       </div>
 
       <div class="leak-hero">
@@ -452,12 +452,12 @@ import PostHog from '../components/PostHog.astro';
         <div class="leak">
           <span class="key">Sales · handoff</span>
           <div class="val" data-out="leakHandoff">$0<em>/ mo</em></div>
-          <p class="note" data-out="noteHandoff">Leads don't qualify at the rate they should — handoff or scoring is leaking.</p>
+          <p class="note" data-out="noteHandoff">Leads don't qualify at the rate they should. Handoff or scoring is leaking.</p>
         </div>
         <div class="leak">
           <span class="key">Operating · drag</span>
           <div class="val" data-out="leakDrag">$0<em>/ mo</em></div>
-          <p class="note">Vendor cost plus internal hours on growth ops — overhead the revenue line never sees.</p>
+          <p class="note">Vendor cost plus internal hours on growth ops. Overhead the revenue line never sees.</p>
         </div>
       </div>
 
@@ -665,19 +665,19 @@ import PostHog from '../components/PostHog.astro';
       el.classList.add('flash');
     });
 
-    // notes — adapt to inputs
+    // notes: adapt to inputs
     const noteR = out('noteResponse');
-    if (state.responseHrs <= 1) noteR.textContent = 'Response time is at or near best-in-class. Hold the line.';
+    if (state.responseHrs <= 1) noteR.textContent = 'Response time is sharp. Hold the line.';
     else if (state.responseHrs >= 24) noteR.textContent = 'A reply at ' + state.responseHrs + 'hr is roughly 9× less effective than at <1hr.';
     else noteR.textContent = 'A first reply at ' + state.responseHrs + 'hr loses meaningful conversion vs <1hr.';
 
     const noteC = out('noteConversion');
     if (state.oppClose >= 35) noteC.textContent = 'Close rate is above the operator benchmark.';
-    else noteC.textContent = 'Close rate sits ' + (35 - state.oppClose) + ' pts below the 35% benchmark — usually a conversation-design issue.';
+    else noteC.textContent = 'Close rate sits ' + (35 - state.oppClose) + ' pts below the 35% benchmark. Usually a conversation-design issue.';
 
     const noteH = out('noteHandoff');
     if (state.leadToOpp >= 30) noteH.textContent = 'Lead → opportunity rate is at benchmark.';
-    else noteH.textContent = 'Lead → opp at ' + state.leadToOpp + '% leaves ' + (30 - state.leadToOpp) + ' pts on the table — handoff or scoring is leaking.';
+    else noteH.textContent = 'Lead → opp at ' + state.leadToOpp + '% leaves ' + (30 - state.leadToOpp) + ' pts on the table. Handoff or scoring is leaking.';
   }
 
   // ---------- nav ----------

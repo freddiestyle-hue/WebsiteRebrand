@@ -97,9 +97,9 @@ export const diagnostic = {
     sub: 'One engagement, $3,500 fixed. Invoiced after the kick-off call. Refundable in week one if it is not a fit.',
     steps: [
       { num: '01', body: 'Book a 30-min kick-off slot below. No payment up front.' },
-      { num: '02', body: 'On the call we confirm scope, access, and the two customers I will speak to.' },
+      { num: '02', body: 'On the call I confirm scope, access, and the two customers I will speak to.' },
       { num: '03', body: 'I read the data, sit in the stack, talk to your customers, and write the memo.' },
-      { num: '04', body: 'Memo delivered, week two. We walk through it on a call.' },
+      { num: '04', body: 'Memo delivered, week two. I walk through it on a call.' },
       { num: '05', body: 'Decide what is next. M02 build, or you take the memo and run.' },
     ] satisfies ProcessStep[],
     cta: 'Book a kick-off call',
