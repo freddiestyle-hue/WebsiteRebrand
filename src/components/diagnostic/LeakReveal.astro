@@ -1,0 +1,221 @@
+---
+const rows = [
+  {
+    label: 'Paid → landing drop-off',
+    detail: 'Wrong audience, wrong page',
+    width: 78,
+    fill: 'halt',
+    amount: '$22,400 / mo',
+  },
+  {
+    label: 'Lead → SQL handoff lag',
+    detail: '72-hr reply window, dies on the vine',
+    width: 54,
+    fill: 'warn',
+    amount: '$15,600 / mo',
+  },
+  {
+    label: 'Activation gap',
+    detail: 'Signed up, never used the product',
+    width: 41,
+    fill: 'warn',
+    amount: '$11,800 / mo',
+  },
+  {
+    label: 'Lifecycle decay',
+    detail: 'No reactivation, no retention motion',
+    width: 32,
+    fill: 'accent',
+    amount: '$9,200 / mo',
+  },
+];
+---
+<section class="leak-reveal" aria-labelledby="leak-reveal-title">
+  <div class="reveal-inner">
+    <div class="reveal-head">
+      <div class="reveal-num">Sample read-out<b>↓</b></div>
+      <div>
+        <h2 id="leak-reveal-title">Most leaks aren't one big hole. <span class="ital">They're four small ones, compounding.</span></h2>
+        <p class="reveal-lede">A composite read-out from the kind of mid-market funnel I see most weeks. <span class="ital">The diagnostic tells you which line is yours.</span></p>
+      </div>
+    </div>
+
+    <div class="reveal-bars">
+      {rows.map((r) => (
+        <div class="reveal-row">
+          <div class="reveal-lbl">{r.label}<small>{r.detail}</small></div>
+          <div class="reveal-bar"><div class={`reveal-fill reveal-fill--${r.fill}`} style={`width:${r.width}%`}></div></div>
+          <div class="reveal-amt">{r.amount}</div>
+        </div>
+      ))}
+    </div>
+
+    <div class="reveal-total">
+      <div class="reveal-total-lbl">
+        Total leaking &mdash; twelve months
+        <b>Every month you don't look, the leak compounds.</b>
+      </div>
+      <div class="reveal-total-amt">$708,000</div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .leak-reveal {
+    background: var(--ink);
+    color: var(--on-ink);
+    margin: 96px calc(var(--page-pad-x) * -1) 0;
+    padding: 0 var(--page-pad-x);
+  }
+  @media (max-width: 880px) {
+    .leak-reveal { margin: 64px calc(var(--page-pad-x-sm) * -1) 0; padding: 0 var(--page-pad-x-sm); }
+  }
+  .reveal-inner { padding: 96px 0; max-width: 1280px; margin: 0 auto; }
+  .reveal-head {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 64px;
+    margin-bottom: 48px;
+  }
+  @media (max-width: 880px) {
+    .reveal-head { grid-template-columns: 1fr; gap: 24px; margin-bottom: 32px; }
+    .reveal-inner { padding: 64px 0; }
+  }
+  .reveal-num {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--on-ink-faint);
+  }
+  .reveal-num b {
+    display: block;
+    font-family: var(--grotesk);
+    font-size: 56px;
+    font-weight: 700;
+    color: var(--on-ink);
+    letter-spacing: -0.03em;
+    line-height: 1;
+    margin-top: 8px;
+  }
+  .reveal-head h2 {
+    font-family: var(--grotesk);
+    font-weight: 700;
+    font-size: clamp(36px, 4.4vw, 48px);
+    line-height: 1.05;
+    letter-spacing: -0.04em;
+    margin: 0 0 12px;
+    color: var(--on-ink);
+    text-wrap: balance;
+  }
+  .reveal-head h2 .ital,
+  .reveal-lede .ital {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 400;
+    color: var(--on-ink-italic);
+    letter-spacing: -0.02em;
+  }
+  .reveal-lede {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 21px;
+    line-height: 1.45;
+    color: var(--on-ink-dim);
+    max-width: 640px;
+    margin: 0;
+    text-wrap: pretty;
+  }
+
+  .reveal-bars {
+    display: grid;
+    gap: 12px;
+    border-top: 1px solid var(--on-ink-line);
+    padding-top: 32px;
+  }
+  .reveal-row {
+    display: grid;
+    grid-template-columns: 240px 1fr 130px;
+    gap: 24px;
+    align-items: center;
+    padding: 12px 0;
+  }
+  @media (max-width: 780px) {
+    .reveal-row { grid-template-columns: 1fr; gap: 6px; }
+  }
+  .reveal-lbl {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--on-ink-dim);
+  }
+  .reveal-lbl small {
+    display: block;
+    color: var(--on-ink-faint);
+    margin-top: 4px;
+    letter-spacing: 0.14em;
+    font-size: 10.5px;
+    text-transform: none;
+  }
+  .reveal-bar {
+    height: 12px;
+    background: var(--on-ink-line);
+    position: relative;
+    overflow: hidden;
+  }
+  .reveal-fill { height: 100%; }
+  .reveal-fill--accent { background: var(--accent); }
+  .reveal-fill--warn { background: var(--signal-warn); }
+  .reveal-fill--halt { background: var(--signal-halt); }
+  .reveal-amt {
+    font-family: var(--grotesk);
+    font-weight: 700;
+    font-size: 22px;
+    color: var(--on-ink);
+    letter-spacing: -0.02em;
+    text-align: right;
+  }
+  @media (max-width: 780px) {
+    .reveal-amt { text-align: left; }
+  }
+
+  .reveal-total {
+    margin-top: 48px;
+    padding-top: 32px;
+    border-top: 1px solid var(--on-ink-line);
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 24px;
+    align-items: baseline;
+  }
+  @media (max-width: 780px) {
+    .reveal-total { grid-template-columns: 1fr; }
+  }
+  .reveal-total-lbl {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--on-ink-faint);
+  }
+  .reveal-total-lbl b {
+    display: block;
+    margin-top: 6px;
+    color: var(--on-ink);
+    font-weight: 500;
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 18px;
+    letter-spacing: -0.01em;
+    text-transform: none;
+  }
+  .reveal-total-amt {
+    font-family: var(--grotesk);
+    font-weight: 700;
+    font-size: clamp(56px, 7vw, 88px);
+    line-height: 0.95;
+    color: var(--accent);
+    letter-spacing: -0.055em;
+  }
+</style>

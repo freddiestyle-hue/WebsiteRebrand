@@ -7,6 +7,7 @@ import FitGrid from '../components/diagnostic/FitGrid.astro';
 import ThreeQuestions from '../components/diagnostic/ThreeQuestions.astro';
 import DiagnosticCard from '../components/diagnostic/DiagnosticCard.astro';
 import AlternateRoutes from '../components/diagnostic/AlternateRoutes.astro';
+import LeakReveal from '../components/diagnostic/LeakReveal.astro';
 import { diagnostic } from '../content/diagnostic';
 
 const description = diagnostic.hero.dek.split('. ')[0].slice(0, 158);
@@ -62,6 +63,8 @@ const serviceJsonLd = {
         </div>
       </div>
     </div>
+
+    <LeakReveal />
 
     <AlternateRoutes />
 
