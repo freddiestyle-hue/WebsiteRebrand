@@ -1,0 +1,686 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Rivett · Audit memo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400;1,6..72,500&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --paper:#F6F2EA;          /* warmer than rivett's, this is a memo not a site */
+  --paper-2:#EDE6D6;
+  --paper-3:#E0D6BF;
+  --ink:#1A1814;
+  --ink-dim:#4A453B;
+  --ink-faint:#7A7367;
+  --line:rgba(26,24,20,0.16);
+  --line-strong:rgba(26,24,20,0.34);
+  --rule:rgba(26,24,20,0.55);
+  --good:#3F7553;
+  --good-bg:#E8F0D9;
+  --bad:#A33A1F;            /* iron-oxide red, the auditor's pen */
+  --bad-bg:#F0DCD3;
+  --warn:#8A6A1F;
+  --warn-bg:#EFE3C9;
+  --grotesk:'Inter Tight','Inter',system-ui,sans-serif;
+  --mono:'DM Mono',ui-monospace,monospace;
+  --serif:'Newsreader',Georgia,serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--paper);color:var(--ink);font-family:var(--grotesk);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+::selection{background:var(--ink);color:var(--paper)}
+a{color:inherit}
+
+.page{max-width:1180px;margin:0 auto;padding:0 56px}
+@media (max-width:780px){.page{padding:0 24px}}
+
+/* ===== mast ===== */
+nav.top{display:flex;align-items:center;justify-content:space-between;padding:28px 0 0;font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint)}
+nav.top .l{display:flex;align-items:center;gap:14px}
+nav.top .stamp{width:10px;height:10px;background:var(--bad);border-radius:50%}
+nav.top .r{display:flex;gap:32px}
+nav.top b{color:var(--ink);font-weight:500}
+
+.crumb{margin-top:14px;font-family:var(--mono);font-size:10.5px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint);display:flex;gap:18px;align-items:center}
+.crumb .sep{opacity:0.4}
+
+/* ===== cover ===== */
+.cover{padding:64px 0 56px;border-bottom:1px solid var(--line-strong)}
+.cover .kicker{font-family:var(--mono);font-size:11px;letter-spacing:0.24em;text-transform:uppercase;color:var(--bad);display:inline-flex;align-items:center;gap:12px;margin-bottom:36px}
+.cover .kicker::before{content:'';width:8px;height:8px;background:var(--bad);border-radius:50%}
+.cover h1{font-family:var(--grotesk);font-weight:800;font-size:clamp(48px,7.4vw,108px);line-height:0.92;letter-spacing:-0.05em;margin:0;text-wrap:balance;max-width:1080px}
+.cover h1 .ital{font-family:var(--serif);font-style:italic;font-weight:400;letter-spacing:-0.02em;color:var(--ink-dim)}
+.cover .sub{display:grid;grid-template-columns:1.5fr 1fr;gap:64px;margin-top:48px;align-items:end}
+@media (max-width:880px){.cover .sub{grid-template-columns:1fr;gap:32px}}
+.cover .lede{font-size:21px;line-height:1.5;color:var(--ink-dim);max-width:680px;margin:0;text-wrap:pretty}
+.cover .lede em{font-family:var(--serif);font-style:italic;color:var(--ink);font-weight:400}
+.cover .meta{font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint);display:grid;grid-template-columns:repeat(2,1fr);gap:18px}
+.cover .meta b{display:block;color:var(--ink);font-family:var(--grotesk);font-weight:600;font-size:14px;letter-spacing:-0.01em;text-transform:none;margin-top:4px}
+
+/* ===== TL;DR ===== */
+.tldr{margin:48px 0 0;background:var(--paper-2);border:1px solid var(--ink);padding:36px 40px;display:grid;grid-template-columns:120px 1fr;gap:32px}
+@media (max-width:780px){.tldr{grid-template-columns:1fr;padding:28px}}
+.tldr .stamp{font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--bad);display:flex;align-items:center;gap:10px;align-self:start;padding-top:6px}
+.tldr .stamp::before{content:'';width:8px;height:8px;background:var(--bad);border-radius:50%;flex-shrink:0}
+.tldr .body{display:flex;flex-direction:column;gap:14px}
+.tldr p{margin:0;font-size:18px;line-height:1.55;color:var(--ink);font-weight:500;text-wrap:pretty}
+.tldr p strong{font-weight:700}
+.tldr p em{font-family:var(--serif);font-style:italic;font-weight:400;color:var(--ink-dim)}
+
+/* ===== verdict grid ===== */
+.verdict{margin-top:32px;display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--ink);background:var(--paper)}
+@media (max-width:780px){.verdict{grid-template-columns:repeat(2,1fr)}}
+.verdict .v{padding:24px 24px 22px;border-right:1px solid var(--ink)}
+.verdict .v:last-child{border-right:0}
+@media (max-width:780px){.verdict .v:nth-child(2){border-right:0}.verdict .v:nth-child(-n+2){border-bottom:1px solid var(--ink)}}
+.verdict .k{font-family:var(--mono);font-size:10px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:10px}
+.verdict .grade{font-family:var(--grotesk);font-weight:800;font-size:48px;line-height:1;letter-spacing:-0.04em;color:var(--ink)}
+.verdict .grade.warn{color:var(--warn)}
+.verdict .grade.bad{color:var(--bad)}
+.verdict .grade.good{color:var(--good)}
+.verdict .n{font-family:var(--mono);font-size:10.5px;letter-spacing:0.06em;color:var(--ink-faint);margin-top:8px;line-height:1.4;text-transform:none}
+
+/* ===== section frame ===== */
+section{border-top:1px solid var(--line-strong);padding:96px 0}
+@media (max-width:780px){section{padding:64px 0}}
+.sec-head{display:grid;grid-template-columns:140px 1fr;gap:48px;align-items:start;margin-bottom:48px}
+@media (max-width:780px){.sec-head{grid-template-columns:1fr;gap:14px;margin-bottom:32px}}
+.sec-head .num{font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--bad)}
+.sec-head .num::before{content:'';display:inline-block;width:8px;height:8px;background:var(--bad);border-radius:50%;margin-right:10px;transform:translateY(-1px)}
+.sec-head h2{font-family:var(--grotesk);font-weight:700;font-size:clamp(32px,4.4vw,52px);line-height:1.02;letter-spacing:-0.04em;margin:0;color:var(--ink);text-wrap:balance;max-width:900px}
+.sec-head h2 .ital{font-family:var(--serif);font-style:italic;font-weight:400;letter-spacing:-0.02em;color:var(--ink-dim)}
+.sec-head .dek{font-family:var(--serif);font-style:italic;font-size:19px;line-height:1.45;color:var(--ink-dim);margin:18px 0 0;max-width:720px}
+
+p.body{font-size:17px;line-height:1.65;color:var(--ink);font-weight:400;margin:0;max-width:720px}
+p.body + p.body{margin-top:18px}
+p.body strong{font-weight:600}
+p.body em{font-family:var(--serif);font-style:italic;font-size:1.02em;color:var(--ink-dim)}
+
+/* ===== finding rows (the audit grid) ===== */
+.findings{border-top:2px solid var(--ink);margin-top:8px}
+.find{display:grid;grid-template-columns:80px 130px 1fr 110px;gap:32px;padding:28px 0;border-bottom:1px solid var(--line);align-items:start}
+@media (max-width:880px){.find{grid-template-columns:80px 1fr;gap:14px 16px}.find .sev-cell{grid-column:1 / span 2}.find .pri{grid-column:1 / span 2;text-align:left}}
+.find .idx{font-family:var(--mono);font-size:11px;letter-spacing:0.18em;color:var(--ink-faint);padding-top:4px}
+.find .sev-cell{font-family:var(--mono);font-size:10.5px;letter-spacing:0.22em;text-transform:uppercase;display:flex;align-items:center;gap:10px;padding-top:4px}
+.find .sev-cell::before{content:'';width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.find .sev-cell.bad::before{background:var(--bad)}.find .sev-cell.bad{color:var(--bad)}
+.find .sev-cell.warn::before{background:var(--warn)}.find .sev-cell.warn{color:var(--warn)}
+.find .sev-cell.good::before{background:var(--good)}.find .sev-cell.good{color:var(--good)}
+.find .body-cell h4{font-family:var(--grotesk);font-weight:700;font-size:21px;line-height:1.18;letter-spacing:-0.025em;margin:0 0 10px;text-wrap:pretty}
+.find .body-cell h4 em{font-family:var(--serif);font-style:italic;font-weight:400;color:var(--ink-dim)}
+.find .body-cell p{margin:0;font-size:15px;line-height:1.55;color:var(--ink-dim);font-weight:400;max-width:640px;text-wrap:pretty}
+.find .body-cell p + p{margin-top:10px}
+.find .body-cell p strong{color:var(--ink);font-weight:600}
+.find .body-cell .quote{margin-top:14px;padding:10px 14px;background:var(--paper-2);border-left:3px solid var(--ink-faint);font-family:var(--mono);font-size:13px;line-height:1.5;color:var(--ink);max-width:640px}
+.find .body-cell .quote b{color:var(--bad);font-weight:500}
+.find .pri{font-family:var(--mono);font-size:10.5px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint);text-align:right;padding-top:6px}
+.find .pri b{display:block;color:var(--ink);font-family:var(--grotesk);font-weight:600;font-size:14px;letter-spacing:-0.01em;text-transform:none;margin-top:6px}
+
+/* ===== two-column layouts ===== */
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:start}
+@media (max-width:880px){.cols{grid-template-columns:1fr;gap:32px}}
+
+/* ===== swatch / token row ===== */
+.tokens{margin-top:32px;border-top:1px solid var(--ink)}
+.tokens .row{display:grid;grid-template-columns:48px 200px 1fr 160px;gap:24px;padding:14px 0;border-bottom:1px solid var(--line);align-items:center}
+@media (max-width:780px){.tokens .row{grid-template-columns:36px 1fr;gap:14px}.tokens .row .desc, .tokens .row .where{grid-column:1 / span 2;padding-left:50px;color:var(--ink-faint);font-size:12px}}
+.tokens .sw{width:36px;height:36px;border:1px solid var(--ink)}
+.tokens .name{font-family:var(--mono);font-size:13px;color:var(--ink);letter-spacing:0.02em}
+.tokens .name b{color:var(--ink-faint);font-weight:400;margin-left:8px}
+.tokens .desc{font-family:var(--grotesk);font-size:14px;color:var(--ink-dim);text-wrap:pretty}
+.tokens .where{font-family:var(--mono);font-size:10.5px;letter-spacing:0.18em;text-transform:uppercase;color:var(--ink-faint);text-align:right}
+
+/* ===== type sample stack ===== */
+.type-stack{margin-top:32px;display:flex;flex-direction:column;gap:0;border:1px solid var(--ink);background:var(--paper)}
+.type-row{display:grid;grid-template-columns:200px 1fr;gap:32px;padding:24px 28px;border-bottom:1px solid var(--line);align-items:baseline}
+.type-row:last-child{border-bottom:0}
+@media (max-width:780px){.type-row{grid-template-columns:1fr;gap:8px;padding:18px 22px}}
+.type-row .meta{font-family:var(--mono);font-size:10.5px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint);line-height:1.6}
+.type-row .meta b{display:block;color:var(--ink);font-family:var(--grotesk);font-weight:600;font-size:13px;letter-spacing:-0.01em;text-transform:none;margin-bottom:4px}
+.type-row .sample{color:var(--ink)}
+.type-row .sample.disp{font-family:var(--grotesk);font-weight:800;font-size:48px;line-height:0.95;letter-spacing:-0.05em}
+.type-row .sample.disp .ital{font-family:var(--serif);font-style:italic;font-weight:400;color:var(--ink-dim)}
+.type-row .sample.h2{font-family:var(--grotesk);font-weight:700;font-size:32px;line-height:1.05;letter-spacing:-0.035em}
+.type-row .sample.dek{font-family:var(--serif);font-style:italic;font-size:22px;line-height:1.4;color:var(--ink-dim)}
+.type-row .sample.body{font-family:var(--grotesk);font-size:18px;line-height:1.55}
+.type-row .sample.mono{font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint)}
+
+/* ===== persona ===== */
+.persona{margin-top:32px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;border:1px solid var(--ink)}
+@media (max-width:980px){.persona{grid-template-columns:1fr}}
+.persona .cell{padding:32px 28px;border-right:1px solid var(--ink);display:flex;flex-direction:column;gap:14px}
+.persona .cell:last-child{border-right:0}
+@media (max-width:980px){.persona .cell{border-right:0;border-bottom:1px solid var(--ink)}.persona .cell:last-child{border-bottom:0}}
+.persona .tag{font-family:var(--mono);font-size:10px;letter-spacing:0.22em;text-transform:uppercase;color:var(--bad)}
+.persona .tag::before{content:'';display:inline-block;width:7px;height:7px;background:var(--bad);border-radius:50%;margin-right:10px}
+.persona h4{font-family:var(--grotesk);font-weight:700;font-size:21px;letter-spacing:-0.025em;line-height:1.18;margin:0;color:var(--ink);text-wrap:pretty}
+.persona .stat{font-family:var(--mono);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:var(--ink-faint);margin-top:4px}
+.persona .stat b{color:var(--ink);font-family:var(--grotesk);font-weight:600;letter-spacing:-0.01em;font-size:13px;text-transform:none}
+.persona p{font-size:14px;line-height:1.5;color:var(--ink-dim);margin:0}
+.persona .quote{font-family:var(--serif);font-style:italic;font-size:16px;line-height:1.4;color:var(--ink);margin-top:auto;padding-top:14px;border-top:1px dashed var(--line);text-wrap:pretty}
+
+/* ===== before / after ===== */
+.ba{margin-top:24px;display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--ink)}
+@media (max-width:780px){.ba{grid-template-columns:1fr}}
+.ba .b, .ba .a{padding:28px 30px;display:flex;flex-direction:column;gap:14px}
+.ba .b{background:var(--bad-bg);border-right:1px solid var(--ink)}
+.ba .a{background:var(--good-bg)}
+@media (max-width:780px){.ba .b{border-right:0;border-bottom:1px solid var(--ink)}}
+.ba .lab{font-family:var(--mono);font-size:10.5px;letter-spacing:0.22em;text-transform:uppercase;display:flex;align-items:center;gap:10px}
+.ba .lab::before{content:'';width:8px;height:8px;border-radius:50%}
+.ba .b .lab{color:var(--bad)}.ba .b .lab::before{background:var(--bad)}
+.ba .a .lab{color:var(--good)}.ba .a .lab::before{background:var(--good)}
+.ba .h{font-family:var(--grotesk);font-weight:700;font-size:26px;line-height:1.1;letter-spacing:-0.03em;color:var(--ink);text-wrap:pretty;margin:0}
+.ba .h em{font-family:var(--serif);font-style:italic;font-weight:400;color:var(--ink-dim)}
+.ba .note{font-family:var(--mono);font-size:11px;line-height:1.5;color:var(--ink-dim);margin-top:auto;padding-top:14px;border-top:1px dashed var(--line)}
+
+/* ===== ranked recommendations table ===== */
+.recs{margin-top:32px;border-top:2px solid var(--ink)}
+.recs .row{display:grid;grid-template-columns:40px 1fr 110px 120px;gap:24px;padding:22px 0;border-bottom:1px solid var(--line);align-items:center}
+@media (max-width:780px){.recs .row{grid-template-columns:40px 1fr;gap:8px 14px}.recs .row .effort, .recs .row .impact{grid-column:2;font-size:10.5px}}
+.recs .rank{font-family:var(--mono);font-size:13px;color:var(--bad);font-weight:500}
+.recs .what{font-family:var(--grotesk);font-weight:600;font-size:17px;letter-spacing:-0.015em;color:var(--ink);line-height:1.3;text-wrap:pretty}
+.recs .what em{font-family:var(--serif);font-style:italic;font-weight:400;color:var(--ink-dim)}
+.recs .effort, .recs .impact{font-family:var(--mono);font-size:10.5px;letter-spacing:0.18em;text-transform:uppercase;color:var(--ink-faint)}
+.recs .effort b, .recs .impact b{display:block;color:var(--ink);font-family:var(--grotesk);font-weight:600;letter-spacing:-0.01em;text-transform:none;font-size:14px;margin-top:4px}
+.recs .impact b.high{color:var(--good)}
+.recs .impact b.med{color:var(--warn)}
+.recs .effort b.s{color:var(--good)}
+.recs .effort b.m{color:var(--warn)}
+.recs .effort b.l{color:var(--bad)}
+
+/* ===== closing memo ===== */
+.memo{margin-top:48px;background:var(--ink);color:var(--paper);padding:64px 56px;display:grid;grid-template-columns:160px 1fr;gap:48px}
+@media (max-width:780px){.memo{grid-template-columns:1fr;padding:40px 28px;gap:24px}}
+.memo .lab{font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:rgba(255,255,255,0.55)}
+.memo .lab::before{content:'';display:inline-block;width:8px;height:8px;background:var(--bad);border-radius:50%;margin-right:10px;transform:translateY(-1px)}
+.memo h2{font-family:var(--grotesk);font-weight:700;font-size:clamp(28px,3.2vw,40px);line-height:1.05;letter-spacing:-0.035em;margin:0 0 24px}
+.memo h2 .ital{font-family:var(--serif);font-style:italic;font-weight:400;color:rgba(255,255,255,0.62)}
+.memo p{font-size:17px;line-height:1.6;color:rgba(255,255,255,0.78);margin:0;max-width:700px}
+.memo p + p{margin-top:14px}
+.memo p em{font-family:var(--serif);font-style:italic;color:rgba(255,255,255,0.62)}
+.memo p strong{color:#fff;font-weight:600}
+.memo .sig{margin-top:32px;font-family:var(--mono);font-size:10.5px;letter-spacing:0.22em;text-transform:uppercase;color:rgba(255,255,255,0.55)}
+.memo .sig b{color:#fff;font-family:var(--grotesk);font-weight:600;font-size:14px;letter-spacing:-0.01em;text-transform:none;display:block;margin-bottom:4px}
+
+footer.foot{padding:48px 0 64px;font-family:var(--mono);font-size:10.5px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint);display:flex;justify-content:space-between;flex-wrap:wrap;gap:14px}
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <nav class="top">
+    <div class="l"><span class="stamp"></span> <b>External audit</b> · Rivett.tech</div>
+    <div class="r"><span>For Fred Style</span><span>May 2026</span></div>
+  </nav>
+
+  <div class="crumb" style="margin-top:48px"><span>Memo</span><span class="sep">/</span><span>v01</span><span class="sep">/</span><span>Sent through OPINIONS</span></div>
+
+  <!-- ============ COVER ============ -->
+  <header class="cover">
+    <div class="kicker">A frank, single-pass audit</div>
+    <h1>The site is good. <span class="ital">It is not yet good for the list you are about to send it to.</span></h1>
+    <div class="sub">
+      <p class="lede">An external read of <em>rivett.tech</em>, scored against the 19,761-row LinkedIn prospect list — Nick Huber's universe of US SMB operators in self-storage, real estate, construction, accounting, HVAC, plumbing, and professional services.</p>
+      <div class="meta">
+        <div>Scope<b>Live homepage, /diagnostic, /revenue-leak-mri, design-spec, tokens, voice docs</b></div>
+        <div>Audience<b>Tier-1 prospects, n=2,400+ in May cohort</b></div>
+        <div>Reviewed by<b>External</b></div>
+        <div>Read time<b>14 min</b></div>
+      </div>
+    </div>
+
+    <div class="tldr">
+      <div class="stamp">TL;DR</div>
+      <div class="body">
+        <p>The brand system is the strongest thing here. <strong>Editorial newspaper aesthetic, sage and forest accents, the dot mark, the italic Newsreader as whisper</strong> — this is the most defensible asset on the site, and it does the heavy lifting your prospects' agencies cannot.</p>
+        <p>The positioning, the pricing, and the funnel shape (free MRI → fixed diagnostic → scoped build) are <em>also strong</em>, and notably more honest than 95% of what your list is being pitched.</p>
+        <p>The gap is <strong>audience-specific evidence</strong>. There are zero testimonials, zero case studies, zero client logos, zero numbers from a real engagement. For cold LinkedIn traffic from a list this skeptical, that is the conversion-killer. <em>Not the design. Not the copy. The proof.</em></p>
+        <p>Plus three secondary issues: the live H1 has drifted into consultant-jargon (<em>"growth infrastructure"</em>) for an audience that speaks in jobs booked and phone rings; the design-spec files in the repo are now stale relative to the deployed site; and the conversion ladder leads with a $3,500 ask when it should lead with the free MRI for cold traffic.</p>
+      </div>
+    </div>
+
+    <div class="verdict">
+      <div class="v"><div class="k">Brand & system</div><div class="grade good">A−</div><div class="n">Distinctive, disciplined, holds up against the agencies you compete with. Two minor token bugs.</div></div>
+      <div class="v"><div class="k">Copy & voice</div><div class="grade warn">B</div><div class="n">Voice rules are excellent. Live H1 drifted abstract. Best line buried in section 3.</div></div>
+      <div class="v"><div class="k">Conversion</div><div class="grade warn">B−</div><div class="n">Funnel shape is right. Top-of-funnel CTA is wrong for cold list. Two dead links on /diagnostic.</div></div>
+      <div class="v"><div class="k">Audience fit</div><div class="grade bad">C+</div><div class="n">No testimonials, no logos, no case studies, no SMB-operator proof. Highest-impact gap.</div></div>
+    </div>
+  </header>
+
+  <!-- ============ 01 · AUDIENCE FIT ============ -->
+  <section>
+    <div class="sec-head">
+      <div class="num">01 · Audience fit</div>
+      <div>
+        <h2>The list says <span class="ital">"phone rings."</span> The H1 says <span class="ital">"growth infrastructure."</span></h2>
+        <p class="dek">Three personas dominate the prospect list. The site speaks fluently to one of them, partially to the second, and barely registers with the third.</p>
+      </div>
+    </div>
+
+    <p class="body">The May cohort skews heavily toward Nick Huber's "boring profitable un-glamorous" universe: <strong>owner-operators of 5–500 person service businesses</strong>, with a heavy real-estate and trades cluster on top. They are tagged across services like AdRhino, BoldSEO, RE Cost Seg, Shepherd, Titan Risk, and the CEO Bootcamp — meaning they have already bought (or considered) downstream Nick services. They are pre-qualified for the offer. They are <em>not</em> pre-qualified for the language.</p>
+
+    <div class="persona">
+      <div class="cell">
+        <div class="tag">P-01 · The trades operator</div>
+        <h4>HVAC, plumbing, paving, glass, packaging.</h4>
+        <div class="stat">N in list<b>~6,400</b></div>
+        <p>Owner or president of a 4–35 person shop. Spends $5–40k/mo on Google + LSAs. Wary of consultants, allergic to AI hype. Reads every word of his estimator's invoices.</p>
+        <p class="quote">"I don't need growth infrastructure. I need the phone to ring on Tuesdays."</p>
+      </div>
+      <div class="cell">
+        <div class="tag">P-02 · The real-estate operator</div>
+        <h4>Self-storage, multifamily, REPE, brokerage.</h4>
+        <div class="stat">N in list<b>~5,100</b></div>
+        <p>Founder, principal, or VP at a 10–200 person operator. Already lives inside Nick's content world. Buys frameworks, then resells them as IP. Most aligned audience for the current site language.</p>
+        <p class="quote">"I get this. Send me the memo. What do you charge?"</p>
+      </div>
+      <div class="cell">
+        <div class="tag">P-03 · The mid-market c-suite</div>
+        <h4>Microsoft, Colliers, Matthews, GEE Group.</h4>
+        <div class="stat">N in list<b>~1,800</b></div>
+        <p>VP, director, or chief-of-staff inside a 200–23,000 person org. Tagged into Nick's content for personal interest, not buying intent. Will not hire a one-person practice for their employer.</p>
+        <p class="quote">"Interesting. Sending to my CMO, who will not call you."</p>
+      </div>
+    </div>
+
+    <div class="findings" style="margin-top:48px">
+
+      <div class="find">
+        <div class="idx">F.01.1</div>
+        <div class="sev-cell bad">Critical</div>
+        <div class="body-cell">
+          <h4>The site has zero testimonials. <em>Not one.</em></h4>
+          <p>The design spec in your repo had a placeholder slot (<code>.quote-slot</code> with a sage callout) that was <strong>removed</strong> from the deployed site, not filled. The "By the numbers" table — career, managed spend, continents — is input-side proof. Operators want output-side proof.</p>
+          <p>Even one quote, even ungated and unattributed by name, is worth more than the $100M figure. <em>"Fred re-built our paid in three weeks. Cost-per-booked-job dropped 41%. We stopped paying our previous agency the month after." — Owner, 14-truck HVAC company, Texas.</em> That is the unlock.</p>
+          <div class="quote">Currently on site: <b>0 testimonials, 0 logos, 0 named case studies, 0 before/after numbers.</b></div>
+        </div>
+        <div class="pri">Priority<b>P0</b></div>
+      </div>
+
+      <div class="find">
+        <div class="idx">F.01.2</div>
+        <div class="sev-cell bad">Critical</div>
+        <div class="body-cell">
+          <h4>The Somewhere.com tell is buried.</h4>
+          <p>For your prospect list, "ex-growth at Somewhere.com" is the single highest-credibility credential on the page. Nick's audience already knows that brand and the philosophy behind it. Right now it appears twice in the body copy of section 01 and section 04.</p>
+          <p>Move it into the hero. <em>"Fifteen years inside paid acquisition. Most recently ex-growth at Somewhere.com."</em> as a stamp directly under the H1. Same caliber of credential, three seconds earlier in the read.</p>
+        </div>
+        <div class="pri">Priority<b>P0</b></div>
+      </div>
+
+      <div class="find">
+        <div class="idx">F.01.3</div>
+        <div class="sev-cell warn">Material</div>
+        <div class="body-cell">
+          <h4>Industry specifics live on section 05. They should anchor section 01.</h4>
+          <p>"Self-storage · Brokerage · REPE · Property mgmt · Contractors · Agencies · Professional services · Wholesale" only appears below the fold of section 5 ("Who this is for"). For a cold visitor from a LinkedIn DM, that is too late — most prospects bounce inside 25 seconds.</p>
+          <p>Surface a two-line industry strip in the meta band <strong>under the hero</strong> ("works with: self-storage, multifamily, brokerage, contractors, agencies, professional services") so the trades operator sees themselves before deciding to scroll.</p>
+        </div>
+        <div class="pri">Priority<b>P1</b></div>
+      </div>
+
+      <div class="find">
+        <div class="idx">F.01.4</div>
+        <div class="sev-cell warn">Material</div>
+        <div class="body-cell">
+          <h4>Persona-3 is currently a click-and-bounce. <em>Not a problem to solve, a budget choice to confirm.</em></h4>
+          <p>The site is correctly tuned for a one-person practice working with operators 50–500 people. The mid-market c-suite slice of the list (~1,800 names) is going to land, read, recognize this is not for them, and not refer it onward because there is no shareable artifact.</p>
+          <p>Either accept the bounce, or give them <strong>one shareable thing</strong> — a Field Note titled like "Why your CMO is selling you the busywork," with an inline "forward this to your CMO" CTA — that converts the bounce into reach.</p>
+        </div>
+        <div class="pri">Priority<b>P2</b></div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============ 02 · BRAND & DESIGN SYSTEM ============ -->
+  <section>
+    <div class="sec-head">
+      <div class="num">02 · Brand & design system</div>
+      <div>
+        <h2>The system is the moat. <span class="ital">It is also where the discipline is leaking.</span></h2>
+        <p class="dek">The strongest asset on the site, by a clear margin. Token rigour, voice rules, and editorial type pairing are unusually disciplined for a single-operator practice. Two real bugs hiding inside the rigour.</p>
+      </div>
+    </div>
+
+    <div class="cols">
+      <div>
+        <p class="body"><strong>What is working.</strong> The newspaper-meets-trade-journal aesthetic — square corners, hairline rules, mono labels with the 8px green dot, italic Newsreader as the editorial whisper, and the navy-on-warm-paper palette — is genuinely distinctive. None of your competitor agencies look like this. Most look like Linear, Vercel, or a Webflow template.</p>
+        <p class="body">The voice rules in <code>docs/voice.md</code> ("no em-dashes, replaced by the period; no emoji; lowercase wordmark; posts are notes, not essays; author byline is Fred Style") are the kind of constraints that compound into a recognisable house style. Keep them.</p>
+        <p class="body">The dot mark is doing real work. <em>It is the only ornament.</em> That is exactly right.</p>
+      </div>
+      <div>
+        <p class="body"><strong>What is leaking.</strong> Two real token bugs and one structural one.</p>
+        <p class="body"><strong>Bug 1.</strong> <code>src/styles/tokens.css</code> defines <code>--accent: #8FBF3F</code> and <code>--accent-deep: #4A6E18</code>. The three files in <code>design-spec/</code> redeclare these inline as <code>#6FB582</code> and <code>#3F7553</code>. Two greens are in production. The README claims tokens are the single source of truth — they are not. Pick one set; delete the inline overrides.</p>
+        <p class="body"><strong>Bug 2.</strong> <code>--ink-faint</code> is <code>#5F6B7D</code> in tokens but <code>#7A8597</code> in spec files. The spec value fails AA contrast on <code>--paper</code> at body sizes — anything labelled "ink-faint" inside body text is undercooked.</p>
+        <p class="body"><strong>Bug 3.</strong> README says "design-spec is canonical, replicate exactly." The deployed homepage has 6 sections; the spec has 5. Either re-spec or remove the contract.</p>
+      </div>
+    </div>
+
+    <div class="tokens">
+      <div class="row"><div class="sw" style="background:#0E1A2C"></div><div class="name">--ink <b>#0E1A2C</b></div><div class="desc">Primary ink. A warm navy, not black. Holds up at display sizes.</div><div class="where">Keep · all uses</div></div>
+      <div class="row"><div class="sw" style="background:#F4F2ED"></div><div class="name">--paper-2 <b>#F4F2ED</b></div><div class="desc">Manila card. Hero sidebar, TLDR, end-CTA. Tonally correct.</div><div class="where">Keep</div></div>
+      <div class="row"><div class="sw" style="background:#E8F0D9"></div><div class="name">--sage <b>#E8F0D9</b></div><div class="desc">Numbox callout. Used twice; could earn more reps.</div><div class="where">Underused</div></div>
+      <div class="row"><div class="sw" style="background:#8FBF3F"></div><div class="name">--accent <b>#8FBF3F</b><span style="color:var(--bad)"> · tokens.css</span></div><div class="desc">Listed as "the single source of truth" by the README.</div><div class="where">Conflict</div></div>
+      <div class="row"><div class="sw" style="background:#6FB582"></div><div class="name">--accent <b>#6FB582</b><span style="color:var(--bad)"> · design-spec inline</span></div><div class="desc">Different green. Different chroma. Same variable name.</div><div class="where">Conflict</div></div>
+      <div class="row"><div class="sw" style="background:#3F7553"></div><div class="name">--accent-deep <b>#3F7553</b><span style="color:var(--bad)"> · spec inline</span></div><div class="desc">Forest. Used for mono labels, link emphasis. Reads correctly.</div><div class="where">Resolve</div></div>
+      <div class="row"><div class="sw" style="background:#4A6E18"></div><div class="name">--accent-deep <b>#4A6E18</b><span style="color:var(--bad)"> · tokens.css</span></div><div class="desc">Olive-leaning. Different mood. Token vs spec drift.</div><div class="where">Resolve</div></div>
+      <div class="row"><div class="sw" style="background:#5F6B7D"></div><div class="name">--ink-faint <b>#5F6B7D</b><span style="color:var(--warn)"> · tokens.css</span></div><div class="desc">Slate. AA on paper at 14px+. Acceptable.</div><div class="where">Keep</div></div>
+      <div class="row"><div class="sw" style="background:#7A8597"></div><div class="name">--ink-faint <b>#7A8597</b><span style="color:var(--bad)"> · spec inline</span></div><div class="desc">Lighter. Fails AA at body sizes on warm paper.</div><div class="where">Drop</div></div>
+    </div>
+
+    <div class="type-stack">
+      <div class="type-row">
+        <div class="meta">Display<b>Inter Tight 800</b><br/>−0.05em · 0.92<br/>clamp(48, 7.6vw, 108)</div>
+        <div class="sample disp">Growth infrastructure for <span class="ital">operators.</span></div>
+      </div>
+      <div class="type-row">
+        <div class="meta">Section title<b>Inter Tight 700</b><br/>−0.04em · 1.02<br/>clamp(36, 4.6vw, 60)</div>
+        <div class="sample h2">A senior operator. Not an agency.</div>
+      </div>
+      <div class="type-row">
+        <div class="meta">Editorial dek<b>Newsreader Italic 400</b><br/>−0.02em · 1.4<br/>clamp(22, 2.4vw, 30)</div>
+        <div class="sample dek">"This is not an AI story. The valuable thing is knowing where to point them, and where not to."</div>
+      </div>
+      <div class="type-row">
+        <div class="meta">Body<b>Inter Tight 400</b><br/>1.65 leading<br/>17–19px</div>
+        <div class="sample body">Most agencies are now selling the busywork as the product. I am selling senior judgment, with the busywork automated underneath. Different deal.</div>
+      </div>
+      <div class="type-row">
+        <div class="meta">Stamp / mono<b>DM Mono 400</b><br/>0.22em tracking<br/>11px caps</div>
+        <div class="sample mono">● 02 · The work / Three modules. Each one fixed in scope.</div>
+      </div>
+    </div>
+
+    <div class="findings" style="margin-top:48px">
+      <div class="find">
+        <div class="idx">F.02.1</div>
+        <div class="sev-cell warn">Material</div>
+        <div class="body-cell">
+          <h4>Two greens in production.</h4>
+          <p>Forensic finding above. Pick one accent pair and delete the inline overrides in <code>design-spec/*.html</code>. If the spec files are reference-only, the README must say so; if they are canonical, they must read from <code>tokens.css</code>.</p>
+        </div>
+        <div class="pri">Priority<b>P1</b></div>
+      </div>
+      <div class="find">
+        <div class="idx">F.02.2</div>
+        <div class="sev-cell good">Strength</div>
+        <div class="body-cell">
+          <h4>Italic Newsreader as the brand whisper. <em>Hold this line.</em></h4>
+          <p>Pairing a tight modern grotesk with a single italic serif used only for the second clause of a thought is the sharpest typographic decision on the site. It is the visual analogue of "two short sentences instead of one long one." Resist the future temptation to use Newsreader roman, or Newsreader at small sizes. The whisper is the value.</p>
+        </div>
+        <div class="pri">Priority<b>Keep</b></div>
+      </div>
+      <div class="find">
+        <div class="idx">F.02.3</div>
+        <div class="sev-cell warn">Material</div>
+        <div class="body-cell">
+          <h4>The sage callout colour is underused.</h4>
+          <p>You introduced <code>--sage #E8F0D9</code> and <code>.numbox</code> for stat blocks, then only deploy them inside blog posts. The homepage has none. A single sage stat panel after section 01 ("$100M+ managed across 4 continents · ex-Somewhere.com · 15 yrs") would carry weight that the current dim-grey numbers row does not.</p>
+        </div>
+        <div class="pri">Priority<b>P2</b></div>
+      </div>
+      <div class="find">
+        <div class="idx">F.02.4</div>
+        <div class="sev-cell good">Strength</div>
+        <div class="body-cell">
+          <h4>Square corners. Hairlines. No emoji. <em>Compounds into seriousness.</em></h4>
+          <p><code>--r-0: 0</code> as the default radius is the right call for this practice. Every rounded-corner SaaS template is competing in a different market. The square-corner discipline reads as "operator, not agency" without saying it.</p>
+        </div>
+        <div class="pri">Priority<b>Keep</b></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 03 · COPY & POSITIONING ============ -->
+  <section>
+    <div class="sec-head">
+      <div class="num">03 · Copy & positioning</div>
+      <div>
+        <h2>The best line on the site is hidden in section 03. <span class="ital">The H1 is the sixth-best line on the site.</span></h2>
+        <p class="dek">The voice is largely intact. The hierarchy of which line earns the largest type is mis-tuned for cold traffic.</p>
+      </div>
+    </div>
+
+    <p class="body">Run the homepage through the senior-operator-at-1am test (does this read like a person who has done the work, or a marketer pretending to?). Most of it passes. The H1 fails. The deck below the H1 is closer. The line buried in section 03 is best of all.</p>
+
+    <div class="ba">
+      <div class="b">
+        <div class="lab">As deployed</div>
+        <p class="h">Growth infrastructure for <em>operators.</em></p>
+        <div class="note">Reads like Notion-buyer copy. "Infrastructure" is a category for engineers. The trades persona will not recognise themselves.</div>
+      </div>
+      <div class="a">
+        <div class="lab">Candidate · option A</div>
+        <p class="h">I find where the money is leaking. <em>Then I fix it.</em></p>
+        <div class="note">First-person. Concrete verbs (find, fix). The italic clause does the work the voice rules describe. Mirrors the Revenue MRI tool name without naming it.</div>
+      </div>
+    </div>
+
+    <div class="ba" style="margin-top:18px">
+      <div class="b">
+        <div class="lab">Currently buried · § 03</div>
+        <p class="h">"Most agencies are now selling the busywork as the product. <em>I am selling senior judgment, with the busywork automated underneath. Different deal."</em></p>
+        <div class="note">The strongest single passage on the entire site. Three sentences. Names a competitor pattern. States the offer. Ends on a closer. It is currently in the third paragraph of section three.</div>
+      </div>
+      <div class="a">
+        <div class="lab">Candidate · option B</div>
+        <p class="h">Fifteen years running paid. <em>Now selling the judgment, not the busywork.</em></p>
+        <div class="note">Surfaces the buried line as the H1 itself. Anchors on the only thing operators care about: the years. Italic clause carries the deal.</div>
+      </div>
+    </div>
+
+    <div class="findings" style="margin-top:48px">
+      <div class="find">
+        <div class="idx">F.03.1</div>
+        <div class="sev-cell bad">Critical</div>
+        <div class="body-cell">
+          <h4>"Growth infrastructure" is a category, not a hook.</h4>
+          <p>For the real-estate persona, it parses. For the trades persona, it triggers the consultant-allergy. For the c-suite persona, it triggers a different consultant-allergy. The H1 is the one line every visitor reads — it cannot afford to be category copy.</p>
+        </div>
+        <div class="pri">Priority<b>P0</b></div>
+      </div>
+      <div class="find">
+        <div class="idx">F.03.2</div>
+        <div class="sev-cell warn">Material</div>
+        <div class="body-cell">
+          <h4>"Operating layer" / "judgment layer" / "below the judgment layer." <em>Three layers, one cold prospect.</em></h4>
+          <p>The "judgment vs busywork" distinction is the right one. The "layer" framing is a tic — it appears six times across the homepage and the diagnostic page. Cut it to two. Use "the work" or "the system" for the rest.</p>
+        </div>
+        <div class="pri">Priority<b>P1</b></div>
+      </div>
+      <div class="find">
+        <div class="idx">F.03.3</div>
+        <div class="sev-cell good">Strength</div>
+        <div class="body-cell">
+          <h4>"Probably not" anti-fit list on the diagnostic page.</h4>
+          <p>"You want a junior to take orders. I do not run that way." is the kind of sentence that converts on its own. Most consulting sites cannot bring themselves to disqualify anyone. This page does. Replicate the pattern on the homepage as a one-liner under section 05.</p>
+        </div>
+        <div class="pri">Priority<b>Keep</b></div>
+      </div>
+      <div class="find">
+        <div class="idx">F.03.4</div>
+        <div class="sev-cell warn">Material</div>
+        <div class="body-cell">
+          <h4>"ex-growth" is in-group jargon. Spell it once.</h4>
+          <p>For Nick's audience, "ex-growth at Somewhere.com" is recognisable but ambiguous (ex-employee? former growth lead? ex-CGO?). On first reference, write "led growth at Somewhere.com." After that, the shorthand earns its keep.</p>
+        </div>
+        <div class="pri">Priority<b>P2</b></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 04 · IA & CONVERSION ============ -->
+  <section>
+    <div class="sec-head">
+      <div class="num">04 · IA & conversion</div>
+      <div>
+        <h2>The funnel is right. <span class="ital">The first rung is too tall for the list.</span></h2>
+        <p class="dek">A free MRI, a $3,500 fixed diagnostic, a scoped build, and a monthly run is exactly the right ladder for a senior practice. The order in which the homepage presents those rungs is wrong for cold LinkedIn traffic.</p>
+      </div>
+    </div>
+
+    <div class="findings">
+      <div class="find">
+        <div class="idx">F.04.1</div>
+        <div class="sev-cell bad">Critical</div>
+        <div class="body-cell">
+          <h4>The primary CTA on a cold visit should be the MRI, not the diagnostic.</h4>
+          <p>Top nav and hero both lead with "Book diagnostic →" (a $3,500 fixed-price ask). The Revenue MRI is positioned as a parallel option but visually subordinated. For a prospect arriving from a LinkedIn DM who has never met you, the conversion ladder needs a $0 first rung. <strong>Promote MRI to primary; demote diagnostic to secondary.</strong></p>
+          <p>Keep the diagnostic primary on warm-traffic pages (footer, /diagnostic, /blog post end-CTAs). Cold homepage traffic is a different audience.</p>
+        </div>
+        <div class="pri">Priority<b>P0</b></div>
+      </div>
+      <div class="find">
+        <div class="idx">F.04.2</div>
+        <div class="sev-cell bad">Critical</div>
+        <div class="body-cell">
+          <h4>Two dead links on /diagnostic.</h4>
+          <p>"Book a kick-off call →" and "Open the calendar →" both resolve to <code>#</code> in the deployed page. For a $3,500 conversion page, these need to be wired to a real Cal.com slot before any LinkedIn outreach goes out.</p>
+        </div>
+        <div class="pri">Priority<b>P0</b></div>
+      </div>
+      <div class="find">
+        <div class="idx">F.04.3</div>
+        <div class="sev-cell warn">Material</div>
+        <div class="body-cell">
+          <h4>Two redundant proof strips above the fold.</h4>
+          <p>The hero has both a left-column "meta" row (Principal / Spend run / Markets / Proof) and a right-column "hero-r" sidebar (M01 price, M02 status, M03 status, workhours, reply window). They overlap in function — both are "trust microcopy." Pick one. The right sidebar is more useful (concrete: price, availability, reply time); the left meta band can collapse into a single line under the H1.</p>
+        </div>
+        <div class="pri">Priority<b>P1</b></div>
+      </div>
+      <div class="find">
+        <div class="idx">F.04.4</div>
+        <div class="sev-cell warn">Material</div>
+        <div class="body-cell">
+          <h4>The MRI tool gates the readout behind nine inputs.</h4>
+          <p>Spend, leads, deal value, agency cost, response time, lead-to-opp, opp-close, internal hours, hourly cost. That is a real-money commitment of attention before any payoff. Either (a) show a partial readout from the first three inputs (spend, leads, deal value) and gate the rest, or (b) ship a 60-second "express" version that estimates the leak from spend + leads alone.</p>
+          <p>The current full version stays — it is a great qualified-lead capture for warm traffic. The express version becomes the cold-traffic on-ramp.</p>
+        </div>
+        <div class="pri">Priority<b>P1</b></div>
+      </div>
+      <div class="find">
+        <div class="idx">F.04.5</div>
+        <div class="sev-cell warn">Material</div>
+        <div class="body-cell">
+          <h4>No newsletter capture on Field Notes.</h4>
+          <p>30+ notes is a real archive. None of the routes through the site lead to a "subscribe" primary CTA — a missed compounding asset, especially given the prospect list will mostly read once and forget. Add a quiet inline subscribe at the end of every note, "Get new Field Notes by email. No newsletter trap."</p>
+        </div>
+        <div class="pri">Priority<b>P1</b></div>
+      </div>
+      <div class="find">
+        <div class="idx">F.04.6</div>
+        <div class="sev-cell warn">Material</div>
+        <div class="body-cell">
+          <h4>Section order on the homepage de-prioritises industry fit.</h4>
+          <p>Current order: Hero → Track record → Modules → AI → Cost arbitrage → Who → CTA. Three of the four highest-converting sections for cold traffic (industry fit, pricing, anti-fit) are below sections that argue philosophy. Suggested order: <strong>Hero → Modules (with prices) → Who → Track record → Cost arbitrage → AI → CTA.</strong> Lead with "what does it cost and is this for me," follow with credibility.</p>
+        </div>
+        <div class="pri">Priority<b>P2</b></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 05 · SPEC DRIFT ============ -->
+  <section>
+    <div class="sec-head">
+      <div class="num">05 · Spec drift</div>
+      <div>
+        <h2>The repo says one thing. <span class="ital">The deployment says another.</span></h2>
+        <p class="dek">A small set of forensic findings about the gap between <code>design-spec/</code>, <code>src/styles/tokens.css</code>, and what is currently live at rivett.tech. Mostly cleanup, but they will rot the codebase if left.</p>
+      </div>
+    </div>
+
+    <div class="ba">
+      <div class="b">
+        <div class="lab">Spec · design-spec/Rivett Homepage.html</div>
+        <p class="h">"Performance marketing for <em>operators.</em>"<br/>5 sections · placeholder quote-slot · M01–M03</p>
+        <div class="note">Last updated when the practice was scoped narrower (paid acquisition only). Quote-slot was a TODO that got removed instead of filled.</div>
+      </div>
+      <div class="a">
+        <div class="lab">Live · rivett.tech</div>
+        <p class="h">"Growth infrastructure for <em>operators.</em>"<br/>6 sections · Revenue MRI · /diagnostic page · portrait</p>
+        <div class="note">Practice scope expanded to "the systems between demand and revenue." Spec did not follow.</div>
+      </div>
+    </div>
+
+    <div class="findings" style="margin-top:32px">
+      <div class="find">
+        <div class="idx">F.05.1</div>
+        <div class="sev-cell warn">Material</div>
+        <div class="body-cell">
+          <h4>README claim is no longer true.</h4>
+          <p>"The reference HTML files in design-spec/ are the canonical visual spec. Replicate them exactly." This is no longer accurate — the live site has evolved past the spec. Either re-spec the homepage to match production (the 6-section version), or downgrade the README claim to "design-spec is reference only; tokens.css is canonical." Currently both files contradict each other.</p>
+        </div>
+        <div class="pri">Priority<b>P1</b></div>
+      </div>
+      <div class="find">
+        <div class="idx">F.05.2</div>
+        <div class="sev-cell warn">Material</div>
+        <div class="body-cell">
+          <h4>The placeholder quote-slot was deleted instead of filled.</h4>
+          <p>Spec includes <code>.quote-slot</code> with a sage callout, a green dot stamp, and italic Newsreader holding a placeholder. The deployed homepage simply removed the slot. The right move was to ship a real testimonial inside the slot. See F.01.1.</p>
+        </div>
+        <div class="pri">Priority<b>P0</b></div>
+      </div>
+      <div class="find">
+        <div class="idx">F.05.3</div>
+        <div class="sev-cell good">Strength</div>
+        <div class="body-cell">
+          <h4>The Revenue MRI did not exist in the spec. It earns its place.</h4>
+          <p>Adding a free, branded diagnostic tool was the single largest improvement between spec and live. Operators who run their numbers will arrive at the diagnostic page already qualified. Keep iterating it (see F.04.4) but the addition itself is the right call.</p>
+        </div>
+        <div class="pri">Priority<b>Keep</b></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 06 · RANKED RECOMMENDATIONS ============ -->
+  <section>
+    <div class="sec-head">
+      <div class="num">06 · Ranked recommendations</div>
+      <div>
+        <h2>If you fix three things before the May send. <span class="ital">Fix these three.</span></h2>
+        <p class="dek">Twelve recommendations in priority order. Effort and impact graded against the sole metric that matters this quarter: cold LinkedIn traffic from the prospect list converting into a booked diagnostic call.</p>
+      </div>
+    </div>
+
+    <div class="recs">
+      <div class="row"><div class="rank">01</div><div class="what">Ship one testimonial above the fold. <em>Even unattributed. Even imperfect.</em></div><div class="effort">Effort<b class="s">Small</b></div><div class="impact">Impact<b class="high">High</b></div></div>
+      <div class="row"><div class="rank">02</div><div class="what">Promote the Revenue MRI to the primary CTA. Demote diagnostic to secondary on the homepage hero.</div><div class="effort">Effort<b class="s">Small</b></div><div class="impact">Impact<b class="high">High</b></div></div>
+      <div class="row"><div class="rank">03</div><div class="what">Wire the two dead Cal.com links on /diagnostic before any outreach goes out.</div><div class="effort">Effort<b class="s">Trivial</b></div><div class="impact">Impact<b class="high">High</b></div></div>
+      <div class="row"><div class="rank">04</div><div class="what">Replace the H1. <em>"I find where the money is leaking. Then I fix it."</em></div><div class="effort">Effort<b class="s">Small</b></div><div class="impact">Impact<b class="high">High</b></div></div>
+      <div class="row"><div class="rank">05</div><div class="what">Add an industry strip under the hero — self-storage, multifamily, contractors, agencies, professional services.</div><div class="effort">Effort<b class="s">Small</b></div><div class="impact">Impact<b class="med">Medium</b></div></div>
+      <div class="row"><div class="rank">06</div><div class="what">Move "led growth at Somewhere.com" into the hero stamp. Surface the credential earlier.</div><div class="effort">Effort<b class="s">Trivial</b></div><div class="impact">Impact<b class="med">Medium</b></div></div>
+      <div class="row"><div class="rank">07</div><div class="what">Resolve the two-greens token bug. Pick one accent pair, delete the inline overrides.</div><div class="effort">Effort<b class="m">Medium</b></div><div class="impact">Impact<b class="med">Medium</b></div></div>
+      <div class="row"><div class="rank">08</div><div class="what">Reorder the homepage sections. Modules and Who-this-is-for above the philosophy block.</div><div class="effort">Effort<b class="m">Medium</b></div><div class="impact">Impact<b class="med">Medium</b></div></div>
+      <div class="row"><div class="rank">09</div><div class="what">Ship a 60-second express MRI. Three inputs, one estimate, one CTA.</div><div class="effort">Effort<b class="m">Medium</b></div><div class="impact">Impact<b class="med">Medium</b></div></div>
+      <div class="row"><div class="rank">10</div><div class="what">Add inline newsletter capture at the end of every Field Note.</div><div class="effort">Effort<b class="s">Small</b></div><div class="impact">Impact<b class="med">Medium</b></div></div>
+      <div class="row"><div class="rank">11</div><div class="what">Re-spec or remove the design-spec/ contract in the README. Source-of-truth must match reality.</div><div class="effort">Effort<b class="s">Small</b></div><div class="impact">Impact<b class="med">Medium</b></div></div>
+      <div class="row"><div class="rank">12</div><div class="what">Cut the "layer" tic from six to two uses across homepage and diagnostic.</div><div class="effort">Effort<b class="s">Trivial</b></div><div class="impact">Impact<b class="med">Low–Med</b></div></div>
+    </div>
+
+    <div class="memo">
+      <div class="lab">Closing</div>
+      <div>
+        <h2>The brand will hold up. <span class="ital">The send will not, until the proof is on the page.</span></h2>
+        <p>Of the twelve items above, three are non-negotiable before any outreach to the May cohort: <strong>one testimonial</strong>, <strong>the MRI as primary CTA</strong>, and <strong>the two dead links wired</strong>. None of those are design problems. They are go-to-market hygiene.</p>
+        <p>Everything else can wait for a v02 sprint. The site is a credible front door. It is not yet a closing surface for a 19,000-row list of skeptical SMB operators. The fastest path from the first to the second is named, output-side proof — even <em>one</em> piece of it.</p>
+        <p>The system you have built is rare. Hold the line on it. Then ship a quote.</p>
+        <div class="sig"><b>External audit · v01</b>Sent through OPINIONS · May 2026</div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <div>Audit memo · v01 · May 2026</div>
+    <div>For Fred Style · Rivett.tech</div>
+  </footer>
+
+</div>
+
+</body>
+</html>
