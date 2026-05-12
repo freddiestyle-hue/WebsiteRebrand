@@ -1,0 +1,14 @@
+---
+interface Props {
+  schema: Record<string, unknown> | Array<Record<string, unknown>> | null | undefined;
+}
+
+const { schema } = Astro.props;
+
+function serialize(input: Record<string, unknown> | Array<Record<string, unknown>>): string {
+  return JSON.stringify(input).replace(/</g, '\\u003c').replace(/-->/g, '--\\u003e');
+}
+
+const payload = !schema || (Array.isArray(schema) && schema.length === 0) ? null : serialize(schema);
+---
+{payload && <script type="application/ld+json" set:html={payload} />}

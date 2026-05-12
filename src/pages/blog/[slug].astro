@@ -3,7 +3,10 @@ import { getCollection } from 'astro:content';
 import Base from '../../layouts/Base.astro';
 import SubscribeBox from '../../components/SubscribeBox.astro';
 import TitleText from '../../components/TitleText.astro';
+import JsonLd from '../../components/seo/JsonLd.astro';
 import { parsePost } from '../../utils/parsePost';
+import { buildArticleSchema, buildFaqSchema, safeBuild, countWords } from '../../utils/schema';
+import { resolveDates } from '../../utils/postDates';
 
 export async function getStaticPaths() {
   const posts = await getCollection('blog');
@@ -36,12 +39,40 @@ const fmtDate = (d: Date) =>
   d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 
 const { tldrHtml, bodyHtml, faq, toc } = parsePost(post.body ?? '');
+
+const { datePublished, dateModified } = resolveDates(post);
+const description = post.data.metaDescription ?? post.data.excerpt;
+const wordCount = countWords(bodyHtml);
+
+const articleSchema = safeBuild(
+  () =>
+    buildArticleSchema({
+      title: post.data.title,
+      description,
+      slug,
+      datePublished,
+      dateModified,
+      tag: post.data.tag,
+      wordCount,
+    }),
+  `Article(${slug})`,
+);
+const faqSchema = safeBuild(() => buildFaqSchema(faq), `FAQ(${slug})`);
+const postSchemas = [articleSchema, faqSchema].filter(Boolean) as Array<Record<string, unknown>>;
 ---
 <Base
   title={`${post.data.title} · Rivett Field Notes`}
-  description={post.data.metaDescription ?? post.data.excerpt}
+  description={description}
   fontWeights="Inter+Tight:wght@400;500;600;700;800"
   currentNav="blog"
+  ogType="article"
+  article={{
+    publishedTime: datePublished,
+    modifiedTime: dateModified,
+    author: 'Fred Style',
+    tag: post.data.tag,
+  }}
+  extraSchema={postSchemas}
 >
   <div class="page">
     <div class="crumb">
