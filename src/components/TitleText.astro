@@ -1,0 +1,47 @@
+---
+interface Props {
+  title: string;
+}
+
+const { title } = Astro.props;
+
+function splitTitle(value: string) {
+  const clean = value.trim();
+  const splitters = [
+    /([.!?])\s+(?=[A-Z0-9"'])/,
+    /(:|;)\s+(?=\S)/,
+    /(,)\s+(?=(?:not|but|and|why|how|what|when|where|who|the|a|an|no|one|this|that)\b)/i,
+  ];
+
+  for (const splitter of splitters) {
+    const match = splitter.exec(clean);
+    if (!match) continue;
+
+    const plainEnd = match.index + match[1].length;
+    const italicStart = match.index + match[0].length;
+    const plain = clean.slice(0, plainEnd).trimEnd();
+    const italic = clean.slice(italicStart).trimStart();
+
+    if (plain && italic) return { plain, italic };
+  }
+
+  const words = clean.split(/\s+/).filter(Boolean);
+  if (words.length >= 3) {
+    const italicCount = words.length <= 4 ? 2 : words.length <= 7 ? 2 : Math.min(4, Math.max(3, Math.round(words.length * 0.35)));
+    return {
+      plain: words.slice(0, -italicCount).join(' '),
+      italic: words.slice(-italicCount).join(' '),
+    };
+  }
+
+  return { plain: clean, italic: '' };
+}
+
+const parts = splitTitle(title);
+---
+
+{parts.italic ? (
+  <>{parts.plain}{' '}<span class="ital">{parts.italic}</span></>
+) : (
+  <>{parts.plain}</>
+)}

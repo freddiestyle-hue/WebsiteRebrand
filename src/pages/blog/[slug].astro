@@ -2,6 +2,7 @@
 import { getCollection } from 'astro:content';
 import Base from '../../layouts/Base.astro';
 import SubscribeBox from '../../components/SubscribeBox.astro';
+import TitleText from '../../components/TitleText.astro';
 import { parsePost } from '../../utils/parsePost';
 
 export async function getStaticPaths() {
@@ -52,7 +53,7 @@ const { tldrHtml, bodyHtml, faq, toc } = parsePost(post.body ?? '');
     </div>
 
     <header class="article-head">
-      <h1 class="title">{post.data.title}</h1>
+      <h1 class="title"><TitleText title={post.data.title} /></h1>
       <p class="dek">{post.data.excerpt}</p>
       <div class="meta-strip">
         <div>By<b>Fred Style</b></div>
@@ -143,7 +144,7 @@ const { tldrHtml, bodyHtml, faq, toc } = parsePost(post.body ?? '');
         {related.map(r => (
           <a class="rel-card" href={`/blog/${slugFor(r)}`}>
             <div class="meta"><span class="stamp stamp--sm">{r.data.tag}</span><span>{r.data.readTime} min</span></div>
-            <h3>{r.data.title}</h3>
+            <h3><TitleText title={r.data.title} /></h3>
             <p>{r.data.excerpt}</p>
           </a>
         ))}
