@@ -1,14 +1,27 @@
 ---
 export const prerender = false;
 import { runAudit, rankedRecommendations, type AuditResult } from '../../utils/audit/engine';
+import { mirrorAudit, type MirrorResult } from '../../utils/audit/llm-mirror';
 
 const rawUrl = Astro.url.searchParams.get('url') || '';
 let result: AuditResult | null = null;
+let mirror: MirrorResult | null = null;
 let runError: string | null = null;
 
 if (rawUrl.trim()) {
   try {
     result = await runAudit(rawUrl);
+    if (result && !result.error && result.homepageHtml) {
+      try {
+        mirror = await mirrorAudit({
+          url: result.url,
+          hostname: result.hostname,
+          html: result.homepageHtml,
+        });
+      } catch (e) {
+        console.warn('[mirror] non-fatal failure:', e instanceof Error ? e.message : String(e));
+      }
+    }
   } catch (e) {
     runError = e instanceof Error ? e.message : String(e);
   }
@@ -93,7 +106,8 @@ function buildTldr(r: AuditResult): string[] {
   <nav class="top">
     <div class="l"><span class="dot"></span> <a href="/audit" class="wm">rivett<span class="d"></span></a> <b>· Visibility Engine</b></div>
     <div class="r">
-      <span>Memo · {result ? fmtDate(result.fetchedAt) : ''}</span>
+      <span>Run by Fred Style</span>
+      <span>{result ? fmtDate(result.fetchedAt) : ''}</span>
       <span>id {auditId || '—'}</span>
     </div>
   </nav>
@@ -161,6 +175,30 @@ function buildTldr(r: AuditResult): string[] {
             {tldrSentences.map((s) => <p>{s}</p>)}
           </div>
         </div>
+      )}
+
+      {mirror && (
+        <section class="mirror-section" style="margin-top:48px;padding:48px 0;border-top:2px solid var(--ink);border-bottom:1px solid var(--line)">
+          <div class="sec-head" style="margin-bottom:32px">
+            <div class="num">00 · The mirror</div>
+            <div>
+              <h2>What an AI engine thinks <span class="ital">{result.hostname} is.</span></h2>
+              <p class="dek">Below is what Claude reads off the homepage. Compare it to what you think the site says. The gap is the diagnosis.</p>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:140px 1fr;gap:48px;margin-bottom:32px">
+            <div style="font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--bad);padding-top:4px">AI sees</div>
+            <p class="body" style="margin:0">{mirror.aiPerception}</p>
+          </div>
+          <div style="display:grid;grid-template-columns:140px 1fr;gap:48px;margin-bottom:32px">
+            <div style="font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint);padding-top:4px">You claim</div>
+            <p class="body" style="margin:0">{mirror.ownClaim}</p>
+          </div>
+          <div style="display:grid;grid-template-columns:140px 1fr;gap:48px">
+            <div style="font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink);padding-top:4px;font-weight:500">The gap</div>
+            <p class="body" style="margin:0;font-weight:500">{mirror.gap}</p>
+          </div>
+        </section>
       )}
 
       <div class="verdict">

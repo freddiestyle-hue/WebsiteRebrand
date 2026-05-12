@@ -16,6 +16,7 @@ export interface AuditResult {
   hostname: string;
   fetchedAt: string;
   durationMs: number;
+  homepageHtml?: string;
   checks: CheckResult[];
   scoreNumeric: number;
   scoreMax: number;
@@ -498,6 +499,7 @@ export async function runAudit(rawUrl: string): Promise<AuditResult> {
     hostname,
     fetchedAt: new Date(startedAt).toISOString(),
     durationMs: endedAt - startedAt,
+    homepageHtml: homeText,
     checks,
     scoreNumeric: passedWeight,
     scoreMax: totalWeight,
