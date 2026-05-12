@@ -175,19 +175,29 @@ p.body code{font-family:var(--mono);font-size:14.5px;background:var(--paper-2);p
 
 footer.foot{padding:48px 0 64px;font-family:var(--mono);font-size:10.5px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint);display:flex;justify-content:space-between;flex-wrap:wrap;gap:14px}
 footer.foot a:hover{color:var(--bad)}
-</style>
+.variant-switch a{transition:color 120ms} .variant-switch a:hover{color:var(--ink)} .variant-switch .cur{color:var(--ink);font-weight:500}</style>
 </head>
 <body>
+  <div class="variant-switch" style="border-bottom:1px solid var(--line);padding:14px 0;font-family:var(--mono);font-size:10.5px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint);display:flex;gap:18px;align-items:center;flex-wrap:wrap">
+    <span style="opacity:0.6">Sample memo · variants in review:</span>
+    <a href="/audit/memo-a.html">a · memo-faithful</a>
+    <span style="opacity:0.4">/</span>
+    <a href="/audit/memo-b.html">b · brighter</a>
+    <span style="opacity:0.4">/</span>
+    <span class="cur">c · single-page</span>
+    <span style="opacity:0.4;margin-left:auto">↑ <a href="/audit">audit index</a></span>
+  </div>
+
 
 <div class="page" data-screen-label="04 Memo C · single-page scroll">
 
   <nav class="top">
-    <div class="l"><span class="dot"></span> <a href="/audit/" class="wm">rivett<span class="d"></span></a> <b>· Visibility Engine</b></div>
+    <div class="l"><span class="dot"></span> <a href="/audit" class="wm">rivett<span class="d"></span></a> <b>· Visibility Engine</b></div>
     <div class="r"><span>Memo · 2026·05·12</span><span>v0047</span></div>
   </nav>
 
   <div class="crumb">
-    <a href="/audit/">↑ Audit index</a>
+    <a href="/audit">↑ Audit index</a>
     <span class="sep">/</span>
     <span>r/x9k2-a7m4</span>
     <span class="sep">/</span>
@@ -559,7 +569,7 @@ sales@bossfueltrailers.com · +1-555-0140</div>
   </div>
 
   <footer class="foot">
-    <a href="/audit/" class="wm">rivett<span class="d"></span></a>
+    <a href="/audit" class="wm">rivett<span class="d"></span></a>
     <div style="display:flex;gap:32px;flex-wrap:wrap">
       <span>Memo · x9k2-a7m4</span>
       <span>2026·05·12</span>
