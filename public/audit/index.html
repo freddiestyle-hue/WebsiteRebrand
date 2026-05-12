@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Rivett · Visibility Engine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=DM+Mono:wght@300;400;500&family=Newsreader:ital,wght@0,400;0,500;1,400;1,500&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --paper:#FFFFFF;
+  --paper-2:#F4F2ED;
+  --paper-3:#EBE6DC;
+  --sage:#E8F0D9;
+  --ink:#0E1A2C;
+  --ink-2:#1B2940;
+  --ink-dim:#3A4658;
+  --ink-faint:#7A8597;
+  --line:rgba(14,26,44,0.14);
+  --line-strong:rgba(14,26,44,0.28);
+  --accent:#8FBF3F;
+  --accent-deep:#4A6E18;
+  --accent-bg:#F2F7E5;
+  --grotesk:'Inter Tight',system-ui,sans-serif;
+  --serif:'Newsreader',Georgia,serif;
+  --mono:'DM Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--paper);color:var(--ink);font-family:var(--grotesk);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+::selection{background:var(--ink);color:#fff}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus{outline:none}
+:focus-visible{outline:2px solid var(--accent-deep);outline-offset:2px}
+
+.page{max-width:1240px;margin:0 auto;padding:0 56px}
+@media(max-width:780px){.page{padding:0 24px}}
+
+/* nav */
+nav.top{display:flex;justify-content:space-between;align-items:center;padding:28px 0 24px;border-bottom:1px solid var(--line)}
+.wordmark{display:inline-flex;align-items:baseline;gap:0.12em;font-weight:700;font-size:28px;letter-spacing:-0.05em;line-height:1;color:var(--ink)}
+.wordmark .dot{display:inline-block;width:0.32em;height:0.32em;border-radius:999px;background:var(--accent);transform:translateY(0.04em)}
+nav.top .links{display:flex;gap:32px;font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint)}
+nav.top .links a{transition:color 120ms}
+nav.top .links a:hover{color:var(--accent-deep)}
+nav.top .links a.cur{color:var(--ink);font-weight:500}
+
+/* hero */
+.hero{padding:96px 0 64px;max-width:1080px}
+@media(max-width:780px){.hero{padding:56px 0 48px}}
+.stamp{font-family:var(--mono);font-size:11px;letter-spacing:0.24em;text-transform:uppercase;color:var(--accent-deep);display:inline-flex;align-items:center;gap:12px;margin-bottom:36px}
+.stamp::before{content:'';width:8px;height:8px;background:var(--accent);border-radius:999px}
+h1.display{font-family:var(--grotesk);font-weight:800;font-size:clamp(56px,8.4vw,118px);line-height:0.92;letter-spacing:-0.055em;margin:0;text-wrap:balance}
+h1.display .ital{font-family:var(--serif);font-style:italic;font-weight:400;letter-spacing:-0.025em;color:var(--ink-dim)}
+.dek{font-family:var(--serif);font-style:italic;font-size:22px;line-height:1.45;color:var(--ink-dim);margin:36px 0 0;max-width:780px;text-wrap:pretty}
+
+/* form */
+.form-wrap{margin:64px 0 0;max-width:980px}
+form.audit{display:grid;grid-template-columns:1fr auto;gap:0;border:1px solid var(--ink);background:var(--paper)}
+@media(max-width:680px){form.audit{grid-template-columns:1fr}}
+.field{display:flex;align-items:center;padding:0 24px;gap:14px;min-height:72px}
+.field .prefix{font-family:var(--mono);font-size:13px;color:var(--ink-faint);letter-spacing:0.04em;flex-shrink:0}
+.field input{flex:1;min-width:0;border:0;outline:0;background:transparent;font-family:var(--grotesk);font-size:21px;font-weight:500;color:var(--ink);letter-spacing:-0.01em;padding:18px 0}
+.field input::placeholder{color:var(--ink-faint);font-weight:400}
+.submit{background:var(--ink);color:#fff;border:0;border-left:1px solid var(--ink);font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;padding:0 36px;display:flex;align-items:center;gap:14px;transition:background 120ms,color 120ms}
+.submit:hover{background:var(--accent-deep);color:#fff}
+.submit .arrow{display:inline-block;width:18px;height:1px;background:currentColor;position:relative}
+.submit .arrow::after{content:'';position:absolute;right:-1px;top:-4px;width:8px;height:8px;border-top:1px solid currentColor;border-right:1px solid currentColor;transform:rotate(45deg)}
+@media(max-width:680px){.submit{border-left:0;border-top:1px solid var(--ink);padding:20px 24px;justify-content:space-between}}
+
+.tag-line{margin-top:18px;font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint);display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+.tag-line .sep{opacity:0.4}
+.tag-line .dot{display:inline-block;width:6px;height:6px;background:var(--accent);border-radius:999px;margin-right:8px;transform:translateY(-1px)}
+
+/* reassurances */
+.reassure{margin:96px 0 0;display:grid;grid-template-columns:repeat(3,1fr);gap:0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+@media(max-width:880px){.reassure{grid-template-columns:1fr}}
+.reassure .r{padding:36px 36px 36px 0;border-right:1px solid var(--line)}
+.reassure .r:last-child{border-right:0;padding-right:0}
+.reassure .r:not(:first-child){padding-left:36px}
+@media(max-width:880px){.reassure .r{border-right:0;border-bottom:1px solid var(--line);padding:32px 0!important}.reassure .r:last-child{border-bottom:0}}
+.reassure .num{font-family:var(--mono);font-size:11px;letter-spacing:0.22em;color:var(--accent-deep);margin-bottom:14px;display:flex;align-items:center;gap:10px}
+.reassure .num::before{content:'';width:7px;height:7px;background:var(--accent);border-radius:999px}
+.reassure h3{font-family:var(--grotesk);font-weight:600;font-size:19px;line-height:1.3;letter-spacing:-0.02em;margin:0 0 10px;color:var(--ink);text-wrap:pretty;max-width:280px}
+.reassure h3 .ital{font-family:var(--serif);font-style:italic;font-weight:400;color:var(--ink-dim)}
+.reassure p{font-size:14px;line-height:1.55;color:var(--ink-dim);margin:0;max-width:300px;text-wrap:pretty}
+
+/* what gets checked */
+.checks{padding:96px 0;border-bottom:1px solid var(--line)}
+.checks .head{display:grid;grid-template-columns:240px 1fr;gap:64px;margin-bottom:48px;align-items:start}
+@media(max-width:880px){.checks .head{grid-template-columns:1fr;gap:18px;margin-bottom:32px}}
+.checks .head .lab{font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint)}
+.checks .head .lab .num{display:block;font-family:var(--grotesk);font-weight:700;font-size:56px;letter-spacing:-0.03em;color:var(--ink);line-height:1;margin-top:12px}
+.checks h2{font-family:var(--grotesk);font-weight:700;font-size:clamp(28px,3.6vw,42px);line-height:1.05;letter-spacing:-0.035em;margin:0 0 14px;text-wrap:balance;max-width:780px}
+.checks h2 .ital{font-family:var(--serif);font-style:italic;font-weight:400;color:var(--ink-dim);letter-spacing:-0.02em}
+.checks .dek{font-family:var(--serif);font-style:italic;font-size:19px;line-height:1.45;color:var(--ink-dim);margin:0;max-width:680px}
+
+.grid-checks{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border-top:2px solid var(--ink)}
+@media(max-width:880px){.grid-checks{grid-template-columns:1fr}}
+.grid-checks .c{padding:28px 28px 32px;border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
+.grid-checks .c:nth-child(3n){border-right:0}
+@media(max-width:880px){.grid-checks .c{border-right:0}}
+.grid-checks .c .k{font-family:var(--mono);font-size:11px;letter-spacing:0.22em;color:var(--ink-faint);text-transform:uppercase;display:flex;align-items:center;gap:10px;margin-bottom:18px}
+.grid-checks .c .k::before{content:'';width:7px;height:7px;background:var(--accent);border-radius:999px}
+.grid-checks .c h4{font-family:var(--grotesk);font-weight:600;font-size:17px;line-height:1.3;letter-spacing:-0.015em;margin:0 0 8px;color:var(--ink)}
+.grid-checks .c p{font-size:14px;line-height:1.55;color:var(--ink-dim);margin:0}
+.grid-checks .c p code{font-family:var(--mono);font-size:12.5px;background:var(--paper-2);padding:1px 5px;color:var(--ink)}
+
+/* footer */
+footer.foot{padding:48px 0 64px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:14px;font-family:var(--mono);font-size:10.5px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint)}
+footer.foot a:hover{color:var(--accent-deep)}
+footer.foot .wm{font-family:var(--grotesk);font-size:14px;letter-spacing:-0.05em;font-weight:700;color:var(--ink);text-transform:none}
+footer.foot .wm .dot{display:inline-block;width:0.32em;height:0.32em;border-radius:999px;background:var(--accent);transform:translateY(0.04em);margin-left:1px}
+
+/* sample line */
+.sample-row{margin-top:18px;font-family:var(--mono);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:var(--ink-faint);display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.sample-row a{color:var(--accent-deep);border-bottom:1px solid var(--accent-deep);padding-bottom:1px}
+.sample-row a:hover{color:var(--ink);border-color:var(--ink)}
+</style>
+</head>
+<body>
+
+<div class="page" data-screen-label="01 Paste Screen">
+
+  <nav class="top">
+    <a href="#" class="wordmark">rivett<span class="dot"></span></a>
+    <div class="links">
+      <a href="#">Field Notes</a>
+      <a href="#">Diagnostic</a>
+      <a href="#" class="cur">Visibility ↗</a>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <div class="stamp">Visibility Engine · v0.1 · by Fred Style</div>
+    <h1 class="display">Does AI know <span class="ital">your business exists?</span></h1>
+    <p class="dek">Fifteen checks against your domain. Sitemap, schema, <em>llms.txt</em>, AEO surfaces. Sixty seconds. A memo, not a score, telling you how ChatGPT, Perplexity, Claude, and Gemini read your site today. <em>And whether they read it at all.</em></p>
+
+    <div class="form-wrap">
+      <form class="audit" onsubmit="event.preventDefault();return false">
+        <div class="field">
+          <span class="prefix">https://</span>
+          <input type="text" placeholder="yourdomain.com" value="bossfueltrailers.com" autocomplete="off" spellcheck="false"/>
+        </div>
+        <button type="submit" class="submit">Run audit <span class="arrow"></span></button>
+      </form>
+      <div class="tag-line">
+        <span><span class="dot"></span>15 checks</span>
+        <span class="sep">·</span>
+        <span>60-second scan</span>
+        <span class="sep">·</span>
+        <span>Open source engine</span>
+      </div>
+      <div class="sample-row">
+        <span>Or read a sample memo run on</span>
+        <a href="/audit/memo-a">rivett.tech</a>
+      </div>
+    </div>
+  </header>
+
+  <div class="reassure">
+    <div class="r">
+      <div class="num">01</div>
+      <h3>Free. No login. <span class="ital">No subscription.</span></h3>
+      <p>One shot. The deliverable is the memo. We send it to whichever email you give us, or you read it in the browser and never tell us who you are.</p>
+    </div>
+    <div class="r">
+      <div class="num">02</div>
+      <h3>Score visible immediately. <span class="ital">Fix kit gated by email.</span></h3>
+      <p>The verdict, the grades, and every finding load on the result page. The PDF fix kit (with code snippets and copy-paste schema) asks for an email. That is the only ask.</p>
+    </div>
+    <div class="r">
+      <div class="num">03</div>
+      <h3>Open source engine. <span class="ital">The code is the audit.</span></h3>
+      <p>Every check lives in a public repo. If a finding is wrong, open an issue and we will fix the check, not the result.</p>
+    </div>
+  </div>
+
+  <section class="checks">
+    <div class="head">
+      <div class="lab">What we read<span class="num">15</span></div>
+      <div>
+        <h2>Fifteen reads against the public surface of your site. <span class="ital">Plus three the AI agents care about and you have not heard of.</span></h2>
+        <p class="dek">Nothing scraped. Nothing inferred. Each finding cites the exact URL and the exact line the check fired on.</p>
+      </div>
+    </div>
+
+    <div class="grid-checks">
+      <div class="c"><div class="k">01 · Crawlability</div><h4>Sitemap reachability</h4><p>We fetch <code>/sitemap.xml</code> and walk it. If it 404s, AI engines walk too.</p></div>
+      <div class="c"><div class="k">02 · Crawlability</div><h4>Robots posture</h4><p><code>/robots.txt</code>, parsed. Including the new <code>GPTBot</code>, <code>Google-Extended</code>, and <code>PerplexityBot</code> rules most sites do not know they emit.</p></div>
+      <div class="c"><div class="k">03 · Crawlability</div><h4>Canonical hygiene</h4><p>Self-referencing canonicals on every indexable page. Sample of ten pulled at random from the sitemap.</p></div>
+      <div class="c"><div class="k">04 · Structured data</div><h4>Organization schema</h4><p>JSON-LD on the homepage. Name, URL, logo, sameAs, contactPoint. Missing fields scored individually.</p></div>
+      <div class="c"><div class="k">05 · Structured data</div><h4>Article + FAQPage</h4><p>Sampled blog posts checked for Article and FAQPage. The pages that have the words but not the schema.</p></div>
+      <div class="c"><div class="k">06 · Structured data</div><h4>Product, LocalBusiness, Service</h4><p>Whichever applies, scored against the live page content. False or stale schema scored down.</p></div>
+      <div class="c"><div class="k">07 · AEO surfaces</div><h4>llms.txt presence</h4><p>The new convention. A plaintext file at <code>/llms.txt</code> telling agents what your site is and where the canonical answers live. Most sites 404 here.</p></div>
+      <div class="c"><div class="k">08 · AEO surfaces</div><h4>Author + entity surface</h4><p>Is there one author page per writer, with sameAs links to LinkedIn, X, GitHub? Agents resolve entities through this.</p></div>
+      <div class="c"><div class="k">09 · AEO surfaces</div><h4>Citation density</h4><p>Outbound links to authoritative sources, on the pages you would want quoted. Sampled, not scored on raw count.</p></div>
+      <div class="c"><div class="k">10 · Send-readiness</div><h4>First fold weight</h4><p>If a cold prospect lands here from a DM today, can they read the offer in fewer than 25 seconds. Yes or no.</p></div>
+      <div class="c"><div class="k">11 · Send-readiness</div><h4>CTA legibility</h4><p>The primary action above the fold, the secondary action below. Whether they read as one ladder or as a maze.</p></div>
+      <div class="c"><div class="k">12 · Send-readiness</div><h4>Proof above the fold</h4><p>Testimonials, logos, named case studies. Zero counts.</p></div>
+      <div class="c"><div class="k">13 · Spec drift</div><h4>Header / footer parity</h4><p>The H1 and the footer tagline. Whether they describe the same business.</p></div>
+      <div class="c"><div class="k">14 · Spec drift</div><h4>Title vs description</h4><p><code>&lt;title&gt;</code> against <code>meta description</code>. AI engines weight both. Drift between them scores down.</p></div>
+      <div class="c"><div class="k">15 · Spec drift</div><h4>OG vs body</h4><p>What your link preview promises vs what the page delivers. Surprisingly often these disagree.</p></div>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <a href="#" class="wm">rivett<span class="dot"></span></a>
+    <div style="display:flex;gap:32px;flex-wrap:wrap">
+      <span>Visibility Engine · v0.1</span>
+      <span>Open source · github.com/rivett/visibility</span>
+      <a href="#">— FS, audit.rivett.tech · 2026·05</a>
+    </div>
+  </footer>
+
+</div>
+
+</body>
+</html>

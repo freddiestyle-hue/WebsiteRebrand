@@ -1,0 +1,505 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Visibility memo · bossfueltrailers.com · brighter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&family=Newsreader:ital,wght@0,400;0,500;1,400;1,500&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --paper:#FFFFFF;
+  --paper-2:#F4F2ED;
+  --paper-3:#EBE6DC;
+  --sage:#E8F0D9;
+  --accent-bg:#F2F7E5;
+  --ink:#0E1A2C;
+  --ink-2:#1B2940;
+  --ink-dim:#3A4658;
+  --ink-faint:#7A8597;
+  --line:rgba(14,26,44,0.14);
+  --line-strong:rgba(14,26,44,0.28);
+  --accent:#8FBF3F;
+  --accent-deep:#4A6E18;
+  --warn:#B8651F;
+  --halt:#9A2B2B;
+  --grotesk:'Inter Tight',system-ui,sans-serif;
+  --serif:'Newsreader',Georgia,serif;
+  --mono:'DM Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--paper);color:var(--ink);font-family:var(--grotesk);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+::selection{background:var(--ink);color:#fff}
+a{color:inherit;text-decoration:none}
+
+.page{max-width:1240px;margin:0 auto;padding:0 56px}
+@media (max-width:780px){.page{padding:0 24px}}
+
+/* mast */
+nav.top{display:flex;align-items:center;justify-content:space-between;padding:28px 0 24px;border-bottom:1px solid var(--line);font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint)}
+nav.top .l{display:flex;align-items:center;gap:14px}
+nav.top .l .dot{width:10px;height:10px;background:var(--accent);border-radius:50%}
+nav.top .r{display:flex;gap:32px}
+nav.top b{color:var(--ink);font-weight:500}
+.wm{font-family:var(--grotesk);font-weight:700;font-size:18px;letter-spacing:-0.05em;color:var(--ink);text-transform:none;display:inline-flex;align-items:baseline;gap:0.12em}
+.wm .d{display:inline-block;width:0.32em;height:0.32em;border-radius:999px;background:var(--accent);transform:translateY(0.04em)}
+
+.crumb{margin-top:32px;font-family:var(--mono);font-size:10.5px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint);display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+.crumb .sep{opacity:0.4}
+.crumb a:hover{color:var(--accent-deep)}
+
+/* cover */
+.cover{padding:64px 0 64px;border-bottom:1px solid var(--line-strong)}
+.kicker{font-family:var(--mono);font-size:11px;letter-spacing:0.24em;text-transform:uppercase;color:var(--accent-deep);display:inline-flex;align-items:center;gap:12px;margin-bottom:36px}
+.kicker::before{content:'';width:8px;height:8px;background:var(--accent);border-radius:50%}
+h1.cv{font-family:var(--grotesk);font-weight:800;font-size:clamp(48px,7.4vw,108px);line-height:0.92;letter-spacing:-0.05em;margin:0;text-wrap:balance;max-width:1080px}
+h1.cv .ital{font-family:var(--serif);font-style:italic;font-weight:400;letter-spacing:-0.02em;color:var(--ink-dim)}
+.cv-sub{display:grid;grid-template-columns:1.5fr 1fr;gap:64px;margin-top:48px;align-items:end}
+@media (max-width:880px){.cv-sub{grid-template-columns:1fr;gap:32px}}
+.lede{font-family:var(--grotesk);font-size:21px;line-height:1.5;color:var(--ink-dim);max-width:680px;margin:0}
+.lede em{font-family:var(--serif);font-style:italic;color:var(--ink);font-weight:400}
+.cv-meta{font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint);display:grid;grid-template-columns:repeat(2,1fr);gap:18px}
+.cv-meta b{display:block;color:var(--ink);font-family:var(--grotesk);font-weight:600;font-size:14px;letter-spacing:-0.01em;text-transform:none;margin-top:4px}
+
+/* tldr — sage instead of warm paper */
+.tldr{margin:48px 0 0;background:var(--accent-bg);border:1px solid var(--ink);padding:36px 40px;display:grid;grid-template-columns:120px 1fr;gap:32px}
+@media (max-width:780px){.tldr{grid-template-columns:1fr;padding:28px;gap:18px}}
+.tldr .lab{font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--accent-deep);display:flex;align-items:center;gap:10px;padding-top:6px}
+.tldr .lab::before{content:'';width:8px;height:8px;background:var(--accent);border-radius:50%}
+.tldr .body p{margin:0 0 14px;font-size:18px;line-height:1.55;color:var(--ink);font-weight:500;text-wrap:pretty;max-width:780px}
+.tldr .body p:last-child{margin-bottom:0}
+.tldr .body p strong{font-weight:700}
+.tldr .body p em{font-family:var(--serif);font-style:italic;font-weight:400;color:var(--ink-dim)}
+
+/* verdict */
+.verdict{margin-top:24px;display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--ink);background:var(--paper)}
+@media (max-width:780px){.verdict{grid-template-columns:repeat(2,1fr)}}
+.verdict .v{padding:24px 24px 22px;border-right:1px solid var(--ink)}
+.verdict .v:last-child{border-right:0}
+@media (max-width:780px){.verdict .v:nth-child(2){border-right:0}.verdict .v:nth-child(-n+2){border-bottom:1px solid var(--ink)}}
+.verdict .k{font-family:var(--mono);font-size:10px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:10px}
+.verdict .g{font-family:var(--grotesk);font-weight:800;font-size:56px;line-height:1;letter-spacing:-0.04em}
+.verdict .g.good{color:var(--accent-deep)}
+.verdict .g.warn{color:var(--warn)}
+.verdict .g.bad{color:var(--halt)}
+.verdict .n{font-family:var(--grotesk);font-size:13px;color:var(--ink-dim);margin-top:10px;line-height:1.45;text-transform:none;max-width:240px}
+
+/* sections */
+section.sec{border-top:1px solid var(--line-strong);padding:96px 0}
+@media (max-width:780px){section.sec{padding:64px 0}}
+.sec-head{display:grid;grid-template-columns:140px 1fr;gap:48px;align-items:start;margin-bottom:40px}
+@media (max-width:780px){.sec-head{grid-template-columns:1fr;gap:14px;margin-bottom:28px}}
+.sec-head .num{font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--accent-deep);padding-top:14px}
+.sec-head .num::before{content:'';display:inline-block;width:8px;height:8px;background:var(--accent);border-radius:50%;margin-right:10px;transform:translateY(-1px)}
+.sec-head h2{font-family:var(--grotesk);font-weight:700;font-size:clamp(32px,4.4vw,52px);line-height:1.02;letter-spacing:-0.04em;margin:0;color:var(--ink);text-wrap:balance;max-width:900px}
+.sec-head h2 .ital{font-family:var(--serif);font-style:italic;font-weight:400;letter-spacing:-0.02em;color:var(--ink-dim)}
+.sec-head .dek{font-family:var(--serif);font-style:italic;font-size:19px;line-height:1.45;color:var(--ink-dim);margin:18px 0 0;max-width:720px;text-wrap:pretty}
+
+p.body{font-family:var(--grotesk);font-size:17px;line-height:1.65;color:var(--ink);font-weight:400;margin:0;max-width:720px;text-wrap:pretty}
+p.body + p.body{margin-top:18px}
+p.body strong{font-weight:600}
+p.body em{font-family:var(--serif);font-style:italic;font-size:1.02em;color:var(--ink-dim)}
+p.body code{font-family:var(--mono);font-size:14.5px;background:var(--paper-2);padding:1px 5px;color:var(--ink)}
+
+.snippet{margin:18px 0 0;padding:14px 18px;background:var(--paper-2);border-left:3px solid var(--accent);font-family:var(--mono);font-size:13px;line-height:1.6;color:var(--ink);max-width:720px;white-space:pre-wrap}
+.snippet b{color:var(--accent-deep);font-weight:500}
+
+/* finding rows */
+.findings{border-top:2px solid var(--ink);margin-top:32px}
+.find{display:grid;grid-template-columns:64px 130px 1fr 100px;gap:28px;padding:28px 0;border-bottom:1px solid var(--line);align-items:start}
+@media (max-width:880px){.find{grid-template-columns:64px 1fr;gap:14px 16px}.find .sev{grid-column:1 / span 2}.find .pri{grid-column:1 / span 2;text-align:left;padding-top:0}}
+.find .idx{font-family:var(--mono);font-size:11px;letter-spacing:0.18em;color:var(--ink-faint);padding-top:4px}
+.find .sev{font-family:var(--mono);font-size:10.5px;letter-spacing:0.22em;text-transform:uppercase;display:flex;align-items:center;gap:10px;padding-top:4px}
+.find .sev::before{content:'';width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.find .sev.bad::before{background:var(--halt)}.find .sev.bad{color:var(--halt)}
+.find .sev.warn::before{background:var(--warn)}.find .sev.warn{color:var(--warn)}
+.find .sev.good::before{background:var(--accent-deep)}.find .sev.good{color:var(--accent-deep)}
+.find .b h4{font-family:var(--grotesk);font-weight:700;font-size:22px;line-height:1.2;letter-spacing:-0.025em;margin:0 0 12px;text-wrap:pretty;color:var(--ink)}
+.find .b h4 em{font-family:var(--serif);font-style:italic;font-weight:400;color:var(--ink-dim)}
+.find .b p{margin:0;font-family:var(--grotesk);font-size:15.5px;line-height:1.6;color:var(--ink-dim);font-weight:400;max-width:640px;text-wrap:pretty}
+.find .b p + p{margin-top:10px}
+.find .b p strong{color:var(--ink);font-weight:600}
+.find .b p em{font-family:var(--serif);font-style:italic;color:var(--ink)}
+.find .b p code{font-family:var(--mono);font-size:13.5px;background:var(--paper-2);padding:1px 5px;color:var(--ink)}
+.find .pri{font-family:var(--mono);font-size:10.5px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint);text-align:right;padding-top:6px}
+.find .pri b{display:block;color:var(--ink);font-family:var(--grotesk);font-weight:700;font-size:15px;letter-spacing:-0.01em;text-transform:none;margin-top:6px}
+
+.recs{margin-top:24px;border-top:2px solid var(--ink)}
+.recs .row{display:grid;grid-template-columns:40px 1fr 110px 120px;gap:24px;padding:22px 0;border-bottom:1px solid var(--line);align-items:center}
+@media (max-width:780px){.recs .row{grid-template-columns:40px 1fr;gap:8px 14px}.recs .row .effort, .recs .row .impact{grid-column:2;font-size:10.5px}}
+.recs .rank{font-family:var(--mono);font-size:13px;color:var(--accent-deep);font-weight:500}
+.recs .what{font-family:var(--grotesk);font-weight:600;font-size:17px;letter-spacing:-0.015em;color:var(--ink);line-height:1.35;text-wrap:pretty}
+.recs .what em{font-family:var(--serif);font-style:italic;font-weight:400;color:var(--ink-dim)}
+.recs .what code{font-family:var(--mono);font-size:14px;background:var(--paper-2);padding:1px 5px}
+.recs .effort, .recs .impact{font-family:var(--mono);font-size:10.5px;letter-spacing:0.18em;text-transform:uppercase;color:var(--ink-faint)}
+.recs .effort b, .recs .impact b{display:block;color:var(--ink);font-family:var(--grotesk);font-weight:600;letter-spacing:-0.01em;text-transform:none;font-size:14px;margin-top:4px}
+.recs .impact b.high{color:var(--accent-deep)}
+.recs .impact b.med{color:var(--warn)}
+.recs .effort b.s{color:var(--accent-deep)}
+.recs .effort b.m{color:var(--warn)}
+
+.adj{margin-top:48px;background:var(--sage);border-top:1px solid var(--ink);border-bottom:1px solid var(--ink);padding:36px 40px}
+@media (max-width:780px){.adj{padding:28px}}
+.adj .lab{font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--accent-deep);display:flex;align-items:center;gap:10px;margin-bottom:24px}
+.adj .lab::before{content:'';width:8px;height:8px;background:var(--accent);border-radius:50%}
+.adj p{font-family:var(--serif);font-style:italic;font-size:19px;line-height:1.5;color:var(--ink);margin:0;max-width:780px;text-wrap:pretty}
+.adj p + p{margin-top:14px;padding-top:14px;border-top:1px dashed rgba(14,26,44,0.18)}
+.adj p b{font-family:var(--grotesk);font-style:normal;font-weight:600;color:var(--ink)}
+
+.cta-row{margin-top:48px;display:grid;grid-template-columns:auto auto 1fr;gap:18px;align-items:center}
+@media (max-width:780px){.cta-row{grid-template-columns:1fr}}
+.btn{font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;padding:18px 28px;border:1px solid var(--ink);display:inline-flex;align-items:center;gap:14px;transition:background 120ms,color 120ms}
+.btn--p{background:var(--ink);color:#fff}
+.btn--p:hover{background:var(--accent-deep)}
+.btn--g{background:transparent;color:var(--ink)}
+.btn--g:hover{background:var(--paper-2)}
+.cta-row .url{font-family:var(--mono);font-size:11.5px;letter-spacing:0.06em;color:var(--ink-faint);justify-self:end;text-transform:none}
+.cta-row .url b{color:var(--ink);font-weight:500}
+
+.memo{margin-top:96px;background:var(--ink);color:#fff;padding:80px 56px;display:grid;grid-template-columns:160px 1fr;gap:48px}
+@media (max-width:780px){.memo{grid-template-columns:1fr;padding:48px 28px;gap:24px}}
+.memo .lab{font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:rgba(255,255,255,0.55)}
+.memo .lab::before{content:'';display:inline-block;width:8px;height:8px;background:var(--accent);border-radius:50%;margin-right:10px;transform:translateY(-1px)}
+.memo h2{font-family:var(--grotesk);font-weight:700;font-size:clamp(32px,3.8vw,48px);line-height:1.05;letter-spacing:-0.04em;margin:0 0 24px;text-wrap:balance}
+.memo h2 .ital{font-family:var(--serif);font-style:italic;font-weight:400;color:rgba(255,255,255,0.62)}
+.memo p{font-size:17px;line-height:1.6;color:rgba(255,255,255,0.82);margin:0 0 14px;max-width:700px}
+.memo p em{font-family:var(--serif);font-style:italic;color:rgba(255,255,255,0.62)}
+.memo p strong{color:#fff;font-weight:600}
+.memo .actions{margin-top:24px;display:flex;gap:14px;flex-wrap:wrap}
+.memo .actions .btn{border-color:rgba(255,255,255,0.4);color:#fff}
+.memo .actions .btn--inv{background:#fff;color:var(--ink);border-color:#fff}
+.memo .actions .btn--inv:hover{background:var(--accent);border-color:var(--accent);color:var(--ink)}
+.memo .sig{margin-top:32px;font-family:var(--mono);font-size:10.5px;letter-spacing:0.22em;text-transform:uppercase;color:rgba(255,255,255,0.55)}
+.memo .sig b{color:#fff;font-family:var(--grotesk);font-weight:600;font-size:14px;letter-spacing:-0.01em;text-transform:none;display:block;margin-bottom:4px}
+
+footer.foot{padding:48px 0 64px;font-family:var(--mono);font-size:10.5px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint);display:flex;justify-content:space-between;flex-wrap:wrap;gap:14px}
+footer.foot a:hover{color:var(--accent-deep)}
+</style>
+</head>
+<body>
+
+<div class="page" data-screen-label="03 Memo B · brighter">
+
+  <nav class="top">
+    <div class="l"><span class="dot"></span> <a href="/audit/" class="wm">rivett<span class="d"></span></a> <b>· Visibility Engine</b></div>
+    <div class="r"><span>Memo · 2026·05·12</span><span>v0047</span></div>
+  </nav>
+
+  <div class="crumb">
+    <a href="/audit/">↑ Audit index</a>
+    <span class="sep">/</span>
+    <span>r/x9k2-a7m4</span>
+    <span class="sep">/</span>
+    <a href="#">Share link</a>
+    <span class="sep">/</span>
+    <a href="#">Download fix kit</a>
+  </div>
+
+  <header class="cover">
+    <div class="kicker">Audit memo · new url · bossfueltrailers.com</div>
+    <h1 class="cv">Google can find you. <span class="ital">ChatGPT cannot tell what you sell.</span></h1>
+    <div class="cv-sub">
+      <p class="lede">An external read of <em>bossfueltrailers.com</em>, scored against the fifteen checks that govern how AI engines and Google understand the authority of a site. <em>The brand is clear to a human reader. The surfaces an AI agent needs are mostly absent.</em></p>
+      <div class="cv-meta">
+        <div>URL audited<b>bossfueltrailers.com</b></div>
+        <div>Date<b>2026·05·12</b></div>
+        <div>Audit ID<b>x9k2-a7m4</b></div>
+        <div>Verdict<b>C+ · Material gaps</b></div>
+      </div>
+    </div>
+
+    <div class="tldr">
+      <div class="lab">TL;DR</div>
+      <div class="body">
+        <p>The site is crawlable. <strong>Sitemap loads, robots.txt is permissive, canonicals clean.</strong> Google has no excuse not to index. For the human-reader job, you grade a B.</p>
+        <p>The AI-engine job is different and you grade <em>worse</em>. Organization schema is on the homepage but missing logo, sameAs, and contactPoint. The blog has FAQ sections with no <code>FAQPage</code> schema. There is no <code>llms.txt</code>. <em>The agents do not know you sell fuel trailers; they know a domain exists.</em></p>
+        <p>Three fixes carry 80% of the weight. <strong>Ship llms.txt. Ship FAQPage on the eight blog posts that already contain Q&amp;A. Add logo + sameAs + contactPoint to the Organization block.</strong> Each one is under twenty lines of code.</p>
+      </div>
+    </div>
+
+    <div class="verdict">
+      <div class="v"><div class="k">Crawlability</div><div class="g good">B+</div><div class="n">Sitemap, robots, canonicals clean. One stale redirect chain in <code>/old-blog</code>.</div></div>
+      <div class="v"><div class="k">Structured data</div><div class="g warn">C</div><div class="n">Organization undercooked. FAQPage missing on eight pages that need it.</div></div>
+      <div class="v"><div class="k">AEO surfaces</div><div class="g bad">D</div><div class="n">No llms.txt. No author entity. Two empty <code>sameAs</code> arrays.</div></div>
+      <div class="v"><div class="k">Send-readiness</div><div class="g warn">B−</div><div class="n">Hero is legible. Proof is absent. Zero testimonials above the fold.</div></div>
+    </div>
+  </header>
+
+  <section class="sec">
+    <div class="sec-head">
+      <div class="num">01 · Crawlability</div>
+      <div>
+        <h2>Search engines can find the site. <span class="ital">Whether AI engines can read it cleanly is the question.</span></h2>
+        <p class="dek">Sitemap reachable, robots permissive, canonicals self-referencing. One redirect chain to clear.</p>
+      </div>
+    </div>
+    <p class="body"><code>/sitemap.xml</code> resolves at the root and lists <strong>127 URLs</strong>. We walked them all. None 404. Twelve redirect to current URLs. One chain in <code>/old-blog</code> hops three times before landing — agents drop the trail after the second hop.</p>
+    <p class="body">Robots is permissive across the board. <code>GPTBot</code>, <code>Google-Extended</code>, <code>PerplexityBot</code>, and <code>ClaudeBot</code> all crawl without restriction. <strong>The right posture for a business that wants to be cited.</strong></p>
+    <div class="findings">
+      <div class="find">
+        <div class="idx">F.01.1</div>
+        <div class="sev warn">Material</div>
+        <div class="b">
+          <h4>One redirect chain in <code>/old-blog</code> is costing you. <em>Three hops on every crawl.</em></h4>
+          <p>Twenty-three <code>/old-blog/*</code> URLs share the same problem. A regex rewrite in <code>.htaccess</code> handles all of them at once.</p>
+        </div>
+        <div class="pri">Priority<b>P1</b></div>
+      </div>
+      <div class="find">
+        <div class="idx">F.01.2</div>
+        <div class="sev good">Strength</div>
+        <div class="b">
+          <h4>Robots posture is correct. <em>Hold this line.</em></h4>
+          <p>For a fuel-trailer brand whose competitive position depends on a buyer asking ChatGPT, blocking the agents is a self-inflicted wound. You did not. Good.</p>
+        </div>
+        <div class="pri">Priority<b>Keep</b></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <div class="sec-head">
+      <div class="num">02 · Structured data</div>
+      <div>
+        <h2>Organization is present. <span class="ital">Article and FAQPage are missing on the very pages that needed them.</span></h2>
+        <p class="dek">Three JSON-LD blocks across the site. Two are useful. The third is on the wrong page.</p>
+      </div>
+    </div>
+    <p class="body">The homepage emits an <code>Organization</code> block with <strong>name</strong> and <strong>url</strong>. It does not have <strong>logo</strong>, <strong>sameAs</strong>, or <strong>contactPoint</strong>. Those three fields are how an AI agent links your domain to the entity it has indexed elsewhere — your Facebook page, Google Business profile, YouTube. Without them, the agent sees a domain with a name but no trail of evidence.</p>
+    <p class="body">Your blog has a real FAQ section at the bottom of every long-form post. <strong>Eight posts in the May archive have a "Frequently asked" block.</strong> ChatGPT cannot tell. The page emits the words but not the structured data that says <em>these are questions and these are answers</em>.</p>
+    <div class="snippet">{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "Boss Fuel Trailers",
+  "url": "https://bossfueltrailers.com"
+  <b>// missing: logo, sameAs, contactPoint</b>
+}</div>
+    <div class="findings">
+      <div class="find">
+        <div class="idx">F.02.1</div>
+        <div class="sev bad">Critical</div>
+        <div class="b">
+          <h4>FAQPage schema is missing on eight blog posts. <em>The Q&amp;A is already there in the prose.</em></h4>
+          <p>Add a <code>FAQPage</code> JSON-LD block per post — fifteen lines each. The single highest-leverage fix in this memo. Effort: an afternoon. Impact: long-tail searches start surfacing your answer instead of someone else's.</p>
+        </div>
+        <div class="pri">Priority<b>P0</b></div>
+      </div>
+      <div class="find">
+        <div class="idx">F.02.2</div>
+        <div class="sev bad">Critical</div>
+        <div class="b">
+          <h4>Organization missing logo, sameAs, contactPoint. <em>Three fields. One block.</em></h4>
+          <p>Twelve lines of JSON in the homepage <code>&lt;head&gt;</code>. Without <code>sameAs</code>, an AI agent cannot corroborate the domain with your Facebook (4,200 followers), Google Business (47 reviews), or YouTube channel.</p>
+        </div>
+        <div class="pri">Priority<b>P0</b></div>
+      </div>
+      <div class="find">
+        <div class="idx">F.02.3</div>
+        <div class="sev warn">Material</div>
+        <div class="b">
+          <h4>Eleven product pages with no schema. <em>The one that has it sets the template.</em></h4>
+          <p><code>/trailers/14ft-aluminum</code> emits a clean <code>Product</code> block. Use it as the template and back-fill the other eleven.</p>
+        </div>
+        <div class="pri">Priority<b>P1</b></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <div class="sec-head">
+      <div class="num">03 · AEO surfaces</div>
+      <div>
+        <h2>There is no llms.txt. <span class="ital">AI agents hitting your domain bounce off a 404.</span></h2>
+        <p class="dek">The structured-data layer is for machines that speak schema. The AEO layer is for the new generation of agents that need a plaintext map.</p>
+      </div>
+    </div>
+    <p class="body"><code>/llms.txt</code> is the convention that locked in across Anthropic, Perplexity, and OpenAI in early 2026. A plain markdown file at the root telling an agent <strong>what your site is, what the canonical answers are, and where to find them</strong>. Most SMB sites still 404 here. So does yours.</p>
+    <div class="snippet"># Boss Fuel Trailers
+
+> Aluminum DOT-compliant fuel trailers for fleets, ranches, construction.
+> Built in Texas. Shipped in 4–6 weeks.
+
+## Canonical answers
+- [Why aluminum, not steel](/learn/why-aluminum-fuel-trailers)
+- [DOT compliance checklist](/learn/dot-compliance)
+- [Sizing your trailer](/learn/sizing)
+
+## Specs
+- [14ft aluminum spec sheet](/specs/14ft.pdf)
+- [20ft aluminum spec sheet](/specs/20ft.pdf)
+
+## Contact
+sales@bossfueltrailers.com · +1-555-0140</div>
+    <div class="findings">
+      <div class="find">
+        <div class="idx">F.03.1</div>
+        <div class="sev bad">Critical</div>
+        <div class="b">
+          <h4>Ship <code>/llms.txt</code>. <em>Fifteen minutes. One file.</em></h4>
+          <p>The next time an agent crawls you, it has a map instead of a maze. Update the file when you ship a new pillar post.</p>
+        </div>
+        <div class="pri">Priority<b>P0</b></div>
+      </div>
+      <div class="find">
+        <div class="idx">F.03.2</div>
+        <div class="sev warn">Material</div>
+        <div class="b">
+          <h4>Author surface is anonymous. <em>"By the Boss team" is a citation dead end.</em></h4>
+          <p>Create <code>/about/jacob-doerr</code> with <code>sameAs</code> to LinkedIn, YouTube, the two podcasts. Update the blog template to byline him. Every post he writes laddes up to a resolvable entity.</p>
+        </div>
+        <div class="pri">Priority<b>P1</b></div>
+      </div>
+      <div class="find">
+        <div class="idx">F.03.3</div>
+        <div class="sev warn">Material</div>
+        <div class="b">
+          <h4>Two <code>sameAs</code> arrays already exist on the site and are empty.</h4>
+          <p>An empty array is worse than no field — it tells the agent <em>this site has nothing to corroborate it</em>. Fill them or delete them.</p>
+        </div>
+        <div class="pri">Priority<b>P2</b></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <div class="sec-head">
+      <div class="num">04 · Send-readiness</div>
+      <div>
+        <h2>If you sent a list to this site today, <span class="ital">here is what they would and would not find.</span></h2>
+        <p class="dek">Whether a cold prospect arriving from a DM can read your offer in 25 seconds.</p>
+      </div>
+    </div>
+    <p class="body">The hero is legible. <strong>"Aluminum fuel trailers. Built in Texas. Shipped in four weeks."</strong> The trades operator recognises himself in fewer than ten seconds. <em>This is the best line on the site and it is in the right place.</em></p>
+    <p class="body">The proof above the fold is the gap. <strong>Zero testimonials. Zero customer logos. Zero before-and-after.</strong> For an $11,000 ASP that is the wrong ratio. The YouTube channel has eleven install videos, the inbox has dozens of unsolicited customer notes, and none of them are surfaced on the homepage.</p>
+    <div class="findings">
+      <div class="find">
+        <div class="idx">F.04.1</div>
+        <div class="sev bad">Critical</div>
+        <div class="b">
+          <h4>One testimonial above the fold. <em>Even unattributed. Even imperfect.</em></h4>
+          <p>Under the H1, italic Newsreader, name and state. <em>"Third trailer I've bought from Boss. Beats the Diamond C on weight and the warranty isn't an argument. — Mark R., 14-truck construction company, San Antonio."</em> Two lines.</p>
+        </div>
+        <div class="pri">Priority<b>P0</b></div>
+      </div>
+      <div class="find">
+        <div class="idx">F.04.2</div>
+        <div class="sev warn">Material</div>
+        <div class="b">
+          <h4>The "Request a quote" CTA gates everything.</h4>
+          <p>For warm traffic that is right. For cold traffic from a DM, the first ask should be free — a spec sheet PDF behind an email. Keep the quote form as the warm-traffic primary.</p>
+        </div>
+        <div class="pri">Priority<b>P1</b></div>
+      </div>
+      <div class="find">
+        <div class="idx">F.04.3</div>
+        <div class="sev good">Strength</div>
+        <div class="b">
+          <h4>Phone number in the masthead. <em>For this audience, that is the trust signal.</em></h4>
+          <p>Most DTC-styled sites bury the phone number. Yours is in the masthead with a Texas area code. Hold this.</p>
+        </div>
+        <div class="pri">Priority<b>Keep</b></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <div class="sec-head">
+      <div class="num">05 · Spec drift</div>
+      <div>
+        <h2>The blog markup says one thing. <span class="ital">The footer says another.</span></h2>
+        <p class="dek">Small forensic findings about pages and metadata that contradict each other.</p>
+      </div>
+    </div>
+    <p class="body">The homepage <code>&lt;title&gt;</code> reads <em>"Boss Fuel Trailers · Aluminum DOT-compliant fuel trailers · Texas."</em> The <code>meta description</code> reads <em>"Custom fabrication and welding services. Located in Houston, TX."</em> <strong>Two different businesses.</strong></p>
+    <p class="body">The footer says <em>"Aluminum fuel transport since 2014."</em> The about page says <em>"Founded in 2011."</em> The agent will quote whichever it sees first.</p>
+    <p class="body">The OG image is the 2019 logo. Every Slack, LinkedIn, SMS preview of your URL still shows the old mark.</p>
+    <div class="findings">
+      <div class="find">
+        <div class="idx">F.05.1</div>
+        <div class="sev warn">Material</div>
+        <div class="b"><h4>Meta description is for a different business.</h4><p>Twenty words. Replace it with one that matches the actual product. Done.</p></div>
+        <div class="pri">Priority<b>P1</b></div>
+      </div>
+      <div class="find">
+        <div class="idx">F.05.2</div>
+        <div class="sev warn">Material</div>
+        <div class="b"><h4>Founding year disagrees with itself.</h4><p>Pick one. Update the other.</p></div>
+        <div class="pri">Priority<b>P2</b></div>
+      </div>
+      <div class="find">
+        <div class="idx">F.05.3</div>
+        <div class="sev warn">Material</div>
+        <div class="b"><h4>OG image is the 2019 logo.</h4><p>Single tag, single deploy.</p></div>
+        <div class="pri">Priority<b>P2</b></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <div class="sec-head">
+      <div class="num">06 · Ranked recommendations</div>
+      <div>
+        <h2>If you fix three things this week. <span class="ital">Fix these three.</span></h2>
+        <p class="dek">Eleven recommendations in priority order. Effort and impact against one metric: AI engines correctly answering "what is the best aluminum fuel trailer" with your name attached.</p>
+      </div>
+    </div>
+    <div class="recs">
+      <div class="row"><div class="rank">01</div><div class="what">Ship <code>/llms.txt</code>. <em>Fifteen minutes. One file.</em></div><div class="effort">Effort<b class="s">Trivial</b></div><div class="impact">Impact<b class="high">High</b></div></div>
+      <div class="row"><div class="rank">02</div><div class="what">Add <code>FAQPage</code> schema on the eight blog posts.</div><div class="effort">Effort<b class="s">Small</b></div><div class="impact">Impact<b class="high">High</b></div></div>
+      <div class="row"><div class="rank">03</div><div class="what">Add logo, sameAs, contactPoint to Organization.</div><div class="effort">Effort<b class="s">Trivial</b></div><div class="impact">Impact<b class="high">High</b></div></div>
+      <div class="row"><div class="rank">04</div><div class="what">Ship one testimonial above the fold.</div><div class="effort">Effort<b class="s">Small</b></div><div class="impact">Impact<b class="high">High</b></div></div>
+      <div class="row"><div class="rank">05</div><div class="what">Build an author page for Jacob. Real byline in template.</div><div class="effort">Effort<b class="m">Medium</b></div><div class="impact">Impact<b class="med">Medium</b></div></div>
+      <div class="row"><div class="rank">06</div><div class="what">Collapse the <code>/old-blog</code> redirect chain to a single 301.</div><div class="effort">Effort<b class="s">Trivial</b></div><div class="impact">Impact<b class="med">Medium</b></div></div>
+      <div class="row"><div class="rank">07</div><div class="what">Back-fill <code>Product</code> schema on eleven trailer pages.</div><div class="effort">Effort<b class="m">Medium</b></div><div class="impact">Impact<b class="med">Medium</b></div></div>
+      <div class="row"><div class="rank">08</div><div class="what">Rewrite the homepage meta description.</div><div class="effort">Effort<b class="s">Trivial</b></div><div class="impact">Impact<b class="med">Medium</b></div></div>
+      <div class="row"><div class="rank">09</div><div class="what">Reconcile founding year between footer and about page.</div><div class="effort">Effort<b class="s">Trivial</b></div><div class="impact">Impact<b class="med">Medium</b></div></div>
+      <div class="row"><div class="rank">10</div><div class="what">Update <code>og:image</code> to the current logo.</div><div class="effort">Effort<b class="s">Trivial</b></div><div class="impact">Impact<b class="med">Medium</b></div></div>
+      <div class="row"><div class="rank">11</div><div class="what">$0 first rung. Spec sheet PDF behind an email.</div><div class="effort">Effort<b class="m">Medium</b></div><div class="impact">Impact<b class="med">Medium</b></div></div>
+    </div>
+
+    <div class="adj">
+      <div class="lab">We also noticed</div>
+      <p><b>The YouTube install videos are the strongest asset on the brand and nothing on the homepage links to them.</b> Eleven videos, average 18,000 views.</p>
+      <p><b>The Houston address in the footer is a PO Box.</b> Your Google Business lists the actual shop in Magnolia. The two locations do not agree.</p>
+      <p><b>"DOT compliance checklist" is the second-best line on the site and it is buried four clicks from the homepage.</b> Promote it. It earns long-tail citations for a decade.</p>
+    </div>
+
+    <div class="cta-row">
+      <a href="#" class="btn btn--p">Download fix kit ↓</a>
+      <a href="#" class="btn btn--g">Share result</a>
+      <div class="url">audit.rivett.tech/r/<b>x9k2-a7m4</b></div>
+    </div>
+  </section>
+
+  <div class="memo">
+    <div class="lab">From the engineer</div>
+    <div>
+      <h2>Want us to fix all of it? <span class="ital">Two weeks, $3,500.</span></h2>
+      <p>The fix kit walks a competent in-house dev through the eleven recommendations. Most are under twenty lines of code. If you would rather not run a project, we ship the same fixes ourselves: two weeks, fixed price, deploy on a Friday.</p>
+      <p><strong>The work product is the same memo you just read, except the items move from open to closed.</strong> No retainer. <em>The job is done when the verdict moves from C+ to B+.</em></p>
+      <div class="actions">
+        <a href="#" class="btn btn--inv">Book the fix · $3,500 →</a>
+        <a href="#" class="btn">Read another memo</a>
+      </div>
+      <div class="sig">
+        Signed off
+        <b>— FS, audit.rivett.tech · 2026·05·12</b>
+        Fred Style · Rivett · External audit, run from the open-source Visibility Engine v0.1
+      </div>
+    </div>
+  </div>
+
+  <footer class="foot">
+    <a href="/audit/" class="wm">rivett<span class="d"></span></a>
+    <div style="display:flex;gap:32px;flex-wrap:wrap">
+      <span>Memo · x9k2-a7m4</span>
+      <span>2026·05·12</span>
+      <a href="#">Open the engine ↗</a>
+    </div>
+  </footer>
+
+</div>
+
+</body>
+</html>
