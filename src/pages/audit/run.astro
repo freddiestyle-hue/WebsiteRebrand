@@ -1,0 +1,263 @@
+---
+export const prerender = false;
+import { runAudit, rankedRecommendations, type AuditResult } from '../../utils/audit/engine';
+
+const rawUrl = Astro.url.searchParams.get('url') || '';
+let result: AuditResult | null = null;
+let runError: string | null = null;
+
+if (rawUrl.trim()) {
+  try {
+    result = await runAudit(rawUrl);
+  } catch (e) {
+    runError = e instanceof Error ? e.message : String(e);
+  }
+} else {
+  runError = 'No URL provided. Go back to /audit and paste a URL to audit.';
+}
+
+const fmtDate = (iso: string) => {
+  const d = new Date(iso);
+  const yyyy = d.getUTCFullYear();
+  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(d.getUTCDate()).padStart(2, '0');
+  return `${yyyy}·${mm}·${dd}`;
+};
+
+const auditId = result
+  ? Math.abs([...result.url].reduce((a, c) => (a * 31 + c.charCodeAt(0)) | 0, 0)).toString(36).slice(0, 8)
+  : '';
+
+const recommendations = result ? rankedRecommendations(result) : [];
+
+const tldrSentences = result && !result.error
+  ? buildTldr(result)
+  : [];
+
+function gradeClass(grade: string): string {
+  if (grade === 'A' || grade === 'B') return 'good';
+  if (grade === 'C') return 'warn';
+  if (grade === 'D' || grade === 'F') return 'bad';
+  return '';
+}
+
+function buildTldr(r: AuditResult): string[] {
+  const out: string[] = [];
+  const passedHigh = r.checks.filter((c) => c.passed && c.weight >= 2);
+  const failedHigh = r.checks.filter((c) => !c.passed && c.weight >= 2);
+  const crawlPassed = r.verdict.crawl.passed / Math.max(1, r.verdict.crawl.total);
+  const schemaPassed = r.verdict.schema.passed / Math.max(1, r.verdict.schema.total);
+  const aeoPassed = r.verdict.aeo.passed / Math.max(1, r.verdict.aeo.total);
+
+  if (crawlPassed >= 0.8) {
+    out.push(`The site is crawlable. Sitemap and robots are doing their job.`);
+  } else if (crawlPassed >= 0.4) {
+    out.push(`Crawlability is partial. Search engines can find some of the site, not all of it.`);
+  } else {
+    out.push(`Crawlability is broken. Most pages are invisible to search engines and AI crawlers.`);
+  }
+
+  if (aeoPassed >= 0.8) {
+    out.push(`AEO surfaces are in place. AI engines can discover and read the content.`);
+  } else if (aeoPassed >= 0.4) {
+    out.push(`AEO surfaces are partial. AI engines can find some content but not all of it.`);
+  } else {
+    out.push(`AEO surfaces are missing. AI agents pulling from the domain hit 404s where they expect content indexes.`);
+  }
+
+  if (failedHigh.length > 0) {
+    const topThree = failedHigh.slice(0, 3).map((c) => c.label.toLowerCase()).join(', ');
+    out.push(`Three fixes carry most of the weight: ${topThree}.`);
+  } else if (passedHigh.length === r.checks.filter((c) => c.weight >= 2).length) {
+    out.push(`The site is in good shape on every high-weight check. Maintain, don't rebuild.`);
+  }
+
+  return out;
+}
+---
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Visibility memo · {result?.hostname || 'audit'} · Rivett</title>
+<meta name="robots" content="noindex,nofollow" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&family=Newsreader:ital,wght@0,400;0,500;1,400;1,500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/audit/memo.css" />
+</head>
+<body>
+
+<div class="page">
+  <nav class="top">
+    <div class="l"><span class="dot"></span> <a href="/audit" class="wm">rivett<span class="d"></span></a> <b>· Visibility Engine</b></div>
+    <div class="r">
+      <span>Memo · {result ? fmtDate(result.fetchedAt) : ''}</span>
+      <span>id {auditId || '—'}</span>
+    </div>
+  </nav>
+
+  <div class="crumb">
+    <a href="/audit">↑ Audit index</a>
+    <span class="sep">/</span>
+    <span>r/{auditId || 'error'}</span>
+    {result && !result.error && (
+      <>
+        <span class="sep">/</span>
+        <span>{result.durationMs}ms scan</span>
+      </>
+    )}
+  </div>
+
+  {runError && (
+    <header class="cover">
+      <div class="kicker">audit memo · error</div>
+      <h1 class="cv">We could not audit this URL. <span class="ital">Here is what stopped us.</span></h1>
+      <div class="cv-sub">
+        <p class="lede">{runError}</p>
+        <div class="cv-meta">
+          <div>URL submitted<b>{rawUrl || '—'}</b></div>
+          <div>Status<b>Audit not run</b></div>
+        </div>
+      </div>
+    </header>
+  )}
+
+  {result && !runError && result.error && (
+    <header class="cover">
+      <div class="kicker">audit memo · could not complete</div>
+      <h1 class="cv">{result.bandLabel}. <span class="ital">{result.bandKicker}</span></h1>
+      <div class="cv-sub">
+        <p class="lede">{result.error}</p>
+        <div class="cv-meta">
+          <div>URL submitted<b>{result.url}</b></div>
+          <div>Date<b>{fmtDate(result.fetchedAt)}</b></div>
+        </div>
+      </div>
+    </header>
+  )}
+
+  {result && !result.error && (
+    <>
+      <header class="cover">
+        <div class="kicker">audit memo · {result.hostname}</div>
+        <h1 class="cv">{result.bandLabel}. <span class="ital">{result.bandKicker}</span></h1>
+        <div class="cv-sub">
+          <p class="lede">An external read of <em>{result.hostname}</em>, scored against the eleven checks that govern how AI engines and Google find, parse, and cite a content site today.</p>
+          <div class="cv-meta">
+            <div>URL audited<b>{result.hostname}</b></div>
+            <div>Date<b>{fmtDate(result.fetchedAt)}</b></div>
+            <div>Audit ID<b>{auditId}</b></div>
+            <div>Verdict<b>{result.scorePercent}/100 · {result.bandLabel}</b></div>
+          </div>
+        </div>
+      </header>
+
+      {tldrSentences.length > 0 && (
+        <div class="tldr">
+          <div class="lab">TL;DR</div>
+          <div class="body">
+            {tldrSentences.map((s) => <p>{s}</p>)}
+          </div>
+        </div>
+      )}
+
+      <div class="verdict">
+        <div class="v">
+          <div class="k">Crawlability</div>
+          <div class={`grade ${gradeClass(result.verdict.crawl.grade)}`}>{result.verdict.crawl.grade}</div>
+          <div class="n">{result.verdict.crawl.passed} of {result.verdict.crawl.total} passed</div>
+        </div>
+        <div class="v">
+          <div class="k">Structured data</div>
+          <div class={`grade ${gradeClass(result.verdict.schema.grade)}`}>{result.verdict.schema.grade}</div>
+          <div class="n">{result.verdict.schema.passed} of {result.verdict.schema.total} passed</div>
+        </div>
+        <div class="v">
+          <div class="k">AEO surfaces</div>
+          <div class={`grade ${gradeClass(result.verdict.aeo.grade)}`}>{result.verdict.aeo.grade}</div>
+          <div class="n">{result.verdict.aeo.passed} of {result.verdict.aeo.total} passed</div>
+        </div>
+        <div class="v">
+          <div class="k">Send-readiness</div>
+          <div class={`grade ${gradeClass(result.verdict.sendReady.grade)}`}>{result.verdict.sendReady.grade}</div>
+          <div class="n">{result.verdict.sendReady.passed} of {result.verdict.sendReady.total} passed</div>
+        </div>
+      </div>
+
+      <section>
+        <div class="sec-head">
+          <div class="num">01 · Crawlability</div>
+          <div>
+            <h2>Can search engines walk the site at all? <span class="ital">Sitemap, robots, canonicals.</span></h2>
+          </div>
+        </div>
+        {result.checks.filter((c) => c.category === 'crawl').map((c) => (
+          <p class="body" style={c.passed ? '' : 'color:var(--ink)'}>
+            <strong>{c.passed ? '✓ ' : '× '}{c.label}.</strong> {c.finding}
+          </p>
+        ))}
+      </section>
+
+      <section>
+        <div class="sec-head">
+          <div class="num">02 · Structured data + meta</div>
+          <div>
+            <h2>What AI engines can tell you are, what you do, who wrote it. <span class="ital">Or what they cannot.</span></h2>
+          </div>
+        </div>
+        {result.checks.filter((c) => c.category === 'schema' || c.category === 'meta').map((c) => (
+          <p class="body">
+            <strong>{c.passed ? '✓ ' : '× '}{c.label}.</strong> {c.finding}
+          </p>
+        ))}
+      </section>
+
+      <section>
+        <div class="sec-head">
+          <div class="num">03 · AEO surfaces + send-readiness</div>
+          <div>
+            <h2>Whether AI engines can find your content. <span class="ital">And whether a cold prospect can act on it.</span></h2>
+          </div>
+        </div>
+        {result.checks.filter((c) => c.category === 'aeo').map((c) => (
+          <p class="body">
+            <strong>{c.passed ? '✓ ' : '× '}{c.label}.</strong> {c.finding}
+          </p>
+        ))}
+      </section>
+
+      {recommendations.length > 0 && (
+        <section>
+          <div class="sec-head">
+            <div class="num">04 · Ranked recommendations</div>
+            <div>
+              <h2>If you fix {recommendations.length === 1 ? 'one thing' : `${recommendations.length} things`} this week. <span class="ital">Fix {recommendations.length === 1 ? 'this' : 'these'}, in order.</span></h2>
+            </div>
+          </div>
+          <div class="recs">
+            {recommendations.map(({ priority, check }) => (
+              <div class="find">
+                <div class="rank">0{priority}</div>
+                <div class="desc">
+                  <div class="name">{check.label}</div>
+                  <p class="body" style="margin-top:8px">{check.finding}</p>
+                </div>
+                <div class="pri">+{check.weight} pts</div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <footer style="padding:80px 0 32px;font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint);border-top:1px solid var(--line)">
+        <p style="margin:0 0 6px">— FS, audit.rivett.tech · {fmtDate(result.fetchedAt)}</p>
+        <p style="margin:0">Audit ran 11 checks against {result.hostname} in {result.durationMs}ms. <a href="/audit" style="color:var(--bad);border-bottom:1px solid var(--bad)">Run another →</a></p>
+      </footer>
+    </>
+  )}
+</div>
+
+</body>
+</html>

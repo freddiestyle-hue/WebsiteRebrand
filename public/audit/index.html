@@ -138,23 +138,25 @@ footer.foot .wm .dot{display:inline-block;width:0.32em;height:0.32em;border-radi
     <p class="dek">Fifteen checks against your domain. Sitemap, schema, <em>llms.txt</em>, AEO surfaces. Sixty seconds. A memo, not a score, telling you how ChatGPT, Perplexity, Claude, and Gemini read your site today. <em>And whether they read it at all.</em></p>
 
     <div class="form-wrap">
-      <form class="audit" onsubmit="event.preventDefault();return false">
+      <form class="audit" action="/audit/run" method="get">
         <div class="field">
           <span class="prefix">https://</span>
-          <input type="text" placeholder="yourdomain.com" value="bossfueltrailers.com" autocomplete="off" spellcheck="false"/>
+          <input type="text" name="url" placeholder="yourdomain.com" autocomplete="off" spellcheck="false" required />
         </div>
         <button type="submit" class="submit">Run audit <span class="arrow"></span></button>
       </form>
       <div class="tag-line">
-        <span><span class="dot"></span>15 checks</span>
+        <span><span class="dot"></span>11 checks</span>
         <span class="sep">·</span>
-        <span>60-second scan</span>
+        <span>~5-second scan</span>
         <span class="sep">·</span>
         <span>Open source engine</span>
       </div>
       <div class="sample-row">
-        <span>Or read a sample memo run on</span>
-        <a href="/audit/memo-a.html">rivett.tech</a>
+        <span>Or try it on</span>
+        <a href="/audit/run?url=rivett.tech">rivett.tech</a>
+        <span class="sep">·</span>
+        <a href="/audit/memo-a.html">read a static sample</a>
       </div>
     </div>
   </header>
