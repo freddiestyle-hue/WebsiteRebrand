@@ -120,31 +120,25 @@ function beforeAfter(c: CheckResult): { before: string; after: string; beforeNot
       beforeNote: 'AI agents (Claude, ChatGPT, Perplexity) pulling from the domain hit a 404 where they expect a content index.',
       afterNote: 'Single biggest AEO signal you can ship in an hour. Public spec at llmstxt.org.',
     },
-    'llms-full-txt': {
+    'llms-full': {
       before: 'No <code>/llms-full.txt</code> at the root.',
       after: 'Ship <code>/llms-full.txt</code> with the full markdown body of every post.',
       beforeNote: 'Bulk-readable corpus is missing. AI crawlers fall back to scraping HTML one URL at a time.',
       afterNote: 'Perplexity\'s crawler and Claude\'s web fetch tool both prefer this when it exists.',
     },
-    'schema-article': {
-      before: 'No <em>Article</em> JSON-LD on content pages.',
-      after: 'Emit <code>&lt;script type="application/ld+json"&gt;</code> with Article schema on every post.',
-      beforeNote: 'AI engines guess at authorship and topic from raw HTML.',
-      afterNote: 'Validates green in Google\'s Rich Results test. Enables author/dateline attribution in citations.',
-    },
-    'schema-organization': {
-      before: 'No <em>Organization</em> JSON-LD sitewide.',
+    'org-schema': {
+      before: 'No <em>Organization</em> JSON-LD on the homepage.',
       after: 'Add Organization schema once in the base layout.',
       beforeNote: 'AI engines cannot resolve who you are or link your brand to a stable identity.',
       afterNote: 'Single edit to one file. Enables sameAs identity (LinkedIn, GitHub) in AI citations.',
     },
-    'schema-website': {
+    'website-schema': {
       before: 'No <em>WebSite</em> JSON-LD on the homepage.',
       after: 'Add WebSite schema with name + url + publisher.',
       beforeNote: 'Search engines cannot construct a sitelinks search box.',
       afterNote: 'Three lines of JSON. Improves SERP appearance.',
     },
-    'sitemap-found': {
+    'sitemap': {
       before: 'No reachable sitemap at <code>/sitemap.xml</code>.',
       after: 'Generate a sitemap at build time and link from robots.txt.',
       beforeNote: 'Search engines discover URLs only via internal links. Most pages stay invisible.',
@@ -156,10 +150,10 @@ function beforeAfter(c: CheckResult): { before: string; after: string; beforeNot
       beforeNote: 'Below the threshold that signals an actively-published site.',
       afterNote: 'Add content URLs or expand the index to cover the full archive.',
     },
-    'robots-ok': {
-      before: 'robots.txt blocks one or more AI crawlers.',
-      after: 'Remove the blanket block; allow GPTBot, Claude-Web, PerplexityBot, Google-Extended.',
-      beforeNote: 'Common default. Most AI engines respect robots.txt and silently skip the site.',
+    'robots': {
+      before: 'robots.txt is missing or blocks AI crawlers.',
+      after: 'Ship robots.txt that allows GPTBot, Claude-Web, PerplexityBot, Google-Extended.',
+      beforeNote: 'Most AI engines respect robots.txt and silently skip the site when it 404s or denies.',
       afterNote: 'If you want citations, the bots need to read the pages.',
     },
     'robots-sitemap': {
@@ -168,7 +162,7 @@ function beforeAfter(c: CheckResult): { before: string; after: string; beforeNot
       beforeNote: 'Crawlers that hit robots.txt first do not find the sitemap.',
       afterNote: 'One line. Five seconds.',
     },
-    'og-type-set': {
+    'og-type': {
       before: 'og:type is missing or wrong (often "website" on blog posts).',
       after: 'Set <code>og:type</code> to <em>article</em> on posts, <em>website</em> on the homepage.',
       beforeNote: 'Link previews render generically. LinkedIn/Slack/iMessage treat the page as a homepage.',
@@ -185,6 +179,18 @@ function beforeAfter(c: CheckResult): { before: string; after: string; beforeNot
       after: 'Add <code>&lt;link rel="canonical" href="https://yourdomain.com/"&gt;</code>.',
       beforeNote: 'Crawlers cannot identify the authoritative URL when there are mirrors or query strings.',
       afterNote: 'One line. Disambiguates trailing-slash variants.',
+    },
+    'contact-cta': {
+      before: 'No visible contact or scheduling link on the homepage.',
+      after: 'Surface a tel: link, a Calendly/Cal.com slot, or a mailto in the hero or nav.',
+      beforeNote: 'A cold prospect from a DM has to hunt for how to reach you. Most bounce.',
+      afterNote: 'Five minutes. Eliminates the highest-friction step in your funnel.',
+    },
+    'trust-signal': {
+      before: 'No client logos, no press, no named testimonials above the fold.',
+      after: 'Add three named client logos or a single named-quote pull in the hero.',
+      beforeNote: 'A hero that is all claim and no proof reads as low-credibility to skeptical operators.',
+      afterNote: 'One row of logos beats a paragraph of adjectives. Even one quote is worth more than the bio.',
     },
   };
   return fixes[id] || null;
@@ -484,7 +490,7 @@ const contextLine = result && !result.error ? cohortContext(result.scorePercent)
           <p>I ran this audit on <em>{result.hostname}</em> in {(result.durationMs / 1000).toFixed(1)} seconds. The fixes above are the work I do for operators in your range. Most of them take me about three to six hours end-to-end.</p>
           <p>If you want it done, reply to this URL with your calendar — or book direct below. <strong>If you want to think about it</strong>, send the URL to whoever runs your site and tell them to fix the P0s. Either way, the diagnosis is yours to keep.</p>
           <div class="actions">
-            <a class="btn btn--inv" href="mailto:freddiestyle@gmail.com?subject=Visibility%20audit%20follow-up%20-%20{result.hostname}&body=Saw%20the%20audit%20at%20rivett.tech.%20Open%20to%20a%20call.">Email Fred →</a>
+            <a class="btn btn--inv" href={`mailto:freddiestyle@gmail.com?subject=${encodeURIComponent(`Visibility audit follow-up · ${result.hostname}`)}&body=${encodeURIComponent(`Saw the audit at rivett.tech/audit/run?url=${result.hostname} (id ${auditId}). Open to a call.`)}`}>Email Fred →</a>
             <a class="btn" href="https://www.linkedin.com/in/fredstyle/" target="_blank" rel="noopener">LinkedIn DM →</a>
           </div>
           <div class="sig"><b>Fred Style · Rivett</b>Senior practice for US operators · audit.rivett.tech</div>
