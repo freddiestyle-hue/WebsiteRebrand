@@ -1,0 +1,620 @@
+---
+export const prerender = false;
+import { Redis } from '@upstash/redis';
+import PostHog from '../../../components/PostHog.astro';
+import {
+  MemoSchema,
+  type Memo,
+  type MemoSection,
+  severityClass,
+  fmtMs,
+  fmtInt,
+} from '../../../utils/audit/memo-schema';
+import { sanitizeMemoHtml } from '../../../utils/audit/safe-html';
+import { isValidSlug } from '../../../utils/audit/slug';
+
+const slug = Astro.params.slug ?? '';
+
+let memo: Memo | null = null;
+let error: string | null = null;
+let statusCode: 200 | 404 | 500 = 200;
+
+if (!isValidSlug(slug)) {
+  statusCode = 404;
+  error = 'Memo not found.';
+} else {
+  try {
+    const redis = Redis.fromEnv();
+    const raw = await redis.get<unknown>(`memo:${slug}`);
+    if (raw == null) {
+      statusCode = 404;
+      error = 'Memo not found.';
+    } else {
+      const payload = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      const parsed = MemoSchema.safeParse(payload);
+      if (!parsed.success) {
+        statusCode = 500;
+        error = 'Memo schema validation failed.';
+        console.error('[audit/p] schema validation failed', parsed.error.flatten());
+      } else if (parsed.data.slug !== slug) {
+        // Defense in depth: a stale or mis-keyed write could leave a memo
+        // under a different slug than the one it claims internally. Refuse
+        // to render and 404, otherwise prospect A could see prospect B's
+        // memo if a slug collision or KV write race ever happens.
+        statusCode = 404;
+        error = 'Memo not found.';
+        console.error('[audit/p] slug mismatch', { urlSlug: slug, payloadSlug: parsed.data.slug });
+      } else {
+        memo = parsed.data;
+      }
+    }
+  } catch (e) {
+    statusCode = 500;
+    error = e instanceof Error ? e.message : String(e);
+    console.error('[audit/p] KV fetch failed', e);
+  }
+}
+
+Astro.response.status = statusCode;
+
+const fmtDate = (iso: string): string => {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  const yyyy = d.getUTCFullYear();
+  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(d.getUTCDate()).padStart(2, '0');
+  return `${yyyy}·${mm}·${dd}`;
+};
+
+const coreSections: Array<{ id: string; defaultNum: string; section: MemoSection }> = memo
+  ? [
+      { id: 'aeo', defaultNum: '01 · How AI engines see you', section: memo.aeo },
+      { id: 'tracking', defaultNum: '03 · Measurement and tracking', section: memo.tracking },
+      { id: 'conversion', defaultNum: '04 · How visitors convert', section: memo.conversion },
+      { id: 'adActivity', defaultNum: '05 · Ads you are running', section: memo.adActivity },
+    ]
+  : [];
+
+const pageTitle = memo
+  ? `Teardown memo · ${memo.domain} · Rivett`
+  : 'Memo not found · Rivett';
+
+const perfBandClass = (band?: string): string => {
+  if (band === 'good') return 'perf-band perf-band--good';
+  if (band === 'needs-improvement') return 'perf-band perf-band--warn';
+  if (band === 'poor') return 'perf-band perf-band--bad';
+  return 'perf-band';
+};
+---
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>{pageTitle}</title>
+<meta name="robots" content="noindex,nofollow" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&family=Newsreader:ital,wght@0,400;0,500;1,400;1,500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/audit/memo.css" />
+<PostHog capturePageview={true} />
+<style>
+  /* Mode 2 additions. Lives here, not memo.css, to keep run.astro untouched. */
+  .benchmark-line{margin-top:24px;font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint);display:flex;flex-wrap:wrap;gap:20px;align-items:baseline}
+  .benchmark-line b{color:var(--ink);font-family:var(--grotesk);font-weight:700;font-size:18px;letter-spacing:-0.01em;text-transform:none;margin-left:8px}
+  .benchmark-line .delta{font-family:var(--grotesk);font-size:14px;letter-spacing:-0.005em;text-transform:none;color:var(--ink-dim)}
+  .benchmark-oneliner{margin-top:18px;font-family:var(--serif);font-style:italic;font-size:18px;line-height:1.5;color:var(--ink);max-width:680px}
+  .screenshot-frame{margin:48px 0;border:1px solid var(--line-strong);background:var(--paper-2);padding:0;overflow:hidden;display:grid;gap:0}
+  .screenshot-frame img{width:100%;height:auto;display:block;border-bottom:1px solid var(--line)}
+  .screenshot-frame .meta{padding:14px 18px;font-family:var(--mono);font-size:10.5px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint);display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
+  .screenshot-frame .meta b{color:var(--ink);font-weight:500}
+  .perf-grid{margin-top:32px;display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));border:1px solid var(--ink);background:var(--paper)}
+  .perf-cell{padding:20px;border-right:1px solid var(--ink)}
+  .perf-cell:last-child{border-right:0}
+  @media (max-width:780px){.perf-cell{border-right:0;border-bottom:1px solid var(--ink)}.perf-cell:last-child{border-bottom:0}}
+  .perf-cell .k{font-family:var(--mono);font-size:10px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:8px}
+  .perf-cell .v{font-family:var(--grotesk);font-weight:700;font-size:32px;letter-spacing:-0.03em;color:var(--ink);line-height:1}
+  .perf-band{display:inline-block;margin-top:8px;padding:3px 8px;font-family:var(--mono);font-size:9px;letter-spacing:0.18em;text-transform:uppercase;border:1px solid var(--ink-faint);color:var(--ink-faint)}
+  .perf-band--good{border-color:var(--accent-deep);color:var(--accent-deep)}
+  .perf-band--warn{border-color:var(--ink);color:var(--ink)}
+  .perf-band--bad{border-color:var(--ink);color:var(--ink);background:var(--ink);color:var(--paper)}
+  .perf-platform{font-family:var(--mono);font-size:10.5px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint);margin:24px 0 6px}
+  .lp-card{margin-top:32px;border:1px solid var(--ink);padding:24px;background:var(--paper)}
+  .lp-card + .lp-card{margin-top:18px}
+  .lp-card .lp-head{display:flex;justify-content:space-between;flex-wrap:wrap;gap:14px;align-items:baseline;margin-bottom:18px}
+  .lp-card .lp-url{font-family:var(--mono);font-size:13px;color:var(--ink);word-break:break-all}
+  .lp-card .lp-meta{font-family:var(--mono);font-size:10.5px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint)}
+  .lp-card img{width:100%;height:auto;display:block;border:1px solid var(--line);margin-bottom:16px}
+  .lp-card ul{margin:8px 0 0;padding-left:18px;font-family:var(--grotesk);font-size:14.5px;line-height:1.55;color:var(--ink-dim)}
+  .lp-card .drift{margin-top:16px;padding:14px 18px;border-left:3px solid var(--accent);background:var(--paper-2);font-family:var(--grotesk);font-size:14.5px;line-height:1.55;color:var(--ink)}
+  .keyword-table{margin-top:24px;border-top:2px solid var(--ink)}
+  .keyword-table .row{display:grid;grid-template-columns:1fr 80px 100px;gap:18px;padding:14px 0;border-bottom:1px solid var(--line);align-items:baseline}
+  .keyword-table .row .k{font-family:var(--grotesk);font-size:15px;color:var(--ink)}
+  .keyword-table .row .pos,.keyword-table .row .vol{font-family:var(--mono);font-size:12px;color:var(--ink-faint);text-align:right}
+  .keyword-table .row .pos b,.keyword-table .row .vol b{display:block;color:var(--ink);font-family:var(--grotesk);font-weight:600;font-size:15px;letter-spacing:-0.01em;margin-top:2px}
+  .citation-probe{margin-top:18px;padding:18px;border:1px solid var(--line-strong);background:var(--paper)}
+  .citation-probe .q{font-family:var(--mono);font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:6px}
+  .citation-probe .q b{color:var(--ink);font-family:var(--grotesk);font-weight:600;font-size:15px;letter-spacing:-0.005em;text-transform:none;margin-left:8px}
+  .citation-probe .result{font-family:var(--grotesk);font-size:16px;line-height:1.55;color:var(--ink-dim);margin:6px 0 0}
+  .citation-probe .result em{font-family:var(--serif);font-style:italic;color:var(--ink)}
+  .citation-probe.cited{border-left:3px solid var(--accent-deep)}
+  .citation-probe.notcited{border-left:3px solid var(--ink)}
+</style>
+</head>
+<body>
+
+<div class="page">
+  <nav class="top">
+    <div class="l"><a href="/audit" class="wordmark" aria-label="Rivett, audit index">rivett<span class="dot-mark" aria-hidden="true"></span></a> <b>· Teardown memo</b></div>
+    <div class="r">
+      <span>By <a href="https://www.linkedin.com/in/fredstyle/" style="color:var(--ink);font-weight:500" target="_blank" rel="noopener">Fred Style</a></span>
+      {memo && <span>{fmtDate(memo.generatedAt)}</span>}
+      <span>id {slug || 'n/a'}</span>
+    </div>
+  </nav>
+
+  <div class="crumb">
+    <a href="/audit">↑ Audit index</a>
+    <span class="sep">/</span>
+    <span>p/{slug || 'error'}</span>
+    {memo && (
+      <>
+        <span class="sep">/</span>
+        <span>pre-baked</span>
+      </>
+    )}
+  </div>
+
+  {!memo && (
+    <header class="cover">
+      <div class="kicker">teardown memo · {statusCode === 404 ? 'not found' : 'unavailable'}</div>
+      <h1 class="cv">
+        {statusCode === 404 ? 'No memo lives at this URL.' : 'We could not load this memo.'}
+        {' '}
+        <span class="ital">{statusCode === 404 ? 'It may have been removed or never existed.' : 'Something went wrong on our side.'}</span>
+      </h1>
+      <div class="cv-sub">
+        <p class="lede">{error}</p>
+        <div class="cv-meta">
+          <div>Slug<b>{slug || 'n/a'}</b></div>
+          <div>Status<b>{statusCode}</b></div>
+        </div>
+      </div>
+    </header>
+  )}
+
+  {memo && (
+    <>
+      <header class="cover">
+        <div class="kicker">{memo.cover.kicker}</div>
+        <h1 class="cv">
+          {memo.cover.roman}
+          {memo.cover.italic && <> <span class="ital">{memo.cover.italic}</span></>}
+        </h1>
+        {memo.cover.dek && <p class="cv-dek">{memo.cover.dek}</p>}
+
+        {memo.benchmark && (
+          <>
+            <div class="benchmark-line">
+              <span>Score<b>{memo.benchmark.scoreNumeric}{memo.benchmark.scoreMax && `/${memo.benchmark.scoreMax}`}</b></span>
+              <span>Industry median<b>{memo.benchmark.industryMedian}</b></span>
+              <span>Industry<b>{memo.benchmark.industryName}</b> <span class="delta">(n={memo.benchmark.industryN})</span></span>
+              {memo.benchmark.percentile != null && (
+                <span>Percentile<b>{Math.round(memo.benchmark.percentile)}</b></span>
+              )}
+            </div>
+            {memo.benchmark.oneLiner && (
+              <p class="benchmark-oneliner">{memo.benchmark.oneLiner}</p>
+            )}
+          </>
+        )}
+
+        <div class="cv-sub">
+          <div class="cv-meta">
+            <div>Domain<b>{memo.domain}</b></div>
+            {memo.companyName && <div>Company<b>{memo.companyName}</b></div>}
+            <div>Generated<b>{fmtDate(memo.generatedAt)}</b></div>
+          </div>
+        </div>
+      </header>
+
+      {memo.screenshots?.homepageDesktop && (
+        <div class="screenshot-frame">
+          <img src={memo.screenshots.homepageDesktop} alt={`${memo.domain} homepage (desktop)`} loading="lazy" />
+          <div class="meta">
+            <span>Homepage<b>{memo.domain}</b></span>
+            {memo.screenshots.capturedAt && <span>Captured<b>{fmtDate(memo.screenshots.capturedAt)}</b></span>}
+            {memo.screenshots.source && <span>Source<b>{memo.screenshots.source}</b></span>}
+          </div>
+        </div>
+      )}
+
+      {/* AEO section */}
+      <section id="aeo" class="sec">
+        <div class="sec-head">
+          <div class="num">{memo.aeo.num ?? '01 · AEO surfaces'}</div>
+          <div>
+            <h2>
+              {memo.aeo.heading}
+              {memo.aeo.italic && <> <span class="ital">{memo.aeo.italic}</span></>}
+            </h2>
+            {memo.aeo.dek && <p class="dek">{memo.aeo.dek}</p>}
+          </div>
+        </div>
+        {memo.aeo.bodyParagraphs.map((p) => (<p class="body" set:html={sanitizeMemoHtml(p)} />))}
+        {memo.aeo.findings.length > 0 && (
+          <div class="findings">
+            {memo.aeo.findings.map((finding, i) => (
+              <div class="find">
+                <div class="idx">{finding.idx ?? `F.01.${i + 1}`}</div>
+                <div class={severityClass(finding.severity)}>{finding.severityLabel ?? finding.severity ?? ''}</div>
+                <div class="b">
+                  <h4>{finding.heading}{finding.italic && <> <em>{finding.italic}</em></>}</h4>
+                  {finding.paragraphs.map((p) => (<p set:html={sanitizeMemoHtml(p)} />))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Performance section (T2.3, optional) */}
+      {memo.performance && (memo.performance.mobile || memo.performance.desktop) && (
+        <section id="performance" class="sec">
+          <div class="sec-head">
+            <div class="num">02 · How fast the site loads</div>
+            <div>
+              <h2>Page speed. <span class="ital">Every second of delay drops ad conversion roughly seven percent.</span></h2>
+              {memo.performance.commentary && <p class="dek">{memo.performance.commentary}</p>}
+            </div>
+          </div>
+
+          {memo.performance.mobile && (
+            <>
+              <div class="perf-platform">Mobile</div>
+              <div class="perf-grid">
+                {memo.performance.mobile.lcpMs != null && (
+                  <div class="perf-cell"><div class="k">Time to load</div><div class="v">{fmtMs(memo.performance.mobile.lcpMs)}</div></div>
+                )}
+                {memo.performance.mobile.inpMs != null && (
+                  <div class="perf-cell"><div class="k">Tap responsiveness</div><div class="v">{fmtMs(memo.performance.mobile.inpMs)}</div></div>
+                )}
+                {memo.performance.mobile.cls != null && (
+                  <div class="perf-cell"><div class="k">Layout stability</div><div class="v">{memo.performance.mobile.cls.toFixed(2)}</div></div>
+                )}
+                {memo.performance.mobile.fcpMs != null && (
+                  <div class="perf-cell"><div class="k">First visible content</div><div class="v">{fmtMs(memo.performance.mobile.fcpMs)}</div></div>
+                )}
+                {memo.performance.mobile.performanceScore != null && (
+                  <div class="perf-cell"><div class="k">Overall score</div><div class="v">{Math.round(memo.performance.mobile.performanceScore)}</div><div class={perfBandClass(memo.performance.mobile.band)}>{memo.performance.mobile.band ?? ''}</div></div>
+                )}
+              </div>
+            </>
+          )}
+
+          {memo.performance.desktop && (
+            <>
+              <div class="perf-platform">Desktop</div>
+              <div class="perf-grid">
+                {memo.performance.desktop.lcpMs != null && (
+                  <div class="perf-cell"><div class="k">Time to load</div><div class="v">{fmtMs(memo.performance.desktop.lcpMs)}</div></div>
+                )}
+                {memo.performance.desktop.inpMs != null && (
+                  <div class="perf-cell"><div class="k">Tap responsiveness</div><div class="v">{fmtMs(memo.performance.desktop.inpMs)}</div></div>
+                )}
+                {memo.performance.desktop.cls != null && (
+                  <div class="perf-cell"><div class="k">Layout stability</div><div class="v">{memo.performance.desktop.cls.toFixed(2)}</div></div>
+                )}
+                {memo.performance.desktop.fcpMs != null && (
+                  <div class="perf-cell"><div class="k">First visible content</div><div class="v">{fmtMs(memo.performance.desktop.fcpMs)}</div></div>
+                )}
+                {memo.performance.desktop.performanceScore != null && (
+                  <div class="perf-cell"><div class="k">Overall score</div><div class="v">{Math.round(memo.performance.desktop.performanceScore)}</div><div class={perfBandClass(memo.performance.desktop.band)}>{memo.performance.desktop.band ?? ''}</div></div>
+                )}
+              </div>
+            </>
+          )}
+        </section>
+      )}
+
+      {/* Mobile rendering (T3.6, optional) */}
+      {memo.mobileRendering && (memo.mobileRendering.hasHorizontalScroll != null || memo.mobileRendering.smallestTapTargetPx != null || memo.mobileRendering.textTooSmall != null) && (
+        <section id="mobile" class="sec">
+          <div class="sec-head">
+            <div class="num">Mobile experience</div>
+            <div>
+              <h2>How the site behaves on a phone. <span class="ital">Where most of your paid traffic actually lands.</span></h2>
+              {memo.mobileRendering.viewport && <p class="dek">Tested at {memo.mobileRendering.viewport} (typical phone screen).</p>}
+            </div>
+          </div>
+          {memo.mobileRendering.screenshot && (
+            <div class="screenshot-frame" style="max-width: 420px">
+              <img src={memo.mobileRendering.screenshot} alt={`${memo.domain} on mobile`} loading="lazy" />
+              <div class="meta"><span>Phone view<b>{memo.mobileRendering.viewport ?? 'mobile'}</b></span></div>
+            </div>
+          )}
+          <div class="perf-grid">
+            {memo.mobileRendering.hasHorizontalScroll != null && (
+              <div class="perf-cell">
+                <div class="k">Page fits the screen</div>
+                <div class="v">{memo.mobileRendering.hasHorizontalScroll ? 'No' : 'Yes'}</div>
+                <div class={memo.mobileRendering.hasHorizontalScroll ? 'perf-band perf-band--bad' : 'perf-band perf-band--good'}>
+                  {memo.mobileRendering.hasHorizontalScroll ? 'Visitors swipe sideways' : 'Clean'}
+                </div>
+              </div>
+            )}
+            {memo.mobileRendering.smallestTapTargetPx != null && (
+              <div class="perf-cell">
+                <div class="k">Smallest button or link</div>
+                <div class="v">{Math.round(memo.mobileRendering.smallestTapTargetPx)}px</div>
+                <div class={memo.mobileRendering.smallestTapTargetPx < 44 ? 'perf-band perf-band--bad' : 'perf-band perf-band--good'}>
+                  {memo.mobileRendering.smallestTapTargetPx < 44 ? 'Fat-finger misses' : 'Easy to tap'}
+                </div>
+              </div>
+            )}
+            {memo.mobileRendering.textTooSmall != null && (
+              <div class="perf-cell">
+                <div class="k">Text size</div>
+                <div class="v">{memo.mobileRendering.textTooSmall ? 'Tiny' : 'OK'}</div>
+                <div class={memo.mobileRendering.textTooSmall ? 'perf-band perf-band--bad' : 'perf-band perf-band--good'}>
+                  {memo.mobileRendering.textTooSmall ? 'Hard to read' : 'Readable'}
+                </div>
+              </div>
+            )}
+          </div>
+          {memo.mobileRendering.commentary && (
+            <p class="body" style="margin-top:24px">{memo.mobileRendering.commentary}</p>
+          )}
+        </section>
+      )}
+
+      {/* Tracking, Conversion, Ad activity (renumbered if performance present) */}
+      {coreSections.slice(1).map(({ id, defaultNum, section }) => (
+        <section id={id} class="sec">
+          <div class="sec-head">
+            <div class="num">{section.num ?? defaultNum}</div>
+            <div>
+              <h2>
+                {section.heading}
+                {section.italic && <> <span class="ital">{section.italic}</span></>}
+              </h2>
+              {section.dek && <p class="dek">{section.dek}</p>}
+            </div>
+          </div>
+          {section.bodyParagraphs.map((p) => (<p class="body" set:html={sanitizeMemoHtml(p)} />))}
+          {section.findings.length > 0 && (
+            <div class="findings">
+              {section.findings.map((finding, i) => (
+                <div class="find">
+                  <div class="idx">{finding.idx ?? `F.${i + 1}`}</div>
+                  <div class={severityClass(finding.severity)}>{finding.severityLabel ?? finding.severity ?? ''}</div>
+                  <div class="b">
+                    <h4>{finding.heading}{finding.italic && <> <em>{finding.italic}</em></>}</h4>
+                    {finding.paragraphs.map((p) => (<p set:html={sanitizeMemoHtml(p)} />))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Ad LPs render inside Ad activity section (T1.1) */}
+          {id === 'adActivity' && memo.adLandingPages.length > 0 && (
+            <>
+              <h3 style="margin-top:48px;font-family:var(--grotesk);font-weight:700;font-size:24px;letter-spacing:-0.025em;color:var(--ink)">Pages your ads send people to.</h3>
+              {memo.adLandingPages.map((lp) => (
+                <div class="lp-card">
+                  <div class="lp-head">
+                    <div class="lp-url">{lp.url}</div>
+                    <div class="lp-meta">
+                      {lp.platform && <span>{lp.platform.toUpperCase()}</span>}
+                      {lp.adsActive != null && <> · <span>{lp.adsActive} active ads</span></>}
+                      {lp.firstSeen && <> · <span>first seen {lp.firstSeen}</span></>}
+                    </div>
+                  </div>
+                  {lp.screenshotDesktop && (
+                    <img src={lp.screenshotDesktop} alt={`Ad landing page: ${lp.url}`} loading="lazy" />
+                  )}
+                  {lp.commentary && <p class="body" set:html={sanitizeMemoHtml(lp.commentary)} />}
+                  {lp.trackingFindings.length > 0 && (
+                    <>
+                      <div class="lp-meta" style="margin-top:14px">Measurement on this page</div>
+                      <ul>{lp.trackingFindings.map((f) => <li set:html={sanitizeMemoHtml(f)} />)}</ul>
+                    </>
+                  )}
+                  {lp.conversionFindings.length > 0 && (
+                    <>
+                      <div class="lp-meta" style="margin-top:14px">How visitors convert here</div>
+                      <ul>{lp.conversionFindings.map((f) => <li set:html={sanitizeMemoHtml(f)} />)}</ul>
+                    </>
+                  )}
+                  {lp.aeoFindings.length > 0 && (
+                    <>
+                      <div class="lp-meta" style="margin-top:14px">How AI engines see this page</div>
+                      <ul>{lp.aeoFindings.map((f) => <li set:html={sanitizeMemoHtml(f)} />)}</ul>
+                    </>
+                  )}
+                  {lp.driftFromHomepage && (
+                    <div class="drift">{lp.driftFromHomepage}</div>
+                  )}
+                </div>
+              ))}
+            </>
+          )}
+        </section>
+      ))}
+
+      {/* Organic traffic (T2.5, optional) */}
+      {memo.organicTraffic && (memo.organicTraffic.estimatedMonthlyVisits != null || memo.organicTraffic.topKeywords.length > 0) && (
+        <section id="organic-traffic" class="sec">
+          <div class="sec-head">
+            <div class="num">06 · Free traffic from Google</div>
+            <div>
+              <h2>What Google sends you for free. <span class="ital">And what it converts to.</span></h2>
+              {memo.organicTraffic.commentary && <p class="dek">{memo.organicTraffic.commentary}</p>}
+            </div>
+          </div>
+          <div class="perf-grid">
+            {memo.organicTraffic.estimatedMonthlyVisits != null && (
+              <div class="perf-cell"><div class="k">Visits per month</div><div class="v">{fmtInt(memo.organicTraffic.estimatedMonthlyVisits)}</div></div>
+            )}
+            {memo.organicTraffic.estimatedMonthlyValueUsd != null && (
+              <div class="perf-cell"><div class="k">Worth roughly</div><div class="v">${fmtInt(Math.round(memo.organicTraffic.estimatedMonthlyValueUsd))}/mo</div></div>
+            )}
+            {memo.organicTraffic.source && (
+              <div class="perf-cell"><div class="k">Source</div><div class="v" style="font-size:18px">{memo.organicTraffic.source}</div></div>
+            )}
+          </div>
+          {memo.organicTraffic.topKeywords.length > 0 && (
+            <div class="keyword-table">
+              {memo.organicTraffic.topKeywords.map((kw) => (
+                <div class="row">
+                  <div class="k">{kw.keyword}</div>
+                  <div class="pos">Rank<b>#{kw.position}</b></div>
+                  <div class="vol">Searches/mo<b>{kw.monthlyVolume != null ? fmtInt(kw.monthlyVolume) : 'n/a'}</b></div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* Email reputation (T3.7, optional) */}
+      {memo.emailDeliverability && (memo.emailDeliverability.spfPresent != null || memo.emailDeliverability.dmarcPresent != null || memo.emailDeliverability.mxPresent != null) && (
+        <section id="deliverability" class="sec">
+          <div class="sec-head">
+            <div class="num">Email reputation</div>
+            <div>
+              <h2>Whether your emails land in the inbox. <span class="ital">Or the spam folder.</span></h2>
+              {memo.emailDeliverability.commentary && <p class="dek">{memo.emailDeliverability.commentary}</p>}
+            </div>
+          </div>
+          <div class="perf-grid">
+            {memo.emailDeliverability.spfPresent != null && (
+              <div class="perf-cell">
+                <div class="k">Sender ID setup (SPF)</div>
+                <div class="v" style="font-size:22px">{memo.emailDeliverability.spfPresent ? 'Set up' : 'Missing'}</div>
+                <div class={memo.emailDeliverability.spfPresent && memo.emailDeliverability.spfPolicy && memo.emailDeliverability.spfPolicy.includes('-all') ? 'perf-band perf-band--good' : 'perf-band perf-band--warn'}>
+                  {memo.emailDeliverability.spfPresent ? 'Helps inbox placement' : 'Mail looks suspicious'}
+                </div>
+              </div>
+            )}
+            {memo.emailDeliverability.dmarcPresent != null && (
+              <div class="perf-cell">
+                <div class="k">Spoofing protection (DMARC)</div>
+                <div class="v" style="font-size:22px">{memo.emailDeliverability.dmarcPresent ? 'Set up' : 'Missing'}</div>
+                <div class={memo.emailDeliverability.dmarcPolicy === 'reject' || memo.emailDeliverability.dmarcPolicy === 'quarantine' ? 'perf-band perf-band--good' : 'perf-band perf-band--warn'}>
+                  {memo.emailDeliverability.dmarcPolicy === 'reject' || memo.emailDeliverability.dmarcPolicy === 'quarantine' ? 'Spoofed mail blocked' : memo.emailDeliverability.dmarcPresent ? 'Published but lenient' : 'Anyone can fake you'}
+                </div>
+              </div>
+            )}
+            {memo.emailDeliverability.mxPresent != null && (
+              <div class="perf-cell">
+                <div class="k">Mail provider</div>
+                <div class="v" style="font-size:22px">{memo.emailDeliverability.mxProvider ?? (memo.emailDeliverability.mxPresent ? 'unknown' : 'none')}</div>
+                <div class="perf-band">{memo.emailDeliverability.mxPresent ? 'Receiving mail' : 'No mail setup'}</div>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* When AI mentions you (T3.8, optional) */}
+      {memo.aiCitation && memo.aiCitation.probes.length > 0 && (
+        <section id="ai-citation" class="sec">
+          <div class="sec-head">
+            <div class="num">07 · When AI mentions you</div>
+            <div>
+              <h2>Do ChatGPT, Claude, and Perplexity name you. <span class="ital">When their users ask for what you sell.</span></h2>
+              {memo.aiCitation.summary && <p class="dek">{memo.aiCitation.summary}</p>}
+            </div>
+          </div>
+          {memo.aiCitation.probes.map((probe) => (
+            <div class={`citation-probe ${probe.cited ? 'cited' : 'notcited'}`}>
+              <div class="q">{probe.engine.toUpperCase()}<b>{probe.query}</b></div>
+              <p class="result">
+                {probe.cited
+                  ? <>Cited. <em>{probe.citationContext ?? ''}</em></>
+                  : <>Not cited. {probe.competitorsCited.length > 0 && <em>Cited instead: {probe.competitorsCited.join(', ')}</em>}</>
+                }
+              </p>
+              {probe.responseExcerpt && <p class="result" style="margin-top:10px;font-size:14px;color:var(--ink-faint)">{probe.responseExcerpt}</p>}
+            </div>
+          ))}
+        </section>
+      )}
+
+      {/* Personal observation */}
+      <section id="observation" class="sec">
+        <div class="sec-head">
+          <div class="num">08 · One last thing</div>
+          <div>
+            <h2>What I would do first.</h2>
+          </div>
+        </div>
+        <p class="body" set:html={sanitizeMemoHtml(memo.personalObservation.text)} />
+      </section>
+
+      <footer class="foot">
+        <span>This memo is an external read of public signals. Not a formal assessment.</span>
+        <span>rivett.tech · {fmtDate(memo.generatedAt)}</span>
+      </footer>
+    </>
+  )}
+</div>
+
+<script
+  is:inline
+  define:vars={{
+    slug,
+    statusCode,
+    memoMeta: memo
+      ? {
+          domain: memo.domain,
+          companyName: memo.companyName ?? null,
+          industry: memo.industry ?? null,
+          band: memo.band ?? null,
+          scoreNumeric: memo.scoreNumeric ?? null,
+          scorePercent: memo.scorePercent ?? null,
+          adsActive: memo.adLandingPages.reduce((s, lp) => s + (lp.adsActive ?? 0), 0),
+          hasBenchmark: memo.benchmark != null,
+          hasPerformance: memo.performance != null,
+          hasOrganicTraffic: memo.organicTraffic != null,
+          hasAiCitation: memo.aiCitation != null,
+          adLandingPageCount: memo.adLandingPages.length,
+        }
+      : null,
+  }}
+>
+  (function () {
+    function fire() {
+      if (typeof window.posthog === 'undefined') return;
+      if (statusCode !== 200 || !memoMeta) {
+        window.posthog.capture('memo_error', { slug: slug, status: statusCode });
+        return;
+      }
+      window.posthog.capture('memo_viewed', { slug: slug, ...memoMeta });
+      var sections = document.querySelectorAll('section.sec[id]');
+      if ('IntersectionObserver' in window) {
+        var seen = {};
+        var io = new IntersectionObserver(function (entries) {
+          entries.forEach(function (entry) {
+            if (!entry.isIntersecting) return;
+            var id = entry.target.id;
+            if (seen[id]) return;
+            seen[id] = true;
+            window.posthog.capture('memo_section_visible', { slug: slug, section: id });
+          });
+        }, { threshold: 0.35 });
+        sections.forEach(function (s) { io.observe(s); });
+      }
+    }
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+      setTimeout(fire, 0);
+    } else {
+      document.addEventListener('DOMContentLoaded', fire);
+    }
+  })();
+</script>
+
+</body>
+</html>

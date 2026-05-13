@@ -1,9 +1,11 @@
 // AEO audit engine. Fetches a target URL, runs checks, returns structured findings.
 // Designed to run inside a Vercel Function within ~10s budget.
 
+import { detectTracking } from './tracking';
+
 export interface CheckResult {
   id: string;
-  category: 'crawl' | 'schema' | 'meta' | 'aeo';
+  category: 'crawl' | 'schema' | 'meta' | 'aeo' | 'tracking' | 'conversion';
   label: string;
   passed: boolean;
   weight: number;
@@ -76,41 +78,78 @@ export function normalizeAuditUrl(raw: string): { url: string; hostname: string 
   return { url: parsed.toString(), hostname: parsed.hostname };
 }
 
+const MAX_REDIRECTS = 5;
+
 async function safeFetch(url: string): Promise<{ ok: true; status: number; text: string; contentType: string } | { ok: false; status: number; reason: string }> {
+  // SSRF guard: if we let fetch follow redirects natively, the per-hop
+  // hostname is never re-validated. An attacker submits attacker.com which
+  // 302s to 169.254.169.254 (AWS IMDS) or any internal host and the audit
+  // function ends up exfiltrating private metadata. Instead: drive
+  // redirects manually, re-run normalizeAuditUrl on each Location header,
+  // refuse any hop that lands on a blocked host.
   const controller = new AbortController();
   const t = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
+  let currentUrl = url;
   try {
-    const res = await fetch(url, {
-      method: 'GET',
-      headers: { 'User-Agent': USER_AGENT, Accept: 'text/html,application/xhtml+xml,application/xml,text/plain,*/*' },
-      signal: controller.signal,
-      redirect: 'follow',
-    });
-    const contentType = res.headers.get('content-type') ?? '';
-    const reader = res.body?.getReader();
-    if (!reader) {
-      return { ok: false, status: res.status, reason: 'no response body' };
-    }
-    let bytes = 0;
-    const chunks: Uint8Array[] = [];
-    while (true) {
-      const { value, done } = await reader.read();
-      if (done) break;
-      if (value) {
-        bytes += value.byteLength;
-        if (bytes > MAX_RESPONSE_BYTES) {
-          await reader.cancel();
-          return { ok: false, status: res.status, reason: 'response too large' };
+    for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+      const res = await fetch(currentUrl, {
+        method: 'GET',
+        headers: { 'User-Agent': USER_AGENT, Accept: 'text/html,application/xhtml+xml,application/xml,text/plain,*/*' },
+        signal: controller.signal,
+        redirect: 'manual',
+      });
+
+      const status = res.status;
+      // Manual redirect: 3xx with Location header → re-validate and loop.
+      if (status >= 300 && status < 400) {
+        const location = res.headers.get('location');
+        if (!location) {
+          return { ok: false, status, reason: `redirect ${status} with no Location header` };
         }
-        chunks.push(value);
+        // Resolve relative redirects against the current URL.
+        let next: URL;
+        try {
+          next = new URL(location, currentUrl);
+        } catch {
+          return { ok: false, status, reason: `unparseable redirect target: ${location}` };
+        }
+        const check = normalizeAuditUrl(next.toString());
+        if ('error' in check) {
+          return { ok: false, status, reason: `redirect blocked: ${check.error}` };
+        }
+        currentUrl = check.url;
+        continue;
       }
+
+      // Terminal response.
+      const contentType = res.headers.get('content-type') ?? '';
+      const reader = res.body?.getReader();
+      if (!reader) {
+        return { ok: false, status, reason: 'no response body' };
+      }
+      let bytes = 0;
+      const chunks: Uint8Array[] = [];
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        if (value) {
+          bytes += value.byteLength;
+          if (bytes > MAX_RESPONSE_BYTES) {
+            await reader.cancel();
+            return { ok: false, status, reason: 'response too large' };
+          }
+          chunks.push(value);
+        }
+      }
+      const buf = new Uint8Array(bytes);
+      let offset = 0;
+      for (const c of chunks) { buf.set(c, offset); offset += c.byteLength; }
+      const text = new TextDecoder('utf-8', { fatal: false }).decode(buf);
+      if (!res.ok) return { ok: false, status, reason: `HTTP ${status}` };
+      return { ok: true, status, text, contentType };
     }
-    const buf = new Uint8Array(bytes);
-    let offset = 0;
-    for (const c of chunks) { buf.set(c, offset); offset += c.byteLength; }
-    const text = new TextDecoder('utf-8', { fatal: false }).decode(buf);
-    if (!res.ok) return { ok: false, status: res.status, reason: `HTTP ${res.status}` };
-    return { ok: true, status: res.status, text, contentType };
+    return { ok: false, status: 0, reason: `too many redirects (>${MAX_REDIRECTS})` };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     if (msg.includes('abort')) return { ok: false, status: 0, reason: 'timeout' };
@@ -473,6 +512,164 @@ export async function runAudit(rawUrl: string): Promise<AuditResult> {
       finding: hasTrust
         ? `Homepage carries trust signals (client logos, press, or social proof references). Cold visitors get credibility before they have to read.`
         : `No obvious trust signals on the homepage. No client logos, no press mentions, no testimonials with names. Cold operators evaluate by proof; a hero that's all claim and no proof reads as low-credibility. Add three named client logos or a single named-quote pull.`,
+    });
+  }
+
+  // === tracking stack ===
+  // Detection logic lives in ./tracking so it is unit-testable against
+  // real-shape fixtures without going through the runAudit fetch path
+  // (which has an SSRF guard that blocks localhost test servers).
+  const tracking = detectTracking(homeText);
+  checks.push({
+    id: 'tracking-meta-pixel',
+    category: 'tracking',
+    label: 'Meta Pixel',
+    passed: tracking.metaPixel,
+    weight: 1,
+    evidence: tracking.metaPixel ? 'fbq() or fbevents.js detected' : 'no Meta Pixel found',
+    finding: tracking.metaPixel
+      ? 'Meta Pixel is firing. Meta has the conversion data it needs to optimize bidding.'
+      : 'No Meta Pixel detected. If you are spending on Meta ads, the algorithm cannot learn from conversions on this page. Install the pixel and configure the lead event.',
+  });
+  checks.push({
+    id: 'tracking-gtm',
+    category: 'tracking',
+    label: 'Google Tag Manager container',
+    passed: tracking.gtm.detected,
+    weight: 1,
+    evidence: tracking.gtm.detected
+      ? `GTM detected${tracking.gtm.gtmId ? ` (${tracking.gtm.gtmId})` : ' (via googletagmanager.com host)'}`
+      : 'no GTM container found',
+    finding: tracking.gtm.detected
+      ? 'A GTM container is present. New tags can be added without code changes.'
+      : 'No GTM container. Every new tracking tag requires a developer. Add GTM once and you can wire pixels and conversion events without redeploying.',
+  });
+  checks.push({
+    id: 'tracking-ga4',
+    category: 'tracking',
+    label: 'GA4 (Google Analytics 4)',
+    passed: tracking.ga4.detected,
+    weight: 1,
+    evidence: tracking.ga4.direct
+      ? 'direct GA4 config detected'
+      : tracking.ga4.detected
+        ? 'GTM container present — GA4 likely loaded inside it'
+        : 'no GA4 config found',
+    finding: tracking.ga4.direct
+      ? 'GA4 is installed directly. Google Ads bidding and SEO measurement both have the data they need.'
+      : tracking.ga4.detected
+        ? 'GTM container is present. GA4 is most likely loaded inside it. We could not confirm from the static HTML alone — verify in GTM that a GA4 configuration tag is firing on all pages.'
+        : 'No GA4 tag detected. Google Ads cannot optimize for conversions, and any SEO work is unmeasurable. Install via Google Tag Manager — twenty minutes.',
+  });
+  checks.push({
+    id: 'tracking-linkedin-insight',
+    category: 'tracking',
+    label: 'LinkedIn Insight tag',
+    passed: tracking.linkedinInsight,
+    // Weight 0: LinkedIn Insight is only meaningful for B2B LinkedIn Ads.
+    // Recorded so the LP audit can surface it, but not score-impacting.
+    weight: 0,
+    evidence: tracking.linkedinInsight ? 'lintrk() or LinkedIn partner ID detected' : 'no LinkedIn Insight tag found',
+    finding: tracking.linkedinInsight
+      ? 'LinkedIn Insight is firing. If you run LinkedIn Ads, retargeting and conversion attribution will work.'
+      : 'No LinkedIn Insight tag. Only relevant if you advertise on LinkedIn.',
+  });
+  checks.push({
+    id: 'tracking-tiktok-pixel',
+    category: 'tracking',
+    label: 'TikTok Pixel',
+    passed: tracking.tiktokPixel,
+    weight: 0,
+    evidence: tracking.tiktokPixel ? 'ttq pixel detected' : 'no TikTok Pixel found',
+    finding: tracking.tiktokPixel
+      ? 'TikTok Pixel is firing.'
+      : 'No TikTok Pixel. Only relevant if your buyers are on TikTok.',
+  });
+  checks.push({
+    id: 'tracking-posthog',
+    category: 'tracking',
+    label: 'PostHog product analytics',
+    passed: tracking.postHog,
+    // Weight 0: PostHog is a substitute for GA4 for many operators. Recorded
+    // for completeness; the GA4 check is what counts toward the score.
+    weight: 0,
+    evidence: tracking.postHog ? 'posthog.init() or posthog host detected' : 'no PostHog detected',
+    finding: tracking.postHog
+      ? 'PostHog is installed. Product analytics and feature-flag infrastructure are in place.'
+      : 'No PostHog. Not strictly required, but if you want feature flags, session replay, or product analytics later, it is the cheapest entry point.',
+  });
+
+  // === conversion paths ===
+  {
+    const hasForm = /<form\b[^>]*>/i.test(homeText);
+    checks.push({
+      id: 'conversion-form-on-page',
+      category: 'conversion',
+      label: 'Form available on homepage',
+      passed: hasForm,
+      weight: 1,
+      evidence: hasForm ? '<form> tag present in homepage HTML' : 'no <form> tag found',
+      finding: hasForm
+        ? 'The homepage carries a form. A cold visitor can convert without an extra click.'
+        : 'No form on the homepage. A cold visitor has to navigate to convert. Two extra clicks costs roughly half the form completions.',
+    });
+  }
+  {
+    const tel = /\bhref=["']tel:/i.test(homeText);
+    checks.push({
+      id: 'conversion-tel-link',
+      category: 'conversion',
+      label: 'Tappable phone number',
+      passed: tel,
+      weight: 1,
+      evidence: tel ? 'tel: link present' : 'no tel: link',
+      finding: tel
+        ? 'A tel: link is present. Mobile visitors can call without typing.'
+        : 'No tappable phone link. Mobile visitors who want to call have to memorize the number, switch apps, type it, and dial. For service businesses this is a real conversion drop.',
+    });
+  }
+  {
+    const schedule = /(calendly\.com|cal\.com\/[a-z]|calendar\.app\.google|hubspot\.com\/meetings|chilipiper\.com|savvycal\.com|tidycal\.com)/i.test(homeText);
+    checks.push({
+      id: 'conversion-scheduling-link',
+      category: 'conversion',
+      label: 'Self-serve scheduling link',
+      passed: schedule,
+      weight: 1,
+      evidence: schedule ? 'scheduling service link present' : 'no scheduling link',
+      finding: schedule
+        ? 'A self-serve scheduling link is present. Cold prospects can book without sending an email.'
+        : 'No self-serve scheduling. Every meeting requires email back-and-forth. Add Calendly or Cal.com to the contact area — even five extra meetings a month justifies it.',
+    });
+  }
+  {
+    const chat = /(intercom\.io\/messenger|widget\.intercom\.io|drift\.com|js\.driftt\.com|tawk\.to|crisp\.chat|chatwidget|hubspot\.com\/conversation)/i.test(homeText);
+    checks.push({
+      id: 'conversion-chat-widget',
+      category: 'conversion',
+      label: 'Live or async chat widget',
+      passed: chat,
+      weight: 0.5,
+      evidence: chat ? 'chat widget detected' : 'no chat widget',
+      finding: chat
+        ? 'A chat widget is installed. Visitors with quick questions can ask without filling a form.'
+        : 'No chat widget. Skippable if you handle inbound via phone or email; useful if your buyer profile expects async chat.',
+    });
+  }
+  {
+    const heroText = homeText.slice(0, 4000);
+    const hasCtaButton = /<(a|button)[^>]*\b(class|id)=["'][^"']*(cta|btn-primary|primary-cta|hero-cta|book|start|get-started|trial)/i.test(heroText)
+      || /<(a|button)[^>]*>([^<]*\b(get started|start free|book a (call|demo)|request (a )?(quote|demo)|schedule (a )?(call|demo)|talk to|contact us)\b)/i.test(heroText);
+    checks.push({
+      id: 'conversion-prominent-cta',
+      category: 'conversion',
+      label: 'Prominent CTA above the fold',
+      passed: hasCtaButton,
+      weight: 1,
+      evidence: hasCtaButton ? 'high-intent CTA pattern found in first 4KB' : 'no obvious high-intent CTA in the hero',
+      finding: hasCtaButton
+        ? 'A high-intent CTA sits above the fold. Cold visitors know how to act in the first viewport.'
+        : 'No obvious high-intent CTA above the fold. Cold visitors land and have to figure out what you want them to do. Add one button with one verb and one outcome.',
     });
   }
 
