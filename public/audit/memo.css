@@ -96,6 +96,75 @@ p.body code{font-family:var(--mono);font-size:14.5px;background:var(--paper-2);p
 .snippet{margin:18px 0 0;padding:14px 18px;background:var(--paper-2);border-left:3px solid var(--ink-faint);font-family:var(--mono);font-size:13px;line-height:1.6;color:var(--ink);max-width:720px;white-space:pre-wrap}
 .snippet b{color:var(--bad);font-weight:500}
 
+/* mirror block (00 · The mirror) — replaces inline styles */
+.mirror{margin-top:48px;padding:56px 0;border-top:2px solid var(--ink);border-bottom:1px solid var(--line-strong)}
+@media (max-width:780px){.mirror{padding:40px 0}}
+.mirror .sec-head{margin-bottom:36px}
+.mirror .row{display:grid;grid-template-columns:160px 1fr;gap:48px;margin-bottom:28px;align-items:start}
+.mirror .row:last-child{margin-bottom:0}
+.mirror .row .lab{font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;padding-top:4px;display:flex;align-items:center;gap:10px}
+.mirror .row .lab::before{content:'';width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.mirror .row.ai .lab{color:var(--bad)}
+.mirror .row.ai .lab::before{background:var(--bad)}
+.mirror .row.claim .lab{color:var(--ink-faint)}
+.mirror .row.claim .lab::before{background:var(--ink-faint)}
+.mirror .row.gap{margin-top:16px;padding:28px 0 0;border-top:1px dashed var(--line-strong)}
+.mirror .row.gap .lab{color:var(--ink);font-weight:500}
+.mirror .row.gap .lab::before{background:var(--ink)}
+.mirror .row p{margin:0;font-family:var(--grotesk);font-size:17px;line-height:1.65;color:var(--ink-dim);max-width:720px;text-wrap:pretty}
+.mirror .row.gap p{color:var(--ink);font-weight:500;font-size:18px}
+.mirror .row p em{font-family:var(--serif);font-style:italic;color:var(--ink)}
+@media (max-width:780px){.mirror .row{grid-template-columns:1fr;gap:12px;margin-bottom:24px}.mirror .row.gap{padding-top:22px}}
+
+/* before / after */
+.ba{margin-top:24px;display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--ink)}
+@media (max-width:780px){.ba{grid-template-columns:1fr}}
+.ba .b,.ba .a{padding:28px 30px;display:flex;flex-direction:column;gap:14px}
+.ba .b{background:var(--bad-bg);border-right:1px solid var(--ink)}
+.ba .a{background:var(--good-bg)}
+@media (max-width:780px){.ba .b{border-right:0;border-bottom:1px solid var(--ink)}}
+.ba .lab{font-family:var(--mono);font-size:10.5px;letter-spacing:0.22em;text-transform:uppercase;display:flex;align-items:center;gap:10px}
+.ba .lab::before{content:'';width:8px;height:8px;border-radius:50%}
+.ba .b .lab{color:var(--bad)}
+.ba .b .lab::before{background:var(--bad)}
+.ba .a .lab{color:var(--good)}
+.ba .a .lab::before{background:var(--good)}
+.ba .h{font-family:var(--grotesk);font-weight:700;font-size:23px;line-height:1.2;letter-spacing:-0.025em;color:var(--ink);text-wrap:pretty;margin:0}
+.ba .h em{font-family:var(--serif);font-style:italic;font-weight:400;color:var(--ink-dim)}
+.ba .h code{font-family:var(--mono);font-size:0.78em;background:rgba(0,0,0,0.06);padding:1px 5px}
+.ba .note{font-family:var(--mono);font-size:11px;line-height:1.55;color:var(--ink-dim);margin-top:auto;padding-top:14px;border-top:1px dashed rgba(26,24,20,0.25);letter-spacing:0.03em}
+
+/* context panel — "Why this matters" (sage callout) */
+.context{margin-top:48px;background:var(--sage);border-top:1px solid var(--ink);border-bottom:1px solid var(--ink);padding:36px 40px;display:grid;grid-template-columns:160px 1fr;gap:48px;align-items:start}
+@media (max-width:780px){.context{grid-template-columns:1fr;padding:28px;gap:18px}}
+.context .lab{font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--good);display:flex;align-items:center;gap:10px;padding-top:4px}
+.context .lab::before{content:'';width:8px;height:8px;background:var(--good);border-radius:50%;flex-shrink:0}
+.context p{font-family:var(--serif);font-style:italic;font-size:19px;line-height:1.5;color:var(--ink);margin:0;max-width:780px;text-wrap:pretty}
+.context p + p{margin-top:12px;padding-top:12px;border-top:1px dashed rgba(63,117,83,0.4)}
+.context p b{font-family:var(--grotesk);font-style:normal;font-weight:700;color:var(--ink)}
+
+/* fix-kit email gate */
+.fixkit{margin-top:64px;background:var(--paper-2);border:1px solid var(--ink);padding:36px 40px}
+@media (max-width:780px){.fixkit{padding:28px}}
+.fixkit .lab{font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--bad);display:flex;align-items:center;gap:10px;margin-bottom:18px}
+.fixkit .lab::before{content:'';width:8px;height:8px;background:var(--bad);border-radius:50%}
+.fixkit h3{font-family:var(--grotesk);font-weight:700;font-size:26px;line-height:1.15;letter-spacing:-0.03em;margin:0 0 10px;text-wrap:balance}
+.fixkit h3 em{font-family:var(--serif);font-style:italic;font-weight:400;color:var(--ink-dim)}
+.fixkit p{font-family:var(--grotesk);font-size:15.5px;line-height:1.55;color:var(--ink-dim);margin:0 0 22px;max-width:620px;text-wrap:pretty}
+.fixkit form{display:grid;grid-template-columns:1fr auto;gap:0;max-width:620px;border:1px solid var(--ink);background:var(--paper)}
+@media (max-width:540px){.fixkit form{grid-template-columns:1fr}}
+.fixkit input{padding:16px 20px;border:0;background:transparent;font-family:var(--mono);font-size:13px;letter-spacing:0.02em;color:var(--ink);outline:none;width:100%}
+.fixkit input::placeholder{color:var(--ink-faint)}
+.fixkit input:focus{background:#fff}
+.fixkit button{padding:16px 24px;border:0;border-left:1px solid var(--ink);background:var(--ink);color:var(--paper);font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;cursor:pointer;transition:background 120ms,color 120ms}
+@media (max-width:540px){.fixkit button{border-left:0;border-top:1px solid var(--ink);width:100%}}
+.fixkit button:hover{background:var(--bad)}
+
+/* share button */
+.share-btn{font-family:var(--mono);font-size:10.5px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint);background:none;border:0;cursor:pointer;padding:0;transition:color 120ms;font-weight:400}
+.share-btn:hover{color:var(--bad)}
+.share-btn b{color:var(--ink);font-weight:500}
+
 /* finding row */
 .findings{border-top:2px solid var(--ink);margin-top:32px}
 .find{display:grid;grid-template-columns:64px 130px 1fr 100px;gap:28px;padding:28px 0;border-bottom:1px solid var(--line);align-items:start}

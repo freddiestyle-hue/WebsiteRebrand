@@ -1,6 +1,6 @@
 ---
 export const prerender = false;
-import { runAudit, rankedRecommendations, type AuditResult } from '../../utils/audit/engine';
+import { runAudit, rankedRecommendations, type AuditResult, type CheckResult } from '../../utils/audit/engine';
 import { mirrorAudit, type MirrorResult } from '../../utils/audit/llm-mirror';
 
 const rawUrl = Astro.url.searchParams.get('url') || '';
@@ -43,9 +43,7 @@ const auditId = result
 
 const recommendations = result ? rankedRecommendations(result) : [];
 
-const tldrSentences = result && !result.error
-  ? buildTldr(result)
-  : [];
+const tldrSentences = result && !result.error ? buildTldr(result) : [];
 
 function gradeClass(grade: string): string {
   if (grade === 'A' || grade === 'B') return 'good';
@@ -59,24 +57,15 @@ function buildTldr(r: AuditResult): string[] {
   const passedHigh = r.checks.filter((c) => c.passed && c.weight >= 2);
   const failedHigh = r.checks.filter((c) => !c.passed && c.weight >= 2);
   const crawlPassed = r.verdict.crawl.passed / Math.max(1, r.verdict.crawl.total);
-  const schemaPassed = r.verdict.schema.passed / Math.max(1, r.verdict.schema.total);
   const aeoPassed = r.verdict.aeo.passed / Math.max(1, r.verdict.aeo.total);
 
-  if (crawlPassed >= 0.8) {
-    out.push(`The site is crawlable. Sitemap and robots are doing their job.`);
-  } else if (crawlPassed >= 0.4) {
-    out.push(`Crawlability is partial. Search engines can find some of the site, not all of it.`);
-  } else {
-    out.push(`Crawlability is broken. Most pages are invisible to search engines and AI crawlers.`);
-  }
+  if (crawlPassed >= 0.8) out.push(`The site is crawlable. Sitemap and robots are doing their job.`);
+  else if (crawlPassed >= 0.4) out.push(`Crawlability is partial. Search engines can find some of the site, not all of it.`);
+  else out.push(`Crawlability is broken. Most pages are invisible to search engines and AI crawlers.`);
 
-  if (aeoPassed >= 0.8) {
-    out.push(`AEO surfaces are in place. AI engines can discover and read the content.`);
-  } else if (aeoPassed >= 0.4) {
-    out.push(`AEO surfaces are partial. AI engines can find some content but not all of it.`);
-  } else {
-    out.push(`AEO surfaces are missing. AI agents pulling from the domain hit 404s where they expect content indexes.`);
-  }
+  if (aeoPassed >= 0.8) out.push(`AEO surfaces are in place. AI engines can discover and read the content.`);
+  else if (aeoPassed >= 0.4) out.push(`AEO surfaces are partial. AI engines can find some content but not all of it.`);
+  else out.push(`AEO surfaces are missing. AI agents pulling from the domain hit 404s where they expect content indexes.`);
 
   if (failedHigh.length > 0) {
     const topThree = failedHigh.slice(0, 3).map((c) => c.label.toLowerCase()).join(', ');
@@ -84,9 +73,136 @@ function buildTldr(r: AuditResult): string[] {
   } else if (passedHigh.length === r.checks.filter((c) => c.weight >= 2).length) {
     out.push(`The site is in good shape on every high-weight check. Maintain, don't rebuild.`);
   }
-
   return out;
 }
+
+// Severity classification for finding rows
+function severity(c: CheckResult): { cls: string; label: string } {
+  if (c.passed) return { cls: 'good', label: 'Pass' };
+  if (c.weight >= 4) return { cls: 'bad', label: 'Critical' };
+  if (c.weight >= 2) return { cls: 'warn', label: 'Material' };
+  return { cls: 'warn', label: 'Minor' };
+}
+
+function priorityLabel(c: CheckResult): string {
+  if (c.passed) return 'Keep';
+  if (c.weight >= 4) return 'P0';
+  if (c.weight >= 2) return 'P1';
+  return 'P2';
+}
+
+// Effort + impact heuristics for recommendations table
+function effortFor(c: CheckResult): { cls: string; label: string } {
+  const id = c.id;
+  // Trivial: just adding meta tags
+  if (id === 'meta-author' || id === 'og-type-set' || id === 'canonical') return { cls: 's', label: 'Trivial' };
+  // Small: adding a single endpoint or file
+  if (id === 'llms-txt' || id === 'llms-full-txt' || id === 'robots-sitemap' || id === 'robots-ok' || id === 'sitemap-found') return { cls: 's', label: 'Small' };
+  // Medium: schema or sitemap content
+  if (id.startsWith('schema-') || id === 'sitemap-size') return { cls: 'm', label: 'Medium' };
+  // Default small
+  return { cls: 's', label: 'Small' };
+}
+
+function impactFor(c: CheckResult): { cls: string; label: string } {
+  if (c.weight >= 4) return { cls: 'high', label: 'High' };
+  if (c.weight >= 2) return { cls: 'med', label: 'Medium' };
+  return { cls: 'med', label: 'Low–Med' };
+}
+
+// Before/after suggestion for the top recommendation
+function beforeAfter(c: CheckResult): { before: string; after: string; beforeNote: string; afterNote: string } | null {
+  const id = c.id;
+  const fixes: Record<string, { before: string; after: string; beforeNote: string; afterNote: string }> = {
+    'llms-txt': {
+      before: 'No <code>/llms.txt</code> at the root.',
+      after: 'Ship <code>/llms.txt</code> with a one-line index of every page.',
+      beforeNote: 'AI agents (Claude, ChatGPT, Perplexity) pulling from the domain hit a 404 where they expect a content index.',
+      afterNote: 'Single biggest AEO signal you can ship in an hour. Public spec at llmstxt.org.',
+    },
+    'llms-full-txt': {
+      before: 'No <code>/llms-full.txt</code> at the root.',
+      after: 'Ship <code>/llms-full.txt</code> with the full markdown body of every post.',
+      beforeNote: 'Bulk-readable corpus is missing. AI crawlers fall back to scraping HTML one URL at a time.',
+      afterNote: 'Perplexity\'s crawler and Claude\'s web fetch tool both prefer this when it exists.',
+    },
+    'schema-article': {
+      before: 'No <em>Article</em> JSON-LD on content pages.',
+      after: 'Emit <code>&lt;script type="application/ld+json"&gt;</code> with Article schema on every post.',
+      beforeNote: 'AI engines guess at authorship and topic from raw HTML.',
+      afterNote: 'Validates green in Google\'s Rich Results test. Enables author/dateline attribution in citations.',
+    },
+    'schema-organization': {
+      before: 'No <em>Organization</em> JSON-LD sitewide.',
+      after: 'Add Organization schema once in the base layout.',
+      beforeNote: 'AI engines cannot resolve who you are or link your brand to a stable identity.',
+      afterNote: 'Single edit to one file. Enables sameAs identity (LinkedIn, GitHub) in AI citations.',
+    },
+    'schema-website': {
+      before: 'No <em>WebSite</em> JSON-LD on the homepage.',
+      after: 'Add WebSite schema with name + url + publisher.',
+      beforeNote: 'Search engines cannot construct a sitelinks search box.',
+      afterNote: 'Three lines of JSON. Improves SERP appearance.',
+    },
+    'sitemap-found': {
+      before: 'No reachable sitemap at <code>/sitemap.xml</code>.',
+      after: 'Generate a sitemap at build time and link from robots.txt.',
+      beforeNote: 'Search engines discover URLs only via internal links. Most pages stay invisible.',
+      afterNote: 'Most frameworks have a plugin. Astro, Next, Hugo — all one-line installs.',
+    },
+    'sitemap-size': {
+      before: 'Sitemap lists fewer than 5 URLs.',
+      after: 'Include every published page, including blog posts and topic clusters.',
+      beforeNote: 'Below the threshold that signals an actively-published site.',
+      afterNote: 'Add content URLs or expand the index to cover the full archive.',
+    },
+    'robots-ok': {
+      before: 'robots.txt blocks one or more AI crawlers.',
+      after: 'Remove the blanket block; allow GPTBot, Claude-Web, PerplexityBot, Google-Extended.',
+      beforeNote: 'Common default. Most AI engines respect robots.txt and silently skip the site.',
+      afterNote: 'If you want citations, the bots need to read the pages.',
+    },
+    'robots-sitemap': {
+      before: 'robots.txt does not reference the sitemap.',
+      after: 'Add <code>Sitemap: https://yourdomain.com/sitemap.xml</code> to robots.txt.',
+      beforeNote: 'Crawlers that hit robots.txt first do not find the sitemap.',
+      afterNote: 'One line. Five seconds.',
+    },
+    'og-type-set': {
+      before: 'og:type is missing or wrong (often "website" on blog posts).',
+      after: 'Set <code>og:type</code> to <em>article</em> on posts, <em>website</em> on the homepage.',
+      beforeNote: 'Link previews render generically. LinkedIn/Slack/iMessage treat the page as a homepage.',
+      afterNote: 'One conditional in the layout. Earns better social CTR immediately.',
+    },
+    'meta-author': {
+      before: 'No <code>&lt;meta name="author"&gt;</code> tag.',
+      after: 'Add <code>&lt;meta name="author" content="Your Name"&gt;</code> in <code>&lt;head&gt;</code>.',
+      beforeNote: 'AI engines guess at authorship from page body.',
+      afterNote: 'One tag. Enables author attribution in AI-generated citations.',
+    },
+    'canonical': {
+      before: 'No canonical link on the homepage.',
+      after: 'Add <code>&lt;link rel="canonical" href="https://yourdomain.com/"&gt;</code>.',
+      beforeNote: 'Crawlers cannot identify the authoritative URL when there are mirrors or query strings.',
+      afterNote: 'One line. Disambiguates trailing-slash variants.',
+    },
+  };
+  return fixes[id] || null;
+}
+
+// Cohort context: scores from the curated 12-operator QA run for "why this matters"
+const COHORT_AVG = 46;
+const COHORT_N = 12;
+function cohortContext(score: number): string | null {
+  if (score >= 90) return `I ran this audit on a sample of <b>${COHORT_N}</b> US SMB operators in the last week. The average score was <b>${COHORT_AVG}/100</b>. You scored <b>${score}/100</b> — top of the cohort. The fixes below are polish, not blockers.`;
+  if (score >= 70) return `I ran this audit on <b>${COHORT_N}</b> US SMB operators in the last week. The average score was <b>${COHORT_AVG}/100</b>. You scored <b>${score}/100</b> — above the median. A few targeted fixes would move you into AEO-ready territory.`;
+  if (score >= 40) return `I ran this audit on <b>${COHORT_N}</b> US SMB operators in the last week. The average score was <b>${COHORT_AVG}/100</b>. You scored <b>${score}/100</b> — around the cohort median. Every operator I tested had real gaps. Yours are listed below.`;
+  return `I ran this audit on <b>${COHORT_N}</b> US SMB operators in the last week. The average score was <b>${COHORT_AVG}/100</b>. You scored <b>${score}/100</b> — bottom quartile. AI engines and Google currently cannot see most of this site. The fixes are not exotic.`;
+}
+
+const topRec = recommendations[0]?.check;
+const topRecFix = topRec ? beforeAfter(topRec) : null;
+const contextLine = result && !result.error ? cohortContext(result.scorePercent) : null;
 ---
 <!doctype html>
 <html lang="en">
@@ -106,7 +222,7 @@ function buildTldr(r: AuditResult): string[] {
   <nav class="top">
     <div class="l"><span class="dot"></span> <a href="/audit" class="wm">rivett<span class="d"></span></a> <b>· Visibility Engine</b></div>
     <div class="r">
-      <span>Run by Fred Style</span>
+      <span>Run by <a href="https://www.linkedin.com/in/fredstyle/" style="color:var(--ink);font-weight:500" target="_blank" rel="noopener">Fred Style</a></span>
       <span>{result ? fmtDate(result.fetchedAt) : ''}</span>
       <span>id {auditId || '—'}</span>
     </div>
@@ -178,25 +294,25 @@ function buildTldr(r: AuditResult): string[] {
       )}
 
       {mirror && (
-        <section class="mirror-section" style="margin-top:48px;padding:48px 0;border-top:2px solid var(--ink);border-bottom:1px solid var(--line)">
-          <div class="sec-head" style="margin-bottom:32px">
+        <section class="mirror">
+          <div class="sec-head">
             <div class="num">00 · The mirror</div>
             <div>
               <h2>What an AI engine thinks <span class="ital">{result.hostname} is.</span></h2>
               <p class="dek">Below is what Claude reads off the homepage. Compare it to what you think the site says. The gap is the diagnosis.</p>
             </div>
           </div>
-          <div style="display:grid;grid-template-columns:140px 1fr;gap:48px;margin-bottom:32px">
-            <div style="font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--bad);padding-top:4px">AI sees</div>
-            <p class="body" style="margin:0">{mirror.aiPerception}</p>
+          <div class="row ai">
+            <div class="lab">AI sees</div>
+            <p>{mirror.aiPerception}</p>
           </div>
-          <div style="display:grid;grid-template-columns:140px 1fr;gap:48px;margin-bottom:32px">
-            <div style="font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint);padding-top:4px">You claim</div>
-            <p class="body" style="margin:0">{mirror.ownClaim}</p>
+          <div class="row claim">
+            <div class="lab">You claim</div>
+            <p>{mirror.ownClaim}</p>
           </div>
-          <div style="display:grid;grid-template-columns:140px 1fr;gap:48px">
-            <div style="font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink);padding-top:4px;font-weight:500">The gap</div>
-            <p class="body" style="margin:0;font-weight:500">{mirror.gap}</p>
+          <div class="row gap">
+            <div class="lab">The gap</div>
+            <p>{mirror.gap}</p>
           </div>
         </section>
       )}
@@ -204,95 +320,208 @@ function buildTldr(r: AuditResult): string[] {
       <div class="verdict">
         <div class="v">
           <div class="k">Crawlability</div>
-          <div class={`grade ${gradeClass(result.verdict.crawl.grade)}`}>{result.verdict.crawl.grade}</div>
+          <div class={`g ${gradeClass(result.verdict.crawl.grade)}`}>{result.verdict.crawl.grade}</div>
           <div class="n">{result.verdict.crawl.passed} of {result.verdict.crawl.total} passed</div>
         </div>
         <div class="v">
           <div class="k">Structured data</div>
-          <div class={`grade ${gradeClass(result.verdict.schema.grade)}`}>{result.verdict.schema.grade}</div>
+          <div class={`g ${gradeClass(result.verdict.schema.grade)}`}>{result.verdict.schema.grade}</div>
           <div class="n">{result.verdict.schema.passed} of {result.verdict.schema.total} passed</div>
         </div>
         <div class="v">
           <div class="k">AEO surfaces</div>
-          <div class={`grade ${gradeClass(result.verdict.aeo.grade)}`}>{result.verdict.aeo.grade}</div>
+          <div class={`g ${gradeClass(result.verdict.aeo.grade)}`}>{result.verdict.aeo.grade}</div>
           <div class="n">{result.verdict.aeo.passed} of {result.verdict.aeo.total} passed</div>
         </div>
         <div class="v">
           <div class="k">Send-readiness</div>
-          <div class={`grade ${gradeClass(result.verdict.sendReady.grade)}`}>{result.verdict.sendReady.grade}</div>
+          <div class={`g ${gradeClass(result.verdict.sendReady.grade)}`}>{result.verdict.sendReady.grade}</div>
           <div class="n">{result.verdict.sendReady.passed} of {result.verdict.sendReady.total} passed</div>
         </div>
       </div>
 
-      <section>
+      {contextLine && (
+        <div class="context">
+          <div class="lab">Why this matters</div>
+          <p set:html={contextLine}></p>
+        </div>
+      )}
+
+      <section class="sec">
         <div class="sec-head">
           <div class="num">01 · Crawlability</div>
           <div>
             <h2>Can search engines walk the site at all? <span class="ital">Sitemap, robots, canonicals.</span></h2>
+            <p class="dek">The base layer. If these fail, every fix that comes after is wasted.</p>
           </div>
         </div>
-        {result.checks.filter((c) => c.category === 'crawl').map((c) => (
-          <p class="body" style={c.passed ? '' : 'color:var(--ink)'}>
-            <strong>{c.passed ? '✓ ' : '× '}{c.label}.</strong> {c.finding}
-          </p>
-        ))}
+        <div class="findings">
+          {result.checks.filter((c) => c.category === 'crawl').map((c, i) => {
+            const sev = severity(c);
+            return (
+              <div class="find">
+                <div class="idx">F.01.{i + 1}</div>
+                <div class={`sev ${sev.cls}`}>{sev.label}</div>
+                <div class="b">
+                  <h4>{c.label}{c.passed ? '.' : '.'}</h4>
+                  <p>{c.finding}</p>
+                </div>
+                <div class="pri">Priority<b>{priorityLabel(c)}</b></div>
+              </div>
+            );
+          })}
+        </div>
       </section>
 
-      <section>
+      <section class="sec">
         <div class="sec-head">
           <div class="num">02 · Structured data + meta</div>
           <div>
-            <h2>What AI engines can tell you are, what you do, who wrote it. <span class="ital">Or what they cannot.</span></h2>
+            <h2>What AI engines can tell you are. <span class="ital">Or what they cannot.</span></h2>
+            <p class="dek">Schema is how a crawler converts a page into facts. Meta tags decide how the page is quoted.</p>
           </div>
         </div>
-        {result.checks.filter((c) => c.category === 'schema' || c.category === 'meta').map((c) => (
-          <p class="body">
-            <strong>{c.passed ? '✓ ' : '× '}{c.label}.</strong> {c.finding}
-          </p>
-        ))}
+        <div class="findings">
+          {result.checks.filter((c) => c.category === 'schema' || c.category === 'meta').map((c, i) => {
+            const sev = severity(c);
+            return (
+              <div class="find">
+                <div class="idx">F.02.{i + 1}</div>
+                <div class={`sev ${sev.cls}`}>{sev.label}</div>
+                <div class="b">
+                  <h4>{c.label}.</h4>
+                  <p>{c.finding}</p>
+                </div>
+                <div class="pri">Priority<b>{priorityLabel(c)}</b></div>
+              </div>
+            );
+          })}
+        </div>
       </section>
 
-      <section>
+      <section class="sec">
         <div class="sec-head">
           <div class="num">03 · AEO surfaces + send-readiness</div>
           <div>
             <h2>Whether AI engines can find your content. <span class="ital">And whether a cold prospect can act on it.</span></h2>
+            <p class="dek">Two surfaces. One for the crawler, one for the human arriving from a DM.</p>
           </div>
         </div>
-        {result.checks.filter((c) => c.category === 'aeo').map((c) => (
-          <p class="body">
-            <strong>{c.passed ? '✓ ' : '× '}{c.label}.</strong> {c.finding}
-          </p>
-        ))}
+        <div class="findings">
+          {result.checks.filter((c) => c.category === 'aeo').map((c, i) => {
+            const sev = severity(c);
+            return (
+              <div class="find">
+                <div class="idx">F.03.{i + 1}</div>
+                <div class={`sev ${sev.cls}`}>{sev.label}</div>
+                <div class="b">
+                  <h4>{c.label}.</h4>
+                  <p>{c.finding}</p>
+                </div>
+                <div class="pri">Priority<b>{priorityLabel(c)}</b></div>
+              </div>
+            );
+          })}
+        </div>
       </section>
 
       {recommendations.length > 0 && (
-        <section>
+        <section class="sec">
           <div class="sec-head">
             <div class="num">04 · Ranked recommendations</div>
             <div>
-              <h2>If you fix {recommendations.length === 1 ? 'one thing' : `${recommendations.length} things`} this week. <span class="ital">Fix {recommendations.length === 1 ? 'this' : 'these'}, in order.</span></h2>
+              <h2>If you fix {recommendations.length === 1 ? 'one thing' : `${Math.min(recommendations.length, 3)} things`} this week. <span class="ital">Fix {recommendations.length === 1 ? 'this' : 'these'}, in order.</span></h2>
+              <p class="dek">Ordered by impact on AI-engine and search-engine visibility, weighted by effort to ship.</p>
             </div>
           </div>
-          <div class="recs">
-            {recommendations.map(({ priority, check }) => (
-              <div class="find">
-                <div class="rank">0{priority}</div>
-                <div class="desc">
-                  <div class="name">{check.label}</div>
-                  <p class="body" style="margin-top:8px">{check.finding}</p>
-                </div>
-                <div class="pri">+{check.weight} pts</div>
+
+          {topRecFix && (
+            <div class="ba">
+              <div class="b">
+                <div class="lab">As deployed</div>
+                <p class="h" set:html={topRecFix.before}></p>
+                <div class="note">{topRecFix.beforeNote}</div>
               </div>
-            ))}
+              <div class="a">
+                <div class="lab">The fix</div>
+                <p class="h" set:html={topRecFix.after}></p>
+                <div class="note">{topRecFix.afterNote}</div>
+              </div>
+            </div>
+          )}
+
+          <div class="recs" style="margin-top:32px">
+            {recommendations.map(({ priority, check }) => {
+              const eff = effortFor(check);
+              const imp = impactFor(check);
+              return (
+                <div class="row">
+                  <div class="rank">{String(priority).padStart(2, '0')}</div>
+                  <div class="what">{check.label}.</div>
+                  <div class="effort">Effort<b class={eff.cls}>{eff.label}</b></div>
+                  <div class="impact">Impact<b class={imp.cls}>{imp.label}</b></div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div class="fixkit">
+            <div class="lab">Optional</div>
+            <h3>Want the markdown fix-kit? <span class="ital">The exact code to drop in.</span></h3>
+            <p>I'll send you the markdown fix-kit for the recommendations above — the JSON-LD snippets, the meta tags, the llms.txt template, all copy-pasteable. One email, no list.</p>
+            <form method="post" action="https://formspree.io/f/your-form-id" target="_blank">
+              <input type="email" name="email" placeholder="your@email.com" required />
+              <button type="submit">Send fix-kit →</button>
+            </form>
           </div>
         </section>
       )}
 
-      <footer style="padding:80px 0 32px;font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint);border-top:1px solid var(--line)">
-        <p style="margin:0 0 6px">— FS, audit.rivett.tech · {fmtDate(result.fetchedAt)}</p>
-        <p style="margin:0">Audit ran 11 checks against {result.hostname} in {result.durationMs}ms. <a href="/audit" style="color:var(--bad);border-bottom:1px solid var(--bad)">Run another →</a></p>
+      <div class="memo">
+        <div class="lab">Closing</div>
+        <div>
+          <h2>{result.scorePercent >= 70 ? 'The site is in good shape.' : 'The fixes are not exotic.'} <span class="ital">{result.scorePercent >= 70 ? 'A small sprint moves you to AEO-ready.' : 'A focused week closes most of the gap.'}</span></h2>
+          <p>I ran this audit on <em>{result.hostname}</em> in {(result.durationMs / 1000).toFixed(1)} seconds. The fixes above are the work I do for operators in your range. Most of them take me about three to six hours end-to-end.</p>
+          <p>If you want it done, reply to this URL with your calendar — or book direct below. <strong>If you want to think about it</strong>, send the URL to whoever runs your site and tell them to fix the P0s. Either way, the diagnosis is yours to keep.</p>
+          <div class="actions">
+            <a class="btn btn--inv" href="mailto:freddiestyle@gmail.com?subject=Visibility%20audit%20follow-up%20-%20{result.hostname}&body=Saw%20the%20audit%20at%20rivett.tech.%20Open%20to%20a%20call.">Email Fred →</a>
+            <a class="btn" href="https://www.linkedin.com/in/fredstyle/" target="_blank" rel="noopener">LinkedIn DM →</a>
+          </div>
+          <div class="sig"><b>Fred Style · Rivett</b>Senior practice for US operators · audit.rivett.tech</div>
+        </div>
+      </div>
+
+      <footer class="foot">
+        <div>Audit memo · {fmtDate(result.fetchedAt)} · {result.durationMs}ms · {result.checks.length} checks</div>
+        <div>
+          <button class="share-btn" id="share-btn" type="button">← <b>Share this memo</b></button>
+          <span style="margin:0 14px;opacity:0.4">/</span>
+          <a href="/audit" style="color:var(--ink-faint)">Run another →</a>
+        </div>
       </footer>
+
+      <script is:inline>
+        (function () {
+          var btn = document.getElementById('share-btn');
+          if (!btn) return;
+          btn.addEventListener('click', async function () {
+            var url = window.location.href;
+            var title = document.title;
+            try {
+              if (navigator.share) {
+                await navigator.share({ title: title, url: url });
+                return;
+              }
+              await navigator.clipboard.writeText(url);
+              var orig = btn.innerHTML;
+              btn.innerHTML = '← <b>Link copied</b>';
+              setTimeout(function () { btn.innerHTML = orig; }, 2000);
+            } catch (e) {
+              // user cancelled or clipboard blocked, no-op
+            }
+          });
+        })();
+      </script>
     </>
   )}
 </div>
