@@ -39,8 +39,9 @@ button{font:inherit;color:inherit;cursor:pointer}
 
 /* nav */
 nav.top{display:flex;justify-content:space-between;align-items:center;padding:28px 0 24px;border-bottom:1px solid var(--line)}
-.wordmark{display:inline-flex;align-items:baseline;gap:0.12em;font-weight:700;font-size:28px;letter-spacing:-0.05em;line-height:1;color:var(--ink)}
-.wordmark .dot{display:inline-block;width:0.32em;height:0.32em;border-radius:999px;background:var(--accent);transform:translateY(0.04em)}
+.wordmark{display:inline-flex;align-items:center;gap:0.12em;font-weight:700;font-size:28px;letter-spacing:-0.05em;line-height:1;color:var(--ink);text-transform:none}
+.wordmark--sm{font-size:18px}
+.wordmark .dot-mark,.wordmark .dot{display:inline-block;width:0.32em;height:0.32em;border-radius:999px;background:var(--accent);transform:translateY(0.04em)}
 nav.top .links{display:flex;gap:32px;font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint)}
 nav.top .links a{transition:color 120ms}
 nav.top .links a:hover{color:var(--accent-deep)}
@@ -124,7 +125,7 @@ footer.foot .wm .dot{display:inline-block;width:0.32em;height:0.32em;border-radi
 <div class="page" data-screen-label="01 Paste Screen">
 
   <nav class="top">
-    <a href="#" class="wordmark">rivett<span class="dot"></span></a>
+    <a href="/" class="wordmark" aria-label="Rivett, home">rivett<span class="dot-mark" aria-hidden="true"></span></a>
     <div class="links">
       <a href="#">Field Notes</a>
       <a href="#">Diagnostic</a>
@@ -208,7 +209,7 @@ footer.foot .wm .dot{display:inline-block;width:0.32em;height:0.32em;border-radi
   </section>
 
   <footer class="foot">
-    <a href="#" class="wm">rivett<span class="dot"></span></a>
+    <a href="#" class="wordmark wordmark--sm">rivett<span class="dot-mark"></span></a>
     <div style="display:flex;gap:32px;flex-wrap:wrap">
       <span>Visibility Engine · v0.1</span>
       <span>Open source · github.com/rivett/visibility</span>

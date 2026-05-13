@@ -32,8 +32,9 @@ nav.top .l{display:flex;align-items:center;gap:14px}
 nav.top .l .dot{width:10px;height:10px;background:var(--bad);border-radius:50%}
 nav.top .r{display:flex;gap:32px}
 nav.top b{color:var(--ink);font-weight:500}
-.wm{font-family:var(--grotesk);font-weight:700;font-size:18px;letter-spacing:-0.05em;color:var(--ink);text-transform:none;display:inline-flex;align-items:baseline;gap:0.12em}
-.wm .d{display:inline-block;width:0.32em;height:0.32em;border-radius:999px;background:#8FBF3F;transform:translateY(0.04em)}
+.wordmark{display:inline-flex;align-items:center;gap:0.12em;font-family:var(--grotesk);font-weight:700;font-size:28px;letter-spacing:-0.05em;line-height:1;color:var(--ink);text-transform:none}
+.wordmark .dot-mark{display:inline-block;width:0.32em;height:0.32em;border-radius:999px;background:#8FBF3F;transform:translateY(0.04em)}
+@media (max-width:780px){.wordmark{font-size:24px}}
 
 .crumb{margin-top:48px;font-family:var(--mono);font-size:10.5px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint);display:flex;gap:18px;align-items:center;flex-wrap:wrap}
 .crumb .sep{opacity:0.4}
