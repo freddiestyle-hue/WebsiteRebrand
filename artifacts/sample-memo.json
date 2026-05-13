@@ -1,0 +1,218 @@
+{
+  "version": "1.0.0",
+  "slug": "pellaofcolumbus-com-x7k2abcdefgh1234",
+  "domain": "pellaofcolumbus.com",
+  "companyName": "Pella of Columbus",
+  "generatedAt": "2026-05-13T20:00:00.000Z",
+  "cover": {
+    "kicker": "Teardown memo · pellaofcolumbus.com",
+    "roman": "Google sends you 320 visits a month.",
+    "italic": "Eight of them become leads. The rest hit a homepage that talks about windows generally and a quote form behind three clicks.",
+    "dek": "Pella of Columbus runs four active Meta ads. Three of them land on /replacement-windows-quote — a page slower than the homepage with weaker tracking and the same form gate."
+  },
+  "scoreNumeric": 47,
+  "scoreMax": 100,
+  "scorePercent": 47,
+  "band": "weak",
+  "benchmark": {
+    "industryName": "Building materials, 16 operators",
+    "industryN": 16,
+    "scoreNumeric": 47,
+    "industryMedian": 64,
+    "industryP25": 38,
+    "industryP75": 78,
+    "percentile": 32,
+    "betterThanCount": 5,
+    "worseThanCount": 10,
+    "scoreMax": 100,
+    "oneLiner": "Ten of sixteen Ohio window-replacement contractors score higher than you. Six of them score thirty-plus points higher."
+  },
+  "screenshots": {
+    "homepageDesktop": "https://api.screenshotone.com/take?url=pellaofcolumbus.com&viewport_width=1440",
+    "homepageMobile": "https://api.screenshotone.com/take?url=pellaofcolumbus.com&viewport_width=390",
+    "capturedAt": "2026-05-13T19:55:00.000Z",
+    "source": "screenshotone"
+  },
+  "aeo": {
+    "heading": "Google can find you.",
+    "italic": "ChatGPT and Perplexity cannot tell what you sell.",
+    "dek": "Sitemap reachable, robots permissive, canonicals self-referencing. The boring foundation is in place. The hard part is missing.",
+    "bodyParagraphs": [
+      "<code>/sitemap.xml</code> resolves at the root and lists <strong>87 URLs</strong>. Robots is permissive — <code>GPTBot</code>, <code>Google-Extended</code>, <code>PerplexityBot</code>, <code>ClaudeBot</code> all crawl without restriction. That is the right posture for a business that wants citations.",
+      "But no AI engine can answer the question that matters: <em>who installs Pella windows in Columbus Ohio?</em> Because the structured data that would let an agent connect you to that intent is missing, and the homepage talks about windows generally instead of windows in Columbus."
+    ],
+    "findings": [
+      {
+        "idx": "F.01.1",
+        "severity": "critical",
+        "severityLabel": "Critical",
+        "heading": "No <code>LocalBusiness</code> schema. <em>The single most-important block for a service-area operator is absent.</em>",
+        "paragraphs": [
+          "There is no JSON-LD <code>LocalBusiness</code> block. Without it, agents cannot connect your domain to your address, your service area, or your phone number. Three fields. One block. Fifteen minutes."
+        ]
+      },
+      {
+        "idx": "F.01.2",
+        "severity": "material",
+        "severityLabel": "Material",
+        "heading": "No <code>/llms.txt</code>. <em>Agents that hit your domain bounce off a 404.</em>",
+        "paragraphs": [
+          "Ship <code>/llms.txt</code> with your services, your service area, your hours, your phone. Cheapest AEO win available."
+        ]
+      }
+    ]
+  },
+  "performance": {
+    "commentary": "Pella ads send paid traffic to /replacement-windows-quote. That page is 2.4× slower than the homepage. Every second of LP delay drops ad conversion roughly 7%.",
+    "mobile": {
+      "lcpMs": 4200,
+      "inpMs": 380,
+      "cls": 0.18,
+      "fcpMs": 2800,
+      "performanceScore": 32,
+      "band": "poor",
+      "source": "pagespeed-insights",
+      "measuredAt": "2026-05-13T19:50:00.000Z"
+    },
+    "desktop": {
+      "lcpMs": 2100,
+      "inpMs": 120,
+      "cls": 0.04,
+      "fcpMs": 1400,
+      "performanceScore": 71,
+      "band": "needs-improvement"
+    }
+  },
+  "tracking": {
+    "heading": "Meta Pixel is firing.",
+    "italic": "GA4 is not. Conversion events are not configured.",
+    "dek": "Half a tracking stack costs more than no tracking stack. You see the spend, not the result.",
+    "bodyParagraphs": [
+      "The Meta Pixel fires on all pages, including the quote form thank-you page. So Meta has the conversion data and the algorithm is learning. <strong>Good.</strong>",
+      "GA4 is not installed. Google Ads cannot match a click to a quote submission. Bing the same. You are spending on Google and Meta but you can only see returns from Meta."
+    ],
+    "findings": [
+      {
+        "idx": "F.03.1",
+        "severity": "critical",
+        "severityLabel": "Critical",
+        "heading": "GA4 is missing. <em>Google Ads optimization is blind.</em>",
+        "paragraphs": [
+          "Install the GA4 tag via Google Tag Manager — <strong>20 minutes</strong>. Wire <code>generate_lead</code> conversion to the quote submission. Two days for the algorithm to start learning."
+        ]
+      }
+    ]
+  },
+  "conversion": {
+    "heading": "The quote form is behind three clicks.",
+    "italic": "Each click drops conversion roughly 30%.",
+    "dek": "Homepage → /windows → /replacement-windows → /replacement-windows-quote. Form on page four. Industry standard is one or two clicks from a paid LP.",
+    "bodyParagraphs": [
+      "On the desktop homepage, the most visible CTA is <em>\"Explore window options\"</em> — a content link, not a conversion path. The quote form is two scrolls down and behind a navigation hover.",
+      "On the mobile homepage, the quote CTA is below the fold and competes with three other CTAs. <strong>Pick one CTA per page.</strong>"
+    ],
+    "findings": []
+  },
+  "adActivity": {
+    "heading": "Four active Meta ads.",
+    "italic": "Three land on the same slow quote page.",
+    "dek": "Pella is spending on Meta. The ads work. The landing page does not.",
+    "bodyParagraphs": [
+      "Apify Meta Ad Library shows four active ads as of 2026-05-13. Three different creative variants, all driving to <code>/replacement-windows-quote</code>. One driving to <code>/free-consultation</code>.",
+      "First-seen dates suggest the campaign has been live since 2026-03-14. Two months. That is enough time to fix the LP and double conversion."
+    ],
+    "findings": []
+  },
+  "adLandingPages": [
+    {
+      "url": "https://pellaofcolumbus.com/replacement-windows-quote",
+      "platform": "meta",
+      "adsActive": 3,
+      "firstSeen": "2026-03-14",
+      "screenshotDesktop": "https://api.screenshotone.com/take?url=pellaofcolumbus.com/replacement-windows-quote&viewport_width=1440",
+      "screenshotMobile": "https://api.screenshotone.com/take?url=pellaofcolumbus.com/replacement-windows-quote&viewport_width=390",
+      "commentary": "<strong>This is where the ad money lands.</strong> Mobile LCP is 4.2 seconds. The form is below the fold. There is no urgency, no scarcity, no social proof above the fold. Meta is sending interest, the page is filtering it out.",
+      "trackingFindings": [
+        "Meta Pixel: <strong>present</strong>",
+        "GA4: <strong>missing</strong>",
+        "Lead event configured in Meta: <strong>yes</strong>"
+      ],
+      "conversionFindings": [
+        "Form is below-the-fold on mobile (1,240px down)",
+        "Form has 7 required fields. <em>Industry standard for a window quote is 3.</em>",
+        "No phone number above the form"
+      ],
+      "aeoFindings": [
+        "Page has no <code>LocalBusiness</code> schema",
+        "Title tag does not mention Columbus"
+      ],
+      "driftFromHomepage": "Homepage has GA4 missing too, but at least loads in 2.1s on desktop. The ad LP loads in 4.2s on mobile and has fewer trust signals than the homepage. Money is hitting the weaker page."
+    },
+    {
+      "url": "https://pellaofcolumbus.com/free-consultation",
+      "platform": "meta",
+      "adsActive": 1,
+      "firstSeen": "2026-04-22",
+      "commentary": "Cleaner LP. Faster. Better form. <strong>Move all ad spend here.</strong>",
+      "trackingFindings": ["Meta Pixel: present", "GA4: missing"],
+      "conversionFindings": ["Form above-the-fold on mobile", "Three required fields"]
+    }
+  ],
+  "organicTraffic": {
+    "estimatedMonthlyVisits": 320,
+    "estimatedMonthlyValueUsd": 1240,
+    "source": "dataforseo",
+    "snapshotDate": "2026-05-12",
+    "commentary": "Three hundred and twenty organic visits a month. At an 8% lead conversion rate (industry benchmark for windows), that is 26 leads from Google for free. You are getting 8.",
+    "topKeywords": [
+      { "keyword": "pella windows columbus", "position": 3, "monthlyVolume": 480 },
+      { "keyword": "replacement windows columbus oh", "position": 12, "monthlyVolume": 720 },
+      { "keyword": "window installation columbus", "position": 18, "monthlyVolume": 320 },
+      { "keyword": "pella of columbus", "position": 1, "monthlyVolume": 110 }
+    ]
+  },
+  "mobileRendering": {
+    "viewport": "390x844",
+    "hasHorizontalScroll": true,
+    "smallestTapTargetPx": 28,
+    "textTooSmall": true,
+    "commentary": "Horizontal scroll on body: page is 412px wider than the 390px viewport. Smallest tap target visible is 28px on a 44px Apple HIG threshold. 18 of 124 sampled text elements render below 12px on mobile. Cold visitors swipe and miss the CTA."
+  },
+  "emailDeliverability": {
+    "spfPresent": true,
+    "spfPolicy": "~all",
+    "dmarcPresent": false,
+    "dmarcPolicy": null,
+    "mxPresent": true,
+    "mxProvider": "google",
+    "commentary": "SPF is published with soft-fail. No DMARC. Spoofed mail from this domain will not be rejected by receiving servers. If you cold-email from this domain, replies-to-spam are common."
+  },
+  "aiCitation": {
+    "summary": "Zero of three AI engines cited pellaofcolumbus.com when asked who installs Pella windows in Columbus. Renewal by Andersen and Window World are cited instead.",
+    "probes": [
+      {
+        "engine": "perplexity",
+        "query": "who installs Pella windows in Columbus Ohio",
+        "cited": false,
+        "competitorsCited": ["rba.com", "window-world.com", "pella.com"],
+        "responseExcerpt": "Renewal by Andersen, Window World, and Pella's national site offer installation in the Columbus area. Local independent dealers are also available; check the Pella website for a list..."
+      },
+      {
+        "engine": "claude",
+        "query": "best window replacement contractor Columbus Ohio",
+        "cited": false,
+        "competitorsCited": ["rba.com", "champion.com"]
+      },
+      {
+        "engine": "openai",
+        "query": "Pella dealer near Columbus OH",
+        "cited": false,
+        "competitorsCited": ["pella.com"],
+        "responseExcerpt": "Pella's website has a dealer locator at pella.com/find-a-dealer. Local independent showrooms in the Columbus area include..."
+      }
+    ]
+  },
+  "personalObservation": {
+    "text": "I asked Perplexity who installs Pella windows in Columbus Ohio. Your site was not in the top five. Renewal by Andersen and Window World were. Pella's national site was. <strong>You are paying Meta to fight for clicks that Perplexity is giving away to your competitors for free.</strong> Fix the AEO and the GA4 gap first. The LP and the conversion-path work is downstream of those — if you cannot measure it, you cannot optimize it."
+  }
+}

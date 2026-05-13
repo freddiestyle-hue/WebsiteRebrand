@@ -2,5 +2,6 @@ User-agent: *
 Disallow: /api/
 Disallow: /internal/
 Disallow: /q/
+Disallow: /audit/p/
 
 Sitemap: https://rivett.tech/sitemap-index.xml

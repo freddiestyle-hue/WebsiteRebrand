@@ -12,6 +12,8 @@
     "validate:jsonld": "node scripts/validate-jsonld.mjs",
     "preview": "astro preview",
     "astro": "astro",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "portrait": "node scripts/build-portrait.mjs",
     "og": "node scripts/build-og.mjs"
   },
@@ -22,12 +24,17 @@
     "@astrojs/sitemap": "^3.7.2",
     "@astrojs/vercel": "^10.0.6",
     "@calcom/embed-snippet": "^1.3.3",
+    "@upstash/redis": "^1.38.0",
     "astro": "^6.2.1",
     "framer-motion": "^12.38.0",
     "marked": "^18.0.2",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "resend": "^6.12.3",
-    "sharp": "^0.34.5"
+    "sharp": "^0.34.5",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.6"
   }
 }

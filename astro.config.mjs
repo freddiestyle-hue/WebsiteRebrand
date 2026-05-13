@@ -9,7 +9,7 @@ import sitemap from '@astrojs/sitemap';
 import vercel from '@astrojs/vercel';
 
 const rootDir = fileURLToPath(new URL('.', import.meta.url));
-const privateSitemapPrefixes = ['/api/', '/internal/', '/q/'];
+const privateSitemapPrefixes = ['/api/', '/internal/', '/q/', '/audit/p/'];
 
 const staticSitemapRoutes = {
   '/': {
@@ -31,11 +31,6 @@ const staticSitemapRoutes = {
     file: 'src/pages/revenue-leak-mri.astro',
     changefreq: 'monthly',
     priority: 0.8,
-  },
-  '/30-day-vanish-test': {
-    file: 'src/pages/30-day-vanish-test.astro',
-    changefreq: 'monthly',
-    priority: 0.7,
   },
 };
 
