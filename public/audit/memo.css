@@ -35,7 +35,6 @@ a{color:inherit;text-decoration:none}
 /* mast */
 nav.top{display:flex;align-items:center;justify-content:space-between;padding:28px 0 0;font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint)}
 nav.top .l{display:flex;align-items:center;gap:14px}
-nav.top .l .dot{width:10px;height:10px;background:var(--accent);border-radius:50%}
 nav.top .r{display:flex;gap:32px}
 nav.top b{color:var(--ink);font-weight:500}
 .wordmark{display:inline-flex;align-items:center;gap:0.12em;font-family:var(--grotesk);font-weight:700;font-size:28px;letter-spacing:-0.05em;line-height:1;color:var(--ink);text-transform:none}
@@ -51,8 +50,10 @@ nav.top b{color:var(--ink);font-weight:500}
 .kicker{font-family:var(--mono);font-size:11px;letter-spacing:0.24em;text-transform:uppercase;color:var(--accent-deep);display:inline-flex;align-items:center;gap:12px;margin-bottom:36px}
 .kicker::before{content:'';width:8px;height:8px;background:var(--accent);border-radius:50%}
 h1.cv{font-family:var(--grotesk);font-weight:800;font-size:clamp(48px,7.4vw,108px);line-height:0.92;letter-spacing:-0.05em;margin:0;text-wrap:balance;max-width:1080px}
-/* Hero dek: italic Newsreader carries the second sentence underneath h1 */
-.cv-dek{font-family:var(--serif);font-style:italic;font-weight:400;font-size:clamp(22px,3vw,34px);line-height:1.32;letter-spacing:-0.015em;color:var(--ink-dim);margin:24px 0 0;max-width:880px;text-wrap:pretty}
+/* T7 · Hero dek is ROMAN (Inter Tight). The italic clause lives inside h1.cv now.
+   Two italic surfaces stacked would violate § 10 (never a whole sentence in italic). */
+.cv-dek{font-family:var(--grotesk);font-weight:500;font-size:clamp(20px,2.6vw,28px);line-height:1.32;letter-spacing:-0.015em;color:var(--ink-dim);margin:24px 0 0;max-width:880px;text-wrap:pretty}
+h1.cv .ital{font-family:var(--serif);font-style:italic;font-weight:400;letter-spacing:-0.02em;color:var(--ink-dim)}
 .cv-sub{display:grid;grid-template-columns:1.5fr 1fr;gap:64px;margin-top:48px;align-items:end}
 @media (max-width:880px){.cv-sub{grid-template-columns:1fr;gap:32px}}
 .lede{font-family:var(--grotesk);font-size:21px;line-height:1.5;color:var(--ink-dim);max-width:680px;margin:0;text-wrap:pretty}
@@ -114,11 +115,12 @@ p.body code{font-family:var(--mono);font-size:14.5px;background:var(--paper-2);p
 .mirror .row .lab::before{content:'';width:8px;height:8px;border-radius:50%;flex-shrink:0}
 .mirror .row.ai .lab{color:var(--accent-deep)}
 .mirror .row.ai .lab::before{background:var(--accent)}
+/* T8 · YOU CLAIM and THE GAP render as neutral stamps — no dot, ink-faint or ink */
 .mirror .row.claim .lab{color:var(--ink-faint)}
-.mirror .row.claim .lab::before{background:var(--ink-faint)}
+.mirror .row.claim .lab::before{display:none}
 .mirror .row.gap{margin-top:16px;padding:28px 0 0;border-top:1px dashed var(--line-strong)}
 .mirror .row.gap .lab{color:var(--ink);font-weight:500}
-.mirror .row.gap .lab::before{background:var(--ink)}
+.mirror .row.gap .lab::before{display:none}
 .mirror .row p{margin:0;font-family:var(--grotesk);font-size:17px;line-height:1.65;color:var(--ink-dim);max-width:720px;text-wrap:pretty}
 .mirror .row.gap p{color:var(--ink);font-weight:500;font-size:18px}
 .mirror .row p em{font-family:var(--serif);font-style:italic;color:var(--ink)}
@@ -152,7 +154,8 @@ p.body code{font-family:var(--mono);font-size:14.5px;background:var(--paper-2);p
 /* fix-kit email gate */
 .fixkit{margin-top:64px;background:var(--paper-2);border:1px solid var(--ink);padding:36px 40px}
 @media (max-width:780px){.fixkit{padding:28px}}
-.fixkit .lab{font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint);display:flex;align-items:center;gap:10px;margin-bottom:18px}
+.fixkit .lab{font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--accent-deep);display:flex;align-items:center;gap:10px;margin-bottom:18px}
+.fixkit .lab::before{content:'';width:8px;height:8px;background:var(--accent);border-radius:50%;flex-shrink:0}
 .fixkit h3{font-family:var(--grotesk);font-weight:700;font-size:26px;line-height:1.15;letter-spacing:-0.03em;margin:0 0 10px;text-wrap:balance}
 .fixkit h3 em{font-family:var(--serif);font-style:italic;font-weight:400;color:var(--ink-dim)}
 .fixkit p{font-family:var(--grotesk);font-size:15.5px;line-height:1.55;color:var(--ink-dim);margin:0 0 22px;max-width:620px;text-wrap:pretty}
@@ -177,6 +180,9 @@ p.body code{font-family:var(--mono);font-size:14.5px;background:var(--paper-2);p
 .find .idx{font-family:var(--mono);font-size:11px;letter-spacing:0.18em;color:var(--ink-faint);padding-top:4px}
 .find .sev{font-family:var(--mono);font-size:10.5px;letter-spacing:0.22em;text-transform:uppercase;display:flex;align-items:center;gap:10px;padding-top:4px;color:var(--accent-deep)}
 .find .sev::before{content:'';width:8px;height:8px;border-radius:50%;flex-shrink:0;background:var(--accent)}
+/* T8 · FIX stamp is neutral — no dot, ink-faint. Only KEEP carries the accent. */
+.find .sev.sev--neutral{color:var(--ink-faint)}
+.find .sev.sev--neutral::before{display:none}
 .find .b h4{font-family:var(--grotesk);font-weight:700;font-size:22px;line-height:1.2;letter-spacing:-0.025em;margin:0 0 12px;text-wrap:pretty;color:var(--ink)}
 .find .b h4 em{font-family:var(--serif);font-style:italic;font-weight:400;color:var(--ink-dim)}
 .find .b p{margin:0;font-family:var(--grotesk);font-size:15.5px;line-height:1.6;color:var(--ink-dim);font-weight:400;max-width:640px;text-wrap:pretty}

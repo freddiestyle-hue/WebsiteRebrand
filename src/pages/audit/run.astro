@@ -200,11 +200,22 @@ const topRec = recommendations[0]?.check;
 const topRecFix = topRec ? beforeAfter(topRec) : null;
 const contextLine = result && !result.error ? cohortContext(result.scorePercent) : null;
 
-// T1 · Split bandKicker into roman h1 tail + italic Newsreader dek.
-// bandKicker is always 1-2 sentences ending with a period; split on the first sentence boundary.
-function splitKicker(k: string): { head: string; dek: string } {
-  const parts = k.split(/(?<=\.)\s+/);
-  return { head: parts[0] || k, dek: parts.slice(1).join(' ').trim() };
+// T7 · Split bandKicker into roman display + italic trailing clause + roman dek.
+// bandKicker is 1-2 sentences. First sentence becomes the H1 display, with the
+// last prepositional or conjunctive clause wrapped in italic Newsreader (the v0.2
+// pattern: roman statement + italic qualifier). Second sentence, if any, becomes
+// the roman dek below.
+function splitDisplay(kicker: string): { roman: string; italic: string; dek: string } {
+  const parts = kicker.split(/(?<=\.)\s+/);
+  const head = (parts[0] || kicker).trim();
+  const dek = parts.slice(1).join(' ').trim();
+  // Greedy first group → captures up to the LAST preposition/conjunction.
+  // The trailing clause is the natural italic "turn" in the v0.2 type spec.
+  const m = head.match(/^(.+)(\s+(?:for|in|to|with|at|by|from|as|on|of|about|but)\s+.+?\.?)$/i);
+  if (m && m[1].trim().length >= 4) {
+    return { roman: m[1].trim(), italic: m[2].trim(), dek };
+  }
+  return { roman: head, italic: '', dek };
 }
 ---
 <!doctype html>
@@ -223,7 +234,7 @@ function splitKicker(k: string): { head: string; dek: string } {
 
 <div class="page">
   <nav class="top">
-    <div class="l"><span class="dot"></span> <a href="/audit" class="wordmark" aria-label="Rivett, audit index">rivett<span class="dot-mark" aria-hidden="true"></span></a> <b>· Visibility Engine</b></div>
+    <div class="l"><a href="/audit" class="wordmark" aria-label="Rivett, audit index">rivett<span class="dot-mark" aria-hidden="true"></span></a> <b>· Visibility Engine</b></div>
     <div class="r">
       <span>Run by <a href="https://www.linkedin.com/in/fredstyle/" style="color:var(--ink);font-weight:500" target="_blank" rel="noopener">Fred Style</a></span>
       <span>{result ? fmtDate(result.fetchedAt) : ''}</span>
@@ -275,10 +286,18 @@ function splitKicker(k: string): { head: string; dek: string } {
     <>
       <header class="cover">
         <div class="kicker">audit memo · {result.hostname}</div>
-        <h1 class="cv">{result.bandLabel}. {splitKicker(result.bandKicker).head}</h1>
-        {splitKicker(result.bandKicker).dek && (
-          <p class="cv-dek">{splitKicker(result.bandKicker).dek}</p>
-        )}
+        {(() => {
+          const d = splitDisplay(result.bandKicker);
+          return (
+            <>
+              <h1 class="cv">
+                {result.bandLabel}. {d.roman}
+                {d.italic && <> <span class="ital">{d.italic}</span></>}
+              </h1>
+              {d.dek && <p class="cv-dek">{d.dek}</p>}
+            </>
+          );
+        })()}
         <div class="cv-sub">
           <p class="lede">An external read of <em>{result.hostname}</em>, scored against the eleven checks that govern how AI engines and Google find, parse, and cite a content site today.</p>
           <div class="cv-meta">
@@ -365,7 +384,7 @@ function splitKicker(k: string): { head: string; dek: string } {
           {result.checks.filter((c) => c.category === 'crawl').map((c, i) => (
               <div class="find">
                 <div class="idx">F.01.{i + 1}</div>
-                <div class="sev">{severity(c)}</div>
+                <div class={severity(c) === 'Keep' ? 'sev' : 'sev sev--neutral'}>{severity(c)}</div>
                 <div class="b">
                   <h4>{c.label}.</h4>
                   <p>{c.finding}</p>
@@ -388,7 +407,7 @@ function splitKicker(k: string): { head: string; dek: string } {
           {result.checks.filter((c) => c.category === 'schema' || c.category === 'meta').map((c, i) => (
               <div class="find">
                 <div class="idx">F.02.{i + 1}</div>
-                <div class="sev">{severity(c)}</div>
+                <div class={severity(c) === 'Keep' ? 'sev' : 'sev sev--neutral'}>{severity(c)}</div>
                 <div class="b">
                   <h4>{c.label}.</h4>
                   <p>{c.finding}</p>
@@ -411,7 +430,7 @@ function splitKicker(k: string): { head: string; dek: string } {
           {result.checks.filter((c) => c.category === 'aeo').map((c, i) => (
               <div class="find">
                 <div class="idx">F.03.{i + 1}</div>
-                <div class="sev">{severity(c)}</div>
+                <div class={severity(c) === 'Keep' ? 'sev' : 'sev sev--neutral'}>{severity(c)}</div>
                 <div class="b">
                   <h4>{c.label}.</h4>
                   <p>{c.finding}</p>
