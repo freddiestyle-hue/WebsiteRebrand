@@ -142,7 +142,7 @@ function beforeAfter(c: CheckResult): { before: string; after: string; beforeNot
       before: 'No reachable sitemap at <code>/sitemap.xml</code>.',
       after: 'Generate a sitemap at build time and link from robots.txt.',
       beforeNote: 'Search engines discover URLs only via internal links. Most pages stay invisible.',
-      afterNote: 'Most frameworks have a plugin. Astro, Next, Hugo — all one-line installs.',
+      afterNote: 'Most frameworks have a plugin. Astro, Next, Hugo. All one-line installs.',
     },
     'sitemap-size': {
       before: 'Sitemap lists fewer than 5 URLs.',
@@ -200,15 +200,22 @@ function beforeAfter(c: CheckResult): { before: string; after: string; beforeNot
 const COHORT_AVG = 46;
 const COHORT_N = 12;
 function cohortContext(score: number): string | null {
-  if (score >= 90) return `I ran this audit on a sample of <b>${COHORT_N}</b> US SMB operators in the last week. The average score was <b>${COHORT_AVG}/100</b>. You scored <b>${score}/100</b> — top of the cohort. The fixes below are polish, not blockers.`;
-  if (score >= 70) return `I ran this audit on <b>${COHORT_N}</b> US SMB operators in the last week. The average score was <b>${COHORT_AVG}/100</b>. You scored <b>${score}/100</b> — above the median. A few targeted fixes would move you into AEO-ready territory.`;
-  if (score >= 40) return `I ran this audit on <b>${COHORT_N}</b> US SMB operators in the last week. The average score was <b>${COHORT_AVG}/100</b>. You scored <b>${score}/100</b> — around the cohort median. Every operator I tested had real gaps. Yours are listed below.`;
-  return `I ran this audit on <b>${COHORT_N}</b> US SMB operators in the last week. The average score was <b>${COHORT_AVG}/100</b>. You scored <b>${score}/100</b> — bottom quartile. AI engines and Google currently cannot see most of this site. The fixes are not exotic.`;
+  if (score >= 90) return `I ran this audit on a sample of <b>${COHORT_N}</b> US SMB operators in the last week. The average score was <b>${COHORT_AVG}/100</b>. You scored <b>${score}/100</b>. Top of the cohort. The fixes below are polish, not blockers.`;
+  if (score >= 70) return `I ran this audit on <b>${COHORT_N}</b> US SMB operators in the last week. The average score was <b>${COHORT_AVG}/100</b>. You scored <b>${score}/100</b>. Above the median. A few targeted fixes would move you into AEO-ready territory.`;
+  if (score >= 40) return `I ran this audit on <b>${COHORT_N}</b> US SMB operators in the last week. The average score was <b>${COHORT_AVG}/100</b>. You scored <b>${score}/100</b>. Around the cohort median. Every operator I tested had real gaps. Yours are listed below.`;
+  return `I ran this audit on <b>${COHORT_N}</b> US SMB operators in the last week. The average score was <b>${COHORT_AVG}/100</b>. You scored <b>${score}/100</b>. Bottom quartile. AI engines and Google currently cannot see most of this site. The fixes are not exotic.`;
 }
 
 const topRec = recommendations[0]?.check;
 const topRecFix = topRec ? beforeAfter(topRec) : null;
 const contextLine = result && !result.error ? cohortContext(result.scorePercent) : null;
+
+// T1 · Split bandKicker into roman h1 tail + italic Newsreader dek.
+// bandKicker is always 1-2 sentences ending with a period; split on the first sentence boundary.
+function splitKicker(k: string): { head: string; dek: string } {
+  const parts = k.split(/(?<=\.)\s+/);
+  return { head: parts[0] || k, dek: parts.slice(1).join(' ').trim() };
+}
 ---
 <!doctype html>
 <html lang="en">
@@ -230,7 +237,7 @@ const contextLine = result && !result.error ? cohortContext(result.scorePercent)
     <div class="r">
       <span>Run by <a href="https://www.linkedin.com/in/fredstyle/" style="color:var(--ink);font-weight:500" target="_blank" rel="noopener">Fred Style</a></span>
       <span>{result ? fmtDate(result.fetchedAt) : ''}</span>
-      <span>id {auditId || '—'}</span>
+      <span>id {auditId || 'n/a'}</span>
     </div>
   </nav>
 
@@ -253,7 +260,7 @@ const contextLine = result && !result.error ? cohortContext(result.scorePercent)
       <div class="cv-sub">
         <p class="lede">{runError}</p>
         <div class="cv-meta">
-          <div>URL submitted<b>{rawUrl || '—'}</b></div>
+          <div>URL submitted<b>{rawUrl || 'n/a'}</b></div>
           <div>Status<b>Audit not run</b></div>
         </div>
       </div>
@@ -278,7 +285,10 @@ const contextLine = result && !result.error ? cohortContext(result.scorePercent)
     <>
       <header class="cover">
         <div class="kicker">audit memo · {result.hostname}</div>
-        <h1 class="cv">{result.bandLabel}. <span class="ital">{result.bandKicker}</span></h1>
+        <h1 class="cv">{result.bandLabel}. {splitKicker(result.bandKicker).head}</h1>
+        {splitKicker(result.bandKicker).dek && (
+          <p class="cv-dek">{splitKicker(result.bandKicker).dek}</p>
+        )}
         <div class="cv-sub">
           <p class="lede">An external read of <em>{result.hostname}</em>, scored against the eleven checks that govern how AI engines and Google find, parse, and cite a content site today.</p>
           <div class="cv-meta">
@@ -292,7 +302,7 @@ const contextLine = result && !result.error ? cohortContext(result.scorePercent)
 
       {tldrSentences.length > 0 && (
         <div class="tldr">
-          <div class="lab">TL;DR</div>
+          <div class="lab">TL · DR</div>
           <div class="body">
             {tldrSentences.map((s) => <p>{s}</p>)}
           </div>
@@ -357,7 +367,7 @@ const contextLine = result && !result.error ? cohortContext(result.scorePercent)
         <div class="sec-head">
           <div class="num">01 · Crawlability</div>
           <div>
-            <h2>Can search engines walk the site at all? <span class="ital">Sitemap, robots, canonicals.</span></h2>
+            <h2>Whether search engines can walk the site at all. <span class="ital">Sitemap, robots, canonicals.</span></h2>
             <p class="dek">The base layer. If these fail, every fix that comes after is wasted.</p>
           </div>
         </div>
@@ -474,7 +484,7 @@ const contextLine = result && !result.error ? cohortContext(result.scorePercent)
           <div class="fixkit">
             <div class="lab">Optional</div>
             <h3>Want the markdown fix-kit? <span class="ital">The exact code to drop in.</span></h3>
-            <p>I'll send you the markdown fix-kit for the recommendations above — the JSON-LD snippets, the meta tags, the llms.txt template, all copy-pasteable. One email, no list.</p>
+            <p>I'll send you the markdown fix-kit for the recommendations above. The JSON-LD snippets, the meta tags, the llms.txt template, all copy-pasteable. One email, no list.</p>
             <form method="post" action="https://formspree.io/f/your-form-id" target="_blank">
               <input type="email" name="email" placeholder="your@email.com" required />
               <button type="submit">Send fix-kit →</button>
@@ -488,7 +498,7 @@ const contextLine = result && !result.error ? cohortContext(result.scorePercent)
         <div>
           <h2>{result.scorePercent >= 70 ? 'The site is in good shape.' : 'The fixes are not exotic.'} <span class="ital">{result.scorePercent >= 70 ? 'A small sprint moves you to AEO-ready.' : 'A focused week closes most of the gap.'}</span></h2>
           <p>I ran this audit on <em>{result.hostname}</em> in {(result.durationMs / 1000).toFixed(1)} seconds. The fixes above are the work I do for operators in your range. Most of them take me about three to six hours end-to-end.</p>
-          <p>If you want it done, reply to this URL with your calendar — or book direct below. <strong>If you want to think about it</strong>, send the URL to whoever runs your site and tell them to fix the P0s. Either way, the diagnosis is yours to keep.</p>
+          <p>If you want it done, reply with your calendar. Or book direct below. <strong>If you want to think about it</strong>, send the URL to whoever runs your site and tell them to fix the P0s. Either way, the diagnosis is yours to keep.</p>
           <div class="actions">
             <a class="btn btn--inv" href={`mailto:freddiestyle@gmail.com?subject=${encodeURIComponent(`Visibility audit follow-up · ${result.hostname}`)}&body=${encodeURIComponent(`Saw the audit at rivett.tech/audit/run?url=${result.hostname} (id ${auditId}). Open to a call.`)}`}>Email Fred →</a>
             <a class="btn" href="https://www.linkedin.com/in/fredstyle/" target="_blank" rel="noopener">LinkedIn DM →</a>
