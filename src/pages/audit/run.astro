@@ -45,13 +45,6 @@ const recommendations = result ? rankedRecommendations(result) : [];
 
 const tldrSentences = result && !result.error ? buildTldr(result) : [];
 
-function gradeClass(grade: string): string {
-  if (grade === 'A' || grade === 'B') return 'good';
-  if (grade === 'C') return 'warn';
-  if (grade === 'D' || grade === 'F') return 'bad';
-  return '';
-}
-
 function buildTldr(r: AuditResult): string[] {
   const out: string[] = [];
   const passedHigh = r.checks.filter((c) => c.passed && c.weight >= 2);
@@ -76,12 +69,9 @@ function buildTldr(r: AuditResult): string[] {
   return out;
 }
 
-// Severity classification for finding rows
-function severity(c: CheckResult): { cls: string; label: string } {
-  if (c.passed) return { cls: 'good', label: 'Pass' };
-  if (c.weight >= 4) return { cls: 'bad', label: 'Critical' };
-  if (c.weight >= 2) return { cls: 'warn', label: 'Material' };
-  return { cls: 'warn', label: 'Minor' };
+// T6 · Binary severity stamp. Matches the rest of the system.
+function severity(c: CheckResult): string {
+  return c.passed ? 'Keep' : 'Fix';
 }
 
 function priorityLabel(c: CheckResult): string {
@@ -336,23 +326,23 @@ function splitKicker(k: string): { head: string; dek: string } {
       <div class="verdict">
         <div class="v">
           <div class="k">Crawlability</div>
-          <div class={`g ${gradeClass(result.verdict.crawl.grade)}`}>{result.verdict.crawl.grade}</div>
-          <div class="n">{result.verdict.crawl.passed} of {result.verdict.crawl.total} passed</div>
+          <div class="g">{result.verdict.crawl.passed} of {result.verdict.crawl.total}</div>
+          <div class="n">checks passed</div>
         </div>
         <div class="v">
           <div class="k">Structured data</div>
-          <div class={`g ${gradeClass(result.verdict.schema.grade)}`}>{result.verdict.schema.grade}</div>
-          <div class="n">{result.verdict.schema.passed} of {result.verdict.schema.total} passed</div>
+          <div class="g">{result.verdict.schema.passed} of {result.verdict.schema.total}</div>
+          <div class="n">checks passed</div>
         </div>
         <div class="v">
           <div class="k">AEO surfaces</div>
-          <div class={`g ${gradeClass(result.verdict.aeo.grade)}`}>{result.verdict.aeo.grade}</div>
-          <div class="n">{result.verdict.aeo.passed} of {result.verdict.aeo.total} passed</div>
+          <div class="g">{result.verdict.aeo.passed} of {result.verdict.aeo.total}</div>
+          <div class="n">checks passed</div>
         </div>
         <div class="v">
           <div class="k">Send-readiness</div>
-          <div class={`g ${gradeClass(result.verdict.sendReady.grade)}`}>{result.verdict.sendReady.grade}</div>
-          <div class="n">{result.verdict.sendReady.passed} of {result.verdict.sendReady.total} passed</div>
+          <div class="g">{result.verdict.sendReady.passed} of {result.verdict.sendReady.total}</div>
+          <div class="n">checks passed</div>
         </div>
       </div>
 
@@ -372,20 +362,17 @@ function splitKicker(k: string): { head: string; dek: string } {
           </div>
         </div>
         <div class="findings">
-          {result.checks.filter((c) => c.category === 'crawl').map((c, i) => {
-            const sev = severity(c);
-            return (
+          {result.checks.filter((c) => c.category === 'crawl').map((c, i) => (
               <div class="find">
                 <div class="idx">F.01.{i + 1}</div>
-                <div class={`sev ${sev.cls}`}>{sev.label}</div>
+                <div class="sev">{severity(c)}</div>
                 <div class="b">
-                  <h4>{c.label}{c.passed ? '.' : '.'}</h4>
+                  <h4>{c.label}.</h4>
                   <p>{c.finding}</p>
                 </div>
                 <div class="pri">Priority<b>{priorityLabel(c)}</b></div>
               </div>
-            );
-          })}
+          ))}
         </div>
       </section>
 
@@ -398,20 +385,17 @@ function splitKicker(k: string): { head: string; dek: string } {
           </div>
         </div>
         <div class="findings">
-          {result.checks.filter((c) => c.category === 'schema' || c.category === 'meta').map((c, i) => {
-            const sev = severity(c);
-            return (
+          {result.checks.filter((c) => c.category === 'schema' || c.category === 'meta').map((c, i) => (
               <div class="find">
                 <div class="idx">F.02.{i + 1}</div>
-                <div class={`sev ${sev.cls}`}>{sev.label}</div>
+                <div class="sev">{severity(c)}</div>
                 <div class="b">
                   <h4>{c.label}.</h4>
                   <p>{c.finding}</p>
                 </div>
                 <div class="pri">Priority<b>{priorityLabel(c)}</b></div>
               </div>
-            );
-          })}
+          ))}
         </div>
       </section>
 
@@ -424,20 +408,17 @@ function splitKicker(k: string): { head: string; dek: string } {
           </div>
         </div>
         <div class="findings">
-          {result.checks.filter((c) => c.category === 'aeo').map((c, i) => {
-            const sev = severity(c);
-            return (
+          {result.checks.filter((c) => c.category === 'aeo').map((c, i) => (
               <div class="find">
                 <div class="idx">F.03.{i + 1}</div>
-                <div class={`sev ${sev.cls}`}>{sev.label}</div>
+                <div class="sev">{severity(c)}</div>
                 <div class="b">
                   <h4>{c.label}.</h4>
                   <p>{c.finding}</p>
                 </div>
                 <div class="pri">Priority<b>{priorityLabel(c)}</b></div>
               </div>
-            );
-          })}
+          ))}
         </div>
       </section>
 
