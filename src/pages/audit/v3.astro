@@ -374,14 +374,16 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
   .vcell .icon-row .key { font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); }
   .vcell h3 { font-family: var(--grotesk); font-weight: 700; font-size: 18px; letter-spacing: var(--track-h-sm); line-height: 1.2; margin: 0; text-wrap: balance; }
   .vcell h3 .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); letter-spacing: -0.02em; }
-  .vcell .big { font-family: var(--grotesk); font-weight: 800; font-size: clamp(40px, 4.6vw, 56px); line-height: 1; letter-spacing: var(--track-display); margin-top: 4px; display: flex; align-items: baseline; gap: var(--sp-2); }
-  .vcell .big .denom { font-size: 0.42em; color: var(--ink-faint); font-weight: 600; letter-spacing: 0; }
+  .vcell .big { font-family: var(--grotesk); font-weight: 800; font-size: clamp(48px, 5.4vw, 68px); line-height: 1; letter-spacing: var(--track-display); margin-top: 4px; display: flex; align-items: baseline; gap: var(--sp-2); }
+  .vcell .big .denom { font-size: 0.38em; color: var(--ink-faint); font-weight: 600; letter-spacing: 0; }
   .vcell .big.r { color: var(--signal-halt); }
   .vcell .big.a { color: var(--signal-warn); }
   .vcell .big.g { color: var(--accent-deep); }
   .vcell .note { font-size: 14.5px; line-height: 1.5; color: var(--ink-dim); margin: 0; max-width: 36ch; text-wrap: pretty; }
   .vcell .bench { margin-top: auto; font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); border-top: 1px dashed var(--line-strong); padding-top: var(--sp-3); display: flex; justify-content: space-between; gap: var(--sp-3); }
   .vcell .bench b { color: var(--ink); font-weight: 500; }
+  .vcell .bench .bench-l { color: var(--ink-faint); }
+  .vcell .bench .bench-r { color: var(--ink); font-weight: 500; }
   .vcell details { border-top: var(--bw-hair) solid var(--line); }
   .vcell summary { list-style: none; cursor: pointer; padding: var(--sp-4) var(--sp-6); font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); display: flex; justify-content: space-between; align-items: center; transition: background var(--dur-1) var(--ease); }
   .vcell summary::-webkit-details-marker { display: none; }
@@ -718,15 +720,16 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
                 <h3>{hd.lead}{hd.tail && <> <span class="ital">{hd.tail}</span></>}</h3>
                 <div class={`big ${sev}`}>{sv.num}{sv.denom && <span class="denom">{sv.denom}</span>}</div>
                 <p class="note" set:html={sanitizeMemoHtml(cell.note)} />
-                {cell.benchmark && (
+                {(cell.benchmark || cell.benchmarkRight) && (
                   <div class="bench">
-                    <span set:html={sanitizeMemoHtml(cell.benchmark)} />
+                    <span class="bench-l" set:html={sanitizeMemoHtml(cell.benchmark ?? '')} />
+                    {cell.benchmarkRight && <span class="bench-r" set:html={sanitizeMemoHtml(cell.benchmarkRight)} />}
                   </div>
                 )}
               </div>
               {cell.checks.length > 0 && (
                 <details>
-                  <summary>+ {cell.checks.length} {cell.checks.length === 1 ? 'check' : 'checks'} <span class="marker">+</span></summary>
+                  <summary>+ {cell.checks.length} checks <span class="marker">+</span></summary>
                   <div class="checks">
                     {cell.checks.map((c) => {
                       const badge = statusBadge(c.ok, sev);

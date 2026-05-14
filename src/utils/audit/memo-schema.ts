@@ -35,7 +35,11 @@ const VerdictCellSchema = z.object({
   heading: z.string().min(1),
   value: z.string().min(1),
   note: z.string().min(1),
+  // Old single-string benchmark stays for back-compat with /audit/p memos
+  // written under the v2.0.0 schema. New v3 audits split it into two columns
+  // for the cell footer: bench-left (method/category) and bench-right (status).
   benchmark: z.string().nullish(),
+  benchmarkRight: z.string().nullish(),
   checks: z.array(VerdictCheckSchema).default([]),
 });
 
