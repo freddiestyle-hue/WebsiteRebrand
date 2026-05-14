@@ -476,6 +476,17 @@ export function buildMemoFromAudit(audit: AuditResult, enrich?: EnrichmentBundle
 
   if (enrich?.pageSpeed) {
     verdictCells.push(speedCellFromPsi(enrich.pageSpeed));
+  } else if (enrich) {
+    // PSI returned null (quota / timeout / network). Still emit a cell so the
+    // 9-grid stays intact and the operator sees the dimension was attempted.
+    verdictCells.push({
+      icon: 'bolt' as VerdictIcon,
+      heading: 'How fast it loads',
+      value: 'n/a',
+      note: "PageSpeed didn't return for this scan. Either Google's anonymous quota was exhausted, the site blocked the Lighthouse bot, or the page took longer than 28 seconds. Try again in a few minutes.",
+      benchmark: 'PSI · unavailable',
+      checks: [],
+    });
   }
 
   if (tracking.length > 0) {
