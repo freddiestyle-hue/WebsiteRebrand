@@ -42,7 +42,7 @@ export interface HeadlessResult {
   durationMs: number;
 }
 
-const HEADLESS_TIMEOUT_MS = 20000;
+const HEADLESS_TIMEOUT_MS = 28000;
 const NAV_TIMEOUT_MS = 15000;
 
 export async function runHeadlessCheck(url: string): Promise<HeadlessResult | null> {
@@ -95,6 +95,23 @@ export async function runHeadlessCheck(url: string): Promise<HeadlessResult | nu
       // initial idle). 800ms is a small bribe for the long tail of trackers.
       await page.waitForTimeout(800);
 
+      // Scroll simulation: GTM containers commonly trigger conditional pixels
+      // on scroll events (Facebook Custom Audience, Google Dynamic
+      // Remarketing, time-on-page conversion tags). Force-fire those by
+      // scrolling to the bottom, waiting, scrolling back, waiting again.
+      // The request listener picks up any new script requests during these
+      // waits and adds them to networkHosts + scriptSrcs.
+      try {
+        await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+        await page.waitForTimeout(1500);
+        await page.evaluate(() => window.scrollTo(0, 0));
+        await page.waitForTimeout(800);
+      } catch {
+        // Page may have unloaded between calls; ignore.
+      }
+
+      // Re-capture HTML AFTER the scroll simulation so the rendered DOM
+      // reflects any nodes GTM injected mid-scroll.
       const renderedHtml = await page.content();
 
       // Real mobile signals via DOM measurement

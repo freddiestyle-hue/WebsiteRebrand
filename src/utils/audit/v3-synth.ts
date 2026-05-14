@@ -383,12 +383,14 @@ function techStackCellFromResult(
   let note: string;
   if (t.total === 0) {
     note = hasRuntime
-      ? 'No technologies detected even after a full headless browser pass.'
+      ? 'No technologies detected even after a full headless browser pass with scroll simulation.'
       : 'No technologies detected from the static HTML scan. Runtime JS may be hiding them.';
   } else if (hasRuntime && runtimeOnly.size > 0) {
-    note = `${t.total} technologies detected (${runtimeOnly.size} only visible after JS executed — those are runtime-injected, the rest were in static HTML).`;
+    note = `${t.total} technologies detected (${runtimeOnly.size} only visible after JS executed and the page was scrolled). Sub-pixels GTM fires on specific user events may not all appear here. Run the diagnostic for the full container audit.`;
+  } else if (hasRuntime) {
+    note = `${t.total} technologies detected across ${Object.keys(t.byCategory).length} categories (static HTML + headless render + scroll simulation). Sub-pixels GTM fires on specific user events may not all appear.`;
   } else {
-    note = `${t.total} technologies detected across ${Object.keys(t.byCategory).length} categories.`;
+    note = `${t.total} technologies detected from the static HTML scan across ${Object.keys(t.byCategory).length} categories.`;
   }
 
   const checks: Array<{ ok: boolean; text: string }> = [];

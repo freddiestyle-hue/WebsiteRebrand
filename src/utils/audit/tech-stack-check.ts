@@ -80,6 +80,10 @@ const SIGNATURES: TechSignature[] = [
   { name: 'Cloudflare Web Analytics', category: 'analytics', scripts: [/static\.cloudflareinsights\.com\//i] },
   { name: 'Fathom', category: 'analytics', scripts: [/cdn\.usefathom\.com\//i] },
   { name: 'Embedly', category: 'analytics', scripts: [/cdn\.embedly\.com\//i] },
+  { name: 'Mouseflow', category: 'analytics', scripts: [/cdn\.mouseflow\.com\//i, /n1\.mouseflow\.com\//i] },
+  { name: 'Adobe Analytics', category: 'analytics', scripts: [/assets\.adobedtm\.com\//i, /\.sc\.omtrdc\.net\//i, /adobedc\.demdex\.net\//i] },
+  { name: 'AppsFlyer', category: 'analytics', scripts: [/cdn\.appsflyer\.com\//i, /websdk\.appsflyer\.com\//i] },
+  { name: 'Ahrefs Analytics', category: 'analytics', scripts: [/static\.ahrefs\.com\/scripts\/analytics\.js/i, /analytics\.ahrefs\.com\//i] },
 
   // ─── Advertising / Pixels ────────────────────────────────────────────────
   { name: 'Meta Pixel', category: 'advertising', scripts: [/connect\.facebook\.net\/[^\/]+\/fbevents\.js/i], html: [/fbq\(['"]init['"],/i] },
@@ -90,8 +94,18 @@ const SIGNATURES: TechSignature[] = [
   { name: 'Reddit Pixel', category: 'advertising', scripts: [/www\.redditstatic\.com\/ads\/pixel\.js/i] },
   { name: 'Snapchat Pixel', category: 'advertising', scripts: [/sc-static\.net\/scevent\.min\.js/i] },
   { name: 'Quora Pixel', category: 'advertising', scripts: [/a\.quora\.com\/qevents\.js/i] },
-  { name: 'Google Ads Conversion', category: 'advertising', html: [/googletagmanager\.com\/gtag\/js\?id=AW-/i, /gtag\(['"]config['"],\s*['"]AW-/i] },
+  { name: 'Google Ads Conversion', category: 'advertising', html: [/googletagmanager\.com\/gtag\/js\?id=AW-/i, /gtag\(['"]config['"],\s*['"]AW-/i, /googleadservices\.com\/pagead\/conversion/i] },
+  { name: 'Google Dynamic Remarketing', category: 'advertising', html: [/googleadservices\.com\/pagead\/conversion_async/i, /\bgoogle_remarketing_only\s*=/i, /googletagmanager\.com\/gtag\/js\?id=DC-/i] },
   { name: 'HubSpot Ads Pixel', category: 'advertising', html: [/hsadspixel\.net\/fb/i, /\/_hsq\/.*PixelTracking/i] },
+  { name: 'Microsoft Advertising (Bing UET)', category: 'advertising', scripts: [/bat\.bing\.com\/bat\.js/i], html: [/\buetq\b|\bUET\(/i] },
+
+  // ─── B2B intent / enrichment / IP-reveal ─────────────────────────────────
+  { name: 'ZoomInfo', category: 'advertising', scripts: [/ws\.zoominfo\.com\//i, /\.zoominfo\.com\/pixel/i] },
+  { name: 'Apollo.io', category: 'advertising', scripts: [/app\.apollo\.io\/.*tracker/i, /assets\.apollo\.io\//i] },
+  { name: '6sense', category: 'advertising', scripts: [/j\.6sc\.co\//i, /epsilon\.6sense\.com\//i] },
+  { name: 'Leadfeeder / Dealfront', category: 'advertising', scripts: [/sc\.lfeeder\.com\//i, /cdn\.dealfront\.com\//i] },
+  { name: 'RB2B', category: 'advertising', scripts: [/b2bjsstore\.s3\.us-west-2\.amazonaws\.com\//i, /api\.rb2b\.com\//i] },
+  { name: 'Bombora', category: 'advertising', scripts: [/ml314\.com\/tag\.aspx/i, /static\.bombora\.com\//i] },
 
   // ─── Tag managers ────────────────────────────────────────────────────────
   { name: 'Google Tag Manager', category: 'tag-manager', scripts: [/googletagmanager\.com\/gtm\.js\?id=GTM-/i], html: [/GTM-[A-Z0-9]{4,}/] },
@@ -155,6 +169,7 @@ const SIGNATURES: TechSignature[] = [
   { name: 'Crisp', category: 'support', scripts: [/client\.crisp\.chat\//i] },
   { name: 'Tawk.to', category: 'support', scripts: [/embed\.tawk\.to\//i] },
   { name: 'Tidio', category: 'support', scripts: [/code\.tidio\.co\//i] },
+  { name: 'HubSpot LiveChat', category: 'support', scripts: [/js-na\d+\.hs-scripts\.com\//i, /js\.usemessages\.com\//i, /js\.hs-banner\.com\//i] },
 
   // ─── A/B testing ─────────────────────────────────────────────────────────
   { name: 'Optimizely', category: 'ab-testing', scripts: [/cdn\.optimizely\.com\//i] },
