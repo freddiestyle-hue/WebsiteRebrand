@@ -565,6 +565,20 @@ export function buildMemoFromAudit(audit: AuditResult, enrich?: EnrichmentBundle
 
   if (enrich?.ads) {
     verdictCells.push(adsCellFromResult(enrich.ads));
+  } else if (enrich) {
+    // Ad Library probe returned null (no API key, rate limit, or
+    // unsupported domain). Same pattern as the PSI placeholder so the
+    // 9-cell grid stays intact rather than collapsing to 8.
+    verdictCells.push({
+      icon: 'megaphone' as VerdictIcon,
+      heading: 'Ads you are running',
+      value: 'n/a',
+      note:
+        "Ad-library probe did not return for this scan. Either SCRAPECREATORS_API_KEY is unset, the rate limit was hit, or none of Meta / Google / LinkedIn knew this domain. Re-run in a few minutes.",
+      benchmark: 'Ad libraries · unavailable',
+      benchmarkRight: 'Retry pending',
+      checks: [],
+    });
   }
 
   if (conversion.length > 0) {

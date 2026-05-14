@@ -391,6 +391,10 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
   .vcell summary .marker { font-family: var(--mono); font-size: 14px; color: var(--accent-deep); line-height: 1; transition: transform var(--dur-2) var(--ease); display: inline-block; }
   .vcell details[open] summary { background: var(--paper-2); color: var(--ink); }
   .vcell details[open] summary .marker { transform: rotate(45deg); }
+  /* Same-height placeholder so cells without check arrays align with their
+     neighbors at the bottom of a grid row. Matches summary padding exactly. */
+  .vcell .vfoot-empty { border-top: var(--bw-hair) solid var(--line); padding: var(--sp-4) var(--sp-6); font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-soft); display: flex; justify-content: space-between; align-items: center; }
+  .vcell .vfoot-empty .marker { color: var(--ink-soft); font-size: 14px; line-height: 1; }
   .vcell .checks { padding: var(--sp-2) var(--sp-6) var(--sp-5); background: var(--paper-2); border-top: var(--bw-hair) solid var(--line); }
   .vcell .checks .check { display: grid; grid-template-columns: 60px 1fr auto; gap: var(--sp-3); padding: 7px 0; border-bottom: var(--bw-hair) solid var(--line-soft); font-size: 13.5px; line-height: 1.4; align-items: baseline; }
   .vcell .checks .check:last-child { border-bottom: 0; }
@@ -727,7 +731,7 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
                   </div>
                 )}
               </div>
-              {cell.checks.length > 0 && (
+              {cell.checks.length > 0 ? (
                 <details>
                   <summary>+ {cell.checks.length} checks <span class="marker">+</span></summary>
                   <div class="checks">
@@ -743,6 +747,8 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
                     })}
                   </div>
                 </details>
+              ) : (
+                <div class="vfoot-empty">No checks recorded <span class="marker">·</span></div>
               )}
             </div>
           );
