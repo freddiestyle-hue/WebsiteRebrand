@@ -1,354 +1,374 @@
 ---
 import Base from '../layouts/Base.astro';
-import CadenceIcon from '../components/icons/Cadence.astro';
-import DiagnosticIcon from '../components/icons/Diagnostic.astro';
-import MemoIcon from '../components/icons/Memo.astro';
-import NumbersIcon from '../components/icons/Numbers.astro';
-import OutreachIcon from '../components/icons/Outreach.astro';
-import PipelineIcon from '../components/icons/Pipeline.astro';
-import SignalIcon from '../components/icons/Signal.astro';
-import StackIcon from '../components/icons/Stack.astro';
 ---
 <Base
-  title="Rivett · Find and fix revenue leaks"
+  title="Rivett · I find where revenue leaks. Then I fix the system."
   description="A senior growth practice for profitable US operators. Run the live audit, diagnose the leaks, and rebuild the system between demand and revenue."
-  fontWeights="Inter+Tight:wght@400;500;600;700"
+  fontWeights="Inter+Tight:wght@400;500;600;700;800"
   currentNav="home"
 >
-  <div class="page home-page">
-    <section class="first">
-      <div class="hero">
-        <div>
-          <div class="stamp">Ran growth at Somewhere.com · $100M+ managed</div>
-          <h1 class="display display--hero">
-            I find where<br/>
-            revenue leaks.<br/>
-            <span class="ital">Then I fix the system<span class="accent-dot">.</span></span>
-          </h1>
-          <p class="lede">
-            I work with profitable US operators to find the expensive leaks between demand and revenue, then rebuild the reporting, handoffs, follow-up, and AI-assisted workflows that keep money moving.
-          </p>
-          <form class="hero-audit" method="POST" action="/audit/v3" id="heroAuditForm" aria-label="Live audit">
-            <span class="scheme">https://</span>
-            <input type="text" name="url" placeholder="enter the site you want read" autocomplete="off" spellcheck="false" required />
-            <button type="submit">Run audit <span aria-hidden="true">→</span></button>
-          </form>
-          <p class="funnel-note">60-sec self-serve. The diagnostic ($3.5k) picks up where the audit ends. <span class="ital">One earns the right to the other.</span></p>
-          <ul class="hero-meta" aria-label="Audit characteristics">
-            <li><b>~30s</b> median run</li>
-            <li><b>Public APIs</b> only</li>
-            <li><b>No login</b></li>
-            <li><b>9 dimensions</b></li>
-          </ul>
-          <p class="hero-sample">
-            <span class="stamp" style="--dot:var(--ink-faint);">Or read a sample</span>
-            <a href="/audit/v3/pellaofcolumbus-com">pellaofcolumbus.com <span class="mini">read this →</span></a>
-            <span class="ital">Real domain. Real numbers.</span>
-          </p>
-          <p class="past-work-credit" aria-labelledby="past-work-stamp">
-            <span class="stamp" id="past-work-stamp">Past work</span>
-            <span class="credit">
-              Fifteen years on growth at Somewhere, Unilever, Samsung, Visa, and Vodafone. <span class="ital">In-house, agency, and vendor.</span>
-            </span>
-          </p>
-        </div>
+  <link rel="stylesheet" href="/audit/v3-css/kit.css" />
+  <link rel="stylesheet" href="/audit/v3-css/audit.css" />
+  <link rel="stylesheet" href="/audit/v3-css/v2.css" />
 
-        <aside class="hero-r" aria-label="Rivett proof and next step">
-          <div class="proof-kicker">Proof from the work</div>
-          <p class="proof-copy">
-            Before selling the system, I ran it on my own pipeline for 90 days. The first hard failure was caught internally, rebuilt, and turned into the approval discipline clients get.
-          </p>
-          <div class="row"><span class="k">Throughput</span><span class="v">10 prospects / hr to review queue</span></div>
-          <div class="row"><span class="k">Review rhythm</span><span class="v">80 decisions / day at pace</span></div>
-          <div class="row"><span class="k">Calibration</span><span class="v">60–85% approval by week 12</span></div>
-          <div class="row"><span class="k">Failure caught</span><span class="v">0 / 15 ICP miss before client work</span></div>
-          <a href="/blog/90-days-sdr-agent-results" class="proof-link">Read the 90-day note →</a>
-        </aside>
-      </div>
-    </section>
+  <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+    <symbol id="ic-diagnostic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="6"/><path d="M15.5 15.5 L20 20"/><circle class="dot" cx="11" cy="11" r="1.4" fill="var(--accent)" stroke="none"/></symbol>
+    <symbol id="ic-stack" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7 L12 3 L21 7 L12 11 Z"/><path d="M3 12 L12 16 L21 12"/><path d="M3 17 L12 21 L21 17"/></symbol>
+    <symbol id="ic-cadence" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 6 V12 L17 14"/></symbol>
+  </svg>
 
-    <section id="modules">
-      <div class="sec-head">
-        <div class="label"><b>01</b> · The work</div>
-        <div>
-          <h2 class="section-title">A fixed path from leak to operating rhythm.</h2>
-          <p class="lede lede-offset">First I find the leaks. Then I build the highest-value fixes. If the rhythm matters enough to keep, I run the system with dashboards, alerts, weekly decisions, and board-grade summaries.</p>
-        </div>
+  <div class="page audit-first-home">
+
+    <!-- Hero (audit-first) -->
+    <header class="audit-hero">
+      <span class="stamp">Ran growth at Somewhere.com · $100M+ managed</span>
+      <h1>I find where revenue leaks. <br/><span class="ital">Then I fix the system.</span></h1>
+      <p class="dek">I work with profitable US operators to find the expensive leaks between demand and revenue, then rebuild the reporting, handoffs, follow-up, and AI-assisted workflows that keep money moving.</p>
+
+      <form class="audit-form" method="POST" action="/audit/v3" id="homeAuditForm">
+        <span class="prefix">https://</span>
+        <input class="domain" type="text" name="url" inputmode="url" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="enter the site you want read" required aria-label="Domain" />
+        <button class="btn btn--solid" type="submit">Run audit <span aria-hidden="true">→</span></button>
+      </form>
+
+      <p class="sub-dek">60-sec self-serve. The diagnostic ($3.5k) picks up where the audit ends. <span class="ital">One earns the right to the other.</span></p>
+
+      <div class="audit-meta">
+        <span><b>~30s</b> median run</span>
+        <span class="sep">/</span>
+        <span>public APIs only</span>
+        <span class="sep">/</span>
+        <span>no login</span>
+        <span class="sep">/</span>
+        <span><b>9</b> dimensions</span>
       </div>
+
+      <div class="audit-sample">
+        <span class="stamp stamp--neutral">Or read a sample</span>
+        <a class="sample-link" href="/audit/p/pellaofcolumbus-com-x7k2abcdefgh1234">
+          <span class="sample-domain">pellaofcolumbus.com</span>
+          <span class="sample-arrow">read this →</span>
+        </a>
+        <span class="sample-note">Real domain. Real numbers.</span>
+      </div>
+    </header>
+
+    <!-- 01 · The work -->
+    <div class="sec-head" id="work">
+      <span class="lbl">The work<span class="num">01</span></span>
+      <h2>A fixed path <span class="ital">from leak to operating rhythm.</span></h2>
+    </div>
+    <div class="sec-body">
+      <p class="lede">First I find the leaks. Then I build the highest-value fixes. If the rhythm matters enough to keep, I run the system with dashboards, alerts, weekly decisions, and board-grade summaries.</p>
 
       <div class="modules">
-        <div class="module featured">
+        <div class="mod">
           <div class="head">
-            <span class="module-mark">
-              <DiagnosticIcon size={24} class="module-icon" />
-              <span class="num">M01 · Diagnostic</span>
-            </span>
-            <span class="dur">02 wks</span>
+            <svg class="ic" width="24" height="24"><use href="#ic-diagnostic"/></svg>
+            <span class="mod-code">M · 01</span>
           </div>
-          <h3>Find the leaks, name the constraints, and decide what is worth fixing.</h3>
-          <ul>
-            <li>Acquisition &amp; channel teardown</li>
-            <li>Funnel + lifecycle audit</li>
-            <li>Tooling &amp; AI workflow review</li>
-            <li>Prioritized 90-day fix list</li>
-          </ul>
-          <div class="price">
-            <div class="p">$3.5k</div>
-            <div class="term">Fixed · credited to M02</div>
+          <h3>Diagnostic. <span class="ital">Two weeks.</span></h3>
+          <p>Find the leaks, name the constraints, and decide what is worth fixing. Acquisition + channel teardown, funnel + lifecycle audit, tooling + AI workflow review, prioritised 90-day fix list.</p>
+          <div class="meta">
+            <span><b>02</b> wks</span>
+            <span>$3.5k <span class="ital">fixed</span></span>
           </div>
         </div>
 
-        <div class="module">
+        <div class="mod">
           <div class="head">
-            <span class="module-mark">
-              <StackIcon size={24} class="module-icon" />
-              <span class="num">M02 · Build</span>
-            </span>
-            <span class="dur">04–06 wks</span>
+            <svg class="ic" width="24" height="24"><use href="#ic-stack"/></svg>
+            <span class="mod-code">M · 02</span>
           </div>
-          <h3>Rebuild acquisition and revenue operations around the highest-value fixes.</h3>
-          <ul>
-            <li>Paid media rebuild · GA / Meta / LinkedIn</li>
-            <li>SEO foundations &amp; programmatic</li>
-            <li>Lifecycle &amp; CRM activation</li>
-            <li>AI-assisted workflows with approval gates</li>
-          </ul>
-          <div class="price">
-            <div class="p p-muted">Scoped after M01</div>
-            <div class="term">Fixed-scope quote</div>
+          <h3>Build. <span class="ital">Stack + instrumentation.</span></h3>
+          <p>Rebuild acquisition and revenue operations around the highest-value fixes. Paid media, SEO foundations, lifecycle + CRM, AI-assisted workflows with approval gates.</p>
+          <div class="meta">
+            <span><b>04–06</b> wks</span>
+            <span>Scoped <span class="ital">after M01</span></span>
           </div>
         </div>
 
-        <div class="module">
+        <div class="mod">
           <div class="head">
-            <span class="module-mark">
-              <CadenceIcon size={24} class="module-icon" />
-              <span class="num">M03 · Run</span>
-            </span>
-            <span class="dur">monthly</span>
+            <svg class="ic" width="24" height="24"><use href="#ic-cadence"/></svg>
+            <span class="mod-code">M · 03</span>
           </div>
-          <h3>Maintain the weekly rhythm that keeps revenue moving.</h3>
-          <ul>
-            <li>Weekly working sessions</li>
-            <li>Live dashboard &amp; alerting</li>
-            <li>Monthly board summary</li>
-            <li>Cancel any month</li>
-          </ul>
-          <div class="price">
-            <div class="p p-muted">Scoped after M01</div>
-            <div class="term">Month-to-month</div>
+          <h3>Run. <span class="ital">Cadence over volume.</span></h3>
+          <p>Maintain the weekly rhythm that keeps revenue moving. Working sessions, live dashboard + alerting, monthly board summary. Cancel any month.</p>
+          <div class="meta">
+            <span><b>Monthly</b></span>
+            <span>Scoped <span class="ital">after M01</span></span>
           </div>
         </div>
       </div>
-      <div class="modules-foot">M01 fee credits in full toward M02 if you continue. No long contracts. No retainer creep.</div>
-    </section>
 
-    <section id="who">
-      <div class="sec-head">
-        <div class="label"><b>02</b> · Who this is for</div>
-        <div>
-          <h2 class="section-title">Operators of profitable, un-glamorous businesses. Real revenue, ready to compound.</h2>
-          <p class="lede lede-offset">You already have demand. The problem is what happens around it.</p>
-        </div>
-      </div>
+      <p class="post-note">M01 fee credits in full toward M02 if you continue. <span class="ital">No long contracts. No retainer creep.</span></p>
+    </div>
 
-      <div class="who-grid">
-        <div class="who-cell">
-          <div class="tag">01</div>
-          <h3>Real estate operators &amp; brokerages.</h3>
+    <!-- 02 · Who this is for -->
+    <div class="sec-head" id="who">
+      <span class="lbl">Who this is for<span class="num">02</span></span>
+      <h2>Operators of profitable, <span class="ital">un-glamorous businesses.</span></h2>
+    </div>
+    <div class="sec-body">
+      <p class="lede">Real revenue, ready to compound. You already have demand. The problem is what happens around it.</p>
+
+      <div class="audience">
+        <div class="col">
+          <span class="stamp">01 · Real estate</span>
+          <h4>Operators <span class="ital">+ brokerages.</span></h4>
           <p>Self-storage, multifamily, brokerage, REPE. Capital raise, sphere and farm, leasing pipeline.</p>
         </div>
-        <div class="who-cell">
-          <div class="tag">02</div>
-          <h3>Service businesses &amp; agencies.</h3>
-          <p>Boring, profitable, growing. Construction, manufacturing, professional services, agency owners. 50-500 people, real revenue, ready to compound.</p>
+        <div class="col">
+          <span class="stamp">02 · Services</span>
+          <h4>Boring, profitable, <span class="ital">growing.</span></h4>
+          <p>Construction, manufacturing, professional services, agency owners. 50–500 people, real revenue, ready to compound.</p>
         </div>
-        <div class="who-cell">
-          <div class="tag">03</div>
-          <h3>Founders &amp; operators of mid-market companies.</h3>
-          <p>50 to 500 people, profitable, ready to compound. You do not want a slick agency. You want senior judgment on the growth system underneath the business.</p>
+        <div class="col">
+          <span class="stamp">03 · Mid-market</span>
+          <h4>Founders <span class="ital">+ operators.</span></h4>
+          <p>50–500 people, profitable, ready to compound. You do not want a slick agency. You want senior judgment on the growth system underneath the business.</p>
         </div>
-      </div>
-      <div class="fit-foot">
-        <p>If you do not see yourself here exactly, <a href="#contact">email me anyway</a>. I will tell you straight if I am the wrong call.</p>
-        <p><strong>Probably not:</strong> you want a junior to take orders, a yes-person, or a generic AI roadmap.</p>
-      </div>
-    </section>
-
-    <section id="about">
-      <div class="sec-head">
-        <div class="label"><b>03</b> · Track record</div>
-        <h2 class="section-title">Fifteen years inside acquisition. Now applied to the whole system.</h2>
       </div>
 
-      <div class="inherit">
-        <div>
-          <div class="op-byline">
-            <picture>
-              <source type="image/avif" srcset="/img/portrait/fred-96.avif 1x, /img/portrait/fred-192.avif 2x" />
-              <source type="image/webp" srcset="/img/portrait/fred-96.webp 1x, /img/portrait/fred-192.webp 2x" />
-              <img src="/img/portrait/fred-96.png" srcset="/img/portrait/fred-96.png 1x, /img/portrait/fred-192.png 2x" width="48" height="48" alt="Fred Style" loading="lazy" decoding="async" />
-            </picture>
-            <div>
-              <div class="op-name">Fred Style</div>
-              <div class="op-role">Founder · Operator · Sole point of contact</div>
+      <div class="exclusion">
+        <span class="stamp stamp--neutral">If you do not see yourself here</span>
+        <p>Email me anyway. I will tell you straight if I am the wrong call. <span class="ital">Probably not: you want a junior to take orders, a yes-person, or a generic AI roadmap.</span></p>
+      </div>
+    </div>
+
+    <!-- 03 · Track record -->
+    <div class="sec-head" id="about">
+      <span class="lbl">Track record<span class="num">03</span></span>
+      <h2>Fifteen years inside acquisition. <span class="ital">Now applied to the whole system.</span></h2>
+    </div>
+    <div class="sec-body">
+      <div class="bio">
+        <div class="bio-l">
+          <span class="stamp stamp--neutral">Founder · operator · sole point of contact</span>
+          <h3 class="bio-name">Fred Style.</h3>
+          <p class="bio-tag"><span class="ital">Paid acquisition is the proof. Revenue operations are the work.</span></p>
+          <p class="bio-body">Fifteen years on growth at <b>Somewhere</b>, <b>Unilever</b>, <b>Samsung</b>, <b>Visa</b>, and <b>Vodafone</b>. <span class="ital">In-house, agency, and vendor.</span> Most recently a year running growth at Somewhere.com, the global recruiting platform. Roughly $100M in managed spend across four continents.</p>
+          <p class="bio-body">Independent. Cape Town based. Available to a small number of operators per quarter.</p>
+        </div>
+        <div class="bio-r">
+          <figure class="bio-portrait">
+            <div class="pre">
+              <span>Portrait · <b>Fred Style</b> · Cape Town</span>
+              <span>2026·05</span>
             </div>
-          </div>
-          <p class="editorial">Paid acquisition is the proof. <span class="em">Revenue operations are the work.</span></p>
-          <p class="body">
-            Fifteen years inside paid acquisition for brands across consumer, B2B and DTC. Most recently running growth at <strong>Somewhere.com</strong>, the global recruiting platform. Before that, in-house performance leadership across four continents and roughly $100M in managed spend.
-          </p>
-        </div>
-
-        <div>
-          <div class="label">By the numbers</div>
-          <div class="roster roster--tight">
-            <div class="row"><span class="nm">Career</span><span class="ds">Paid acquisition, in-house and consulting</span><span class="yr">15 yrs</span></div>
-            <div class="row"><span class="nm">Most recent</span><span class="ds">Growth, Somewhere.com</span><span class="yr">1 yr</span></div>
-            <div class="row"><span class="nm">Managed spend</span><span class="ds">Paid search, social, programmatic</span><span class="yr">$100M+</span></div>
-            <div class="row"><span class="nm">Continents</span><span class="ds">USA, Africa, Europe, Asia</span><span class="yr">4</span></div>
-            <div class="row"><span class="nm">Sectors</span><span class="ds">Consumer, B2B, DTC, recruiting, media</span><span class="yr">5+</span></div>
-          </div>
-          <p class="body body-small body-loose">
-            Independent. Cape Town based. Available to a small number of operators per quarter.
-          </p>
-        </div>
-      </div>
-    </section>
-
-    <section id="why-sa" class="section-flush">
-      <div class="geo">
-        <div class="inner">
-          <div>
-            <div class="sec-head sec-head--dark">
-              <div class="label"><b>04</b> · The deal</div>
-              <div>
-                <h2 class="section-title">Senior judgment. Different cost structure. <span class="em">No agency markup.</span></h2>
-                <p class="lede lede-offset">
-                  I work from Cape Town by design. The advantage is not "cheap." It is structural: direct access to the operator doing the work, senior growth judgment on the system, and AI-assisted execution underneath without paying for a US agency org chart.
-                </p>
-              </div>
+            <div class="frame">
+              <img src="/img/fred.png" alt="Portrait of Fred Style" width="800" height="800" />
             </div>
-          </div>
-          <div class="compare">
-            <div class="row head"><span class="lab">Senior growth support</span><span class="lab">Annualized</span></div>
-            <div class="row us"><span class="val">US agency, retainer</span><span class="val">$300–500k</span></div>
-            <div class="row us"><span class="val">In-house VP marketing</span><span class="val">$220–280k</span></div>
-            <div class="row us"><span class="val">Boutique consultancy</span><span class="val">$180–240k</span></div>
-            <div class="row rivett"><span class="lab">Rivett · M03 retainer</span><span class="val">~⅓ of the above</span></div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section id="approach">
-      <div class="sec-head">
-        <div class="label"><b>05</b> · AI in the work</div>
-        <div>
-          <h2 class="section-title">AI belongs below the judgment layer.</h2>
-          <p class="lede lede-offset">The valuable work is deciding what matters. AI belongs underneath that judgment, not in place of it.</p>
-        </div>
-      </div>
-
-      <div class="ai-grid">
-        <div>
-          <p class="body">
-            Most agencies are now selling the busywork as the product. <strong>I am selling senior judgment, with the busywork automated underneath.</strong> Different deal.
-          </p>
-        </div>
-        <div>
-          <div class="twocol">
-            <div>
-              <div class="mini-head yes">What I automate</div>
-              <ul class="automate-list">
-                <li><PipelineIcon size={20} class="automate-icon" /><span>Lead enrichment &amp; routing</span></li>
-                <li><OutreachIcon size={20} class="automate-icon" /><span>Draft outreach &amp; sequencing</span></li>
-                <li><NumbersIcon size={20} class="automate-icon" /><span>Daily / weekly reporting</span></li>
-                <li><SignalIcon size={20} class="automate-icon" /><span>Anomaly &amp; spend alerts</span></li>
-                <li><MemoIcon size={20} class="automate-icon" /><span>Content briefs at scale</span></li>
-              </ul>
+            <div class="post">
+              <span class="name">Fred Style.</span>
+              <span class="role">Founder · operator · <span class="ital">sole point of contact</span></span>
             </div>
-            <div>
-              <div class="mini-head no">What stays human</div>
-              <ul>
-                <li class="dim">Audience &amp; positioning calls</li>
-                <li class="dim">Channel mix &amp; budget</li>
-                <li class="dim">Creative &amp; message strategy</li>
-                <li class="dim">Pricing &amp; offer design</li>
-                <li class="dim">The hard conversation about why it is not working</li>
-              </ul>
-            </div>
-          </div>
+          </figure>
         </div>
       </div>
-    </section>
 
-    <section id="contact" class="section-borderless">
-      <div class="cta-block">
-        <div>
-          <div class="sec-head cta-head">
-            <div class="label"><b>06</b> · Next step</div>
-            <div>
-              <h2 class="section-title">Start with the <span class="em">audit.</span></h2>
-              <p class="lede lede-offset">Run the free scan first. If it points at a real leak, the diagnostic turns that signal into a written fix list. Two weeks. $3.5k, fixed. Credited to the build if you continue.</p>
-            </div>
-          </div>
-        </div>
-        <div class="actions">
-          <a href="/audit/v3" class="btn primary">Run the audit →</a>
-          <a href="/diagnostic" class="btn secondary">Book diagnostic</a>
-          <div class="meta">fred@rivett.tech · reply within 24 hours</div>
+      <div style="margin-top: var(--sp-10);">
+        <div class="numbox">
+          <div><span class="k">Career</span><span class="v">15 <span class="ital">yrs</span></span></div>
+          <div><span class="k">Managed spend</span><span class="v">$100M <span class="ital">+</span></span></div>
+          <div><span class="k">Continents</span><span class="v">04 <span class="ital"></span></span></div>
+          <div><span class="k">Sectors</span><span class="v">05 <span class="ital">+</span></span></div>
         </div>
       </div>
-    </section>
 
-    <footer class="foot">
-      <div>
-        <a class="wordmark" href="/" aria-label="Rivett, home">
-          <img src="/img/marks/wordmark.svg" alt="" width="96" height="24" decoding="async" />
-        </a>
-        <div class="legal">A practice · est. 2026<br/>Cape Town · remote-first</div>
+      <div class="proof">
+        <span class="stamp">Proof from the work</span>
+        <h4 class="proof-h">Before selling the system, <span class="ital">I ran it on my own pipeline for 90 days.</span></h4>
+        <p class="proof-body">The first hard failure was caught internally, rebuilt, and turned into the approval discipline clients get.</p>
+        <div class="numbox">
+          <div><span class="k">Throughput</span><span class="v">10 <span class="ital">/ hr to queue</span></span></div>
+          <div><span class="k">Review rhythm</span><span class="v">80 <span class="ital">/ day at pace</span></span></div>
+          <div><span class="k">Calibration</span><span class="v">60–85 <span class="ital">% by week 12</span></span></div>
+          <div><span class="k">Failure caught</span><span class="v">0 / 15 <span class="ital">ICP miss</span></span></div>
+        </div>
       </div>
-      <div class="col">
-        <div class="foot-label">The work</div>
-        <ul>
-          <li>
-            <a class="work-link" href="#modules">
-              <DiagnosticIcon size={16} class="foot-icon" />
-              <span>M01 · Diagnostic</span>
-            </a>
-          </li>
-          <li>
-            <a class="work-link" href="#modules">
-              <StackIcon size={16} class="foot-icon" />
-              <span>M02 · Build</span>
-            </a>
-          </li>
-          <li>
-            <a class="work-link" href="#modules">
-              <CadenceIcon size={16} class="foot-icon" />
-              <span>M03 · Run</span>
-            </a>
-          </li>
-        </ul>
+    </div>
+
+    <!-- 04 · The deal -->
+    <div class="sec-head">
+      <span class="lbl">The deal<span class="num">04</span></span>
+      <h2>Senior judgment. <span class="ital">Different cost structure. No agency markup.</span></h2>
+    </div>
+    <div class="sec-body">
+      <p class="lede">I work from Cape Town by design. The advantage is not "cheap." It is structural: direct access to the operator doing the work, senior growth judgment on the system, and AI-assisted execution underneath without paying for a US agency org chart.</p>
+
+      <table class="deal-table">
+        <thead>
+          <tr>
+            <th>Senior growth support</th>
+            <th class="r">Annualised</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>US agency, retainer</td>
+            <td class="r">$300–500k</td>
+          </tr>
+          <tr>
+            <td>In-house VP marketing</td>
+            <td class="r">$220–280k</td>
+          </tr>
+          <tr>
+            <td>Boutique consultancy</td>
+            <td class="r">$180–240k</td>
+          </tr>
+          <tr class="hi">
+            <td><b>Rivett · M03 retainer</b></td>
+            <td class="r"><b>~⅓ <span class="ital">of the above</span></b></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 05 · AI in the work -->
+    <div class="sec-head" id="approach">
+      <span class="lbl">AI in the work<span class="num">05</span></span>
+      <h2>AI belongs <span class="ital">below the judgment layer.</span></h2>
+    </div>
+    <div class="sec-body">
+      <p class="lede">The valuable work is deciding what matters. AI belongs underneath that judgment, not in place of it. Most agencies are now selling the busywork as the product. I am selling senior judgment, with the busywork automated underneath. <span class="ital">Different deal.</span></p>
+
+      <div class="two-col">
+        <div class="col">
+          <span class="stamp">What I automate</span>
+          <ul class="bare">
+            <li>Lead enrichment + routing.</li>
+            <li>Draft outreach + sequencing.</li>
+            <li>Daily, weekly reporting.</li>
+            <li>Anomaly + spend alerts.</li>
+            <li>Content briefs at scale.</li>
+          </ul>
+        </div>
+        <div class="col col-r">
+          <span class="stamp stamp--neutral">What stays human</span>
+          <ul class="bare">
+            <li>Audience + positioning calls.</li>
+            <li>Channel mix + budget.</li>
+            <li>Creative + message strategy.</li>
+            <li>Pricing + offer design.</li>
+            <li><span class="ital">The hard conversation about why it is not working.</span></li>
+          </ul>
+        </div>
       </div>
-      <div class="col">
-        <div class="foot-label">About</div>
-        <ul>
-          <li><a href="#about">Track record</a></li>
-          <li><a href="#approach">AI in the work</a></li>
-          <li><a href="/blog">Field Notes</a></li>
-        </ul>
+    </div>
+
+    <!-- Pull quote -->
+    <div class="pull">
+      <blockquote>"Run the audit first. If it points at a real leak, the diagnostic turns that signal into a written fix list. Two weeks. $3.5k, fixed. Credited to the build if you continue."</blockquote>
+      <cite>— Section 06 · next step</cite>
+    </div>
+
+    <!-- End CTA · dark closer -->
+    <div class="end-cta" id="contact">
+      <h3>Start with the audit. <span class="ital">It earns the right to the diagnostic.</span></h3>
+      <div class="right">
+        <span class="stamp stamp--on-ink">60 sec · in-browser · no login</span>
+        <p>Nine reads against your live domain. If it surfaces a leak worth fixing, the diagnostic turns the signal into a written fix list.</p>
+        <a class="btn btn--inv" href="/audit/v3">Run the audit <span aria-hidden="true">→</span></a>
       </div>
-      <div class="col">
-        <div class="foot-label">Contact</div>
-        <ul>
-          <li><a href="/audit/v3">Run audit →</a></li>
-          <li><a href="/diagnostic">Book diagnostic</a></li>
-          <li><a href="mailto:fred@rivett.tech">fred@rivett.tech</a></li>
-          <li><a href="https://www.linkedin.com/in/fredstyle/">LinkedIn</a></li>
-        </ul>
-      </div>
-    </footer>
+    </div>
+
   </div>
 </Base>
+
+<style is:global>
+  /* Suppress the legacy .home-page chrome that would otherwise leak into the
+     audit-first layout. We intentionally do NOT add .home-page so most of
+     those scoped rules never apply, but a few global-cascade rules need
+     defusing for the new page wrapper. */
+  body { background: var(--paper, #f6f4ef); }
+  body main { display: block; }
+
+  /* Page chrome geometry: the mock's .page wants horizontal padding +
+     max width similar to the rest of the site. */
+  .audit-first-home {
+    max-width: var(--page-max, 1240px);
+    margin: 0 auto;
+    padding: 0 var(--page-pad, 32px);
+  }
+  @media (max-width: 780px) {
+    .audit-first-home { padding: 0 24px; }
+  }
+
+  /* The mock's audit-hero has top padding that assumes no site nav. We have
+     Nav.astro above us. Tighten the top spacing so the hero doesn't sit
+     hundreds of pixels down. */
+  .audit-first-home .audit-hero { padding-top: var(--sp-10, 48px); }
+
+  /* Bio block — track record portrait spread. */
+  .audit-first-home .bio { display: grid; grid-template-columns: 1fr 1.1fr; gap: 64px; align-items: start; }
+  @media (max-width: 860px) { .audit-first-home .bio { grid-template-columns: 1fr; gap: var(--sp-7, 32px); } }
+  .audit-first-home .bio-name { font-family: var(--grotesk); font-weight: 800; font-size: clamp(40px, 5.5vw, 64px); line-height: 1; letter-spacing: var(--track-display); margin: var(--sp-5, 20px) 0 var(--sp-3, 12px); }
+  .audit-first-home .bio-tag { font-family: var(--serif); font-style: italic; font-size: 20px; line-height: 1.4; color: var(--ink-dim); margin: 0 0 var(--sp-7, 32px); }
+  .audit-first-home .bio-body { font-family: var(--grotesk); font-size: 16px; line-height: 1.55; color: var(--ink); margin: 0 0 var(--sp-5, 20px); }
+  .audit-first-home .bio-body b { color: var(--ink); font-weight: 600; }
+  .audit-first-home .bio-portrait { margin: 0; max-width: 520px; }
+  .audit-first-home .bio-portrait .pre { display: flex; justify-content: space-between; padding: 12px 0; border-top: 3px solid var(--ink); font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); }
+  .audit-first-home .bio-portrait .pre b { color: var(--ink); font-weight: 500; }
+  .audit-first-home .bio-portrait .frame { aspect-ratio: 4 / 5; background: var(--paper-2); overflow: hidden; position: relative; }
+  .audit-first-home .bio-portrait .frame img { width: 100%; height: 100%; object-fit: cover; object-position: center 12%; filter: contrast(1.08) brightness(0.98); display: block; }
+  .audit-first-home .bio-portrait .frame::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 55%, rgba(14,26,44,0.16) 100%); pointer-events: none; }
+  .audit-first-home .bio-portrait .post { display: grid; grid-template-columns: 1fr auto; padding: 10px 0; border-bottom: 1px solid var(--line); font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); align-items: baseline; }
+  .audit-first-home .bio-portrait .post .name { font-family: var(--grotesk); font-weight: 700; font-size: 22px; letter-spacing: -0.02em; text-transform: none; color: var(--ink); }
+  .audit-first-home .bio-portrait .post .role .ital { font-family: var(--serif); font-style: italic; text-transform: none; color: var(--ink-dim); letter-spacing: 0; }
+
+  /* Proof block under the bio. */
+  .audit-first-home .proof { margin-top: var(--sp-10, 48px); padding-top: var(--sp-7, 32px); border-top: 1px solid var(--line); }
+  .audit-first-home .proof-h { font-family: var(--grotesk); font-weight: 700; font-size: clamp(24px, 3vw, 32px); line-height: 1.15; letter-spacing: var(--track-h-md); margin: var(--sp-5, 20px) 0 var(--sp-4, 16px); }
+  .audit-first-home .proof-h .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); }
+  .audit-first-home .proof-body { font-family: var(--grotesk); font-size: 16px; line-height: 1.55; color: var(--ink-dim); margin: 0 0 var(--sp-7, 32px); max-width: 720px; }
+
+  /* Deal table strikethrough rows + sage highlight row. */
+  .audit-first-home .deal-table { width: 100%; border-collapse: collapse; border: 1px solid var(--line); }
+  .audit-first-home .deal-table th { background: var(--paper-2); padding: 14px 18px; text-align: left; font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); font-weight: 400; border-bottom: 1px solid var(--line); }
+  .audit-first-home .deal-table th.r { text-align: right; }
+  .audit-first-home .deal-table td { padding: 18px; border-bottom: 1px solid var(--line); font-family: var(--grotesk); font-size: 16px; color: var(--ink); }
+  .audit-first-home .deal-table td.r { text-align: right; }
+  .audit-first-home .deal-table tbody tr:not(.hi) td { color: var(--ink-faint); text-decoration: line-through; text-decoration-thickness: 1px; }
+  .audit-first-home .deal-table tr.hi { background: var(--sage, #ecf2dc); }
+  .audit-first-home .deal-table tr.hi td { color: var(--ink); text-decoration: none; border-left: 3px solid var(--accent-deep); }
+  .audit-first-home .deal-table tr.hi td:first-child b { color: var(--accent-deep); }
+  .audit-first-home .deal-table tr.hi td.r b { color: var(--accent-deep); font-family: var(--grotesk); font-weight: 700; font-size: 22px; }
+  .audit-first-home .deal-table tr.hi .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); font-size: 16px; }
+
+  /* AI section two-col + bare lists. */
+  .audit-first-home .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; margin-top: var(--sp-8, 40px); }
+  @media (max-width: 780px) { .audit-first-home .two-col { grid-template-columns: 1fr; gap: var(--sp-7, 32px); } }
+  .audit-first-home .two-col .col-r { padding-left: var(--sp-7, 32px); border-left: 1px solid var(--line); }
+  @media (max-width: 780px) { .audit-first-home .two-col .col-r { padding-left: 0; border-left: 0; padding-top: var(--sp-7, 32px); border-top: 1px solid var(--line); } }
+  .audit-first-home .bare { list-style: none; margin: var(--sp-5, 20px) 0 0; padding: 0; }
+  .audit-first-home .bare li { padding: 12px 0; border-bottom: 1px solid var(--line); font-family: var(--grotesk); font-size: 17px; line-height: 1.5; color: var(--ink); }
+  .audit-first-home .bare li:last-child { border-bottom: 0; }
+  .audit-first-home .bare li .ital { font-family: var(--serif); font-style: italic; color: var(--ink-dim); }
+
+  /* Sage exclusion callout below audience triad. */
+  .audit-first-home .exclusion { margin-top: var(--sp-8, 40px); padding: var(--sp-6, 24px) var(--sp-7, 32px); background: var(--sage, #ecf2dc); border-left: 3px solid var(--accent-deep); }
+  .audit-first-home .exclusion .stamp { margin-bottom: var(--sp-3, 12px); display: inline-flex; }
+  .audit-first-home .exclusion p { font-family: var(--grotesk); font-size: 16px; line-height: 1.55; color: var(--ink); margin: 0; max-width: 820px; }
+  .audit-first-home .exclusion p .ital { font-family: var(--serif); font-style: italic; color: var(--ink-dim); }
+
+  /* Section body lede + post-note. */
+  .audit-first-home .sec-body .lede { font-family: var(--serif); font-style: italic; font-size: clamp(18px, 1.8vw, 22px); line-height: 1.45; color: var(--ink-dim); max-width: 820px; margin: 0 0 var(--sp-8, 40px); }
+  .audit-first-home .post-note { margin-top: var(--sp-7, 32px); font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); display: flex; gap: var(--sp-2, 8px); align-items: baseline; flex-wrap: wrap; }
+  .audit-first-home .post-note::before { content: '↳'; color: var(--accent-deep); margin-right: 6px; }
+  .audit-first-home .post-note .ital { font-family: var(--serif); font-style: italic; text-transform: none; letter-spacing: 0; color: var(--ink-dim); font-size: 14px; }
+</style>
+
+<script is:inline>
+  (function () {
+    var form = document.getElementById('homeAuditForm');
+    if (!form) return;
+    form.addEventListener('submit', function (e) {
+      var input = form.querySelector('input[name="url"]');
+      if (input) {
+        input.value = input.value.trim().replace(/^https?:\/\//, '').replace(/\/$/, '');
+      }
+    });
+  })();
+</script>
