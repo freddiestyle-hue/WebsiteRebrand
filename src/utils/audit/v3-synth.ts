@@ -556,7 +556,31 @@ export function buildMemoFromAudit(audit: AuditResult, enrich?: EnrichmentBundle
 
   // Ranked fixes: enrichment-driven priorities first (page speed, DMARC, viewport
   // are the highest-leverage wins when broken), then top failing audit checks.
-  const failed = audit.checks.filter((c) => !c.passed).sort((a, b) => b.weight - a.weight);
+  //
+  // Ad-spending operators are different. When the operator is actively running
+  // paid ads, conversion gaps and pixel gaps cost real money per click - they
+  // outweigh /llms.txt or schema fixes that only matter for organic traffic.
+  // Boost conversion + tracking categories above everything else in that case
+  // so the Top 3 Fixes reflect the operator's actual exposure.
+  const adsRunning =
+    !!(enrich?.ads &&
+      ((enrich.ads.metaActive ?? 0) +
+        (enrich.ads.googleActive ?? 0) +
+        (enrich.ads.linkedinActive ?? 0)) > 0);
+  const AD_OPERATOR_PRIORITY: ReadonlySet<CheckResult['category']> = new Set([
+    'conversion',
+    'tracking',
+  ]);
+  const failed = audit.checks
+    .filter((c) => !c.passed)
+    .sort((a, b) => {
+      if (adsRunning) {
+        const aBoost = AD_OPERATOR_PRIORITY.has(a.category) ? 100 : 0;
+        const bBoost = AD_OPERATOR_PRIORITY.has(b.category) ? 100 : 0;
+        if (aBoost !== bBoost) return bBoost - aBoost;
+      }
+      return b.weight - a.weight;
+    });
   const enrichmentFixes: RankedFix[] = [];
 
   if (enrich?.pageSpeed && enrich.pageSpeed.band === 'poor') {
@@ -615,9 +639,19 @@ export function buildMemoFromAudit(audit: AuditResult, enrich?: EnrichmentBundle
   }
 
   // Cover italic clause: lead with the most prospect-relevant signal we have.
+  // For ad-spending operators, conversion + tracking gaps land harder than
+  // generic "X ads running" - those gaps are where paid clicks bleed.
+  const adConvGapCount = adsRunning
+    ? audit.checks.filter(
+        (c) => !c.passed && AD_OPERATOR_PRIORITY.has(c.category),
+      ).length
+    : 0;
   let coverItalic = `${audit.bandLabel}. ${audit.bandKicker}`;
   if (enrich?.pageSpeed?.band === 'poor') {
     coverItalic = `${audit.bandLabel}. Mobile load ${fmtMs(enrich.pageSpeed.lcpMs)} is bleeding paid clicks.`;
+  } else if (adsRunning && adConvGapCount > 0) {
+    const total = (enrich!.ads!.metaActive ?? 0) + (enrich!.ads!.googleActive ?? 0) + (enrich!.ads!.linkedinActive ?? 0);
+    coverItalic = `${audit.bandLabel}. ${total} paid ${total === 1 ? 'ad' : 'ads'} running, ${adConvGapCount} conversion or pixel ${adConvGapCount === 1 ? 'gap' : 'gaps'} below.`;
   } else if (enrich?.deliverability?.dmarcPresent === false) {
     coverItalic = `${audit.bandLabel}. No DMARC published: outbound mail risks the spam folder.`;
   } else if (enrich?.ads && (enrich.ads.metaActive ?? 0) + (enrich.ads.googleActive ?? 0) > 0) {
@@ -642,6 +676,9 @@ export function buildMemoFromAudit(audit: AuditResult, enrich?: EnrichmentBundle
     observation = `Every check this audit can run is passing, which is rare. The next layer is the part we did not measure here: are your AI engine citations on the right side of the brand, does your peer cohort score above or below you. Those are the questions worth answering next.`;
   } else if (enrich?.pageSpeed?.band === 'poor') {
     observation = `${audit.hostname} loads slowly on mobile (LCP ${fmtMs(enrich.pageSpeed.lcpMs)}). <strong>If you are spending on paid ads, this is the highest-leverage fix in the audit.</strong> Every second over 2.5s drops conversion roughly seven percent. The other checks matter, but page speed touches every dollar of paid traffic.`;
+  } else if (adsRunning && adConvGapCount > 0) {
+    const totalAds = (enrich!.ads!.metaActive ?? 0) + (enrich!.ads!.googleActive ?? 0) + (enrich!.ads!.linkedinActive ?? 0);
+    observation = `${audit.hostname} is spending on ${totalAds} active paid ${totalAds === 1 ? 'ad' : 'ads'}, but the conversion and pixel side of the funnel has ${adConvGapCount} measurable ${adConvGapCount === 1 ? 'gap' : 'gaps'}. <strong>That is paid traffic landing on a leaky page.</strong> The fixes above close it. Schema and llms.txt matter for the organic side; paid clicks need the conversion path tight first.`;
   } else if (failed.length >= 3) {
     observation = `${audit.hostname} has ${failed.length} measurable gaps in the in-browser scan. The top three are above. <strong>What this scan does not see often matters more</strong>: AI engines naming a competitor instead of you, peer-cohort percentile against your industry. Those questions are worth answering next.`;
   } else {
