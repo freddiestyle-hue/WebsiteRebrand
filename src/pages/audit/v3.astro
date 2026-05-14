@@ -1,0 +1,331 @@
+---
+// Live v3 memo: enter a domain, run the in-browser audit, render the 5-chunk
+// IA inline. No KV write, no Codex, no auth gate — pure on-demand render.
+//
+// This is the "type a URL and see the new IA" surface. It's a DEGRADED v3
+// memo (no ads, no page speed, no AI citation probes — those need API keys
+// and the offline pipeline). It exists so prospects can self-serve a teardown
+// at /audit/v3 instead of waiting for a cold-DM URL.
+export const prerender = false;
+
+import PostHog from '../../components/PostHog.astro';
+import { runAudit, normalizeAuditUrl, type AuditResult } from '../../utils/audit/engine';
+import { buildMemoFromAudit } from '../../utils/audit/v3-synth';
+import type { Memo, VerdictIcon } from '../../utils/audit/memo-schema';
+import { sanitizeMemoHtml } from '../../utils/audit/safe-html';
+
+const isPOST = Astro.request.method === 'POST';
+
+let audit: AuditResult | null = null;
+let memo: Memo | null = null;
+let inputError: string | null = null;
+let runtimeError: string | null = null;
+let submittedUrl = '';
+
+if (isPOST) {
+  try {
+    const form = await Astro.request.formData();
+    submittedUrl = String(form.get('url') ?? '').trim();
+    if (!submittedUrl) {
+      inputError = 'Type a domain to audit.';
+    } else {
+      const norm = normalizeAuditUrl(submittedUrl);
+      if ('error' in norm) {
+        inputError = norm.error;
+      } else {
+        audit = await runAudit(norm.url);
+        if (audit.error) {
+          runtimeError = audit.error;
+        } else {
+          memo = buildMemoFromAudit(audit);
+        }
+      }
+    }
+  } catch (e) {
+    runtimeError = e instanceof Error ? e.message : String(e);
+    console.error('[audit/v3] failed', e);
+  }
+}
+
+const fmtDate = (iso: string): string => {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  const yyyy = d.getUTCFullYear();
+  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(d.getUTCDate()).padStart(2, '0');
+  return `${yyyy}·${mm}·${dd}`;
+};
+
+const iconHref = (icon: VerdictIcon): string => `#ic-${icon}`;
+
+const pageTitle = memo
+  ? `Live audit · ${memo.domain} · Rivett`
+  : 'Live teardown audit · Rivett';
+---
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>{pageTitle}</title>
+<meta name="robots" content="noindex,nofollow" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&family=Newsreader:ital,wght@0,400;0,500;1,400;1,500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/audit/memo.css" />
+<PostHog capturePageview={true} />
+<style>
+  .v3-form-wrap{padding:88px 0 64px;display:grid;gap:32px;max-width:680px}
+  @media (max-width:780px){.v3-form-wrap{padding:48px 0 32px}}
+  .v3-form-wrap h1{font-family:var(--grotesk);font-weight:800;font-size:clamp(40px,5.4vw,72px);line-height:0.96;letter-spacing:-0.04em;margin:0;text-wrap:balance}
+  .v3-form-wrap h1 .ital{font-family:var(--serif);font-style:italic;font-weight:400;color:var(--ink-dim)}
+  .v3-form-wrap .lede{font-family:var(--grotesk);font-size:19px;line-height:1.5;color:var(--ink-dim);margin:0;max-width:580px;text-wrap:pretty}
+  .v3-form-wrap .lede em{font-family:var(--serif);font-style:italic;color:var(--ink)}
+  .v3-form{display:grid;grid-template-columns:1fr auto;gap:0;border:1px solid var(--ink);background:var(--paper);margin-top:8px}
+  @media (max-width:540px){.v3-form{grid-template-columns:1fr}}
+  .v3-form input{padding:18px 22px;border:0;background:transparent;font-family:var(--mono);font-size:14px;letter-spacing:0.02em;color:var(--ink);outline:none;width:100%}
+  .v3-form input::placeholder{color:var(--ink-faint)}
+  .v3-form input:focus{background:var(--paper-2)}
+  .v3-form button{padding:18px 32px;border:0;border-left:1px solid var(--ink);background:var(--ink);color:var(--paper);font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;cursor:pointer;transition:background 120ms}
+  @media (max-width:540px){.v3-form button{border-left:0;border-top:1px solid var(--ink);width:100%}}
+  .v3-form button:hover{background:var(--accent-deep)}
+  .v3-error{margin-top:16px;padding:14px 18px;border:1px solid var(--ink);background:var(--paper-2);font-family:var(--mono);font-size:12.5px;color:var(--ink)}
+  .v3-hint{font-family:var(--mono);font-size:10.5px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint);margin-top:12px}
+  .v3-rerun{margin-top:36px;display:flex;align-items:center;gap:18px;font-family:var(--mono);font-size:10.5px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint);padding-top:24px;border-top:1px solid var(--line)}
+  .v3-rerun a{color:var(--ink);text-decoration:underline;text-underline-offset:4px}
+  .v3-rerun a:hover{color:var(--accent-deep)}
+</style>
+</head>
+<body>
+
+<!-- Icon sprite (same set as /audit/p/[slug].astro) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="ic-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square" stroke-linejoin="miter"><circle cx="11" cy="11" r="6"/><path d="m15.5 15.5 4.5 4.5"/></symbol>
+    <symbol id="ic-bolt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square" stroke-linejoin="miter"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z"/></symbol>
+    <symbol id="ic-target" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square" stroke-linejoin="miter"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/></symbol>
+    <symbol id="ic-megaphone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square" stroke-linejoin="miter"><path d="M3 10v4l11 4V6L3 10z"/><path d="M14 8.5c2 0 3 1.5 3 3.5s-1 3.5-3 3.5"/><path d="M7 14v4l3 1v-4"/></symbol>
+    <symbol id="ic-bar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square" stroke-linejoin="miter"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></symbol>
+    <symbol id="ic-spark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square" stroke-linejoin="miter"><path d="M12 3v6M12 15v6M3 12h6M15 12h6M5.6 5.6l4.2 4.2M14.2 14.2l4.2 4.2M5.6 18.4l4.2-4.2M14.2 9.8l4.2-4.2"/></symbol>
+    <symbol id="ic-mail" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square" stroke-linejoin="miter"><rect x="3" y="5" width="18" height="14"/><path d="m3 6 9 7 9-7"/></symbol>
+    <symbol id="ic-phone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square" stroke-linejoin="miter"><rect x="7" y="2" width="10" height="20" rx="1"/><path d="M11 18h2"/></symbol>
+    <symbol id="ic-flag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square" stroke-linejoin="miter"><path d="M5 22V3"/><path d="M5 3h12l-3 4 3 4H5"/></symbol>
+    <symbol id="ic-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square" stroke-linejoin="miter"><path d="M2.5 12c2.5-4.5 6-7 9.5-7s7 2.5 9.5 7c-2.5 4.5-6 7-9.5 7s-7-2.5-9.5-7z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="ic-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square" stroke-linejoin="miter"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></symbol>
+    <symbol id="ic-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="square" stroke-linejoin="miter"><path d="m4 12 5 5 11-12"/></symbol>
+    <symbol id="ic-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="square" stroke-linejoin="miter"><path d="m5 5 14 14M19 5 5 19"/></symbol>
+    <symbol id="ic-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square" stroke-linejoin="miter"><path d="M4 12h15M13 6l6 6-6 6"/></symbol>
+  </defs>
+</svg>
+
+<div class="page">
+  <nav class="top">
+    <div class="l"><a href="/audit" class="wordmark" aria-label="Rivett, audit index">rivett<span class="dot-mark" aria-hidden="true"></span></a> <b>· Live audit</b></div>
+    <div class="r">
+      <span>By <a href="https://www.linkedin.com/in/fredstyle/" style="color:var(--ink);font-weight:500" target="_blank" rel="noopener">Fred Style</a></span>
+      <span>{fmtDate(new Date().toISOString())}</span>
+    </div>
+  </nav>
+
+  <div class="crumb">
+    <a href="/audit">↑ Audit index</a>
+    <span class="sep">/</span>
+    <span>v3</span>
+    {memo && (<><span class="sep">/</span><span>{memo.domain}</span></>)}
+  </div>
+
+  {!memo && (
+    <div class="v3-form-wrap">
+      <div class="kicker">Live audit · type any domain</div>
+      <h1>
+        Type a domain.
+        <span class="ital">See the read.</span>
+      </h1>
+      <p class="lede">
+        This runs the in-browser audit and renders the 5-chunk teardown IA. <em>It checks crawlability, schema, tracking, meta tags, and AEO.</em> It does not see ads, page speed, mobile rendering, AI citations, or deliverability. Those need API keys and live in the full memo pipeline.
+      </p>
+      <form class="v3-form" method="POST" action="/audit/v3">
+        <input type="text" name="url" placeholder="example.com" value={submittedUrl} required autocomplete="off" autofocus />
+        <button type="submit">Run audit</button>
+      </form>
+      {inputError && <div class="v3-error">{inputError}</div>}
+      {runtimeError && <div class="v3-error">{runtimeError}</div>}
+      <p class="v3-hint">Takes 5-10 seconds. Renders on submit.</p>
+    </div>
+  )}
+
+  {memo && (
+    <>
+      {/* 1. HOOK */}
+      <header class="cover">
+        <div class="kicker">{memo.cover.kicker}</div>
+        <h1 class="cv">
+          {memo.cover.roman}
+          {memo.cover.italic && <> <span class="ital">{memo.cover.italic}</span></>}
+        </h1>
+        {memo.cover.dek && <p class="cv-dek">{memo.cover.dek}</p>}
+
+        <div class="cv-sub">
+          <div class="cv-meta">
+            <div>Domain<b>{memo.domain}</b></div>
+            <div>Generated<b>{fmtDate(memo.generatedAt)}</b></div>
+            {audit && <div>Scan<b>{audit.durationMs}ms</b></div>}
+          </div>
+        </div>
+      </header>
+
+      {/* 3. VERDICT GRID */}
+      <section id="verdict" class="sec sec--tight">
+        <div class="sec-head">
+          <div class="num">01 · The read</div>
+          <div>
+            <h2>
+              {memo.verdictCells.length} dimensions, one verdict each.
+              <span class="ital">Tap a cell to see what we checked.</span>
+            </h2>
+          </div>
+        </div>
+        <div class="verdict" aria-label="Verdict grid">
+          {memo.verdictCells.map((cell) => (
+            <details class="v">
+              <summary>
+                <div class="k"><svg class="ic"><use href={iconHref(cell.icon)}/></svg>{cell.heading}</div>
+                <div class="g">{cell.value}</div>
+                <div class="n">{cell.note}</div>
+                {cell.benchmark && <div class="bench" set:html={sanitizeMemoHtml(cell.benchmark)} />}
+                {cell.checks.length > 0 && (
+                  <div class="expand"><span class="label">+ Checks</span><span class="chev">↑</span></div>
+                )}
+              </summary>
+              {cell.checks.length > 0 && (
+                <div class="checks">
+                  <ul>
+                    {cell.checks.map((check) => (
+                      <li>
+                        <svg class={check.ok ? 'ic ok' : 'ic no'}>
+                          <use href={check.ok ? '#ic-check' : '#ic-x'}/>
+                        </svg>
+                        <span class={check.ok ? 'ok' : 'no'} set:html={sanitizeMemoHtml(check.text)} />
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </details>
+          ))}
+        </div>
+      </section>
+
+      {/* 4. TOP 3 FIXES */}
+      <section id="fixes" class="sec">
+        <div class="sec-head">
+          <div class="num">02 · Do these first</div>
+          <div>
+            <h2>
+              {memo.rankedFixes.length === 1 ? 'One fix that matters' : `The ${memo.rankedFixes.length} fixes that move the score most`}.
+              <span class="ital">Effort and impact, named.</span>
+            </h2>
+          </div>
+        </div>
+        <div class="recs">
+          {memo.rankedFixes.map((fix) => (
+            <div class="row">
+              <div class="rank">F{String(fix.rank).padStart(2, '0')}</div>
+              <div class="what">
+                <div class="what-h" set:html={sanitizeMemoHtml(fix.what)} />
+                <p class="why" set:html={sanitizeMemoHtml(fix.why)} />
+              </div>
+              <div class="effort">Effort<b>{fix.effort}</b></div>
+              <div class="impact">Impact<b>{fix.impact}</b></div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* 5. PERSONAL OBSERVATION */}
+      <section id="observation" class="sec">
+        <div class="sec-head">
+          <div class="num">03 · What this scan does not see</div>
+          <div>
+            <h2>The signals worth answering next.</h2>
+          </div>
+        </div>
+        <p class="body body--obs" set:html={sanitizeMemoHtml(memo.personalObservation.text)} />
+      </section>
+
+      {/* Dark closing CTA */}
+      <aside class="memo">
+        <div class="lab">Want the full read</div>
+        <div>
+          <h2>
+            Pick a time.
+            <span class="ital">Twenty minutes. I'll bring the ads, the page speed numbers, the AI citation probe results, and the deliverability check this scan could not run.</span>
+          </h2>
+          <p>No deck, no sales motion. You bring questions, I bring the read.</p>
+          <div class="actions">
+            <a class="btn btn--inv" href="/diagnostic">Book a call <svg class="ic" style="width:14px;height:14px"><use href="#ic-arrow"/></svg></a>
+            <a class="btn" href="/audit/v3">Audit another domain</a>
+          </div>
+          <div class="sig">
+            <b>Fred Style</b>
+            rivett.tech · {fmtDate(memo.generatedAt)}
+          </div>
+        </div>
+      </aside>
+
+      <div class="v3-rerun">
+        <span>Audit again</span>
+        <a href="/audit/v3">Type a different domain</a>
+      </div>
+
+      <footer class="foot">
+        <span>Live in-browser scan. Not a formal assessment.</span>
+        <span>rivett.tech · {fmtDate(memo.generatedAt)}</span>
+      </footer>
+    </>
+  )}
+</div>
+
+<script
+  is:inline
+  define:vars={{
+    isMemo: !!memo,
+    domain: memo?.domain ?? null,
+    scoreNumeric: audit?.scoreNumeric ?? null,
+    durationMs: audit?.durationMs ?? null,
+    verdictCellCount: memo?.verdictCells.length ?? 0,
+    rankedFixCount: memo?.rankedFixes.length ?? 0,
+  }}
+>
+  (function () {
+    function fire() {
+      if (typeof window.posthog === 'undefined') return;
+      if (!isMemo) {
+        window.posthog.capture('audit_v3_form_view');
+        return;
+      }
+      window.posthog.capture('audit_v3_memo_rendered', {
+        domain: domain,
+        scoreNumeric: scoreNumeric,
+        durationMs: durationMs,
+        verdictCellCount: verdictCellCount,
+        rankedFixCount: rankedFixCount,
+      });
+      document.querySelectorAll('details.v').forEach(function (d, i) {
+        d.addEventListener('toggle', function () {
+          if (d.open) {
+            window.posthog.capture('audit_v3_verdict_expanded', { domain: domain, cell_index: i });
+          }
+        });
+      });
+    }
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+      setTimeout(fire, 0);
+    } else {
+      document.addEventListener('DOMContentLoaded', fire);
+    }
+  })();
+</script>
+
+</body>
+</html>
