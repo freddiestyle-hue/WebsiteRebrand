@@ -18,6 +18,7 @@ import type { PageSpeedResult } from './pagespeed';
 import type { AdsResult } from './ads-check';
 import type { TechStackResult, DetectedTech, TechCategory } from './tech-stack-check';
 import { TECH_CATEGORY_LABELS } from './tech-stack-check';
+import type { HeadlessResult } from './headless-check';
 
 export interface EnrichmentBundle {
   deliverability: DeliverabilityResult | null;
@@ -25,6 +26,13 @@ export interface EnrichmentBundle {
   pageSpeed: PageSpeedResult | null;
   ads: AdsResult | null;
   techStack: TechStackResult | null;
+  // Tier 2: when headless ran, this carries rendered HTML + real mobile
+  // signals. The synth uses it to upgrade the mobile cell and to fortify
+  // the tech-stack cell with runtime-detected pixels.
+  headless: HeadlessResult | null;
+  // tech-stack re-detected against the rendered HTML, capturing GTM-
+  // injected pixels that the static scan misses.
+  techStackRuntime: TechStackResult | null;
 }
 
 function passCount(checks: CheckResult[]): { passed: number; total: number } {
@@ -106,29 +114,91 @@ function speedCellFromPsi(ps: PageSpeedResult): VerdictCell {
   };
 }
 
-function mobileCellFromResult(m: MobileRenderingResult): VerdictCell {
+function mobileCellFromResult(
+  m: MobileRenderingResult,
+  headless: HeadlessResult | null,
+): VerdictCell {
+  // If we have headless data, use real measurements. Otherwise fall back
+  // to HTML-only inference from m.
+  const useHeadless = headless !== null;
+  const hm = headless?.mobile;
+
+  const realHorizontalScroll = hm?.hasHorizontalScroll ?? null;
+  const realSmallestTap = hm?.smallestTapTargetPx ?? null;
+  const realSmallText = (hm?.textSamplesUnder12px ?? 0) > 0;
+
+  // Issues: prefer real signals from headless, fall back to inferred.
+  const viewportOk = m.viewportPresent;
+  const zoomOk = !m.viewportZoomDisabled;
+  const horizontalScrollOk =
+    realHorizontalScroll != null ? !realHorizontalScroll : true;
+  const tapTargetOk =
+    realSmallestTap != null ? realSmallestTap >= 40 : !m.smallTapTargetHint;
+  const textSizeOk = useHeadless ? !realSmallText : !m.smallFontHint;
+
   const issues =
-    Number(!m.viewportPresent) +
-    Number(m.viewportZoomDisabled) +
-    Number(m.smallFontHint) +
-    Number(m.smallTapTargetHint);
+    Number(!viewportOk) +
+    Number(!zoomOk) +
+    Number(!horizontalScrollOk) +
+    Number(!tapTargetOk) +
+    Number(!textSizeOk);
   const value = issues === 0 ? 'Clean' : `${issues} issue${issues === 1 ? '' : 's'}`;
   const note =
     issues === 0
-      ? 'Viewport set correctly. No obvious phone-hostile sizing.'
-      : 'Markup shows signals that suggest the page is not designed for phones.';
-  const checks = [
-    { ok: m.viewportPresent, text: 'Viewport meta tag present' },
-    { ok: !m.viewportZoomDisabled, text: 'Zoom is not blocked' },
-    { ok: !m.smallFontHint, text: 'No font sizes under 12px in markup' },
-    { ok: !m.smallTapTargetHint, text: 'No button or link sizes under 40px in markup' },
-  ];
+      ? useHeadless
+        ? 'Renders cleanly at 390×844. No horizontal scroll, tap targets in range.'
+        : 'Viewport set correctly. No obvious phone-hostile sizing in markup.'
+      : useHeadless
+        ? 'Real-browser render at 390×844 surfaced mobile UX issues.'
+        : 'Markup shows signals that suggest the page is not designed for phones.';
+
+  const checks: Array<{ ok: boolean; text: string }> = [];
+  checks.push({ ok: viewportOk, text: 'Viewport meta tag present' });
+  checks.push({ ok: zoomOk, text: 'Zoom is not blocked' });
+
+  if (realHorizontalScroll != null) {
+    checks.push({
+      ok: !realHorizontalScroll,
+      text: realHorizontalScroll
+        ? 'Page is wider than the phone viewport (visitors swipe sideways)'
+        : 'Page fits the phone viewport cleanly',
+    });
+  }
+  if (realSmallestTap != null) {
+    checks.push({
+      ok: realSmallestTap >= 40,
+      text:
+        realSmallestTap >= 40
+          ? `Smallest tap target: ${realSmallestTap}px (Apple HIG threshold 44px, Google 48px)`
+          : `Smallest tap target: ${realSmallestTap}px — fat-finger misses likely`,
+    });
+  } else {
+    checks.push({
+      ok: !m.smallTapTargetHint,
+      text: 'No button or link sizes under 40px in markup (static check)',
+    });
+  }
+  if (useHeadless) {
+    checks.push({
+      ok: !realSmallText,
+      text:
+        (hm?.textSamplesUnder12px ?? 0) === 0
+          ? 'All sampled text renders ≥ 12px on phone viewport'
+          : `${hm?.textSamplesUnder12px} text elements render under 12px on phone`,
+    });
+  } else {
+    checks.push({
+      ok: !m.smallFontHint,
+      text: 'No font sizes under 12px in markup (static check)',
+    });
+  }
+
   return {
     icon: 'phone' as VerdictIcon,
     heading: 'How it behaves on mobile',
     value,
     note,
-    benchmark: null,
+    benchmark: useHeadless ? '390×844 viewport · headless verified' : 'Inferred from HTML',
     checks,
   };
 }
@@ -228,8 +298,40 @@ function adsCellFromResult(a: AdsResult): VerdictCell {
   };
 }
 
-function techStackCellFromResult(t: TechStackResult): VerdictCell {
-  // Categories sorted by what an operator cares about most.
+function mergeTechResults(
+  staticResult: TechStackResult,
+  runtimeResult: TechStackResult | null,
+): { merged: TechStackResult; runtimeOnly: Set<string> } {
+  if (!runtimeResult) return { merged: staticResult, runtimeOnly: new Set() };
+
+  const seen = new Map<string, DetectedTech>();
+  for (const t of staticResult.detected) seen.set(t.name, t);
+
+  const runtimeOnly = new Set<string>();
+  for (const t of runtimeResult.detected) {
+    if (!seen.has(t.name)) {
+      seen.set(t.name, t);
+      runtimeOnly.add(t.name);
+    }
+  }
+
+  const detected = [...seen.values()];
+  const byCategory: Record<TechCategory, DetectedTech[]> = {} as Record<TechCategory, DetectedTech[]>;
+  for (const tech of detected) {
+    if (!byCategory[tech.category]) byCategory[tech.category] = [];
+    byCategory[tech.category].push(tech);
+  }
+
+  return {
+    merged: { detected, byCategory, total: detected.length },
+    runtimeOnly,
+  };
+}
+
+function techStackCellFromResult(
+  staticResult: TechStackResult,
+  runtimeResult: TechStackResult | null,
+): VerdictCell {
   const CATEGORY_ORDER: TechCategory[] = [
     'analytics',
     'advertising',
@@ -251,17 +353,28 @@ function techStackCellFromResult(t: TechStackResult): VerdictCell {
     'misc',
   ];
 
+  const { merged: t, runtimeOnly } = mergeTechResults(staticResult, runtimeResult);
+
+  const hasRuntime = runtimeResult !== null;
   const value = t.total === 0 ? 'n/a' : String(t.total);
-  const note =
-    t.total === 0
-      ? 'No technologies detected from the static HTML scan. Either the page is very minimal, or everything is being loaded via runtime JS (Tier 2 headless will catch that).'
-      : `${t.total} technologies detected across ${Object.keys(t.byCategory).length} categories.`;
+  let note: string;
+  if (t.total === 0) {
+    note = hasRuntime
+      ? 'No technologies detected even after a full headless browser pass.'
+      : 'No technologies detected from the static HTML scan. Runtime JS may be hiding them.';
+  } else if (hasRuntime && runtimeOnly.size > 0) {
+    note = `${t.total} technologies detected (${runtimeOnly.size} only visible after JS executed — those are runtime-injected, the rest were in static HTML).`;
+  } else {
+    note = `${t.total} technologies detected across ${Object.keys(t.byCategory).length} categories.`;
+  }
 
   const checks: Array<{ ok: boolean; text: string }> = [];
   for (const cat of CATEGORY_ORDER) {
     const techs = t.byCategory[cat];
     if (!techs || techs.length === 0) continue;
-    const names = techs.map((tt) => tt.name).join(', ');
+    const names = techs
+      .map((tt) => (runtimeOnly.has(tt.name) ? `${tt.name} (runtime)` : tt.name))
+      .join(', ');
     checks.push({ ok: true, text: `${TECH_CATEGORY_LABELS[cat]}: ${names}` });
   }
 
@@ -270,7 +383,12 @@ function techStackCellFromResult(t: TechStackResult): VerdictCell {
     heading: 'Tech stack you are running',
     value,
     note,
-    benchmark: t.total > 0 ? `${Object.keys(t.byCategory).length} categories detected` : null,
+    benchmark:
+      t.total > 0
+        ? hasRuntime
+          ? `${Object.keys(t.byCategory).length} categories · headless verified`
+          : `${Object.keys(t.byCategory).length} categories · static only`
+        : null,
     checks,
   };
 }
@@ -342,7 +460,11 @@ export function buildMemoFromAudit(audit: AuditResult, enrich?: EnrichmentBundle
   }
 
   if (tracking.length > 0) {
-    const augmentedChecks = augmentTrackingChecks(tracking, enrich?.techStack ?? null);
+    // Use merged static+runtime tech stack so GTM-injected pixels show up.
+    const mergedTech = enrich?.techStack
+      ? mergeTechResults(enrich.techStack, enrich.techStackRuntime ?? null).merged
+      : null;
+    const augmentedChecks = augmentTrackingChecks(tracking, mergedTech);
     // Recompute passed count to include fingerprint-detected pixels (always
     // "passed" = "detected" since they're proof of presence, not absence).
     const passedCount = augmentedChecks.filter((c) => c.ok).length;
@@ -376,7 +498,7 @@ export function buildMemoFromAudit(audit: AuditResult, enrich?: EnrichmentBundle
   }
 
   if (enrich?.mobile) {
-    verdictCells.push(mobileCellFromResult(enrich.mobile));
+    verdictCells.push(mobileCellFromResult(enrich.mobile, enrich?.headless ?? null));
   }
 
   if (enrich?.deliverability) {
@@ -384,7 +506,7 @@ export function buildMemoFromAudit(audit: AuditResult, enrich?: EnrichmentBundle
   }
 
   if (enrich?.techStack && enrich.techStack.total > 0) {
-    verdictCells.push(techStackCellFromResult(enrich.techStack));
+    verdictCells.push(techStackCellFromResult(enrich.techStack, enrich.techStackRuntime));
   }
 
   // Pad if under the 3-cell minimum (only happens on heavy fetch failure)
