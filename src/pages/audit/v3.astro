@@ -342,7 +342,11 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
   .hook .kicker { font-family: var(--mono); font-size: var(--t-meta); letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--accent-deep); display: inline-flex; align-items: center; }
   .hook .kicker::before { content: ''; display: inline-block; width: 8px; height: 8px; background: var(--accent); border-radius: var(--r-pill); margin-right: 12px; animation: pulse 2.4s var(--ease) infinite; }
   .hook h1 { font-family: var(--grotesk); font-weight: 800; font-size: clamp(48px, 6.4vw, 96px); line-height: 0.92; letter-spacing: var(--track-display); margin: var(--sp-6) 0 var(--sp-7); text-wrap: balance; }
-  .hook h1 .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); letter-spacing: -0.02em; }
+  /* Italic flourish under the score statement. Sized as a subtitle (~half
+     the hero), forced onto its own line, with the same color/serif treatment
+     as before. Without the size cap, "24 paid ads, 8 conversion gaps." rendered
+     at 96px italic serif and bullied the page. */
+  .hook h1 .ital { display: block; font-family: var(--serif); font-style: italic; font-weight: 400; font-size: 0.48em; line-height: 1.1; color: var(--ink-dim); letter-spacing: -0.01em; margin-top: var(--sp-4); text-wrap: pretty; }
   .hook .dek { font-family: var(--serif); font-style: italic; font-size: clamp(18px, 1.7vw, 22px); line-height: 1.5; color: var(--ink-dim); margin: 0 0 var(--sp-8); max-width: 600px; text-wrap: pretty; }
   .hook .meta-row { border-top: var(--bw-hair) solid var(--line); padding-top: var(--sp-4); display: flex; gap: var(--sp-8); flex-wrap: wrap; font-family: var(--mono); font-size: var(--t-meta); letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); }
   .hook .meta-row b { color: var(--ink); font-weight: 500; }
