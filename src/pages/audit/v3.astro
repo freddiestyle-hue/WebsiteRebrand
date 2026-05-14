@@ -259,6 +259,11 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
 <link rel="stylesheet" href="/audit/audit-v3.css" />
 <PostHog capturePageview={true} />
 <style>
+  /* Wordmark image (matches site header/footer behavior) */
+  .wordmark img { display: block; width: auto; height: 1em; }
+  .band .wordmark img { height: 22px; }
+  .foot .wordmark img { height: 18px; }
+
   /* Landing form state */
   .hero { padding: var(--sp-16) 0 var(--sp-14); border-bottom: var(--bw-hair) solid var(--line); }
   .hero .kicker { font-family: var(--mono); font-size: var(--t-meta); letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--accent-deep); display: inline-flex; align-items: center; }
@@ -511,7 +516,9 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
   <header class="band">
     <div class="row">
       <div class="left">
-        <a class="wordmark" href="/audit/v3">rivett<span class="dot-mark"></span></a>
+        <a class="wordmark" href="/" aria-label="Rivett, home">
+          <img src="/img/marks/wordmark.svg" alt="Rivett" width="96" height="24" decoding="async" />
+        </a>
         <span style="color: var(--ink-faint);">·</span>
         <span><b>Teardown memo</b> · Live audit</span>
       </div>
@@ -825,7 +832,9 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
   )}
 
   <footer class="foot">
-    <span class="wordmark">rivett<span class="dot-mark"></span></span>
+    <a class="wordmark" href="/" aria-label="Rivett, home">
+      <img src="/img/marks/wordmark.svg" alt="Rivett" width="80" height="20" decoding="async" />
+    </a>
     <span>Live in-browser scan · <b>not a formal assessment</b></span>
     <span>rivett.tech · {headerDate}</span>
   </footer>
