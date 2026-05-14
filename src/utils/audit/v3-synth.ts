@@ -429,29 +429,48 @@ function augmentTrackingChecks(
 export function buildMemoFromAudit(audit: AuditResult, enrich?: EnrichmentBundle): Memo {
   const slug = generateSlug(audit.hostname);
 
-  // Combine crawl + schema + meta + aeo into a single "How Google sees you"
-  // cell — they're all really "is this site set up to be found." Keeps the
-  // grid under 8 cells when enrichments also fire.
-  const searchish = audit.checks.filter(
-    (c) => c.category === 'crawl' || c.category === 'schema' || c.category === 'meta' || c.category === 'aeo',
+  // Two distinct cells: "How Google sees you" (search basics — crawl,
+  // schema, meta) and "How AI engines see you" (AEO — llms.txt, AI-bot
+  // robots policy, structured-data depth). Splitting them surfaces the
+  // AEO signal cleanly instead of burying it inside generic search hygiene.
+  const searchBasics = audit.checks.filter(
+    (c) => c.category === 'crawl' || c.category === 'schema' || c.category === 'meta',
   );
+  const aeo = audit.checks.filter((c) => c.category === 'aeo');
   const tracking = audit.checks.filter((c) => c.category === 'tracking');
   const conversion = audit.checks.filter((c) => c.category === 'conversion');
 
   const verdictCells: VerdictCell[] = [];
 
-  if (searchish.length > 0) {
+  if (searchBasics.length > 0) {
     verdictCells.push({
       icon: 'search' as VerdictIcon,
       heading: 'How Google sees you',
-      value: valueStr(passCount(searchish)),
+      value: valueStr(passCount(searchBasics)),
       note: noteFor(
-        'discoverability',
-        passCount(searchish),
-        'Crawlable, indexed, schema present, AEO-ready.',
+        'crawl-and-schema',
+        passCount(searchBasics),
+        'Crawlable, indexed, canonical, schema present.',
       ),
       benchmark: null,
-      checks: checksFromCategory(searchish),
+      checks: checksFromCategory(searchBasics),
+    });
+  }
+
+  if (aeo.length > 0) {
+    const aeoPass = passCount(aeo);
+    verdictCells.push({
+      icon: 'spark' as VerdictIcon,
+      heading: 'How AI engines see you',
+      value: valueStr(aeoPass),
+      note:
+        aeoPass.passed === aeoPass.total
+          ? 'Every AEO signal we look for is in place. ChatGPT, Claude, Perplexity can read this site.'
+          : aeoPass.passed === 0
+            ? 'No AEO signals detected. AI engines cannot connect this domain to its services or entity.'
+            : `${aeoPass.total - aeoPass.passed} of ${aeoPass.total} AEO signals missing. Cited competitors fill the gap when prospects ask.`,
+      benchmark: aeoPass.passed === aeoPass.total ? 'AEO-ready' : null,
+      checks: checksFromCategory(aeo),
     });
   }
 
