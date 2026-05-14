@@ -1,16 +1,19 @@
 ---
-// Live v3 memo: enter a domain, run the in-browser audit, render the 5-chunk
-// IA inline. No KV write, no Codex, no auth gate — pure on-demand render.
+// Live v3 memo: enter a domain, run the in-browser audit + parallel
+// enrichments (deliverability, mobile, page speed, ads), render the
+// 5-chunk IA inline. No KV write, no Codex, no auth gate.
 //
-// This is the "type a URL and see the new IA" surface. It's a DEGRADED v3
-// memo (no ads, no page speed, no AI citation probes — those need API keys
-// and the offline pipeline). It exists so prospects can self-serve a teardown
-// at /audit/v3 instead of waiting for a cold-DM URL.
+// Page speed (PSI) is the long pole at ~20-25 seconds. Everything else
+// parallelizes under it. Total scan time is typically 20-30 seconds.
 export const prerender = false;
 
 import PostHog from '../../components/PostHog.astro';
 import { runAudit, normalizeAuditUrl, type AuditResult } from '../../utils/audit/engine';
-import { buildMemoFromAudit } from '../../utils/audit/v3-synth';
+import { buildMemoFromAudit, type EnrichmentBundle } from '../../utils/audit/v3-synth';
+import { checkDeliverability } from '../../utils/audit/dns-check';
+import { checkMobileFromHtml } from '../../utils/audit/mobile-check';
+import { checkPageSpeed } from '../../utils/audit/pagespeed';
+import { checkAds } from '../../utils/audit/ads-check';
 import type { Memo, VerdictIcon } from '../../utils/audit/memo-schema';
 import { sanitizeMemoHtml } from '../../utils/audit/safe-html';
 
@@ -21,6 +24,7 @@ let memo: Memo | null = null;
 let inputError: string | null = null;
 let runtimeError: string | null = null;
 let submittedUrl = '';
+let enrichment: EnrichmentBundle | null = null;
 
 if (isPOST) {
   try {
@@ -33,11 +37,22 @@ if (isPOST) {
       if ('error' in norm) {
         inputError = norm.error;
       } else {
+        // Step 1: run the base audit (needs to complete first so we have
+        // the homepageHtml for mobile inference).
         audit = await runAudit(norm.url);
         if (audit.error) {
           runtimeError = audit.error;
         } else {
-          memo = buildMemoFromAudit(audit);
+          // Step 2: enrichments in parallel. Each returns null on failure
+          // (network, key missing, timeout) so the cell degrades gracefully.
+          const [deliverability, pageSpeed, ads] = await Promise.all([
+            checkDeliverability(audit.hostname),
+            checkPageSpeed(audit.url, 'mobile'),
+            checkAds(audit.hostname),
+          ]);
+          const mobile = checkMobileFromHtml(audit.homepageHtml);
+          enrichment = { deliverability, mobile, pageSpeed, ads };
+          memo = buildMemoFromAudit(audit, enrichment);
         }
       }
     }
@@ -142,7 +157,7 @@ const pageTitle = memo
         <span class="ital">See the read.</span>
       </h1>
       <p class="lede">
-        This runs the in-browser audit and renders the 5-chunk teardown IA. <em>It checks crawlability, schema, tracking, meta tags, and AEO.</em> It does not see ads, page speed, mobile rendering, AI citations, or deliverability. Those need API keys and live in the full memo pipeline.
+        This runs the live teardown across seven dimensions. <em>Crawlability and schema, tracking, conversion, page speed via Lighthouse, mobile rendering, email deliverability, and (if SCRAPECREATORS_API_KEY is set) Meta and Google ad activity.</em> AI citation probes and peer-cohort benchmarks still live in the offline memo pipeline.
       </p>
       <form class="v3-form" method="POST" action="/audit/v3">
         <input type="text" name="url" placeholder="example.com" value={submittedUrl} required autocomplete="off" autofocus />
@@ -150,7 +165,7 @@ const pageTitle = memo
       </form>
       {inputError && <div class="v3-error">{inputError}</div>}
       {runtimeError && <div class="v3-error">{runtimeError}</div>}
-      <p class="v3-hint">Takes 5-10 seconds. Renders on submit.</p>
+      <p class="v3-hint">Takes 20-30 seconds (PageSpeed is the long pole). Renders on submit.</p>
     </div>
   )}
 
