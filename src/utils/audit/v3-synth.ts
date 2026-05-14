@@ -174,30 +174,53 @@ function mailCellFromResult(d: DeliverabilityResult): VerdictCell {
 
 function adsCellFromResult(a: AdsResult): VerdictCell {
   const total = (a.metaActive ?? 0) + (a.googleActive ?? 0) + (a.linkedinActive ?? 0);
+  const platformsLive = Number((a.metaActive ?? 0) > 0) + Number((a.googleActive ?? 0) > 0) + Number((a.linkedinActive ?? 0) > 0);
   const value = total === 0 ? 'None active' : `${total} active`;
   const note =
     total === 0
-      ? `No active paid ads detected. Either paid is not part of the mix or campaigns are paused.`
+      ? `No active paid ads detected across Meta, Google, or LinkedIn. Either paid is not part of the mix or campaigns are paused.`
       : a.commentary;
   const checks: Array<{ ok: boolean; text: string }> = [];
   if (a.metaActive != null) {
-    checks.push({ ok: a.metaActive > 0, text: `Meta Ad Library: ${a.metaActive} active creatives` });
+    checks.push({
+      ok: a.metaActive > 0,
+      text:
+        a.metaActive === 0
+          ? `Meta Ad Library: no active creatives`
+          : `Meta Ad Library: ${a.metaActive} active ${a.metaActive === 1 ? 'creative' : 'creatives'}`,
+    });
   }
   if (a.googleActive != null) {
     checks.push({
       ok: a.googleActive > 0,
-      text: `Google Ads Library: ${a.googleActive} active creatives`,
+      text:
+        a.googleActive === 0
+          ? `Google Ads Library: no active creatives`
+          : `Google Ads Library: ${a.googleActive} active ${a.googleActive === 1 ? 'creative' : 'creatives'}`,
+    });
+  }
+  if (a.linkedinActive != null) {
+    checks.push({
+      ok: a.linkedinActive > 0,
+      text:
+        a.linkedinActive === 0
+          ? `LinkedIn Ad Library: no active creatives`
+          : `LinkedIn Ad Library: ${a.linkedinActive} active ${a.linkedinActive === 1 ? 'creative' : 'creatives'}`,
     });
   }
   for (const lp of a.sampleLandingPages.slice(0, 2)) {
     checks.push({ ok: false, text: `Ad landing page: ${lp}` });
   }
+  const benchmarkParts: string[] = [];
+  if (platformsLive > 0) benchmarkParts.push(`${platformsLive} of 3 platforms`);
+  if (a.earliestSeen) benchmarkParts.push(`earliest creative ${a.earliestSeen}`);
+  const benchmark = benchmarkParts.length > 0 ? benchmarkParts.join(' · ') : null;
   return {
     icon: 'megaphone' as VerdictIcon,
     heading: 'Ads you are running',
     value,
     note,
-    benchmark: a.earliestSeen ? `Earliest creative · ${a.earliestSeen}` : null,
+    benchmark,
     checks,
   };
 }
