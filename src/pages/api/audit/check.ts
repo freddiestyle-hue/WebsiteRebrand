@@ -14,10 +14,11 @@ function jsonResponse(status: number, body: unknown): Response {
 }
 
 function checkAuth(req: Request): { ok: true } | { ok: false; status: number; reason: string } {
-  const expected = import.meta.env.RIVETT_AUDIT_TOKEN ?? process.env.RIVETT_AUDIT_TOKEN;
-  if (!expected) {
+  const rawExpected = import.meta.env.RIVETT_AUDIT_TOKEN ?? process.env.RIVETT_AUDIT_TOKEN;
+  if (!rawExpected) {
     return { ok: false, status: 503, reason: 'Endpoint disabled: RIVETT_AUDIT_TOKEN not set.' };
   }
+  const expected = rawExpected.trim();
   const header = req.headers.get('authorization') ?? '';
   if (!header.toLowerCase().startsWith('bearer ')) {
     return { ok: false, status: 401, reason: 'Missing Bearer token.' };
