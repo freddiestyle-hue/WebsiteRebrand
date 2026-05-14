@@ -15,6 +15,7 @@ import { checkMobileFromHtml } from '../../utils/audit/mobile-check';
 import { checkPageSpeed } from '../../utils/audit/pagespeed';
 import { checkAds } from '../../utils/audit/ads-check';
 import { detectTechStack } from '../../utils/audit/tech-stack-check';
+import { runHeadlessCheck } from '../../utils/audit/headless-check';
 import type { Memo, VerdictIcon } from '../../utils/audit/memo-schema';
 import { sanitizeMemoHtml } from '../../utils/audit/safe-html';
 
@@ -46,14 +47,31 @@ if (isPOST) {
         } else {
           // Step 2: enrichments in parallel. Each returns null on failure
           // (network, key missing, timeout) so the cell degrades gracefully.
-          const [deliverability, pageSpeed, ads] = await Promise.all([
+          // Headless is the heaviest (~10-15s including Chromium boot) but
+          // returns the most signal — rendered HTML for runtime tracking,
+          // real mobile measurements.
+          const [deliverability, pageSpeed, ads, headless] = await Promise.all([
             checkDeliverability(audit.hostname),
             checkPageSpeed(audit.url, 'mobile'),
             checkAds(audit.hostname),
+            runHeadlessCheck(audit.url),
           ]);
           const mobile = checkMobileFromHtml(audit.homepageHtml);
           const techStack = detectTechStack(audit.homepageHtml ?? '', audit.homepageHeaders);
-          enrichment = { deliverability, mobile, pageSpeed, ads, techStack };
+          // Re-run fingerprints against the headless-rendered HTML — this
+          // is where we catch GTM-injected pixels, async-loaded widgets, etc.
+          const techStackRuntime = headless
+            ? detectTechStack(headless.renderedHtml, audit.homepageHeaders)
+            : null;
+          enrichment = {
+            deliverability,
+            mobile,
+            pageSpeed,
+            ads,
+            techStack,
+            techStackRuntime,
+            headless,
+          };
           memo = buildMemoFromAudit(audit, enrichment);
         }
       }
@@ -159,7 +177,7 @@ const pageTitle = memo
         <span class="ital">See the read.</span>
       </h1>
       <p class="lede">
-        This runs the live teardown across seven dimensions. <em>Crawlability and schema, tracking, conversion, page speed via Lighthouse, mobile rendering, email deliverability, and (if SCRAPECREATORS_API_KEY is set) Meta and Google ad activity.</em> AI citation probes and peer-cohort benchmarks still live in the offline memo pipeline.
+        Live teardown across eight dimensions. <em>Crawlability, schema, tracking, conversion, page speed (Lighthouse), real mobile rendering (headless Chromium at 390×844), email deliverability, ads across Meta + Google + LinkedIn, and full tech stack detection.</em> Static fingerprint scan plus a headless browser pass to catch GTM-injected pixels.
       </p>
       <form class="v3-form" method="POST" action="/audit/v3">
         <input type="text" name="url" placeholder="example.com" value={submittedUrl} required autocomplete="off" autofocus />
