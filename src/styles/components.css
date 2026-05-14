@@ -966,7 +966,35 @@ footer.site .wordmark { font-size: 14px; }
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
 
   .home-page .hero-cta{margin-top:40px;display:flex;gap:16px;flex-wrap:wrap;align-items:center}
-  .home-page .funnel-note{margin:20px 0 0;max-width:540px;font-family:var(--mono);font-size:11px;line-height:1.6;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink-faint)}
+  .home-page .funnel-note{margin:20px 0 0;max-width:560px;font-family:var(--mono);font-size:11px;line-height:1.6;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink-faint)}
+  .home-page .funnel-note .ital{font-family:var(--serif);font-style:italic;letter-spacing:0;text-transform:none;color:var(--ink-dim);font-size:14px}
+
+  /* Audit-as-CTA hero form */
+  .home-page .hero-audit{margin-top:36px;display:grid;grid-template-columns:auto 1fr auto;align-items:stretch;border:1px solid var(--ink);background:var(--paper);max-width:880px}
+  .home-page .hero-audit .scheme{background:var(--paper-2);color:var(--ink);font-family:var(--mono);font-size:13px;letter-spacing:0.04em;padding:0 18px;display:flex;align-items:center;border-right:1px solid var(--line)}
+  .home-page .hero-audit input{border:0;background:transparent;font-family:var(--grotesk);font-weight:500;font-size:clamp(18px,2.2vw,24px);letter-spacing:-0.01em;color:var(--ink);padding:18px 20px;width:100%;outline:none;line-height:1}
+  .home-page .hero-audit input::placeholder{font-family:var(--serif);font-style:italic;font-weight:400;color:var(--ink-soft);letter-spacing:0}
+  .home-page .hero-audit input:focus-visible{outline:2px solid var(--accent-deep);outline-offset:-3px}
+  .home-page .hero-audit button{background:var(--ink);color:#fff;border:0;font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;padding:0 28px;cursor:pointer;display:flex;align-items:center;gap:10px;transition:background 120ms cubic-bezier(.2,.6,.2,1)}
+  .home-page .hero-audit button:hover{background:var(--accent-deep)}
+  .home-page .hero-audit button:focus-visible{outline:2px solid var(--accent-deep);outline-offset:2px}
+  @media (max-width:640px){
+    .home-page .hero-audit{grid-template-columns:1fr}
+    .home-page .hero-audit .scheme{padding:8px 16px;border-right:0;border-bottom:1px solid var(--line)}
+    .home-page .hero-audit button{padding:14px;justify-content:center}
+  }
+
+  .home-page .hero-meta{list-style:none;margin:24px 0 0;padding:0;display:flex;gap:32px;flex-wrap:wrap;font-family:var(--mono);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:var(--ink-faint);max-width:740px}
+  .home-page .hero-meta li{display:inline-flex;align-items:baseline;gap:6px}
+  .home-page .hero-meta b{color:var(--ink);font-weight:500;letter-spacing:0.18em}
+
+  .home-page .hero-sample{margin:28px 0 0;padding-top:18px;border-top:1px solid var(--line);display:flex;align-items:baseline;gap:18px;flex-wrap:wrap;font-family:var(--mono);font-size:11.5px;letter-spacing:0.18em;text-transform:uppercase;color:var(--ink-faint)}
+  .home-page .hero-sample .stamp{font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint);display:inline-flex;align-items:center}
+  .home-page .hero-sample .stamp::before{content:'';display:inline-block;width:8px;height:8px;background:var(--ink-faint);border-radius:999px;margin-right:10px}
+  .home-page .hero-sample a{color:var(--ink);border-bottom:1px solid var(--line-strong);text-decoration:none;text-transform:none;letter-spacing:0;font-family:var(--grotesk);font-size:14px;font-weight:500}
+  .home-page .hero-sample a:hover{color:var(--accent-deep);border-bottom-color:var(--accent-deep)}
+  .home-page .hero-sample .mini{font-family:var(--mono);font-size:10.5px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint);margin-left:8px}
+  .home-page .hero-sample .ital{font-family:var(--serif);font-style:italic;font-weight:400;color:var(--ink-dim);text-transform:none;letter-spacing:0;font-size:14px}
 
   .home-page .past-work-credit{margin:20px 0 0;padding-top:20px;border-top:1px solid var(--line);display:grid;grid-template-columns:auto 1fr;gap:24px;align-items:baseline;font-family:var(--grotesk);font-size:15px;line-height:1.55;color:var(--ink);text-wrap:pretty}
   .home-page .past-work-credit .credit{display:block;max-width:640px}
