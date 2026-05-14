@@ -11,7 +11,7 @@ import StackIcon from '../components/icons/Stack.astro';
 ---
 <Base
   title="Rivett · Find and fix revenue leaks"
-  description="A senior growth practice for profitable US operators. Run the Revenue MRI, diagnose the leaks, and rebuild the system between demand and revenue."
+  description="A senior growth practice for profitable US operators. Run the live audit, diagnose the leaks, and rebuild the system between demand and revenue."
   fontWeights="Inter+Tight:wght@400;500;600;700"
   currentNav="home"
 >
@@ -28,11 +28,23 @@ import StackIcon from '../components/icons/Stack.astro';
           <p class="lede">
             I work with profitable US operators to find the expensive leaks between demand and revenue, then rebuild the reporting, handoffs, follow-up, and AI-assisted workflows that keep money moving.
           </p>
-          <div class="hero-cta">
-            <a href="/revenue-leak-mri" class="btn primary">Run the Revenue MRI →</a>
-            <a href="/diagnostic" class="btn secondary">Book diagnostic</a>
-          </div>
-          <p class="funnel-note">60-sec self-serve. The diagnostic ($3,500) picks up where the MRI ends. One earns the right to the other.</p>
+          <form class="hero-audit" method="POST" action="/audit/v3" id="heroAuditForm" aria-label="Live audit">
+            <span class="scheme">https://</span>
+            <input type="text" name="url" placeholder="enter the site you want read" autocomplete="off" spellcheck="false" required />
+            <button type="submit">Run audit <span aria-hidden="true">→</span></button>
+          </form>
+          <p class="funnel-note">60-sec self-serve. The diagnostic ($3.5k) picks up where the audit ends. <span class="ital">One earns the right to the other.</span></p>
+          <ul class="hero-meta" aria-label="Audit characteristics">
+            <li><b>~30s</b> median run</li>
+            <li><b>Public APIs</b> only</li>
+            <li><b>No login</b></li>
+            <li><b>9 dimensions</b></li>
+          </ul>
+          <p class="hero-sample">
+            <span class="stamp" style="--dot:var(--ink-faint);">Or read a sample</span>
+            <a href="/audit/v3/pellaofcolumbus-com">pellaofcolumbus.com <span class="mini">read this →</span></a>
+            <span class="ital">Real domain. Real numbers.</span>
+          </p>
           <p class="past-work-credit" aria-labelledby="past-work-stamp">
             <span class="stamp" id="past-work-stamp">Past work</span>
             <span class="credit">
@@ -48,7 +60,7 @@ import StackIcon from '../components/icons/Stack.astro';
           </p>
           <div class="row"><span class="k">Throughput</span><span class="v">10 prospects / hr to review queue</span></div>
           <div class="row"><span class="k">Review rhythm</span><span class="v">80 decisions / day at pace</span></div>
-          <div class="row"><span class="k">Calibration</span><span class="v">60% to 85% approval by week 12</span></div>
+          <div class="row"><span class="k">Calibration</span><span class="v">60–85% approval by week 12</span></div>
           <div class="row"><span class="k">Failure caught</span><span class="v">0 / 15 ICP miss before client work</span></div>
           <a href="/blog/90-days-sdr-agent-results" class="proof-link">Read the 90-day note →</a>
         </aside>
@@ -81,7 +93,7 @@ import StackIcon from '../components/icons/Stack.astro';
             <li>Prioritized 90-day fix list</li>
           </ul>
           <div class="price">
-            <div class="p"><span class="cur">USD</span>3,500</div>
+            <div class="p">$3.5k</div>
             <div class="term">Fixed · credited to M02</div>
           </div>
         </div>
@@ -92,7 +104,7 @@ import StackIcon from '../components/icons/Stack.astro';
               <StackIcon size={24} class="module-icon" />
               <span class="num">M02 · Build</span>
             </span>
-            <span class="dur">04-06 wks</span>
+            <span class="dur">04–06 wks</span>
           </div>
           <h3>Rebuild acquisition and revenue operations around the highest-value fixes.</h3>
           <ul>
@@ -277,13 +289,13 @@ import StackIcon from '../components/icons/Stack.astro';
           <div class="sec-head cta-head">
             <div class="label"><b>06</b> · Next step</div>
             <div>
-              <h2 class="section-title">Start with the <span class="em">MRI.</span></h2>
-              <p class="lede lede-offset">Run the free scan first. If it points at a real leak, the diagnostic turns that signal into a written fix list. Two weeks. $3,500, fixed. Credited to the build if you continue.</p>
+              <h2 class="section-title">Start with the <span class="em">audit.</span></h2>
+              <p class="lede lede-offset">Run the free scan first. If it points at a real leak, the diagnostic turns that signal into a written fix list. Two weeks. $3.5k, fixed. Credited to the build if you continue.</p>
             </div>
           </div>
         </div>
         <div class="actions">
-          <a href="/revenue-leak-mri" class="btn primary">Run the Revenue MRI →</a>
+          <a href="/audit/v3" class="btn primary">Run the audit →</a>
           <a href="/diagnostic" class="btn secondary">Book diagnostic</a>
           <div class="meta">fred@rivett.tech · reply within 24 hours</div>
         </div>
@@ -331,7 +343,7 @@ import StackIcon from '../components/icons/Stack.astro';
       <div class="col">
         <div class="foot-label">Contact</div>
         <ul>
-          <li><a href="/revenue-leak-mri">Run MRI →</a></li>
+          <li><a href="/audit/v3">Run audit →</a></li>
           <li><a href="/diagnostic">Book diagnostic</a></li>
           <li><a href="mailto:fred@rivett.tech">fred@rivett.tech</a></li>
           <li><a href="https://www.linkedin.com/in/fredstyle/">LinkedIn</a></li>

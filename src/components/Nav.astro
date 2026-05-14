@@ -20,13 +20,17 @@ const toolsActive = mriActive || vanishActive;
         <details class="tools-menu">
           <summary class={toolsActive ? 'current' : ''}>Tools</summary>
           <div class="tools-panel" aria-label="Tools">
-            <a href="/revenue-leak-mri" class={mriActive ? 'current' : ''}>
-              <span>Revenue MRI</span>
-              <small>Find the leak between demand and revenue.</small>
+            <a href="/audit/v3">
+              <span>Live audit</span>
+              <small>09 readings against your live domain. ~30s.</small>
             </a>
             <a href="/30-day-vanish-test" class={vanishActive ? 'current' : ''}>
               <span>30-Day Vanish Test</span>
               <small>See what breaks if you stop replying.</small>
+            </a>
+            <a href="/revenue-leak-mri" class={mriActive ? 'current' : ''}>
+              <span>Revenue MRI</span>
+              <small>Self-serve diagnostic. Nine honest numbers.</small>
             </a>
           </div>
         </details>
@@ -34,7 +38,7 @@ const toolsActive = mriActive || vanishActive;
       <li class={current === 'blog' ? 'current-li' : ''}>
         <a href="/blog" class={current === 'blog' ? 'current' : ''}>Notes</a>
       </li>
-      <li><a href="/revenue-leak-mri" class="cta">Run MRI →</a></li>
+      <li><a href="/audit/v3" class="cta">Run audit →</a></li>
     </ul>
     <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="mobile-menu" aria-label="Open menu">
       <span class="menu-bar"></span>
@@ -54,12 +58,13 @@ const toolsActive = mriActive || vanishActive;
     <li class="mobile-tools">
       <span>Tools</span>
       <ul>
-        <li><a href="/revenue-leak-mri">Revenue MRI</a></li>
+        <li><a href="/audit/v3">Live audit</a></li>
         <li><a href="/30-day-vanish-test">30-Day Vanish Test</a></li>
+        <li><a href="/revenue-leak-mri">Revenue MRI</a></li>
       </ul>
     </li>
     <li><a href="/blog">Notes</a></li>
-    <li><a href="/revenue-leak-mri" class="mobile-cta">Run MRI →</a></li>
+    <li><a href="/audit/v3" class="mobile-cta">Run audit →</a></li>
   </ul>
   <div class="mobile-foot">fred@rivett.tech</div>
 </div>

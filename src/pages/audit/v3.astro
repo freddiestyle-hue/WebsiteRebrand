@@ -551,8 +551,8 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
   {!memo && (
     <section class="hero">
       <span class="kicker">Live · in-browser scan · ~30s</span>
-      <h1>What does the open web <span class="ital">actually say about you.</span></h1>
-      <p class="dek">Paste a domain. Nine live readings. One memo. No login.</p>
+      <h1>What does the open web actually <span class="ital">say about you.</span></h1>
+      <p class="dek">Paste a domain. 09 live readings. One memo. No login.</p>
 
       <form class="form-wrap" method="POST" action="/audit/v3" id="auditForm">
         <div class="form-left">
@@ -565,7 +565,7 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
           <div class="form-meta">
             <span>~30s</span>
             <span>No login</span>
-            <span>9 dimensions</span>
+            <span>09 dimensions</span>
           </div>
           {inputError && <div class="form-error">{inputError}</div>}
           {runtimeError && <div class="form-error">{runtimeError}</div>}
@@ -582,7 +582,7 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
     <section class="dims">
       <div class="dims-head">
         <span class="lbl">What it reads<span class="num">01</span></span>
-        <h2>Nine dimensions. <span class="ital">Read live. Read together.</span></h2>
+        <h2>09 dimensions. <span class="ital">Read live. Read together.</span></h2>
       </div>
       <div class="dim-grid">
         <div class="dim"><div class="top"><svg class="ico"><use href="#ic-01-diagnostic"/></svg><span class="num">D · 01</span></div><h3>How Google <span class="ital">sees you.</span></h3><p>Sitemap, robots, canonical, schema, og:type. The crawler's view.</p></div>
@@ -606,8 +606,8 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
       </div>
       <div class="steps">
         <div class="step"><span class="day">Step · 01</span><div class="num">01</div><h4>Paste a domain.</h4><p>No login. No queue. The scan starts in your browser the moment you press run.</p></div>
-        <div class="step"><span class="day">Step · 02</span><div class="num">02</div><h4>Scan runs live.</h4><p>Nine readers fire in parallel. PSI for speed, DoH for mail, Ad Library for spend.</p></div>
-        <div class="step"><span class="day">Step · 03</span><div class="num">03</div><h4>Read the memo.</h4><p>Score of 100. Nine cells with the raw numbers. Top three fixes ranked by leverage.</p></div>
+        <div class="step"><span class="day">Step · 02</span><div class="num">02</div><h4>Scan runs live.</h4><p>09 readers fire in parallel. PSI for speed, DoH for mail, Ad Library for spend.</p></div>
+        <div class="step"><span class="day">Step · 03</span><div class="num">03</div><h4>Read the memo.</h4><p>Score of 100. 09 cells with the raw numbers. Top three fixes ranked by leverage.</p></div>
         <div class="step"><span class="day">Step · 04</span><div class="num">04</div><h4>Decide.</h4><p>Pick the fix and ship. Or book a call. The full pipeline picks up the gaps this one cannot.</p></div>
       </div>
     </section>
@@ -697,7 +697,7 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
         <section class="sec">
           <div class="sec-head">
             <span class="lbl">The verdict<span class="num">03</span></span>
-            <h2>{memo.verdictCells.length === 9 ? 'Nine reads,' : `${memo.verdictCells.length} reads,`} <span class="ital">in one frame.</span></h2>
+            <h2>{memo.verdictCells.length === 9 ? '09 reads,' : `${memo.verdictCells.length} reads,`} <span class="ital">in one frame.</span></h2>
           </div>
           <div class="vgrid">
         {memo.verdictCells.map((cell) => {
@@ -823,9 +823,9 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
   {memo && (
     <section class="end-cta on-ink">
       <div>
-        <span class="lab">Want the full read</span>
-        <h2>Pick a time. Twenty minutes. <span class="ital">I'll bring what this scan could not.</span></h2>
-        <p>The ads, the live page-speed numbers against tracked competitors, the AI citation probe results, and the deliverability check this scan could not run. No deck, no sales motion. You bring questions. I bring the read.</p>
+        <span class="lab">20 min · no deck</span>
+        <h2>Pick a time. Twenty minutes. <span class="ital">I'll bring the rest of the read.</span></h2>
+        <p>AI citation probe, benchmark percentile, deliverability against a live mailbox. The numbers the in-browser scan can't reach.</p>
         <div class="end-actions">
           <a class="btn btn--inv" href="/diagnostic">Book a call <span aria-hidden="true">→</span></a>
           <a class="btn btn--sec" href="/audit/v3" style="border-color: var(--on-ink-line-2); color: var(--on-ink);">Audit another domain</a>
@@ -834,6 +834,7 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
       <div class="sig">
         <span class="lab" style="margin-bottom: 12px;">Signature</span>
         <div style="margin-top: 8px;"><b>Fred Style</b> · rivett.tech · {headerDate}</div>
+        <p style="margin-top: var(--sp-5); font-family: var(--serif); font-style: italic; font-size: 14px; line-height: 1.5; color: var(--on-ink-faint); max-width: 420px;">Live in-browser scan. Not a formal assessment. The audit reads the public surface of a domain in your browser. It does not access authenticated dashboards, customer data, or anything behind a login.</p>
       </div>
     </section>
   )}
