@@ -552,31 +552,27 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
     <section class="hero">
       <span class="kicker">Live · in-browser scan · ~30s</span>
       <h1>What does the open web <span class="ital">actually say about you.</span></h1>
-      <p class="dek">Paste a domain. Nine teardowns run live in the browser. Page speed against the real Lighthouse numbers, schema, mail authentication, the ads you have running today, the pixels you forgot to remove. One memo. No login.</p>
+      <p class="dek">Paste a domain. Nine live readings. One memo. No login.</p>
 
       <form class="form-wrap" method="POST" action="/audit/v3" id="auditForm">
         <div class="form-left">
-          <span class="form-lbl"><b>Domain</b> · enter the site you want read</span>
+          <span class="form-lbl"><b>Domain</b></span>
           <div class="url-input">
             <span class="scheme">https://</span>
-            <input type="text" name="url" id="auditDomainInput" placeholder="somewhere.com" autocomplete="off" spellcheck="false" value={submittedUrl} required autofocus />
+            <input type="text" name="url" id="auditDomainInput" placeholder="yoursite.com" autocomplete="off" spellcheck="false" value={submittedUrl} required autofocus />
             <button class="submit" type="submit">Run audit <span aria-hidden="true">→</span></button>
           </div>
           <div class="form-meta">
-            <span>Median run · <b>~30s</b></span>
+            <span>~30s</span>
             <span>No login</span>
-            <span>No queue</span>
             <span>9 dimensions</span>
           </div>
           {inputError && <div class="form-error">{inputError}</div>}
           {runtimeError && <div class="form-error">{runtimeError}</div>}
         </div>
         <div class="form-right">
-          <div>
-            <span class="form-lbl"><b>Or read a sample.</b> Real domain. Real numbers.</span>
-            <a class="sample" href="/audit/p/pellaofcolumbus-com-x7k2abcdefgh1234">pellaofcolumbus.com <span style="font-family: var(--serif); font-style: italic; color: var(--ink-dim); font-size: 0.92em;">read this</span> →</a>
-          </div>
-          <p style="margin: var(--sp-6) 0 0; font-family: var(--serif); font-style: italic; font-size: 17px; line-height: 1.5; color: var(--ink-dim); max-width: 360px;">The full read includes an AI citation probe and a benchmark percentile. Those need the offline pipeline. The rest is live in your browser.</p>
+          <span class="form-lbl"><b>Or read a sample</b></span>
+          <a class="sample" href="/audit/p/pellaofcolumbus-com-x7k2abcdefgh1234">pellaofcolumbus.com <span style="font-family: var(--serif); font-style: italic; color: var(--ink-dim); font-size: 0.92em;">read this</span> →</a>
         </div>
       </form>
     </section>
