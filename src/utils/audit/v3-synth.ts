@@ -693,7 +693,9 @@ export function buildMemoFromAudit(audit: AuditResult, enrich?: EnrichmentBundle
     rankedFixes = combined.slice(0, 3).map((f, i) => ({ ...f, rank: i + 1 }));
   }
 
-  // Cover italic clause: lead with the most prospect-relevant signal we have.
+  // Cover italic clause: short and punchy. This text drops into the H1 at
+  // ~96px italic serif, so multi-sentence prose wraps into a wall. Keep it
+  // to one tight clause - the dek and observation carry the longer story.
   // For ad-spending operators, conversion + tracking gaps land harder than
   // generic "X ads running" - those gaps are where paid clicks bleed.
   const adConvGapCount = adsRunning
@@ -701,17 +703,18 @@ export function buildMemoFromAudit(audit: AuditResult, enrich?: EnrichmentBundle
         (c) => !c.passed && AD_OPERATOR_PRIORITY.has(c.category),
       ).length
     : 0;
-  let coverItalic = `${audit.bandLabel}. ${audit.bandKicker}`;
+  // Default: just the band label as a one-word verdict.
+  let coverItalic = `${audit.bandLabel}.`;
   if (enrich?.pageSpeed?.band === 'poor') {
-    coverItalic = `${audit.bandLabel}. Mobile load ${fmtMs(enrich.pageSpeed.lcpMs)} is bleeding paid clicks.`;
+    coverItalic = `Mobile load ${fmtMs(enrich.pageSpeed.lcpMs)}: bleeding paid clicks.`;
   } else if (adsRunning && adConvGapCount > 0) {
     const total = (enrich!.ads!.metaActive ?? 0) + (enrich!.ads!.googleActive ?? 0) + (enrich!.ads!.linkedinActive ?? 0);
-    coverItalic = `${audit.bandLabel}. ${total} paid ${total === 1 ? 'ad' : 'ads'} running, ${adConvGapCount} conversion or pixel ${adConvGapCount === 1 ? 'gap' : 'gaps'} below.`;
+    coverItalic = `${total} paid ${total === 1 ? 'ad' : 'ads'}, ${adConvGapCount} conversion ${adConvGapCount === 1 ? 'gap' : 'gaps'}.`;
   } else if (enrich?.deliverability?.dmarcPresent === false) {
-    coverItalic = `${audit.bandLabel}. No DMARC published: outbound mail risks the spam folder.`;
+    coverItalic = `No DMARC: outbound risks the spam folder.`;
   } else if (enrich?.ads && (enrich.ads.metaActive ?? 0) + (enrich.ads.googleActive ?? 0) > 0) {
     const total = (enrich.ads.metaActive ?? 0) + (enrich.ads.googleActive ?? 0);
-    coverItalic = `${audit.bandLabel}. ${total} paid ${total === 1 ? 'ad' : 'ads'} currently running.`;
+    coverItalic = `${total} paid ${total === 1 ? 'ad' : 'ads'} running today.`;
   }
 
   const dekParts: string[] = [];
