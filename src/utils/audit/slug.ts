@@ -49,3 +49,18 @@ export const SLUG_PATTERN = new RegExp(`^[a-z0-9-]+-[a-z0-9]{${SUFFIX_LENGTH}}$`
 export function isValidSlug(slug: string): boolean {
   return SLUG_PATTERN.test(slug);
 }
+
+// Deterministic, idempotent slug for v3 audits. Same domain always produces
+// the same slug, so /audit/v3/{slug} is shareable + cacheable. Unlike the
+// random-suffix variant used by /audit/p/[slug], v3 audits are not secret -
+// the operator wants to share them with prospects.
+export const V3_SLUG_PATTERN = /^[a-z0-9]([a-z0-9-]{0,62}[a-z0-9])?$/;
+
+export function v3SlugFromDomain(domain: string): string {
+  return normalizeDomainForSlug(domain);
+}
+
+export function isValidV3Slug(slug: string): boolean {
+  if (slug.length === 0 || slug.length > 64) return false;
+  return V3_SLUG_PATTERN.test(slug);
+}

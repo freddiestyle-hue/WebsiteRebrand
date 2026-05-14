@@ -4,6 +4,7 @@
 // mirrors audit.html. Score animation + scan overlay deferred to follow-up.
 export const prerender = false;
 
+import { Redis } from '@upstash/redis';
 import PostHog from '../../components/PostHog.astro';
 import { runAudit, normalizeAuditUrl, type AuditResult } from '../../utils/audit/engine';
 import { buildMemoFromAudit, type EnrichmentBundle } from '../../utils/audit/v3-synth';
@@ -15,6 +16,17 @@ import { detectTechStack } from '../../utils/audit/tech-stack-check';
 import { runHeadlessCheck } from '../../utils/audit/headless-check';
 import type { Memo, VerdictCell, VerdictIcon } from '../../utils/audit/memo-schema';
 import { sanitizeMemoHtml } from '../../utils/audit/safe-html';
+import { v3SlugFromDomain } from '../../utils/audit/slug';
+
+interface CachedV3 {
+  memo: Memo;
+  durationMs: number;
+  scoreNumeric: number;
+  scoreMax: number;
+  hostname: string;
+  url: string;
+  fetchedAt: string;
+}
 
 const isPOST = Astro.request.method === 'POST';
 
@@ -24,8 +36,39 @@ let inputError: string | null = null;
 let runtimeError: string | null = null;
 let submittedUrl = '';
 let enrichment: EnrichmentBundle | null = null;
+let v3Slug: string | null = null;
+let fromCache = false;
 
-if (isPOST) {
+// Slug-based rewrite path: v3/[slug].astro reads from KV and rewrites here,
+// passing the cached audit through Astro.locals so we render without re-running.
+const cached = (Astro.locals as { cachedV3?: CachedV3 }).cachedV3;
+if (cached) {
+  memo = cached.memo;
+  v3Slug = cached.hostname ? v3SlugFromDomain(cached.hostname) : null;
+  fromCache = true;
+  // Reconstruct just the AuditResult fields v3.astro needs for the score panel.
+  audit = {
+    url: cached.url,
+    hostname: cached.hostname,
+    fetchedAt: cached.fetchedAt,
+    durationMs: cached.durationMs,
+    checks: [],
+    scoreNumeric: cached.scoreNumeric,
+    scoreMax: cached.scoreMax,
+    scorePercent: 0,
+    band: 'invisible',
+    bandLabel: '',
+    bandKicker: '',
+    verdict: {
+      crawl: { grade: 'N/A', passed: 0, total: 0 },
+      schema: { grade: 'N/A', passed: 0, total: 0 },
+      aeo: { grade: 'N/A', passed: 0, total: 0 },
+      sendReady: { grade: 'N/A', passed: 0, total: 0 },
+    },
+  };
+}
+
+if (isPOST && !memo) {
   try {
     const form = await Astro.request.formData();
     submittedUrl = String(form.get('url') ?? '').trim();
@@ -55,6 +98,29 @@ if (isPOST) {
             deliverability, mobile, pageSpeed, ads, techStack, techStackRuntime, headless,
           };
           memo = buildMemoFromAudit(audit, enrichment);
+          v3Slug = v3SlugFromDomain(audit.hostname);
+
+          // Persist for sharing. Fire-and-forget so a KV outage never blocks
+          // the response. Keys are deterministic per domain, so a re-run
+          // overwrites cleanly. 14-day TTL keeps the cache fresh during
+          // outreach motions without unbounded growth.
+          const payload: CachedV3 = {
+            memo,
+            durationMs: audit.durationMs,
+            scoreNumeric: audit.scoreNumeric,
+            scoreMax: audit.scoreMax,
+            hostname: audit.hostname,
+            url: audit.url,
+            fetchedAt: audit.fetchedAt,
+          };
+          try {
+            const redis = Redis.fromEnv();
+            redis
+              .set(`audit-v3:${v3Slug}`, JSON.stringify(payload), { ex: 60 * 60 * 24 * 14 })
+              .catch((e) => console.error('[audit/v3] KV write failed', e));
+          } catch (e) {
+            console.error('[audit/v3] KV init failed', e);
+          }
         }
       }
     }
@@ -583,7 +649,7 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
   {memo && audit && (
     <section class="hook">
       <div>
-        <span class="kicker">Live audit · {memo.domain}</span>
+        <span class="kicker">{fromCache ? `Cached · ${memo.domain}` : `Live audit · ${memo.domain}`}</span>
         <h1>
           Your site scores <span id="scoreNum">{compositeScore}</span> of 100.
           {verdictItalic && <> <span class="ital">{verdictItalic}</span></>}
@@ -595,6 +661,12 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
           <span>Duration · <b>{audit.durationMs} ms</b></span>
           <span>Scan · <b>{memo.verdictCells.length} of 9</b></span>
         </div>
+        {v3Slug && (
+          <div class="share-link" style="margin-top: var(--sp-5); font-family: var(--mono); font-size: var(--t-meta); letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint);">
+            <span>Share · </span>
+            <a href={`/audit/v3/${v3Slug}`} style="color: var(--ink); border-bottom: 1px solid var(--line-strong);">rivett.tech/audit/v3/{v3Slug}</a>
+          </div>
+        )}
       </div>
 
       <aside class="score-panel">
