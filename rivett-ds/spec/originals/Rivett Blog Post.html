@@ -1,0 +1,424 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>I don't care about AI. I care about my pipeline. · Rivett Field Notes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&display=swap" rel="stylesheet"/>
+<style>
+  :root{
+    --paper:#FFFFFF;
+    --paper-2:#F4F2ED;
+    --paper-3:#EBE6DC;
+    --sage:#E8F0D9;
+    --ink:#0E1A2C;
+    --ink-dim:#3A4658;
+    --ink-faint:#7A8597;
+    --line:rgba(14,26,44,0.14);
+    --line-strong:rgba(14,26,44,0.28);
+    --accent:#6FB582;
+    --accent-deep:#3F7553;
+    --grotesk:'Inter Tight','Inter',system-ui,sans-serif;
+    --mono:'DM Mono',ui-monospace,monospace;
+    --serif:'Newsreader',Georgia,serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--paper);color:var(--ink);font-family:var(--grotesk);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  ::selection{background:var(--ink);color:var(--paper)}
+  a{color:inherit}
+
+  .page{max-width:1280px;margin:0 auto;padding:0 56px}
+  @media (max-width:780px){.page{padding:0 24px}}
+
+  /* ===== nav ===== */
+  .wordmark{display:inline-flex;align-items:center;gap:0.12em;font-weight:700;letter-spacing:-0.05em;line-height:1;text-decoration:none;color:var(--ink)}
+  .dot-mark{display:inline-block;width:0.32em;height:0.32em;border-radius:50%;background:var(--accent);transform:translateY(0.04em);flex-shrink:0}
+  nav.top{display:flex;align-items:center;justify-content:space-between;padding:28px 0 0}
+  nav.top .wordmark{font-size:28px}
+  nav.top ul{list-style:none;margin:0;padding:0;display:flex;gap:36px;align-items:center;font-family:var(--mono);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:var(--ink-dim)}
+  nav.top a{text-decoration:none;color:inherit;transition:color 0.15s}
+  nav.top a:hover{color:var(--ink)}
+  nav.top a.current{color:var(--ink)}
+  nav.top .cta{display:inline-block;white-space:nowrap;padding:11px 18px;border:1px solid var(--ink);font-family:var(--mono);font-size:11px;letter-spacing:0.18em;text-transform:uppercase}
+  nav.top .cta:hover{background:var(--ink);color:var(--paper)}
+  @media (max-width:780px){nav.top ul li:not(:last-child):not(.current-li){display:none}}
+
+  /* ===== breadcrumb ===== */
+  .crumb{display:flex;gap:18px;align-items:center;padding:48px 0 0;font-family:var(--mono);font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:var(--ink-faint)}
+  .crumb a{color:inherit;text-decoration:none;border-bottom:1px solid var(--line);padding-bottom:2px}
+  .crumb a:hover{color:var(--ink);border-bottom-color:var(--ink)}
+  .crumb .sep{opacity:0.5}
+  .crumb .tag{color:var(--accent-deep)}
+  .crumb .tag::before{content:'';display:inline-block;width:6px;height:6px;background:var(--accent);border-radius:50%;margin-right:8px;transform:translateY(-1px)}
+
+  /* ===== headline block ===== */
+  .article-head{padding:32px 0 56px;border-bottom:1px solid var(--line-strong);display:grid;grid-template-columns:1fr;gap:0}
+  .article-head .meta-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:24px;padding:24px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);font-family:var(--mono);font-size:10.5px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:48px}
+  .article-head .meta-strip b{display:block;color:var(--ink);font-family:var(--grotesk);font-weight:600;font-size:14px;letter-spacing:-0.01em;text-transform:none;margin-top:6px}
+  @media (max-width:680px){.article-head .meta-strip{grid-template-columns:repeat(2,1fr)}}
+
+  h1.title{font-family:var(--grotesk);font-weight:800;font-size:clamp(48px,7.6vw,108px);line-height:0.92;letter-spacing:-0.055em;margin:0;color:var(--ink);text-wrap:balance;max-width:1100px}
+  h1.title .ital{font-family:var(--serif);font-style:italic;font-weight:400;letter-spacing:-0.02em;color:var(--ink-dim)}
+
+  .dek{font-family:var(--serif);font-style:italic;font-weight:400;font-size:clamp(22px,2.4vw,30px);line-height:1.4;color:var(--ink-dim);margin:36px 0 0;max-width:780px;text-wrap:pretty}
+
+  /* ===== body layout: two column, sticky rail + reading column ===== */
+  .article-body{display:grid;grid-template-columns:240px 1fr;gap:64px;padding:64px 0 96px;border-bottom:1px solid var(--line-strong)}
+  @media (max-width:980px){.article-body{grid-template-columns:1fr;gap:32px;padding:48px 0 72px}}
+
+  aside.rail{position:sticky;top:32px;align-self:start;display:flex;flex-direction:column;gap:32px;font-family:var(--mono);font-size:10.5px;letter-spacing:0.2em;text-transform:uppercase;color:var(--ink-faint)}
+  aside.rail .block .label{display:block;color:var(--ink);font-weight:500;margin-bottom:10px;letter-spacing:0.22em}
+  aside.rail .toc-list{display:flex;flex-direction:column;gap:0;border-left:1px solid var(--line)}
+  aside.rail .toc-list a{display:block;padding:10px 0 10px 14px;color:var(--ink-faint);text-decoration:none;text-transform:none;letter-spacing:-0.01em;font-family:var(--grotesk);font-size:13px;line-height:1.35;border-left:2px solid transparent;margin-left:-1px;transition:all 0.15s}
+  aside.rail .toc-list a:hover{color:var(--ink)}
+  aside.rail .toc-list a.active{color:var(--ink);border-left-color:var(--accent);font-weight:500}
+  aside.rail .share{display:flex;gap:8px}
+  aside.rail .share a{padding:8px 12px;border:1px solid var(--line-strong);text-decoration:none;color:var(--ink);font-family:var(--mono);font-size:10px;letter-spacing:0.2em;text-transform:uppercase}
+  aside.rail .share a:hover{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+  @media (max-width:980px){aside.rail{position:static;flex-direction:row;flex-wrap:wrap;gap:24px;padding-bottom:24px;border-bottom:1px solid var(--line)}aside.rail .toc-list{display:none}}
+
+  /* ===== reading column ===== */
+  article.prose{max-width:680px}
+  article.prose > *{margin:0}
+  article.prose > * + *{margin-top:24px}
+
+  /* TLDR pull-quote */
+  .tldr{background:var(--paper-2);border:1px solid var(--ink);padding:28px 32px;display:grid;grid-template-columns:90px 1fr;gap:24px;align-items:start;margin-bottom:48px !important}
+  @media (max-width:680px){.tldr{grid-template-columns:1fr;gap:14px;padding:22px 24px}}
+  .tldr .stamp{font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--accent-deep)}
+  .tldr .stamp::before{content:'';display:inline-block;width:8px;height:8px;background:var(--accent);border-radius:50%;margin-right:10px;transform:translateY(-1px)}
+  .tldr p{margin:0;font-size:17px;line-height:1.6;color:var(--ink);font-family:var(--grotesk);font-weight:500;text-wrap:pretty}
+
+  article.prose p{font-size:19px;line-height:1.65;color:var(--ink);font-weight:400;text-wrap:pretty}
+  article.prose p strong{font-weight:600;color:var(--ink)}
+  article.prose p em{font-family:var(--serif);font-style:italic;font-size:1.02em}
+
+  article.prose h2{font-family:var(--grotesk);font-weight:700;font-size:30px;line-height:1.15;letter-spacing:-0.03em;margin-top:64px !important;color:var(--ink);text-wrap:balance;max-width:620px;display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:baseline}
+  article.prose h2 .num{font-family:var(--mono);font-weight:400;font-size:11px;letter-spacing:0.22em;color:var(--accent-deep);text-transform:uppercase;align-self:start;padding-top:10px}
+  article.prose h2 .text{display:block}
+
+  article.prose hr{border:0;border-top:1px solid var(--line);margin:48px 0 !important}
+
+  /* drop-cap on first body paragraph */
+  article.prose .lede-p::first-letter{font-family:var(--serif);font-weight:500;float:left;font-size:88px;line-height:0.85;padding:6px 14px 0 0;color:var(--ink)}
+
+  /* pull quote */
+  .pull{margin:48px 0 !important;padding:32px 0;border-top:1px solid var(--ink);border-bottom:1px solid var(--ink)}
+  .pull blockquote{margin:0;font-family:var(--serif);font-style:italic;font-weight:400;font-size:32px;line-height:1.25;letter-spacing:-0.02em;color:var(--ink);text-wrap:balance}
+  .pull cite{display:block;margin-top:18px;font-style:normal;font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint)}
+
+  /* numeric callout box */
+  .numbox{background:var(--sage);padding:24px 28px;display:grid;grid-template-columns:1fr 1fr;gap:24px;border-left:3px solid var(--accent-deep)}
+  .numbox .item .k{font-family:var(--mono);font-size:10.5px;letter-spacing:0.22em;text-transform:uppercase;color:var(--accent-deep);display:block;margin-bottom:8px}
+  .numbox .item .v{font-family:var(--grotesk);font-weight:700;font-size:32px;line-height:1;letter-spacing:-0.03em;color:var(--ink)}
+  .numbox .item .v .ital{font-family:var(--serif);font-style:italic;font-weight:400;color:var(--ink-dim)}
+  .numbox .item .n{font-family:var(--grotesk);font-size:13px;color:var(--ink-dim);margin-top:6px;line-height:1.4}
+  @media (max-width:680px){.numbox{grid-template-columns:1fr}}
+
+  /* ===== FAQ ===== */
+  .faq-section{padding:72px 0;border-bottom:1px solid var(--line-strong)}
+  .faq-section .head{display:grid;grid-template-columns:240px 1fr;gap:64px;margin-bottom:24px;align-items:end}
+  @media (max-width:980px){.faq-section .head{grid-template-columns:1fr;gap:8px;margin-bottom:24px}}
+  .faq-section .head .label{font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--accent-deep)}
+  .faq-section .head .label::before{content:'';display:inline-block;width:8px;height:8px;background:var(--accent);border-radius:50%;margin-right:12px;transform:translateY(-1px)}
+  .faq-section .head h2{font-family:var(--grotesk);font-weight:700;font-size:clamp(36px,4.4vw,56px);line-height:1.02;letter-spacing:-0.04em;margin:0}
+  .faq-section .head h2 .ital{font-family:var(--serif);font-style:italic;font-weight:400;color:var(--ink-dim)}
+
+  .faq{max-width:880px;margin-left:auto;border-top:1px solid var(--line-strong)}
+  .faq details{border-bottom:1px solid var(--line);padding:0}
+  .faq summary{list-style:none;cursor:pointer;padding:24px 0;display:grid;grid-template-columns:1fr 24px;gap:24px;align-items:start;font-family:var(--grotesk);font-weight:600;font-size:21px;line-height:1.3;letter-spacing:-0.02em;color:var(--ink);text-wrap:pretty}
+  .faq summary::-webkit-details-marker{display:none}
+  .faq summary::after{content:'+';font-family:var(--mono);font-weight:400;font-size:24px;line-height:1;color:var(--accent-deep);align-self:start;justify-self:end;transition:transform 0.2s}
+  .faq details[open] summary::after{content:'−'}
+  .faq details[open]{padding-bottom:24px}
+  .faq .a{font-size:17px;line-height:1.6;color:var(--ink-dim);max-width:720px;margin:0;padding-right:48px}
+  .faq .a em{font-family:var(--serif);font-style:italic;color:var(--ink)}
+
+  /* ===== end CTA ===== */
+  .end-cta{background:var(--ink);color:var(--paper);padding:96px 0;margin-top:0}
+  .end-cta .inner{max-width:1280px;margin:0 auto;padding:0 56px;display:grid;grid-template-columns:1.4fr 1fr;gap:64px;align-items:center}
+  @media (max-width:880px){.end-cta .inner{grid-template-columns:1fr;gap:40px;padding:0 24px}}
+  .end-cta h3{font-family:var(--grotesk);font-weight:700;font-size:clamp(36px,4.6vw,60px);line-height:1.02;letter-spacing:-0.04em;margin:0;text-wrap:balance}
+  .end-cta h3 .ital{font-family:var(--serif);font-style:italic;font-weight:400;color:rgba(255,255,255,0.62)}
+  .end-cta .right{display:flex;flex-direction:column;gap:18px}
+  .end-cta .right .label{font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:rgba(255,255,255,0.55)}
+  .end-cta .right .label::before{content:'';display:inline-block;width:8px;height:8px;background:var(--accent);border-radius:50%;margin-right:12px;transform:translateY(-1px)}
+  .end-cta .right p{font-size:16px;line-height:1.55;color:rgba(255,255,255,0.78);margin:0;max-width:380px}
+  .end-cta .btn{display:inline-flex;align-items:center;gap:12px;padding:18px 26px;border:1px solid var(--paper);background:var(--paper);color:var(--ink);text-decoration:none;font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;align-self:flex-start;transition:all 0.15s}
+  .end-cta .btn:hover{background:var(--accent);border-color:var(--accent);color:var(--ink)}
+  .end-cta .btn-ghost{background:transparent;color:var(--paper);border-color:rgba(255,255,255,0.4)}
+  .end-cta .btn-ghost:hover{background:transparent;color:var(--paper);border-color:var(--paper)}
+
+  /* ===== related strip ===== */
+  .related{padding:96px 0 64px}
+  .related .label{font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--accent-deep);margin-bottom:32px}
+  .related .label::before{content:'';display:inline-block;width:8px;height:8px;background:var(--accent);border-radius:50%;margin-right:12px;transform:translateY(-1px)}
+  .related h2{font-family:var(--grotesk);font-weight:700;font-size:clamp(34px,4vw,52px);line-height:1.02;letter-spacing:-0.04em;margin:0 0 48px;text-wrap:balance}
+  .related h2 .ital{font-family:var(--serif);font-style:italic;font-weight:400;color:var(--ink-dim)}
+  .rel-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border-top:1px solid var(--line-strong)}
+  @media (max-width:880px){.rel-grid{grid-template-columns:1fr}}
+  .rel-card{padding:28px 24px 32px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);text-decoration:none;color:inherit;display:flex;flex-direction:column;gap:14px;transition:background 0.15s}
+  .rel-grid > .rel-card:nth-child(3){border-right:0}
+  .rel-card:hover{background:var(--paper-2)}
+  .rel-card .meta{display:flex;align-items:center;gap:14px;font-family:var(--mono);font-size:10.5px;letter-spacing:0.2em;text-transform:uppercase;color:var(--ink-faint)}
+  .rel-card .meta .tag{color:var(--accent-deep)}
+  .rel-card .meta .tag::before{content:'';display:inline-block;width:5px;height:5px;background:var(--accent);border-radius:50%;margin-right:7px;transform:translateY(-1px)}
+  .rel-card h3{font-family:var(--grotesk);font-weight:700;font-size:22px;line-height:1.18;letter-spacing:-0.025em;margin:0;color:var(--ink);text-wrap:pretty}
+  .rel-card h3 .ital{font-family:var(--serif);font-style:italic;font-weight:400}
+  .rel-card:hover h3{color:var(--accent-deep)}
+  .rel-card p{font-size:15px;line-height:1.5;color:var(--ink-dim);margin:0}
+
+  /* ===== footer ===== */
+  footer.site{padding:48px 0;border-top:1px solid var(--line)}
+  footer.site .row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;font-family:var(--mono);font-size:10.5px;letter-spacing:0.2em;text-transform:uppercase;color:var(--ink-faint)}
+  footer.site .wordmark{font-size:14px}
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <nav class="top">
+    <a href="Rivett Homepage.html" class="wordmark" aria-label="Rivett">
+      rivett<span class="dot-mark" aria-hidden="true"></span>
+    </a>
+    <ul>
+      <li><a href="Rivett Homepage.html#practice">Practice</a></li>
+      <li><a href="Rivett Homepage.html#operator">Operator</a></li>
+      <li class="current-li"><a href="Rivett Blog.html" class="current">Field Notes</a></li>
+      <li><a href="Rivett Homepage.html#contact" class="cta">Book diagnostic</a></li>
+    </ul>
+  </nav>
+
+  <div class="crumb">
+    <a href="Rivett Blog.html">← Field Notes</a>
+    <span class="sep">/</span>
+    <span class="tag">Insights</span>
+    <span class="sep">/</span>
+    <span>Issue 12 · No. 30</span>
+  </div>
+
+  <!-- =========== HEADLINE =========== -->
+  <header class="article-head">
+    <h1 class="title">I don't care about AI. <span class="ital">I care about my pipeline.</span></h1>
+    <p class="dek">Fifteen years building pipelines manually across 30 markets and $10M in ad spend. Then I ran the numbers on what manual prospecting actually costs per qualified conversation. The math forced my hand. This is not an AI story.</p>
+    <div class="meta-strip" style="margin-top:56px">
+      <div>By<b>Fred Style</b></div>
+      <div>Published<b>21 Apr 2026</b></div>
+      <div>Read time<b>4 minutes</b></div>
+      <div>Filed under<b>Insights · Pipeline</b></div>
+    </div>
+  </header>
+
+  <!-- =========== BODY =========== -->
+  <div class="article-body">
+
+    <aside class="rail" aria-label="Article rail">
+      <div class="block">
+        <span class="label">In this note</span>
+        <nav class="toc-list" id="toc-list">
+          <a href="#tldr" class="active">TL;DR</a>
+          <a href="#cost">What manual prospecting costs</a>
+          <a href="#built">What I actually built</a>
+          <a href="#good">Is the output good enough</a>
+          <a href="#replace">Does it replace a sales team</a>
+          <a href="#change">What changed after</a>
+          <a href="#faq">FAQ</a>
+        </nav>
+      </div>
+      <div class="block">
+        <span class="label">Share</span>
+        <div class="share">
+          <a href="#" aria-label="Copy link">Copy</a>
+          <a href="#" aria-label="Share to LinkedIn">in</a>
+          <a href="#" aria-label="Share to X">x</a>
+        </div>
+      </div>
+      <div class="block">
+        <span class="label">Author</span>
+        <p style="font-family:var(--grotesk);font-size:14px;line-height:1.5;color:var(--ink-dim);text-transform:none;letter-spacing:-0.01em;margin:0">Fred Style runs Rivett, a one-operator performance marketing practice. Fifteen years in growth. Ran $10M of ad spend across 30 markets at Somewhere.</p>
+      </div>
+    </aside>
+
+    <article class="prose">
+
+      <div class="tldr" id="tldr">
+        <span class="stamp">TL;DR</span>
+        <p>I spent 15 years building pipelines manually across 30 markets and $10M in ad spend. Then I ran the numbers on what manual prospecting actually costs per qualified conversation. The math forced my hand. <em>This is not an AI story. It is a pipeline story.</em> And the numbers are not close.</p>
+      </div>
+
+      <p class="lede-p">I am not an AI person. I am a pipeline person. I have been for fifteen years.</p>
+
+      <p>I ran growth at Somewhere. I managed $10M in ad spend across thirty markets. I know what a qualified conversation is worth and what it costs to generate one.</p>
+
+      <p>So when people started talking about AI, I tuned it out. Not because I was being stubborn. Because I had seen too many tools promise scale and deliver noise. And I was busy enough doing the real work.</p>
+
+      <p>Then I ran the numbers on the real work.</p>
+
+      <h2 id="cost"><span class="num">§ 01</span><span class="text">What does manual prospecting actually cost?</span></h2>
+
+      <p>Not in dollars. In hours.</p>
+
+      <p>To find a prospect, research them properly, write a personalised email, and follow up takes between forty and sixty minutes per person when you do it right. Not when you dash off a generic message. When you actually read their LinkedIn, find the signal, and write something they will want to reply to.</p>
+
+      <p>If you want a hundred real conversations a year, that is <strong>seventy to a hundred hours of your time</strong>. At founder or senior operator rates, that is probably your most expensive cost of sale. More expensive than ads. More expensive than a junior hire.</p>
+
+      <div class="numbox">
+        <div class="item">
+          <span class="k">Per qualified prospect</span>
+          <span class="v">40–60 <span class="ital">min</span></span>
+          <span class="n">Research, signal, draft, follow-up done properly.</span>
+        </div>
+        <div class="item">
+          <span class="k">Per 100 conversations / year</span>
+          <span class="v">70–100 <span class="ital">hrs</span></span>
+          <span class="n">At founder rates, the most expensive line item in the funnel.</span>
+        </div>
+      </div>
+
+      <p>Most people do not run this number. They just feel busy.</p>
+
+      <p>I ran the number. Then I built something to fix it.</p>
+
+      <h2 id="built"><span class="num">§ 02</span><span class="text">What did building an SDR agent actually look like?</span></h2>
+
+      <p>I built Aragorn. An agent that monitors signals across job boards, news, and LinkedIn, enriches each prospect automatically, writes a personalised outreach email from the actual signal data, and holds everything in an approval queue.</p>
+
+      <p>Nothing sends without a human reviewing it. <strong>That is not a safety feature. It is the design.</strong></p>
+
+      <p>On day one I ran ten prospects through it in under an hour. No manual research. No copy-paste. Just review and approve.</p>
+
+      <div class="pull">
+        <blockquote>"The emails were better than what I was writing manually at 11pm when I was tired. Because the agent is never tired and it does not skip the research when it is pressed for time."</blockquote>
+        <cite>Fred Style</cite>
+      </div>
+
+      <h2 id="good"><span class="num">§ 03</span><span class="text">Is the output actually good enough to send?</span></h2>
+
+      <p>This is the right question and the honest answer is: yes, with the approval gate in place.</p>
+
+      <p>The agent pulls real signals. If a prospect just hired a VP of Sales, it writes to that signal specifically. If they just raised funding, it writes to the expansion moment. <em>The emails are not templates because the research is not templated.</em> Each one is built from actual data on that specific person and company.</p>
+
+      <p>The approval gate is where quality lives. You read every email before it sends. You decline the ones that miss. The system learns what missing looks like. After ninety days of approvals you have a system that understands your standards because you enforced them.</p>
+
+      <h2 id="replace"><span class="num">§ 04</span><span class="text">Does this replace a sales team?</span></h2>
+
+      <p>No. It replaces the prospecting and drafting work that happens before a sales conversation adds any value.</p>
+
+      <p>The agent does the work nobody should be doing at founder rates. The human does the work that requires judgment. Deciding who to contact, approving the message, running the conversation once there is one.</p>
+
+      <p>If you have spent any time in Nick Huber's world thinking about delegation, you already know this framework. You hire out the work a $15-an-hour person could do. An agent does that work for less than a $15-an-hour person and it runs twenty-four hours a day. <strong>You just have not applied the delegation model to your pipeline yet.</strong></p>
+
+      <h2 id="change"><span class="num">§ 05</span><span class="text">What actually changed after running this?</span></h2>
+
+      <p>I had pipeline running while I was building product. While I was in other meetings. While I was asleep.</p>
+
+      <p>The pipeline did not stop because I stopped. <em>That is the shift that is hard to explain until you have experienced it.</em> Not a dashboard improvement. Not a percentage gain. A pipeline that does not depend on your availability to function.</p>
+
+      <p>That is not an AI outcome. That is a business outcome.</p>
+
+      <hr/>
+
+      <p style="font-family:var(--mono);font-size:12px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint)">Read next →&nbsp; <a href="#" style="color:var(--ink);border-bottom:1px solid var(--line)">How we built Aragorn and the rest of the system</a></p>
+
+    </article>
+  </div>
+
+  <!-- =========== FAQ =========== -->
+  <section class="faq-section" id="faq">
+    <div class="head">
+      <span class="label">Frequently asked</span>
+      <h2>The questions <span class="ital">that come up every time.</span></h2>
+    </div>
+    <div class="faq">
+      <details open>
+        <summary>Is AI outreach obvious to the recipient?</summary>
+        <p class="a">Only if the email is generic. Aragorn writes to specific signals from each prospect's actual recent activity. The email is personalised <em>because the research is real</em>, not because a template has their first name in it. And a human reviews it before it sends.</p>
+      </details>
+      <details>
+        <summary>Doesn't this feel impersonal?</summary>
+        <p class="a">Less impersonal than a form letter. More impersonal than a handwritten note. About as personal as a well-researched cold email from a thoughtful person, which is exactly what it is.</p>
+      </details>
+      <details>
+        <summary>What if the agent makes a mistake?</summary>
+        <p class="a">Nothing sends without approval. There is no scenario where a bad email goes out without a human reading it first. <em>That is why the gate exists.</em></p>
+      </details>
+      <details>
+        <summary>Do you still write emails manually?</summary>
+        <p class="a">For the highest-priority relationships and active threads, yes. The agent handles the top of funnel. The human handles the relationship once it exists.</p>
+      </details>
+      <details>
+        <summary>What does this actually cost to run?</summary>
+        <p class="a">Less than one wasted founder-hour per week in infrastructure costs. The real cost is the time you spend on approvals, which replaces the time you were spending on research and drafting. Net time saved is significant.</p>
+      </details>
+      <details>
+        <summary>Is this only for companies with a dedicated sales function?</summary>
+        <p class="a">No. We built it because we did not have one. It is specifically designed for founders and small teams who need pipeline without a full sales headcount.</p>
+      </details>
+    </div>
+  </section>
+</div>
+
+<!-- =========== END CTA =========== -->
+<section class="end-cta">
+  <div class="inner">
+    <h3>If this lands, the next move is not a download. <span class="ital">It's a diagnostic.</span></h3>
+    <div class="right">
+      <span class="label">Two weeks · $3,500 fixed</span>
+      <p>I read your last quarter, sit in your stack, talk to two of your customers, and write you a 12-page memo on what to stop, what to instrument, and what to build. No deck. No retainer.</p>
+      <a class="btn" href="Rivett Homepage.html#contact">Book diagnostic →</a>
+      <a class="btn btn-ghost" href="Rivett Blog.html">Or read more Field Notes</a>
+    </div>
+  </div>
+</section>
+
+<!-- =========== RELATED =========== -->
+<div class="page">
+  <section class="related">
+    <span class="label">Related from the desk</span>
+    <h2>Three more <span class="ital">in the same key.</span></h2>
+    <div class="rel-grid">
+      <a class="rel-card" href="#">
+        <div class="meta"><span class="tag">Strategy</span><span>4 min</span></div>
+        <h3>You're not running an agent. <span class="ital">You're a fast typist.</span></h3>
+        <p>Claude in a tab is not autonomy. The line between assisted AI and a real agent is one specific thing.</p>
+      </a>
+      <a class="rel-card" href="#">
+        <div class="meta"><span class="tag">Engineering</span><span>5 min</span></div>
+        <h3>The approval gate, and why oversight is the moat.</h3>
+        <p>One human can govern 50–100 agent decisions a day. The gate is not a bottleneck. It's the architecture.</p>
+      </a>
+      <a class="rel-card" href="#">
+        <div class="meta"><span class="tag">Company</span><span>3 min</span></div>
+        <h3>Why we built our own SDR agent <span class="ital">before selling it.</span></h3>
+        <p>If you sell a system that automates sales, your own pipeline should run on it first. Not as a demo.</p>
+      </a>
+    </div>
+  </section>
+
+  <footer class="site">
+    <div class="row">
+      <a class="wordmark" href="Rivett Homepage.html">rivett<span class="dot-mark" aria-hidden="true"></span></a>
+      <span>© 2026 Rivett · Operator's Practice</span>
+      <span>Set in Inter Tight, Newsreader &amp; DM Mono</span>
+    </div>
+  </footer>
+</div>
+
+<script>
+  // active TOC highlight on scroll
+  const links = [...document.querySelectorAll('#toc-list a')];
+  const sections = links.map(a => document.querySelector(a.getAttribute('href'))).filter(Boolean);
+  function onScroll(){
+    const y = window.scrollY + 120;
+    let active = sections[0];
+    for (const s of sections) if (s && s.offsetTop <= y) active = s;
+    links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + (active && active.id)));
+  }
+  window.addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+</script>
+</body>
+</html>

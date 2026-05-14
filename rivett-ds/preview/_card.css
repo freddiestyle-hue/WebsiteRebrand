@@ -1,0 +1,50 @@
+/* Shared CSS for preview cards. Loads tokens, then strips body chrome.
+   Every card is a 700-wide vignette of a single design-system concept. */
+@import url('../tokens.css');
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--grotesk);
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  padding: 20px 24px;
+}
+
+/* Card root — most cards just use body as the canvas, no extra wrapper */
+.card-root {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Mono caption (rare — most cards omit titles per system tab convention) */
+.cap {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: var(--track-mono);
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+/* Icon defaults inside cards */
+.ic { fill: none; stroke: var(--ink); stroke-width: 1.6; stroke-linecap: square; stroke-linejoin: miter; }
+.ic .dot { fill: var(--accent); stroke: none; }
+
+/* Stamp helper for cards that show stamps */
+.stamp-x {
+  display: inline-flex; align-items: center;
+  font-family: var(--mono); font-size: 11px;
+  letter-spacing: var(--track-mono); text-transform: uppercase;
+  color: var(--accent-deep);
+}
+.stamp-x::before {
+  content: ''; display: inline-block;
+  width: 8px; height: 8px;
+  background: var(--accent); border-radius: var(--r-pill);
+  margin-right: 12px;
+}

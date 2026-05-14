@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Accent — the only colour</title>
+<link rel="stylesheet" href="_card.css" />
+<style>
+
+  .row { display: grid; grid-template-columns: 1fr 1fr 1fr; border: var(--bw-hair) solid var(--line); }
+  .sw { padding: 16px; border-right: var(--bw-hair) solid var(--line); min-height: 140px; display: flex; flex-direction: column; justify-content: space-between; }
+  .sw:last-child { border-right: 0; }
+  .sw .k { font-family: var(--mono); font-size: 10px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); }
+  .sw .hex { font-family: var(--mono); font-size: 11px; }
+  .sw .v { font-family: var(--grotesk); font-weight: 700; font-size: 22px; letter-spacing: var(--track-h-sm); color: var(--ink); }
+  .sw .dot { width: 24px; height: 24px; border-radius: var(--r-pill); background: var(--accent); }
+  .sw.deep .dot { background: var(--accent-deep); }
+  .sw.bg { background: var(--accent-bg); }
+  .sw.bg .dot { background: var(--accent); }
+
+</style>
+</head>
+<body>
+
+<div class="row">
+  <div class="sw">
+    <span class="k">accent</span>
+    <span class="dot"></span>
+    <span class="v">The dot.</span>
+    <span class="hex">#8FBF3F</span>
+  </div>
+  <div class="sw deep">
+    <span class="k">accent-deep · AA on paper</span>
+    <span class="dot"></span>
+    <span class="v" style="color: var(--accent-deep);">Body link.</span>
+    <span class="hex">#4A6E18</span>
+  </div>
+  <div class="sw bg">
+    <span class="k">accent-bg · callout tint</span>
+    <span class="dot"></span>
+    <span class="v" style="color: var(--accent-deep);">Sub-sage.</span>
+    <span class="hex">#F2F7E5</span>
+  </div>
+</div>
+
+</body>
+</html>

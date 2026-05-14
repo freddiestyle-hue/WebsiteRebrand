@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Type · Display & headlines</title>
+<link rel="stylesheet" href="_card.css" />
+<style>
+
+  .stack { display: flex; flex-direction: column; gap: 12px; }
+  .row { display: grid; grid-template-columns: 80px 1fr; gap: 16px; align-items: baseline; padding: 8px 0; border-bottom: var(--bw-hair) solid var(--line); }
+  .row:last-child { border-bottom: 0; }
+  .row .lbl { font-family: var(--mono); font-size: 10px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); }
+  .row .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); letter-spacing: -0.02em; }
+  .display { font-family: var(--grotesk); font-weight: 800; font-size: 56px; line-height: 0.92; letter-spacing: var(--track-display); }
+  .h1 { font-family: var(--grotesk); font-weight: 700; font-size: 42px; line-height: 1.04; letter-spacing: var(--track-h); }
+  .h2 { font-family: var(--grotesk); font-weight: 700; font-size: 30px; line-height: 1.1; letter-spacing: var(--track-h-md); }
+  .h3 { font-family: var(--grotesk); font-weight: 600; font-size: 22px; line-height: 1.18; letter-spacing: var(--track-h-sm); }
+
+</style>
+</head>
+<body>
+
+<div class="stack">
+  <div class="row"><span class="lbl">display</span><span class="display">Ship the right thing.</span></div>
+  <div class="row"><span class="lbl">h · xxl</span><span class="h1">Growth infrastructure <span class="ital">for operators.</span></span></div>
+  <div class="row"><span class="lbl">h · xl</span><span class="h2">Three more <span class="ital">in the same key.</span></span></div>
+  <div class="row"><span class="lbl">h · md</span><span class="h3">Cadence over volume.</span></div>
+</div>
+
+</body>
+</html>

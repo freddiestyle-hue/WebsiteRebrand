@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Type · The italic clause</title>
+<link rel="stylesheet" href="_card.css" />
+<style>
+
+  .stack { display: flex; flex-direction: column; gap: 14px; }
+  .ex { padding: 12px 16px; border-left: var(--bw-thick) solid var(--accent-deep); background: var(--paper-2); }
+  .ex .head { font-family: var(--grotesk); font-weight: 700; font-size: 26px; line-height: 1.1; letter-spacing: var(--track-h-md); }
+  .ex .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); letter-spacing: -0.02em; }
+  .note { font-family: var(--mono); font-size: 10px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); margin-bottom: 6px; display: block; }
+
+</style>
+</head>
+<body>
+
+<div class="stack">
+  <div class="ex">
+    <span class="note">Roman first clause · italic second clause</span>
+    <div class="head">Three more <span class="ital">in the same key.</span></div>
+  </div>
+  <div class="ex">
+    <span class="note">The italic is the turn, not the statement</span>
+    <div class="head">Growth infrastructure <span class="ital">for operators.</span></div>
+  </div>
+  <div class="ex" style="border-left-color: var(--signal-halt); background: rgba(154,43,43,0.04);">
+    <span class="note" style="color: var(--signal-halt);">Don't · whole-sentence italic, ink-dim only, never bold + italic</span>
+    <div class="head"><span class="ital" style="color: var(--ink);">The whole thing in italic feels wrong.</span></div>
+  </div>
+</div>
+
+</body>
+</html>

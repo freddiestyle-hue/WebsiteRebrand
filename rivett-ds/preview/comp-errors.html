@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Form / error / saved states</title>
+<link rel="stylesheet" href="_card.css"/><style>
+  .stack { display: flex; flex-direction: column; gap: 14px; padding: 4px; }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  label { font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); }
+  .req { color: var(--signal-halt); margin-left: 6px; }
+  .input { font-family: var(--grotesk); font-size: 14px; color: var(--ink); border: var(--bw-hair) solid var(--ink-faint); background: var(--paper); padding: 9px 12px; }
+  .input.err { border-color: var(--signal-halt); box-shadow: inset 0 -2px 0 var(--signal-halt); }
+  .input.ok { border-color: var(--accent-deep); box-shadow: inset 0 -2px 0 var(--accent-deep); }
+  .help { font-size: 12.5px; color: var(--ink-dim); }
+  .err-msg { font-family: var(--mono); font-size: 10px; letter-spacing: 0.04em; color: var(--signal-halt); }
+  .saved { padding: 11px 14px; background: var(--paper-2); border: var(--bw-hair) solid var(--ink); font-family: var(--grotesk); font-size: 13.5px; }
+  .stamp-x { color: var(--accent-deep); font-size: 10px; }
+</style></head><body>
+<div class="stack">
+  <div class="field">
+    <label>Email <span class="req">REQUIRED</span></label>
+    <input class="input err" value="tom@" />
+    <span class="err-msg">ENTER A FULL EMAIL ADDRESS</span>
+  </div>
+  <div class="field">
+    <label>Stage</label>
+    <input class="input ok" value="post-revenue" />
+    <span class="help">Filled &middot; ready to submit.</span>
+  </div>
+  <div class="saved">
+    <div class="stamp-x" style="margin-bottom: 4px;">SAVED &middot; 2026&middot;05</div>
+    Saved &middot; we&rsquo;ll reply inside 48 hours.
+  </div>
+</div>
+</body></html>

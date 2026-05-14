@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>404 · The page isn’t here · Rivett</title>
+<link rel="icon" type="image/svg+xml" href="../../assets/rivet-b1.svg" />
+<link rel="stylesheet" href="../../tokens.css" />
+<style>
+  body { background: var(--paper); margin: 0; }
+  .page { max-width: var(--page-max); margin: 0 auto; padding: 0 var(--page-pad); }
+  @media (max-width: 780px) { .page { padding: 0 var(--page-pad-sm); } }
+  .site-nav { display: flex; justify-content: space-between; align-items: center; padding: var(--sp-7) 0; border-bottom: var(--bw-hair) solid var(--line); flex-wrap: wrap; gap: var(--sp-4); }
+  .wm { display: inline-flex; align-items: center; gap: 0.1em; font-family: var(--grotesk); font-weight: 700; font-size: 28px; letter-spacing: -0.05em; line-height: 1; color: var(--ink); text-decoration: none; }
+  .wm .dot { display: inline-block; width: 0.32em; height: 0.32em; background: var(--accent); border-radius: var(--r-pill); transform: translateY(0.04em); }
+  .site-nav .links { display: flex; gap: var(--sp-8); font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); }
+  .site-nav .links a { color: inherit; text-decoration: none; }
+  .site-nav .links a:hover, .site-nav .links a.active { color: var(--ink); }
+  .cta-pri { display: inline-flex; align-items: center; gap: var(--sp-3); padding: 9px 14px; background: var(--ink); color: var(--on-ink); font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; text-decoration: none; }
+  .cta-pri:hover { background: var(--accent-deep); }
+  .stamp { display: inline-flex; align-items: center; font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--accent-deep); }
+  .stamp::before { content: ''; display: inline-block; width: 8px; height: 8px; background: var(--accent); border-radius: var(--r-pill); margin-right: 12px; flex-shrink: 0; }
+  .stamp.on-ink { color: var(--on-ink-faint); }
+  .site-foot { background: var(--ink); color: var(--on-ink); padding: var(--sp-14) 0 var(--sp-7); margin-top: var(--sp-14); }
+  .site-foot .row { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: var(--sp-10); }
+  @media (max-width: 880px) { .site-foot .row { grid-template-columns: 1fr 1fr; gap: var(--sp-7); } }
+  .site-foot .word { font-family: var(--grotesk); font-weight: 700; font-size: 28px; letter-spacing: -0.05em; color: var(--on-ink); }
+  .site-foot .word .dot { display: inline-block; width: 0.32em; height: 0.32em; background: var(--accent); border-radius: var(--r-pill); transform: translateY(0.04em); }
+  .site-foot .col-h { font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--on-ink-faint); margin-bottom: var(--sp-4); display: block; }
+  .site-foot .col a { display: block; padding: 4px 0; font-family: var(--mono); font-size: 12px; color: var(--on-ink); text-decoration: none; }
+  .site-foot .col a:hover { color: var(--accent); }
+  .site-foot .bot { margin-top: var(--sp-12); padding-top: var(--sp-6); border-top: var(--bw-hair) solid var(--on-ink-line); display: flex; justify-content: space-between; font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--on-ink-faint); flex-wrap: wrap; gap: var(--sp-3); }
+
+  .four-hero { padding: var(--sp-20) 0 var(--sp-16); border-bottom: var(--bw-hair) solid var(--line-strong); display: grid; grid-template-columns: 1.4fr 1fr; gap: 80px; }
+  @media (max-width: 980px) { .four-hero { grid-template-columns: 1fr; gap: var(--sp-10); } }
+  .four-hero .left h1 { font-family: var(--grotesk); font-weight: 800; font-size: clamp(72px, 11vw, 168px); line-height: 0.92; letter-spacing: var(--track-display); margin: var(--sp-6) 0 var(--sp-7); text-wrap: balance; }
+  .four-hero .left h1 .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); letter-spacing: -0.02em; display: block; font-size: 0.45em; margin-top: var(--sp-4); }
+  .four-hero .left .dek { font-family: var(--serif); font-style: italic; font-size: 22px; line-height: 1.4; color: var(--ink-dim); margin: 0 0 var(--sp-10); max-width: 560px; }
+  .four-hero .right { display: flex; flex-direction: column; gap: var(--sp-4); align-self: end; }
+  .four-hero .right a { padding: var(--sp-7); border: var(--bw-hair) solid var(--line); text-decoration: none; color: inherit; display: flex; justify-content: space-between; align-items: center; gap: var(--sp-5); transition: background var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease); }
+  .four-hero .right a:hover { background: var(--paper-2); border-color: var(--ink); }
+  .four-hero .right a .lbl { font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); margin-bottom: 4px; display: block; }
+  .four-hero .right a h4 { font-family: var(--grotesk); font-weight: 700; font-size: 22px; letter-spacing: var(--track-h-sm); margin: 0; }
+  .four-hero .right a h4 .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); }
+  .four-hero .right a .arrow { font-family: var(--mono); font-size: 22px; color: var(--ink-faint); }
+  .four-hero .right a:hover .arrow { color: var(--accent-deep); }
+
+  .url-strip { padding: var(--sp-6) 0; border-bottom: var(--bw-hair) solid var(--line); font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); display: flex; justify-content: space-between; flex-wrap: wrap; gap: var(--sp-4); }
+  .url-strip b { color: var(--ink); font-weight: 500; }
+
+  .quip { padding: var(--sp-14) 0; }
+  .quip blockquote { margin: 0; font-family: var(--serif); font-style: italic; font-size: clamp(28px, 4vw, 44px); line-height: 1.2; letter-spacing: -0.02em; color: var(--ink); text-wrap: balance; max-width: 900px; }
+  .quip cite { display: block; margin-top: 14px; font-style: normal; font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); }
+
+</style>
+</head>
+<body>
+<div class="page">
+
+<nav class="site-nav">
+  <a href="../marketing/index.html" class="wm">rivett<span class="dot"></span></a>
+  <div class="links">
+    <a href="../marketing/index.html" class="">The work</a>
+    <a href="../blog/index.html" class="">Field notes</a>
+    <a href="../mri/index.html" class="">Revenue MRI</a>
+    <a class="">About</a>
+  </div>
+  <a class="cta-pri" href="index.html">Book diagnostic &rarr;</a>
+</nav>
+
+<div class="url-strip">
+  <span><b>404</b> &middot; The page isn&rsquo;t here</span>
+  <span>You asked for <b>/notes/leverage-and-synergy</b></span>
+  <span>Logged &middot; 2026&middot;05&middot;14 14:02 SAST</span>
+</div>
+
+<header class="four-hero">
+  <div class="left">
+    <span class="stamp">Error 404</span>
+    <h1>The page <span class="ital">isn&rsquo;t here.</span></h1>
+    <p class="dek">Either the URL is old, or the note never shipped under that title. The list below covers most of what people are looking for.</p>
+  </div>
+  <div class="right">
+    <a href="../marketing/index.html">
+      <div>
+        <span class="lbl">Most likely</span>
+        <h4>Back to the home page.</h4>
+      </div>
+      <span class="arrow">&rarr;</span>
+    </a>
+    <a href="../blog/index.html">
+      <div>
+        <span class="lbl">Reading</span>
+        <h4>Field notes <span class="ital">index.</span></h4>
+      </div>
+      <span class="arrow">&rarr;</span>
+    </a>
+    <a href="../mri/index.html">
+      <div>
+        <span class="lbl">Revenue MRI</span>
+        <h4>The diagnostic <span class="ital">rubric.</span></h4>
+      </div>
+      <span class="arrow">&rarr;</span>
+    </a>
+    <a href="../diagnostic/index.html">
+      <div>
+        <span class="lbl">Book</span>
+        <h4>Book the diagnostic.</h4>
+      </div>
+      <span class="arrow">&rarr;</span>
+    </a>
+  </div>
+</header>
+
+<div class="quip">
+  <blockquote>"The honest answer to <span style="font-style: normal;">where did the page go?</span> is rarely the loud one. Usually the URL changed."</blockquote>
+  <cite>&mdash; rivett &middot; 2026&middot;05</cite>
+</div>
+
+</div>
+
+<footer class="site-foot">
+  <div class="page">
+    <div class="row">
+      <div><span class="word">rivett<span class="dot"></span></span></div>
+      <div class="col">
+        <span class="col-h">The work</span>
+        <a>Diagnostic</a><a>Build</a><a>Run</a><a href="../mri/index.html">Revenue MRI</a>
+      </div>
+      <div class="col">
+        <span class="col-h">Field notes</span>
+        <a href="../blog/index.html">All notes</a>
+      </div>
+      <div class="col">
+        <span class="col-h">Contact</span>
+        <a>tom@rivett.tech</a><a>Calendar</a>
+      </div>
+    </div>
+    <div class="bot">
+      <span>&copy; rivett &middot; 2026</span>
+      <span>v1.0 &middot; Cape Town &amp; remote</span>
+    </div>
+  </div>
+</footer>
+</body></html>

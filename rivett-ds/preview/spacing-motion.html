@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Motion · one curve, four durations</title>
+<link rel="stylesheet" href="_card.css"/><style>
+  .stack { display: flex; flex-direction: column; gap: 8px; }
+  .row { display: grid; grid-template-columns: 90px 1fr 90px; align-items: center; gap: 12px; padding: 8px 12px; border: var(--bw-hair) solid var(--line); }
+  .lbl { font-family: var(--mono); font-size: 10px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); }
+  .desc { font-family: var(--grotesk); font-size: 13px; color: var(--ink-dim); }
+  .val { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); text-align: right; }
+  .ease { padding: 14px 16px; background: var(--paper-2); border: var(--bw-hair) solid var(--line); display: flex; gap: 14px; align-items: center; }
+  .ease svg { width: 60px; height: 36px; }
+  .ease svg path { fill: none; stroke: var(--ink); stroke-width: 1.6; }
+</style></head><body>
+<div class="stack">
+  <div class="ease">
+    <svg viewBox="0 0 60 36"><path d="M0 36 C 12 33, 12 14, 30 14 S 48 3, 60 0"/></svg>
+    <div>
+      <div class="lbl" style="margin-bottom: 4px;">ease · the only curve</div>
+      <code style="font-size: 12px;">cubic-bezier(0.2, 0.6, 0.2, 1)</code>
+    </div>
+  </div>
+  <div class="row"><span class="lbl">dur · 1</span><span class="desc">Colour swap. Hover.</span><span class="val">120 ms</span></div>
+  <div class="row"><span class="lbl">dur · 2</span><span class="desc">Transform. Expand. Modal open.</span><span class="val">200 ms</span></div>
+  <div class="row"><span class="lbl">dur · 3</span><span class="desc">Page transition. Reserved.</span><span class="val">320 ms</span></div>
+  <div class="row"><span class="lbl">dur · 4</span><span class="desc">MRI bar fill. Reserved.</span><span class="val">500 ms</span></div>
+</div>
+</body></html>

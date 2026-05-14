@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>MRI · the diagnostic rubric</title>
+<link rel="stylesheet" href="_card.css"/><style>
+  .panel { background: var(--ink); color: var(--on-ink); padding: 16px 20px; }
+  .lbl { font-family: var(--mono); font-size: 10px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--on-ink-faint); display: block; margin-bottom: 6px; }
+  .read { font-family: var(--grotesk); font-weight: 800; font-size: 56px; letter-spacing: var(--track-display); line-height: 0.92; }
+  .read .accent { color: var(--accent); }
+  .scale { margin-top: 10px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+  .seg { height: 6px; background: var(--on-ink-line); }
+  .seg.lit { background: var(--accent); }
+  .seg.dim-lit { background: var(--accent-deep); }
+  .markers { display: flex; justify-content: space-between; margin-top: 6px; font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--on-ink-faint); }
+  .rows { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+  .r { display: grid; grid-template-columns: 1fr auto; gap: 12px; padding-bottom: 6px; border-bottom: var(--bw-hair) solid var(--on-ink-line); font-size: 12px; color: var(--on-ink-dim); }
+  .r:last-child { border-bottom: 0; }
+  .badge { font-family: var(--mono); font-size: 9px; letter-spacing: var(--track-mono); padding: 2px 6px; }
+  .badge.g { background: var(--accent); color: var(--ink); }
+  .badge.a { background: var(--signal-warn); color: var(--ink); }
+  .badge.r { background: var(--signal-halt); color: var(--on-ink); }
+</style></head><body>
+<div class="panel">
+  <span class="lbl">MRI READOUT · V · 09</span>
+  <div class="read">62 <span class="accent">/ 100</span></div>
+  <div class="scale">
+    <span class="seg dim-lit"></span><span class="seg dim-lit"></span><span class="seg lit"></span><span class="seg"></span><span class="seg"></span>
+  </div>
+  <div class="markers"><span>halt</span><span>amber</span><span>green</span></div>
+  <div class="rows">
+    <div class="r"><span>Pipeline velocity</span><span class="badge g">GREEN</span></div>
+    <div class="r"><span>Decline rate</span><span class="badge a">AMBER</span></div>
+    <div class="r"><span>Outreach reply rate</span><span class="badge r">RED</span></div>
+  </div>
+</div>
+</body></html>

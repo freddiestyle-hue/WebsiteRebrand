@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Button states</title>
+<link rel="stylesheet" href="_card.css"/><style>
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); border: var(--bw-hair) solid var(--line); }
+  .cell { padding: 18px 14px; border-right: var(--bw-hair) solid var(--line); display: flex; flex-direction: column; align-items: flex-start; gap: 12px; min-height: 130px; justify-content: center; }
+  .cell:last-child { border-right: 0; }
+  .lbl { font-family: var(--mono); font-size: 10px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); }
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border: var(--bw-hair) solid var(--ink); background: var(--ink); color: var(--on-ink); font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); text-transform: uppercase; }
+  .btn.hover { background: var(--accent-deep); border-color: var(--accent-deep); }
+  .btn.focus { outline: 2px solid var(--accent-deep); outline-offset: 2px; }
+  .btn.disabled { opacity: 0.4; }
+</style></head><body>
+<div class="grid">
+  <div class="cell"><button class="btn">Book diagnostic &rarr;</button><span class="lbl">default</span></div>
+  <div class="cell"><button class="btn hover">Book diagnostic &rarr;</button><span class="lbl">hover &middot; 120ms</span></div>
+  <div class="cell"><button class="btn focus">Book diagnostic &rarr;</button><span class="lbl">focus-visible</span></div>
+  <div class="cell"><button class="btn disabled">Book diagnostic &rarr;</button><span class="lbl">disabled &middot; 0.4&alpha;</span></div>
+</div>
+</body></html>

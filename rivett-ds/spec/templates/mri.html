@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Revenue MRI · A diagnostic for stuck curves · Rivett</title>
+<link rel="stylesheet" href="../tokens.css" />
+<style>
+  body { background: var(--paper); }
+  .nav { display: flex; justify-content: space-between; align-items: center; padding: var(--sp-7) 0; border-bottom: var(--bw-hair) solid var(--line); }
+  .nav .links { display: flex; gap: var(--sp-8); font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); }
+  .cta-sm { display: inline-flex; padding: 9px 14px; background: var(--ink); color: var(--on-ink); font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; }
+
+  /* hero — split */
+  .mri-hero { display: grid; grid-template-columns: 1.25fr 1fr; border-bottom: var(--bw-hair) solid var(--line-strong); }
+  @media (max-width: 980px) { .mri-hero { grid-template-columns: 1fr; } }
+  .mri-hero .left { padding: var(--sp-16) var(--sp-12) var(--sp-14) 0; }
+  .mri-hero .left h1 {
+    font-family: var(--grotesk); font-weight: 800; font-size: clamp(56px, 8vw, 116px);
+    line-height: 0.92; letter-spacing: var(--track-display); margin: var(--sp-7) 0 var(--sp-8);
+    text-wrap: balance;
+  }
+  .mri-hero .left h1 .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); letter-spacing: -0.02em; }
+  .mri-hero .left .dek { font-family: var(--serif); font-style: italic; font-size: clamp(20px, 2.2vw, 26px); line-height: 1.4; color: var(--ink-dim); margin: 0 0 var(--sp-8); max-width: 560px; }
+  .mri-hero .right { background: var(--ink); color: var(--on-ink); padding: var(--sp-12); display: flex; flex-direction: column; justify-content: space-between; min-height: 540px; }
+
+  /* MRI display panel — the named tool */
+  .mri-panel .lbl { font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--on-ink-faint); display: block; margin-bottom: var(--sp-3); }
+  .mri-panel .read { font-family: var(--grotesk); font-weight: 800; font-size: 96px; letter-spacing: var(--track-display); line-height: 0.92; color: var(--on-ink); }
+  .mri-panel .read .accent { color: var(--accent); }
+  .mri-panel .scale { margin-top: var(--sp-5); display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+  .mri-panel .scale .seg { height: 6px; background: var(--on-ink-line); }
+  .mri-panel .scale .seg.lit { background: var(--accent); }
+  .mri-panel .scale .seg.dim-lit { background: var(--accent-deep); }
+  .mri-panel .markers { display: flex; justify-content: space-between; margin-top: 8px; font-family: var(--mono); font-size: 10px; letter-spacing: var(--track-mono-tight); text-transform: uppercase; color: var(--on-ink-faint); }
+
+  .mri-readout { margin-top: var(--sp-10); display: flex; flex-direction: column; gap: var(--sp-4); }
+  .mri-readout .row { display: grid; grid-template-columns: 80px 1fr auto; gap: var(--sp-5); align-items: baseline; padding-bottom: var(--sp-4); border-bottom: var(--bw-hair) solid var(--on-ink-line); }
+  .mri-readout .row:last-child { border-bottom: 0; }
+  .mri-readout .row .key { font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--on-ink-faint); }
+  .mri-readout .row .val { font-family: var(--grotesk); font-size: 16px; color: var(--on-ink); }
+  .mri-readout .row .val .ital { font-family: var(--serif); font-style: italic; color: var(--on-ink-italic); }
+  .mri-readout .row .badge { font-family: var(--mono); font-size: 10px; letter-spacing: var(--track-mono); text-transform: uppercase; padding: 3px 8px; }
+  .mri-readout .row .badge.green { background: var(--accent); color: var(--ink); }
+  .mri-readout .row .badge.amber { background: var(--signal-warn); color: var(--ink); }
+  .mri-readout .row .badge.red { background: var(--signal-halt); color: var(--on-ink); }
+  .mri-readout .row .badge.muted { background: transparent; color: var(--on-ink-faint); border: 1px solid var(--on-ink-line); }
+
+  .mri-actions { display: flex; gap: var(--sp-3); margin-top: var(--sp-8); }
+  .btn-pri { display: inline-flex; padding: 13px 20px; background: var(--ink); color: var(--on-ink); font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; gap: var(--sp-3); }
+  .btn-pri:hover { background: var(--accent-deep); }
+  .btn-sec { display: inline-flex; padding: 13px 20px; border: 1px solid var(--ink); color: var(--ink); font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; gap: var(--sp-3); }
+  .btn-sec:hover { background: var(--ink); color: var(--on-ink); }
+  .btn-inv { display: inline-flex; padding: 13px 20px; background: var(--paper); color: var(--ink); font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; align-self: flex-start; }
+
+  /* sec head */
+  .sec-head { display: grid; grid-template-columns: 240px 1fr; gap: 64px; border-top: var(--bw-rule) solid var(--ink); padding: var(--sp-14) 0 var(--sp-8); }
+  @media (max-width: 880px) { .sec-head { grid-template-columns: 1fr; gap: var(--sp-5); } }
+  .sec-head .lbl { font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); }
+  .sec-head .lbl .num { display: block; font-family: var(--grotesk); font-weight: 700; font-size: 56px; line-height: 1; color: var(--ink); margin-top: var(--sp-3); letter-spacing: var(--track-tighter); }
+  .sec-head h2 { font-family: var(--grotesk); font-weight: 700; font-size: 44px; line-height: 1.04; letter-spacing: -0.04em; margin: 0; }
+  .sec-head h2 .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); }
+  .sec-body { padding: 0 0 var(--sp-12); }
+
+  /* MRI scoring — checklist of vitals */
+  .vitals { display: grid; grid-template-columns: repeat(2, 1fr); border: var(--bw-hair) solid var(--line); }
+  @media (max-width: 780px) { .vitals { grid-template-columns: 1fr; } }
+  .vital { padding: var(--sp-7) var(--sp-7); border-right: var(--bw-hair) solid var(--line); border-bottom: var(--bw-hair) solid var(--line); }
+  .vital:nth-child(2n) { border-right: 0; }
+  .vital:nth-last-child(-n+2) { border-bottom: 0; }
+  @media (max-width: 780px) { .vital { border-right: 0 !important; border-bottom: var(--bw-hair) solid var(--line) !important; } .vital:last-child { border-bottom: 0 !important; } }
+  .vital .head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: var(--sp-4); }
+  .vital .key { font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); }
+  .vital .score { font-family: var(--grotesk); font-weight: 700; font-size: 13px; padding: 3px 8px; }
+  .vital .score.g { color: var(--accent-deep); background: var(--accent-bg); }
+  .vital .score.a { color: var(--signal-warn); background: rgba(184,124,28,0.12); }
+  .vital .score.r { color: var(--signal-halt); background: rgba(178,31,40,0.10); }
+  .vital h4 { font-family: var(--grotesk); font-weight: 700; font-size: 22px; line-height: 1.2; letter-spacing: var(--track-h-md); margin: 0 0 6px; text-wrap: balance; }
+  .vital h4 .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); }
+  .vital p { font-size: 14.5px; line-height: 1.55; color: var(--ink-dim); margin: 0; }
+
+  /* process timeline */
+  .timeline { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; border-left: var(--bw-thick) solid var(--accent-deep); background: var(--paper-2); }
+  @media (max-width: 880px) { .timeline { grid-template-columns: 1fr; border-left-width: 0; border-top: var(--bw-thick) solid var(--accent-deep); } }
+  .step { padding: var(--sp-7); border-right: var(--bw-hair) solid var(--line); }
+  .step:last-child { border-right: 0; }
+  .step .day { font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--accent-deep); }
+  .step .num { font-family: var(--grotesk); font-weight: 800; font-size: 56px; line-height: 1; letter-spacing: var(--track-tighter); margin: var(--sp-4) 0 var(--sp-5); }
+  .step h4 { font-family: var(--grotesk); font-weight: 700; font-size: 18px; letter-spacing: var(--track-h-sm); margin: 0 0 6px; }
+  .step p { font-size: 14px; line-height: 1.55; color: var(--ink-dim); margin: 0; }
+
+  /* pricing */
+  .price-grid { display: grid; grid-template-columns: 1fr 1fr; border: var(--bw-hair) solid var(--line); }
+  @media (max-width: 780px) { .price-grid { grid-template-columns: 1fr; } }
+  .price { padding: var(--sp-10) var(--sp-8); border-right: var(--bw-hair) solid var(--line); }
+  .price:last-child { border-right: 0; background: var(--ink); color: var(--on-ink); }
+  .price .label { font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); }
+  .price:last-child .label { color: var(--on-ink-faint); }
+  .price h3 { font-family: var(--grotesk); font-weight: 800; font-size: 80px; line-height: 0.95; letter-spacing: var(--track-display); margin: var(--sp-5) 0 var(--sp-3); }
+  .price h3 .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); font-size: 36px; vertical-align: 16px; }
+  .price:last-child h3 .ital { color: var(--on-ink-italic); }
+  .price ul { padding: 0; margin: var(--sp-7) 0; list-style: none; }
+  .price li { padding: var(--sp-3) 0; border-bottom: var(--bw-hair) solid var(--line); font-size: 14.5px; line-height: 1.45; }
+  .price:last-child li { border-bottom-color: var(--on-ink-line); }
+  .price li::before { content: '·'; color: var(--accent-deep); font-weight: 700; margin-right: 8px; }
+  .price:last-child li::before { color: var(--accent); }
+
+  /* faq */
+  .faq { border-top: var(--bw-hair) solid var(--line); }
+  .faq details { border-bottom: var(--bw-hair) solid var(--line); padding: var(--sp-5) 0; }
+  .faq summary { list-style: none; cursor: pointer; display: grid; grid-template-columns: 36px 1fr 24px; align-items: baseline; gap: var(--sp-3); font-family: var(--grotesk); font-weight: 600; font-size: 19px; letter-spacing: -0.01em; line-height: 1.35; color: var(--ink); }
+  .faq summary::-webkit-details-marker { display: none; }
+  .faq summary .qnum { font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); color: var(--ink-faint); padding-top: 5px; }
+  .faq summary .marker { font-family: var(--mono); font-size: 18px; color: var(--accent-deep); transition: transform var(--dur-2) var(--ease); display: inline-block; line-height: 1; text-align: right; }
+  .faq details[open] summary .marker { transform: rotate(45deg); }
+  .faq .answer { padding: var(--sp-4) 36px 0 calc(36px + var(--sp-3)); font-size: 16px; line-height: 1.65; color: var(--ink-dim); max-width: 640px; }
+
+  .stamp { font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--accent-deep); display: inline-flex; align-items: center; }
+  .stamp::before { content: ''; display: inline-block; width: 8px; height: 8px; background: var(--accent); border-radius: var(--r-pill); margin-right: 12px; }
+  .end-cta { background: var(--ink); color: var(--on-ink); padding: var(--sp-14) var(--sp-12); display: grid; grid-template-columns: 1.4fr 1fr; gap: 64px; align-items: center; margin-top: var(--sp-14); }
+  @media (max-width: 880px) { .end-cta { grid-template-columns: 1fr; gap: var(--sp-7); padding: var(--sp-10); } }
+  .end-cta h3 { font-family: var(--grotesk); font-weight: 700; font-size: clamp(28px, 3.6vw, 44px); line-height: 1.04; letter-spacing: -0.04em; margin: 0; color: var(--on-ink); text-wrap: balance; }
+  .end-cta h3 .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--on-ink-italic); }
+  .end-cta .stamp { color: var(--on-ink-faint); }
+  .end-cta p { color: var(--on-ink-dim); margin: 0; font-size: 16px; line-height: 1.55; max-width: 360px; }
+  .ft { padding: var(--sp-12) 0; border-top: var(--bw-hair) solid var(--line-strong); display: flex; justify-content: space-between; font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <nav class="nav">
+    <a class="wordmark">rivett<span class="dot-mark"></span></a>
+    <div class="links">
+      <a>The work</a><a>Field notes</a><a style="color: var(--ink);"><b>Revenue MRI</b></a><a>About</a>
+    </div>
+    <a class="cta-sm">Book diagnostic →</a>
+  </nav>
+
+  <header class="mri-hero">
+    <div class="left">
+      <span class="stamp">A diagnostic instrument · Not a deck</span>
+      <h1>Revenue MRI. <span class="ital">Read the curve, not the noise.</span></h1>
+      <p class="dek">Two weeks of senior-operator examination. Twelve vitals, scored. One document. One decision. The rest of the year stops being a guess.</p>
+      <div class="mri-actions">
+        <a class="btn-pri">Book the MRI →</a>
+        <a class="btn-sec">Sample report</a>
+      </div>
+    </div>
+    <div class="right">
+      <div class="mri-panel">
+        <span class="lbl">Live composite · v1.0 reference</span>
+        <div class="read"><span>62</span><span style="color: var(--on-ink-faint); font-size: 0.4em; vertical-align: 30px;"> / 100</span></div>
+        <div class="scale">
+          <div class="seg dim-lit"></div>
+          <div class="seg dim-lit"></div>
+          <div class="seg lit"></div>
+          <div class="seg"></div>
+          <div class="seg"></div>
+        </div>
+        <div class="markers">
+          <span>Halt</span><span>Watch</span><span>Read</span><span>Run</span><span>Push</span>
+        </div>
+      </div>
+      <div class="mri-readout">
+        <div class="row"><span class="key">V · 01</span><span class="val">Funnel <span class="ital">— integrity</span></span><span class="badge green">Green</span></div>
+        <div class="row"><span class="key">V · 03</span><span class="val">Activation <span class="ital">— time-to-value</span></span><span class="badge amber">Amber</span></div>
+        <div class="row"><span class="key">V · 06</span><span class="val">Retention <span class="ital">— D14 / D30</span></span><span class="badge red">Red</span></div>
+        <div class="row"><span class="key">V · 09</span><span class="val">Spend <span class="ital">— attribution</span></span><span class="badge muted">Insuf.</span></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- 01 What it is -->
+  <div class="sec-head">
+    <span class="lbl">What it is<span class="num">01</span></span>
+    <h2>Twelve vitals. <span class="ital">One composite read.</span></h2>
+  </div>
+  <div class="sec-body">
+    <div class="vitals">
+      <div class="vital"><div class="head"><span class="key">V · 01 · Funnel integrity</span><span class="score g">Green</span></div><h4>Does the funnel <span class="ital">add up?</span></h4><p>Counts reconcile across stages. No silent drop-offs. No ghost stages.</p></div>
+      <div class="vital"><div class="head"><span class="key">V · 02 · Channel mix</span><span class="score g">Green</span></div><h4>Where revenue <span class="ital">actually comes from.</span></h4><p>Top three channels carry their stated weight. Long-tail audited honestly.</p></div>
+      <div class="vital"><div class="head"><span class="key">V · 03 · Activation</span><span class="score a">Amber</span></div><h4>Time-to-value, <span class="ital">measured.</span></h4><p>Median user reaches the activating event inside the stated window. Or doesn't.</p></div>
+      <div class="vital"><div class="head"><span class="key">V · 04 · Pricing fit</span><span class="score g">Green</span></div><h4>Price holds <span class="ital">on contact.</span></h4><p>Discount rate is in band. Negotiation patterns match stated price tier.</p></div>
+      <div class="vital"><div class="head"><span class="key">V · 05 · Sales motion</span><span class="score a">Amber</span></div><h4>The cycle is <span class="ital">predictable.</span></h4><p>Stage-to-stage conversion has a real distribution, not a wish-cast forecast.</p></div>
+      <div class="vital"><div class="head"><span class="key">V · 06 · Retention</span><span class="score r">Red</span></div><h4>D14 and D30 <span class="ital">tell the truth.</span></h4><p>Cohorts read flat or improving. The "leaky bucket" question, instrumented.</p></div>
+      <div class="vital"><div class="head"><span class="key">V · 07 · Expansion</span><span class="score g">Green</span></div><h4>NRR, the <span class="ital">honest one.</span></h4><p>Net revenue retention computed without expansion-by-pricing-change.</p></div>
+      <div class="vital"><div class="head"><span class="key">V · 08 · CAC efficiency</span><span class="score a">Amber</span></div><h4>What a customer <span class="ital">actually costs.</span></h4><p>Loaded CAC. Including paid, content, brand, and a fair allocation of headcount.</p></div>
+      <div class="vital"><div class="head"><span class="key">V · 09 · Spend attribution</span><span class="score r">Insuf.</span></div><h4>Where the spend <span class="ital">went.</span></h4><p>Marketing dollars traceable to a stage. If they aren't, that is the finding.</p></div>
+      <div class="vital"><div class="head"><span class="key">V · 10 · Cadence</span><span class="score g">Green</span></div><h4>The team's <span class="ital">rhythm.</span></h4><p>Decisions are made on a fixed cycle. Reviews land. Read-outs are real.</p></div>
+      <div class="vital"><div class="head"><span class="key">V · 11 · Memo culture</span><span class="score a">Amber</span></div><h4>Decisions are <span class="ital">written down.</span></h4><p>One-pagers exist for major calls. Halt and continue are recorded.</p></div>
+      <div class="vital"><div class="head"><span class="key">V · 12 · Risk register</span><span class="score g">Green</span></div><h4>The known <span class="ital">unknowns.</span></h4><p>Material risks are named. None are hiding in a Slack thread from March.</p></div>
+    </div>
+  </div>
+
+  <!-- 02 Process -->
+  <div class="sec-head">
+    <span class="lbl">Process<span class="num">02</span></span>
+    <h2>Two weeks. <span class="ital">Four steps.</span></h2>
+  </div>
+  <div class="sec-body">
+    <div class="timeline">
+      <div class="step"><span class="day">Day · 01–02</span><div class="num">01</div><h4>Intake.</h4><p>Two senior calls. Read access to the stack. NDA, pre-printed and mutual.</p></div>
+      <div class="step"><span class="day">Day · 03–07</span><div class="num">02</div><h4>Examine.</h4><p>Funnel reconciliation, cohort pulls, spend trace, activation slice. Heads-down, no calls.</p></div>
+      <div class="step"><span class="day">Day · 08–11</span><div class="num">03</div><h4>Score.</h4><p>Twelve vitals, scored against the v1.0 rubric. Composite read. Halts and continues.</p></div>
+      <div class="step"><span class="day">Day · 12–14</span><div class="num">04</div><h4>Read-out.</h4><p>One document. One ninety-minute call. The next ninety days, with numbers.</p></div>
+    </div>
+  </div>
+
+  <!-- 03 Pricing -->
+  <div class="sec-head">
+    <span class="lbl">What it costs<span class="num">03</span></span>
+    <h2>Two doors. <span class="ital">Same rubric.</span></h2>
+  </div>
+  <div class="sec-body">
+    <div class="price-grid">
+      <div class="price">
+        <span class="label">A · the MRI alone</span>
+        <h3>£4k<span class="ital"> · once</span></h3>
+        <ul>
+          <li>Two weeks. Two calls. One document.</li>
+          <li>Twelve vitals scored against the v1.0 rubric.</li>
+          <li>Composite read, halts, and ninety-day plan.</li>
+          <li>Mutual NDA. No retainer required.</li>
+          <li>You keep the report. No pitch follows.</li>
+        </ul>
+        <a class="btn-sec">Book the MRI →</a>
+      </div>
+      <div class="price">
+        <span class="label">B · MRI + run</span>
+        <h3>£4k <span style="font-family: var(--mono); font-size: 32px; vertical-align: 14px; color: var(--on-ink-faint);">+</span> £12k<span class="ital"> / mo</span></h3>
+        <ul>
+          <li>The MRI as the opening engagement.</li>
+          <li>Fortnightly read-out. Monthly decision memo.</li>
+          <li>Quarterly board-pack contribution.</li>
+          <li>Twelve-week minimum after the MRI lands.</li>
+          <li>Halts on either side, in writing, mid-month.</li>
+        </ul>
+        <a class="btn-inv">Book intake →</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 04 FAQ -->
+  <div class="sec-head">
+    <span class="lbl">Asked often<span class="num">04</span></span>
+    <h2>The four <span class="ital">most-asked.</span></h2>
+  </div>
+  <div class="sec-body">
+    <div class="faq">
+      <details open>
+        <summary><span class="qnum">Q · 01</span><span>Is this for venture-backed companies only?</span><span class="marker">+</span></summary>
+        <div class="answer"><p>No. The rubric is the same for bootstrapped, sponsored, and backed. The only filter is whether the numbers are live and the team can absorb a fortnightly read-out.</p></div>
+      </details>
+      <details>
+        <summary><span class="qnum">Q · 02</span><span>What if a vital is "insufficient data"?</span><span class="marker">+</span></summary>
+        <div class="answer"><p>It scores as Insuf. and goes into the ninety-day plan as the first instrumentation task. A red is a finding. An insuf. is a question that has not been asked.</p></div>
+      </details>
+      <details>
+        <summary><span class="qnum">Q · 03</span><span>Will you sign an NDA before access?</span><span class="marker">+</span></summary>
+        <div class="answer"><p>Yes. It is mutual and pre-printed and takes ninety seconds. Read-only access to the stack is part of intake.</p></div>
+      </details>
+      <details>
+        <summary><span class="qnum">Q · 04</span><span>Can the read-out be presented to a board?</span><span class="marker">+</span></summary>
+        <div class="answer"><p>Yes. The MRI is written for an operator first, but the document is paginated and worded to drop into a board pack. Boards are an explicit audience.</p></div>
+      </details>
+    </div>
+  </div>
+
+  <!-- end CTA -->
+  <div class="end-cta">
+    <h3>If your numbers are live but the next move is unclear, <span class="ital">that's the MRI.</span></h3>
+    <div style="display: flex; flex-direction: column; gap: 18px;">
+      <span class="stamp">Two weeks · £4k</span>
+      <p>One document. One decision. The next ninety days stop being a guess.</p>
+      <a style="display: inline-flex; padding: 13px 20px; background: var(--paper); color: var(--ink); font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; align-self: flex-start;">Book the MRI →</a>
+    </div>
+  </div>
+
+  <footer class="ft">
+    <span class="wordmark" style="font-size: 14px;">rivett<span class="dot-mark"></span></span>
+    <span>Revenue MRI · v1.0 · 2026</span>
+  </footer>
+</div>
+</body>
+</html>

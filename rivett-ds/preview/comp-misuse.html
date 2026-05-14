@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Misuse</title>
+<link rel="stylesheet" href="_card.css"/><style>
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); border: var(--bw-hair) solid var(--line); }
+  .cell { padding: 14px 12px 12px; border-right: var(--bw-hair) solid var(--line); border-bottom: var(--bw-hair) solid var(--line); display: flex; flex-direction: column; align-items: center; gap: 10px; min-height: 110px; justify-content: center; position: relative; }
+  .cell:nth-child(3n) { border-right: 0; }
+  .cell:nth-last-child(-n+3) { border-bottom: 0; }
+  .cell::after { content: 'X'; position: absolute; top: 8px; right: 10px; font-family: var(--mono); font-size: 12px; color: var(--signal-halt); font-weight: 700; }
+  .lbl { font-family: var(--mono); font-size: 9.5px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--signal-halt); text-align: center; line-height: 1.4; }
+  .wm { font-family: var(--grotesk); font-weight: 700; font-size: 20px; letter-spacing: -0.05em; line-height: 1; }
+  .wm .d { display: inline-block; width: 0.32em; height: 0.32em; border-radius: 999px; background: var(--accent); }
+  .wm.upper { text-transform: uppercase; letter-spacing: -0.02em; }
+  .em-bar { font-family: var(--serif); font-style: italic; font-size: 16px; color: var(--ink); }
+  .bad-radius { padding: 6px 12px; background: var(--ink); color: var(--on-ink); font-family: var(--mono); font-size: 10px; letter-spacing: var(--track-mono); border-radius: 8px; text-transform: uppercase; }
+  .grad { padding: 7px 12px; background: linear-gradient(135deg, var(--accent), var(--accent-deep)); color: var(--on-ink); font-family: var(--mono); font-size: 10px; letter-spacing: var(--track-mono); text-transform: uppercase; }
+  .emoji { font-size: 22px; }
+  .h-q { font-family: var(--grotesk); font-weight: 700; font-size: 16px; letter-spacing: var(--track-h-sm); }
+</style></head><body>
+<div class="grid">
+  <div class="cell">
+    <span class="wm upper">RIVETT<span class="d"></span></span>
+    <span class="lbl">UPPERCASE wordmark</span>
+  </div>
+  <div class="cell">
+    <span class="em-bar">&mdash; em-dash &mdash;</span>
+    <span class="lbl">em-dash. Use the period.</span>
+  </div>
+  <div class="cell">
+    <button class="bad-radius">8PX RADIUS</button>
+    <span class="lbl">Rounded chrome. Square only.</span>
+  </div>
+  <div class="cell">
+    <button class="grad">Gradient</button>
+    <span class="lbl">Gradient. The system has none.</span>
+  </div>
+  <div class="cell">
+    <span class="emoji">&#x1F680;</span>
+    <span class="lbl">Emoji. Ever.</span>
+  </div>
+  <div class="cell">
+    <span class="h-q">A question in the headline?</span>
+    <span class="lbl">Heading question (FAQ only).</span>
+  </div>
+</div>
+</body></html>

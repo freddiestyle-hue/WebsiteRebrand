@@ -1,0 +1,105 @@
+/* ============================================================
+   RIVETT · Self-hosted font @font-face declarations
+   ------------------------------------------------------------
+   This file is the stub for self-hosted WOFF2 fonts. To
+   activate:
+
+     1. Drop the WOFF2 files into this folder, named per the
+        pattern in fonts/README.md.
+     2. In tokens.css, replace the @import from Google Fonts
+        with `@import url('./fonts/fonts.css');`.
+
+   The font-display: swap pattern below trades brief FOUT for
+   guaranteed render — the system would rather show the
+   fallback stack than block the page.
+   ============================================================ */
+
+/* Inter Tight — body, headlines, UI */
+@font-face {
+  font-family: 'Inter Tight';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./inter-tight-400.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Inter Tight';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('./inter-tight-500.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Inter Tight';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('./inter-tight-600.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Inter Tight';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./inter-tight-700.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Inter Tight';
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url('./inter-tight-800.woff2') format('woff2');
+}
+
+/* Newsreader — italic clause only */
+@font-face {
+  font-family: 'Newsreader';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./newsreader-400.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Newsreader';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('./newsreader-500.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Newsreader';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./newsreader-400-italic.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Newsreader';
+  font-style: italic;
+  font-weight: 500;
+  font-display: swap;
+  src: url('./newsreader-500-italic.woff2') format('woff2');
+}
+
+/* DM Mono — stamps, labels, code */
+@font-face {
+  font-family: 'DM Mono';
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: url('./dm-mono-300.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'DM Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./dm-mono-400.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'DM Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('./dm-mono-500.woff2') format('woff2');
+}

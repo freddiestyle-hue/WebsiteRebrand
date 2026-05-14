@@ -1,0 +1,182 @@
+/* ============================================================
+   RIVETT · Colours & Type · Semantic layer · v1.0
+   ------------------------------------------------------------
+   Thin re-export of tokens.css, organised into semantic vars
+   (fg-1, fg-2, h1, h2, code…) for code agents that prefer a
+   role-named API over the raw tokens.
+
+   Source of truth is tokens.css. This file imports it and
+   maps the named tokens onto common roles. If a role here
+   conflicts with a token, the token wins — fix this file.
+
+   Used by: production code, prototypes, slide decks, agents
+   spinning up new HTML that wants a friendly, semantic surface.
+   ============================================================ */
+
+@import url('./tokens.css');
+
+:root {
+  /* ---------- Foreground (text) roles ---------- */
+  --fg-1:        var(--ink);          /* primary type */
+  --fg-2:        var(--ink-dim);      /* secondary type · italic serif clause */
+  --fg-3:        var(--ink-faint);    /* meta, captions, mono labels */
+  --fg-disabled: var(--ink-soft);     /* disabled text + dividers on dark */
+
+  /* On-ink (inverse) */
+  --fg-on:         var(--on-ink);
+  --fg-on-2:       var(--on-ink-dim);
+  --fg-on-3:       var(--on-ink-faint);
+  --fg-on-italic:  var(--on-ink-italic);
+
+  /* ---------- Background roles ---------- */
+  --bg-1:        var(--paper);        /* default page */
+  --bg-2:        var(--paper-2);      /* card wells, TLDR, hover wash */
+  --bg-3:        var(--paper-3);      /* table heads, code chips */
+  --bg-4:        var(--paper-4);      /* code blocks, deepest paper */
+  --bg-accent:   var(--accent-bg);    /* callout tint */
+  --bg-sage:     var(--sage);         /* numbox, stat blocks */
+  --bg-sage-2:   var(--sage-2);
+  --bg-ink:      var(--ink);          /* dark closer, end-CTA */
+  --bg-ink-2:    var(--ink-2);        /* raised dark surfaces */
+
+  /* ---------- Stroke / line roles ---------- */
+  --stroke:        var(--line);
+  --stroke-strong: var(--line-strong);
+  --stroke-soft:   var(--line-soft);
+  --stroke-on:     var(--on-ink-line);
+  --stroke-on-2:   var(--on-ink-line-2);
+
+  /* ---------- Accent / signal ---------- */
+  --brand:       var(--accent);        /* the dot · hover fills */
+  --brand-deep:  var(--accent-deep);   /* AA-safe text on paper */
+  --warn:        var(--signal-warn);
+  --halt:        var(--signal-halt);
+
+  /* ---------- Type families (semantic aliases) ---------- */
+  --font-display:  var(--grotesk);     /* Inter Tight 700/800 */
+  --font-body:     var(--grotesk);     /* Inter Tight 400/500 */
+  --font-italic:   var(--serif);       /* Newsreader italic — the whisper */
+  --font-mono:     var(--mono);        /* DM Mono — stamps + labels */
+}
+
+/* ============================================================
+   Semantic type roles
+   ------------------------------------------------------------
+   Use these classes for one-off prose where you do not want to
+   redefine the whole scale. h1/h2/h3 here are roles, not
+   selectors — apply via class to keep specificity flat.
+   ============================================================ */
+
+.h-display {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--t-display);
+  line-height: var(--lh-display);
+  letter-spacing: var(--track-display);
+  color: var(--fg-1);
+  text-wrap: balance;
+}
+
+.h1 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--t-h-xxl);
+  line-height: var(--lh-h);
+  letter-spacing: var(--track-h);
+  color: var(--fg-1);
+  text-wrap: balance;
+}
+
+.h2 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--t-h-xl);
+  line-height: var(--lh-h);
+  letter-spacing: var(--track-h);
+  color: var(--fg-1);
+  text-wrap: balance;
+}
+
+.h3 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--t-h-lg);
+  line-height: var(--lh-h-prose);
+  letter-spacing: var(--track-h-md);
+  color: var(--fg-1);
+}
+
+.h4 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--t-h-md);
+  line-height: var(--lh-h-prose);
+  letter-spacing: var(--track-h-sm);
+  color: var(--fg-1);
+}
+
+.h5 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--t-h-sm);
+  line-height: var(--lh-tight);
+  letter-spacing: var(--track-h-sm);
+  color: var(--fg-1);
+}
+
+.body-xl {
+  font-family: var(--font-body);
+  font-size: var(--t-body-xl);
+  line-height: var(--lh-prose);
+  color: var(--fg-1);
+}
+
+.body {
+  font-family: var(--font-body);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+  color: var(--fg-1);
+}
+
+.body-sm {
+  font-family: var(--font-body);
+  font-size: var(--t-body-sm);
+  line-height: var(--lh-body);
+  color: var(--fg-2);
+}
+
+.meta {
+  font-family: var(--font-mono);
+  font-size: var(--t-meta);
+  letter-spacing: var(--track-mono);
+  text-transform: uppercase;
+  color: var(--fg-3);
+}
+
+.caption {
+  font-family: var(--font-mono);
+  font-size: var(--t-caption);
+  letter-spacing: var(--track-mono);
+  text-transform: uppercase;
+  color: var(--fg-3);
+}
+
+/* The italic — newsreader, second-clause-only.
+   Always pair with a roman first clause. */
+.ital {
+  font-family: var(--font-italic);
+  font-style: italic;
+  font-weight: 400;
+  color: var(--fg-2);
+  letter-spacing: -0.02em;
+}
+
+/* Mono inline code — uses paper-3 chip on light surfaces */
+.code,
+code {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  background: var(--bg-3);
+  padding: 1px 6px;
+  color: var(--fg-1);
+}

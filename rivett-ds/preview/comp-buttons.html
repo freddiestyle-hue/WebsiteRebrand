@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Buttons · 3 variants</title>
+<link rel="stylesheet" href="_card.css"/><style>
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 14px; border: var(--bw-hair) solid var(--line); }
+  .row + .row { border-top: 0; }
+  .row.dark { background: var(--ink); }
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 11px 18px; border: var(--bw-hair) solid var(--ink); background: transparent; color: var(--ink); font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; cursor: pointer; }
+  .btn.solid { background: var(--ink); color: var(--on-ink); }
+  .btn.inv { background: var(--paper); color: var(--ink); border-color: var(--paper); }
+  .btn.ghost { border-color: transparent; padding: 11px 0; color: var(--accent-deep); }
+  .btn.lg { padding: 16px 24px; }
+  .lbl { font-family: var(--mono); font-size: 10px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); width: 80px; }
+  .row.dark .lbl { color: var(--on-ink-faint); }
+</style></head><body>
+<div class="row">
+  <span class="lbl">primary</span>
+  <button class="btn solid">Book diagnostic →</button>
+  <button class="btn solid lg">Book the MRI →</button>
+</div>
+<div class="row">
+  <span class="lbl">secondary</span>
+  <button class="btn">Read field notes</button>
+  <button class="btn ghost">← Field Notes</button>
+</div>
+<div class="row dark">
+  <span class="lbl">inverse</span>
+  <button class="btn inv">Book diagnostic →</button>
+</div>
+</body></html>

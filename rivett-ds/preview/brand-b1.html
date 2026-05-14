@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>B1 mark · favicon</title>
+<link rel="stylesheet" href="_card.css" />
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@700&display=swap" rel="stylesheet" />
+<style>
+  .stack { display: flex; flex-direction: column; gap: 0; }
+  .row { display: grid; grid-template-columns: 110px repeat(5, 1fr); border: var(--bw-hair) solid var(--line); align-items: stretch; }
+  .row + .row { border-top: 0; }
+  .lbl-cell {
+    padding: 18px 14px;
+    border-right: var(--bw-hair) solid var(--line);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: var(--track-mono);
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+  }
+  .lbl-cell b { font-family: var(--grotesk); font-weight: 600; font-size: 13px; color: var(--ink); text-transform: none; letter-spacing: -0.01em; }
+  .cell {
+    padding: 16px 8px;
+    border-right: var(--bw-hair) solid var(--line);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    justify-content: center;
+    min-height: 120px;
+  }
+  .cell:last-child { border-right: 0; }
+  .cell .px {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .row.inv .cell { background: var(--ink); }
+  .row.inv .px { color: var(--on-ink-faint); }
+
+  /* The plate. Pure inline SVG so it renders without font loading races. */
+  .b1 { display: block; }
+  .b1 .r {
+    font-family: 'Inter Tight', system-ui, -apple-system, sans-serif;
+    font-weight: 700;
+    font-size: 60px;
+    letter-spacing: -0.05em;
+  }
+</style>
+</head>
+<body>
+
+<div class="stack">
+
+  <!-- WHITE r on green — primary -->
+  <div class="row">
+    <div class="lbl-cell"><b>White r</b><span>primary</span></div>
+
+    <div class="cell">
+      <svg class="b1" width="64" height="64" viewBox="0 0 80 80"><circle cx="40" cy="40" r="40" fill="#8FBF3F"/><text class="r" x="40" y="58" text-anchor="middle" fill="#FFFFFF">r</text></svg>
+      <span class="px">64 PX</span>
+    </div>
+
+    <div class="cell">
+      <svg class="b1" width="48" height="48" viewBox="0 0 80 80"><circle cx="40" cy="40" r="40" fill="#8FBF3F"/><text class="r" x="40" y="58" text-anchor="middle" fill="#FFFFFF">r</text></svg>
+      <span class="px">48 PX</span>
+    </div>
+
+    <div class="cell">
+      <svg class="b1" width="32" height="32" viewBox="0 0 80 80"><circle cx="40" cy="40" r="40" fill="#8FBF3F"/><text class="r" x="40" y="58" text-anchor="middle" fill="#FFFFFF">r</text></svg>
+      <span class="px">32 PX</span>
+    </div>
+
+    <div class="cell">
+      <svg class="b1" width="16" height="16" viewBox="0 0 80 80"><circle cx="40" cy="40" r="40" fill="#8FBF3F"/><text class="r" x="40" y="58" text-anchor="middle" fill="#FFFFFF">r</text></svg>
+      <span class="px">16 · TAB</span>
+    </div>
+
+    <div class="cell">
+      <svg class="b1" width="48" height="48" viewBox="0 0 80 80"><circle cx="40" cy="40" r="40" fill="#8FBF3F"/><text class="r" x="40" y="58" text-anchor="middle" fill="#FFFFFF">r</text></svg>
+      <span class="px">APP ICON</span>
+    </div>
+  </div>
+
+  <!-- INK r on green — alternate -->
+  <div class="row">
+    <div class="lbl-cell"><b>Ink r</b><span>alternate</span></div>
+
+    <div class="cell">
+      <svg class="b1" width="64" height="64" viewBox="0 0 80 80"><circle cx="40" cy="40" r="40" fill="#8FBF3F"/><text class="r" x="40" y="58" text-anchor="middle" fill="#0E1A2C">r</text></svg>
+      <span class="px">64 PX</span>
+    </div>
+
+    <div class="cell">
+      <svg class="b1" width="48" height="48" viewBox="0 0 80 80"><circle cx="40" cy="40" r="40" fill="#8FBF3F"/><text class="r" x="40" y="58" text-anchor="middle" fill="#0E1A2C">r</text></svg>
+      <span class="px">48 PX</span>
+    </div>
+
+    <div class="cell">
+      <svg class="b1" width="32" height="32" viewBox="0 0 80 80"><circle cx="40" cy="40" r="40" fill="#8FBF3F"/><text class="r" x="40" y="58" text-anchor="middle" fill="#0E1A2C">r</text></svg>
+      <span class="px">32 PX</span>
+    </div>
+
+    <div class="cell">
+      <svg class="b1" width="16" height="16" viewBox="0 0 80 80"><circle cx="40" cy="40" r="40" fill="#8FBF3F"/><text class="r" x="40" y="58" text-anchor="middle" fill="#0E1A2C">r</text></svg>
+      <span class="px">16 · TAB</span>
+    </div>
+
+    <div class="cell">
+      <svg class="b1" width="48" height="48" viewBox="0 0 80 80"><circle cx="40" cy="40" r="40" fill="#8FBF3F"/><text class="r" x="40" y="58" text-anchor="middle" fill="#0E1A2C">r</text></svg>
+      <span class="px">APP ICON</span>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

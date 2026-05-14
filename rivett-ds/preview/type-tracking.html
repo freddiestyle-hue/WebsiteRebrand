@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Type · Tracking</title>
+<link rel="stylesheet" href="_card.css" />
+<style>
+
+  .stack { display: flex; flex-direction: column; }
+  .row { display: grid; grid-template-columns: 140px 1fr 70px; gap: 12px; align-items: baseline; padding: 12px 0; border-bottom: var(--bw-hair) solid var(--line); }
+  .row:last-child { border-bottom: 0; }
+  .lbl { font-family: var(--mono); font-size: 10px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); }
+  .ex { font-family: var(--grotesk); font-weight: 700; font-size: 26px; line-height: 1; color: var(--ink); }
+  .val { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); text-align: right; }
+  .ex.display { letter-spacing: -0.055em; font-weight: 800; }
+  .ex.h { letter-spacing: -0.04em; }
+  .ex.h-sm { letter-spacing: -0.02em; }
+  .ex.mono { font-family: var(--mono); text-transform: uppercase; font-size: 12px; font-weight: 500; }
+
+</style>
+</head>
+<body>
+
+<div class="stack">
+  <div class="row"><span class="lbl">track · display</span><span class="ex display">Rivett.</span><span class="val">-0.055em</span></div>
+  <div class="row"><span class="lbl">track · h</span><span class="ex h">Heading.</span><span class="val">-0.04em</span></div>
+  <div class="row"><span class="lbl">track · h-sm</span><span class="ex h-sm">Heading sm.</span><span class="val">-0.02em</span></div>
+  <div class="row"><span class="lbl">track · mono</span><span class="ex mono" style="letter-spacing: 0.22em;">MONO LABEL</span><span class="val">+0.22em</span></div>
+</div>
+
+</body>
+</html>

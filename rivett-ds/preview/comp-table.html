@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Table · hairlines, no zebra</title>
+<link rel="stylesheet" href="_card.css"/><style>
+  table { width: 100%; border-collapse: collapse; font-family: var(--grotesk); font-size: 13px; }
+  thead th { text-align: left; padding: 10px 12px; background: var(--paper-3); color: var(--ink); font-family: var(--mono); font-size: 10px; letter-spacing: var(--track-mono); text-transform: uppercase; font-weight: 400; border-bottom: 2px solid var(--ink); }
+  thead th.num { text-align: right; }
+  tbody td { padding: 9px 12px; border-bottom: var(--bw-hair) solid var(--line); vertical-align: top; }
+  tbody td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  tbody tr:hover { background: var(--paper-2); }
+  .badge { font-family: var(--mono); font-size: 9.5px; letter-spacing: var(--track-mono); padding: 2px 6px; text-transform: uppercase; }
+  .badge.g { color: var(--accent-deep); background: var(--accent-bg); }
+  .badge.a { color: var(--signal-warn); background: rgba(184,124,28,0.12); }
+  .badge.r { color: var(--signal-halt); background: rgba(154,43,43,0.10); }
+</style></head><body>
+<table>
+  <thead>
+    <tr><th>Vital</th><th>Reading</th><th>Score</th><th class="num">Δ · 14d</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Pipeline velocity</td><td>4.2 deals / wk</td><td><span class="badge g">Green</span></td><td class="num">+0.6</td></tr>
+    <tr><td>Decline rate</td><td>38%</td><td><span class="badge a">Amber</span></td><td class="num">−2.1</td></tr>
+    <tr><td>Outreach reply</td><td>11%</td><td><span class="badge r">Red</span></td><td class="num">−4.4</td></tr>
+    <tr><td>Cadence held</td><td>9 / 10</td><td><span class="badge g">Green</span></td><td class="num">±0</td></tr>
+  </tbody>
+</table>
+</body></html>

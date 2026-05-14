@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>AA contrast pairs</title>
+<link rel="stylesheet" href="_card.css"/><style>
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); border: var(--bw-hair) solid var(--line); }
+  .cell { padding: 12px 14px; border-right: var(--bw-hair) solid var(--line); border-bottom: var(--bw-hair) solid var(--line); display: flex; flex-direction: column; gap: 4px; min-height: 70px; justify-content: center; }
+  .cell:nth-child(3n) { border-right: 0; }
+  .cell:nth-last-child(-n+3) { border-bottom: 0; }
+  .cell .v { font-family: var(--grotesk); font-weight: 500; font-size: 14px; }
+  .cell .meta { font-family: var(--mono); font-size: 9.5px; letter-spacing: var(--track-mono); text-transform: uppercase; }
+  .cell.aaa .meta { color: var(--accent-deep); }
+  .cell.aa  .meta { color: var(--accent-deep); }
+  .cell.fail .meta { color: var(--signal-halt); }
+</style></head><body>
+<div class="grid">
+  <div class="cell aaa" style="background: var(--paper);"><span class="v" style="color: var(--ink);">ink on paper</span><span class="meta">16.7 : 1 &middot; AAA</span></div>
+  <div class="cell aaa" style="background: var(--paper);"><span class="v" style="color: var(--ink-dim);">ink-dim &middot; italic</span><span class="meta">8.9 : 1 &middot; AAA</span></div>
+  <div class="cell aa" style="background: var(--paper);"><span class="v" style="color: var(--ink-faint);">ink-faint &middot; large only</span><span class="meta">3.9 : 1 &middot; AA LG</span></div>
+  <div class="cell aa" style="background: var(--paper);"><span class="v" style="color: var(--accent-deep);">accent-deep &middot; link</span><span class="meta">5.2 : 1 &middot; AA</span></div>
+  <div class="cell fail" style="background: var(--paper);"><span class="v" style="color: var(--accent);">accent text &middot; FAIL</span><span class="meta">2.0 : 1 &middot; fill only</span></div>
+  <div class="cell aa" style="background: var(--sage);"><span class="v" style="color: var(--accent-deep);">deep on sage</span><span class="meta">4.8 : 1 &middot; AA</span></div>
+  <div class="cell aaa" style="background: var(--ink);"><span class="v" style="color: var(--on-ink);">on-ink</span><span class="meta" style="color: var(--accent);">16.7 : 1 &middot; AAA</span></div>
+  <div class="cell aaa" style="background: var(--ink);"><span class="v" style="color: rgba(255,255,255,0.78);">on-ink-dim</span><span class="meta" style="color: var(--accent);">13.0 : 1 &middot; AAA</span></div>
+  <div class="cell aa" style="background: var(--paper);"><span class="v" style="color: var(--signal-halt);">halt &middot; error</span><span class="meta">7.1 : 1 &middot; AA</span></div>
+</div>
+</body></html>

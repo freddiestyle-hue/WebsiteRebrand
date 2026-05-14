@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Hairlines · the design language</title>
+<link rel="stylesheet" href="_card.css" />
+<style>
+
+  .row { display: grid; grid-template-columns: 1fr 1fr 1fr; border: var(--bw-hair) solid var(--line); }
+  .sw { padding: 20px 18px 16px; border-right: var(--bw-hair) solid var(--line); min-height: 130px; display: flex; flex-direction: column; gap: 10px; }
+  .sw:last-child { border-right: 0; }
+  .sw .k { font-family: var(--mono); font-size: 10px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); }
+  .sw .demo-rule { width: 100%; }
+  .sw .hex { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); margin-top: auto; }
+  .sw .lbl { font-size: 13px; color: var(--ink-dim); }
+
+</style>
+</head>
+<body>
+
+<div class="row">
+  <div class="sw">
+    <span class="k">line</span>
+    <div class="demo-rule" style="border-top: var(--bw-hair) solid var(--line); height: 1px;"></div>
+    <p class="lbl">Default · cards, cells, fields.</p>
+    <span class="hex">rgba 0.14</span>
+  </div>
+  <div class="sw">
+    <span class="k">line-strong</span>
+    <div class="demo-rule" style="border-top: var(--bw-hair) solid var(--line-strong); height: 1px;"></div>
+    <p class="lbl">Section dividers.</p>
+    <span class="hex">rgba 0.28</span>
+  </div>
+  <div class="sw">
+    <span class="k">line-soft</span>
+    <div class="demo-rule" style="border-top: var(--bw-hair) solid var(--line-soft); height: 1px;"></div>
+    <p class="lbl">Faintest hint of a rule.</p>
+    <span class="hex">rgba 0.06</span>
+  </div>
+</div>
+
+</body>
+</html>

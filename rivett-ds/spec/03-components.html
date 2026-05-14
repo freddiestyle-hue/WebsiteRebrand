@@ -1,0 +1,679 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Rivett · 03 Components</title>
+<link rel="stylesheet" href="tokens.css" />
+<style>
+  /* ----- Demo wrapper ----- */
+  .demo {
+    padding: var(--sp-10); background: var(--paper-2);
+    border: var(--bw-hair) solid var(--line); margin-bottom: var(--sp-3);
+  }
+  .demo--ink { background: var(--ink); color: var(--on-ink); }
+  .demo--sage { background: var(--sage); }
+  .demo--paper { background: var(--paper); }
+  .demo .caption {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono);
+    text-transform: uppercase; color: var(--ink-faint); margin-bottom: var(--sp-5);
+  }
+  .demo--ink .caption { color: var(--on-ink-faint); }
+
+  /* ----- Buttons ----- */
+  .btn {
+    display: inline-flex; align-items: center; gap: var(--sp-3);
+    padding: 11px 18px; border: var(--bw-hair) solid var(--ink);
+    background: transparent; color: var(--ink);
+    font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono);
+    text-transform: uppercase; cursor: pointer;
+    transition: background var(--dur-1) var(--ease), color var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease);
+  }
+  .btn:hover { background: var(--ink); color: var(--on-ink); }
+  .btn--solid { background: var(--ink); color: var(--on-ink); }
+  .btn--solid:hover { background: var(--accent-deep); border-color: var(--accent-deep); }
+  .btn--inverse { background: var(--paper); color: var(--ink); border-color: var(--paper); }
+  .btn--inverse:hover { background: var(--accent); border-color: var(--accent); }
+  .btn--ghost { border-color: transparent; padding-left: 0; padding-right: 0; }
+  .btn--ghost:hover { background: transparent; color: var(--accent-deep); }
+  .btn--ghost::after { content: '→'; display: inline-block; transition: transform var(--dur-1) var(--ease); }
+  .btn--ghost:hover::after { transform: translateX(4px); }
+  .btn--lg { padding: 18px 26px; }
+  .btn--sm { padding: 7px 12px; font-size: 10px; }
+  .btn[disabled] { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
+  .btn-row { display: flex; gap: var(--sp-3); flex-wrap: wrap; align-items: center; }
+
+  /* ----- Form fields ----- */
+  .field { display: flex; flex-direction: column; gap: 6px; max-width: 420px; }
+  .field label {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono);
+    text-transform: uppercase; color: var(--ink-faint);
+  }
+  .field label .req { color: var(--accent-deep); }
+  .field .help { font-size: 13px; color: var(--ink-dim); margin-top: 2px; }
+  .field .err { font-family: var(--mono); font-size: 11px; letter-spacing: 0.04em; color: var(--signal-halt); margin-top: 2px; }
+  .input, .textarea, .select {
+    font-family: var(--grotesk); font-size: 16px; color: var(--ink);
+    border: var(--bw-hair) solid var(--ink-faint); background: var(--paper);
+    padding: 12px 14px; border-radius: 0;
+    transition: border-color var(--dur-1) var(--ease);
+  }
+  .input:hover, .textarea:hover, .select:hover { border-color: var(--ink); }
+  .input:focus, .textarea:focus, .select:focus { outline: none; border-color: var(--accent-deep); box-shadow: inset 0 -2px 0 var(--accent-deep); }
+  .textarea { min-height: 120px; resize: vertical; line-height: 1.5; }
+  .input--err { border-color: var(--signal-halt); box-shadow: inset 0 -2px 0 var(--signal-halt); }
+  .input--ok { border-color: var(--accent-deep); }
+  .select {
+    appearance: none; -webkit-appearance: none;
+    background-image: linear-gradient(45deg, transparent 50%, var(--ink) 50%), linear-gradient(135deg, var(--ink) 50%, transparent 50%);
+    background-position: calc(100% - 18px) 18px, calc(100% - 12px) 18px;
+    background-size: 6px 6px; background-repeat: no-repeat;
+    padding-right: 36px;
+  }
+
+  /* checkbox + radio */
+  .checkbox, .radio {
+    display: inline-flex; gap: 10px; align-items: flex-start; cursor: pointer;
+    font-size: 15px; line-height: 1.5;
+  }
+  .checkbox input, .radio input { position: absolute; opacity: 0; pointer-events: none; }
+  .checkbox .box, .radio .box {
+    flex-shrink: 0; width: 18px; height: 18px;
+    border: var(--bw-hair) solid var(--ink); background: var(--paper);
+    margin-top: 1px; position: relative;
+    transition: background var(--dur-1) var(--ease);
+  }
+  .radio .box { border-radius: var(--r-pill); }
+  .checkbox .box { border-radius: var(--r-sm); }
+  .checkbox input:checked + .box { background: var(--ink); }
+  .checkbox input:checked + .box::after {
+    content: ''; position: absolute; left: 4px; top: 1px;
+    width: 6px; height: 11px; border: solid var(--accent); border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+  .radio input:checked + .box::after {
+    content: ''; position: absolute; inset: 3px;
+    background: var(--accent); border-radius: var(--r-pill);
+  }
+  .checkbox input:focus-visible + .box, .radio input:focus-visible + .box {
+    outline: 2px solid var(--accent-deep); outline-offset: 2px;
+  }
+
+  /* toggle */
+  .toggle { display: inline-flex; gap: 12px; align-items: center; cursor: pointer; font-size: 15px; }
+  .toggle input { position: absolute; opacity: 0; pointer-events: none; }
+  .toggle .track {
+    width: 36px; height: 20px; background: var(--ink-soft); position: relative;
+    transition: background var(--dur-1) var(--ease);
+  }
+  .toggle .track::after {
+    content: ''; position: absolute; top: 2px; left: 2px;
+    width: 16px; height: 16px; background: var(--paper);
+    transition: transform var(--dur-1) var(--ease);
+  }
+  .toggle input:checked + .track { background: var(--accent-deep); }
+  .toggle input:checked + .track::after { transform: translateX(16px); }
+
+  /* ----- Cards ----- */
+  .card-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--sp-3); }
+  @media (max-width: 880px) { .card-row { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--paper); border: var(--bw-hair) solid var(--line);
+    padding: var(--sp-8); display: flex; flex-direction: column;
+    transition: background var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease);
+  }
+  .card:hover { border-color: var(--ink); background: var(--paper-2); }
+  .card .stamp { margin-bottom: var(--sp-6); }
+  .card h3 {
+    font-family: var(--grotesk); font-weight: 700; font-size: 26px;
+    line-height: 1.1; letter-spacing: var(--track-h-md); margin: 0 0 var(--sp-3);
+    text-wrap: balance;
+  }
+  .card h3 .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); letter-spacing: -0.02em; }
+  .card p { margin: 0; font-size: 15px; line-height: 1.55; color: var(--ink-dim); flex: 1; }
+  .card .foot {
+    margin-top: var(--sp-6); padding-top: var(--sp-4);
+    border-top: var(--bw-hair) solid var(--line);
+    font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono);
+    text-transform: uppercase; color: var(--ink-faint);
+    display: flex; justify-content: space-between;
+  }
+
+  /* ----- Table ----- */
+  table.data {
+    width: 100%; border-collapse: collapse;
+    font-family: var(--grotesk); font-size: 14.5px;
+  }
+  table.data thead th {
+    text-align: left; padding: var(--sp-4) var(--sp-5);
+    background: var(--paper-3); color: var(--ink);
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono);
+    text-transform: uppercase; font-weight: 400;
+    border-bottom: var(--bw-rule) solid var(--ink);
+  }
+  table.data thead th.num { text-align: right; }
+  table.data tbody td {
+    padding: var(--sp-4) var(--sp-5);
+    border-bottom: var(--bw-hair) solid var(--line);
+    vertical-align: top;
+  }
+  table.data tbody td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  table.data tbody tr:hover { background: var(--paper-2); }
+  table.data tbody td .stamp { font-size: 10px; }
+
+  /* ----- FAQ accordion ----- */
+  .faq { border-top: var(--bw-hair) solid var(--line); }
+  .faq details {
+    border-bottom: var(--bw-hair) solid var(--line); padding: var(--sp-5) 0;
+  }
+  .faq summary {
+    list-style: none; cursor: pointer;
+    display: grid; grid-template-columns: 36px 1fr 24px; align-items: baseline;
+    gap: var(--sp-3);
+    font-family: var(--grotesk); font-weight: 600; font-size: 19px;
+    letter-spacing: var(--track-h-sm); line-height: 1.35; color: var(--ink);
+  }
+  .faq summary::-webkit-details-marker { display: none; }
+  .faq summary .num {
+    font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono);
+    color: var(--ink-faint); padding-top: 5px;
+  }
+  .faq summary .marker {
+    font-family: var(--mono); font-size: 18px; color: var(--accent-deep);
+    transition: transform var(--dur-2) var(--ease);
+    transform-origin: center;
+    display: inline-block; line-height: 1; text-align: right;
+  }
+  .faq details[open] summary .marker { transform: rotate(45deg); }
+  .faq .answer {
+    padding: var(--sp-4) 36px 0 calc(36px + var(--sp-3));
+    font-size: 16px; line-height: 1.65; color: var(--ink-dim); max-width: 640px;
+  }
+  .faq .answer p { margin: 0; }
+
+  /* ----- Tabs ----- */
+  .tabs-bar { display: flex; gap: 0; border-bottom: var(--bw-hair) solid var(--line); }
+  .tabs-bar .tab {
+    padding: 14px 20px; font-family: var(--mono); font-size: 11px;
+    letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint);
+    cursor: pointer; border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+  }
+  .tabs-bar .tab.active { color: var(--ink); border-bottom-color: var(--ink); }
+  .tabs-bar .tab:hover:not(.active) { color: var(--ink); }
+  .tabs-panel { padding: var(--sp-7) 0; font-size: 16px; line-height: 1.65; color: var(--ink-dim); max-width: 640px; }
+
+  /* ----- Tag ----- */
+  .tag {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; background: var(--paper-2); border: var(--bw-hair) solid var(--line);
+    border-radius: var(--r-sm);
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono-tight);
+    text-transform: uppercase; color: var(--ink-dim);
+  }
+  .tag--accent { color: var(--accent-deep); border-color: var(--accent-deep); background: var(--accent-bg); }
+  .tag--ink { background: var(--ink); color: var(--on-ink); border-color: var(--ink); }
+
+  /* ----- Banner ----- */
+  .banner {
+    padding: var(--sp-5) var(--sp-7); background: var(--paper-2);
+    border-left: 3px solid var(--accent-deep);
+    display: grid; grid-template-columns: auto 1fr auto; gap: var(--sp-5); align-items: center;
+  }
+  .banner.warn { border-left-color: var(--signal-warn); }
+  .banner.halt { border-left-color: var(--signal-halt); }
+  .banner .lbl {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono);
+    text-transform: uppercase; color: var(--accent-deep); white-space: nowrap;
+  }
+  .banner.warn .lbl { color: var(--signal-warn); }
+  .banner.halt .lbl { color: var(--signal-halt); }
+  .banner p { margin: 0; font-size: 15px; color: var(--ink); line-height: 1.5; }
+
+  /* ----- Modal preview (static) ----- */
+  .modal-preview {
+    position: relative; padding: var(--sp-12) var(--sp-8);
+    background: rgba(14,26,44,0.45); border: var(--bw-hair) solid var(--line);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .modal {
+    background: var(--paper); width: 100%; max-width: 480px;
+    padding: var(--sp-10); box-shadow: var(--shadow-2);
+    border: var(--bw-hair) solid var(--ink);
+  }
+  .modal h3 {
+    font-family: var(--grotesk); font-weight: 700; font-size: 26px;
+    letter-spacing: var(--track-h-md); margin: var(--sp-4) 0;
+    text-wrap: balance;
+  }
+  .modal h3 .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); }
+  .modal p { font-size: 15px; line-height: 1.55; color: var(--ink-dim); margin: 0 0 var(--sp-7); }
+
+  /* ----- Pagination ----- */
+  .pager { display: flex; gap: var(--sp-2); align-items: center; }
+  .pager a {
+    width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;
+    font-family: var(--mono); font-size: 12px; color: var(--ink-dim);
+    border: var(--bw-hair) solid var(--line);
+  }
+  .pager a:hover { border-color: var(--ink); color: var(--ink); }
+  .pager a.active { background: var(--ink); color: var(--on-ink); border-color: var(--ink); }
+  .pager .gap { font-family: var(--mono); font-size: 12px; color: var(--ink-faint); padding: 0 6px; }
+
+  /* ----- Breadcrumb ----- */
+  .crumbs { display: flex; gap: var(--sp-3); align-items: center; font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); }
+  .crumbs a:hover { color: var(--accent-deep); }
+  .crumbs .sep { color: var(--ink-faint); }
+  .crumbs b { color: var(--ink); font-weight: 500; }
+
+  /* ----- Toast ----- */
+  .toast {
+    background: var(--ink); color: var(--on-ink);
+    padding: var(--sp-4) var(--sp-6); display: inline-flex; gap: var(--sp-4); align-items: center;
+    border-left: 3px solid var(--accent);
+    max-width: 420px; font-size: 14px; line-height: 1.4;
+  }
+  .toast .lbl {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono);
+    text-transform: uppercase; color: var(--accent);
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <nav class="system-nav">
+    <a href="Design System.html" class="wordmark">rivett<span class="dot-mark"></span></a>
+    <div class="meta">
+      <a href="02-identity.html"><b>← 02 Identity</b></a>
+      <span>03 / 09</span>
+      <a href="04-patterns.html"><b>04 Patterns →</b></a>
+    </div>
+  </nav>
+
+  <div class="system-bread">
+    <a href="Design System.html">Design system</a><span class="sep">/</span><b>03 Components</b>
+  </div>
+
+  <header class="hub-hero" style="padding: var(--sp-16) 0 var(--sp-14); border-bottom: var(--bw-hair) solid var(--line-strong);">
+    <span class="stamp">Section 03 · The primitive library</span>
+    <h1 style="font-family: var(--grotesk); font-weight: 800; font-size: clamp(56px, 8vw, 112px); line-height: 0.92; letter-spacing: var(--track-display); margin: var(--sp-8) 0 0; text-wrap: balance;">Components. <span class="ital">Fifteen, no more.</span></h1>
+    <p class="dek" style="font-family: var(--serif); font-style: italic; font-size: clamp(22px, 2.4vw, 28px); line-height: 1.4; margin: var(--sp-8) 0 0; max-width: 780px; color: var(--ink-dim); text-wrap: pretty;">Every UI primitive in the system. Three buttons, six form controls, one card, one table, one FAQ, one modal, one banner, plus tag, tabs, pagination, breadcrumbs, toast. Compose, don't fork.</p>
+  </header>
+
+  <!-- ===== Buttons ===== -->
+  <section class="spec" id="buttons">
+    <div class="label">03 · 1
+      <span class="num">Buttons</span>
+    </div>
+    <div class="body">
+      <h2>Three buttons. <span class="ital">Never four.</span></h2>
+      <p class="lede">Primary is solid ink with an accent-deep hover. Secondary is the outline. Ghost is the text-only crumb with the trailing arrow. Inverse is what each becomes on dark. Two sizes — default and lg.</p>
+
+      <div class="demo">
+        <span class="caption">01 · Primary — solid ink</span>
+        <div class="btn-row">
+          <a class="btn btn--solid btn--sm">Book diagnostic →</a>
+          <a class="btn btn--solid">Book diagnostic →</a>
+          <a class="btn btn--solid btn--lg">Book diagnostic →</a>
+          <a class="btn btn--solid" disabled>Awaiting reply</a>
+        </div>
+      </div>
+
+      <div class="demo">
+        <span class="caption">02 · Secondary — outline</span>
+        <div class="btn-row">
+          <a class="btn btn--sm">Read field notes</a>
+          <a class="btn">Read more field notes</a>
+          <a class="btn btn--lg">Read the full case study</a>
+        </div>
+      </div>
+
+      <div class="demo">
+        <span class="caption">03 · Ghost — text crumb</span>
+        <div class="btn-row">
+          <a class="btn btn--ghost">Skip to content</a>
+          <a class="btn btn--ghost">All field notes</a>
+        </div>
+      </div>
+
+      <div class="demo demo--ink">
+        <span class="caption">Inverse — primary on dark</span>
+        <div class="btn-row">
+          <a class="btn btn--inverse">Book diagnostic →</a>
+          <a class="btn btn--inverse btn--lg">Book diagnostic →</a>
+        </div>
+      </div>
+
+      <h3>Anatomy</h3>
+      <ul style="font-family: var(--grotesk); font-size: 15px; line-height: 1.7; padding-left: 20px; max-width: 680px;">
+        <li>Padding: <code>11/18</code> default, <code>18/26</code> lg, <code>7/12</code> sm.</li>
+        <li>Type: <code>--mono</code> 11px, <code>0.22em</code> tracked, uppercase.</li>
+        <li>Border: 1px ink. Never coloured. Never thicker.</li>
+        <li>Hover: 120ms colour swap to ink fill (or accent-deep on primary).</li>
+        <li>Trailing arrow <code>→</code> only for forward intent. Never on declines or destructive actions.</li>
+        <li>Disabled: 0.4 opacity, no events, copy may swap to a status string ("Awaiting reply").</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ===== Form fields ===== -->
+  <section class="spec" id="forms">
+    <div class="label">03 · 2
+      <span class="num">Forms</span>
+    </div>
+    <div class="body">
+      <h2>Six controls. <span class="ital">Square, hairline, ink.</span></h2>
+      <p class="lede">Inputs are 1-pixel hairline ink-faint until hover. On focus the bottom edge becomes a 2-pixel accent-deep underscore. The label is mono uppercase above. Errors are mono red below.</p>
+
+      <div class="demo demo--paper">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-6);">
+          <div class="field">
+            <label for="i1">Name <span class="req">·</span></label>
+            <input id="i1" class="input" placeholder="Tom Rivett" />
+            <span class="help">First name and last name. No title.</span>
+          </div>
+          <div class="field">
+            <label for="i2">Email</label>
+            <input id="i2" class="input input--ok" value="tom@rivett.tech" />
+          </div>
+          <div class="field">
+            <label for="i3">Monthly revenue</label>
+            <input id="i3" class="input input--err" value="—" />
+            <span class="err">FIELD REQUIRED · ROUND TO £1,000</span>
+          </div>
+          <div class="field">
+            <label for="s1">Stage</label>
+            <select id="s1" class="select">
+              <option>Pre-revenue</option>
+              <option>£0 — £10k / mo</option>
+              <option>£10k — £50k / mo</option>
+              <option>£50k+ / mo</option>
+            </select>
+          </div>
+          <div class="field" style="grid-column: span 2;">
+            <label for="t1">What is the question</label>
+            <textarea id="t1" class="textarea" placeholder="One paragraph. Numbers if you have them."></textarea>
+            <span class="help">Plain language. The diagnostic decides everything else.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="demo demo--paper">
+        <span class="caption">Selectors — checkbox, radio, toggle</span>
+        <div style="display: flex; flex-direction: column; gap: var(--sp-5);">
+          <label class="checkbox">
+            <input type="checkbox" checked />
+            <span class="box"></span>
+            <span>Send me one field note per fortnight. <span style="color: var(--ink-faint);">No more.</span></span>
+          </label>
+          <label class="checkbox">
+            <input type="checkbox" />
+            <span class="box"></span>
+            <span>I have already run a diagnostic.</span>
+          </label>
+
+          <div style="display: flex; gap: var(--sp-7); flex-wrap: wrap;">
+            <label class="radio">
+              <input type="radio" name="r" checked />
+              <span class="box"></span>
+              <span>Diagnostic</span>
+            </label>
+            <label class="radio">
+              <input type="radio" name="r" />
+              <span class="box"></span>
+              <span>Build</span>
+            </label>
+            <label class="radio">
+              <input type="radio" name="r" />
+              <span class="box"></span>
+              <span>Run</span>
+            </label>
+          </div>
+
+          <label class="toggle">
+            <input type="checkbox" checked />
+            <span class="track"></span>
+            <span>Tabular numbers in tables</span>
+          </label>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Cards ===== -->
+  <section class="spec" id="cards">
+    <div class="label">03 · 3
+      <span class="num">Cards</span>
+    </div>
+    <div class="body">
+      <h2>One card. <span class="ital">Stamp, headline, lede, foot.</span></h2>
+      <p class="lede">There is one card. Module card, blog card, audience card, case study card — same component, different copy. Border hairline, no shadow, no radius. The hover state lifts the border to ink and tints the surface to paper-2.</p>
+
+      <div class="card-row">
+        <a class="card">
+          <span class="stamp">Module · 01 · Diagnostic</span>
+          <h3>Two weeks. <span class="ital">Senior eyes on your funnel.</span></h3>
+          <p>One diagnostic, one document, one decision. Senior operator-level analysis of your funnel, your spend, and the next ninety days.</p>
+          <div class="foot"><span>£4,000</span><span>02 wks →</span></div>
+        </a>
+        <a class="card">
+          <span class="stamp">Field note · 04</span>
+          <h3>Cadence over volume.</h3>
+          <p>Why shipping less but instrumented beats shipping more. The fortnightly read-out, the green-light decision, and the budget that follows.</p>
+          <div class="foot"><span>2025·09 · 7 min</span><span>Read →</span></div>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Tables ===== -->
+  <section class="spec" id="tables">
+    <div class="label">03 · 4
+      <span class="num">Tables</span>
+    </div>
+    <div class="body">
+      <h2>Hairline rows, <span class="ital">tabular numbers, mono head.</span></h2>
+      <p class="lede">Tables read like a spec sheet. Mono uppercase header on paper-3. Body is Inter Tight 14.5. Numerics right-align with tabular figures. Hover swaps row to paper-2. No alternating-row stripes. No vertical dividers.</p>
+
+      <div class="demo demo--paper">
+        <table class="data">
+          <thead>
+            <tr>
+              <th>Module</th>
+              <th>Outcome</th>
+              <th class="num">Spend</th>
+              <th class="num">First read</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>01 · Diagnostic</td>
+              <td>One document, one decision</td>
+              <td class="num">£4,000</td>
+              <td class="num">14 days</td>
+              <td><span class="stamp">Open</span></td>
+            </tr>
+            <tr>
+              <td>02 · Build</td>
+              <td>Stack, instrumentation, first ten experiments</td>
+              <td class="num">£18,000</td>
+              <td class="num">28 days</td>
+              <td><span class="stamp stamp--neutral">Waitlist</span></td>
+            </tr>
+            <tr>
+              <td>03 · Run</td>
+              <td>Fortnightly read-out, monthly decision memo</td>
+              <td class="num">£12,000<span style="font-family: var(--serif); font-style: italic; color: var(--ink-dim);"> / mo</span></td>
+              <td class="num">14 days</td>
+              <td><span class="stamp">Open</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== FAQ ===== -->
+  <section class="spec" id="faq">
+    <div class="label">03 · 5
+      <span class="num">FAQ</span>
+    </div>
+    <div class="body">
+      <h2>Plus rotates to ×, <span class="ital">200ms.</span></h2>
+      <p class="lede">The FAQ accordion is the only allowed expand-collapse component. Plus marker rotates 45° to a cross. Question is Inter Tight 600 19px; answer is 16/1.65 in ink-dim. Always numbered.</p>
+
+      <div class="demo demo--paper">
+        <div class="faq">
+          <details open>
+            <summary><span class="num">Q · 01</span><span>What does a diagnostic actually look like?</span><span class="marker">+</span></summary>
+            <div class="answer"><p>Two weeks. Two senior calls. A document at the end. Specific numbers, specific actions, the next ninety days. £4k. No retainer required to start.</p></div>
+          </details>
+          <details>
+            <summary><span class="num">Q · 02</span><span>Do you only work with venture-backed companies?</span><span class="marker">+</span></summary>
+            <div class="answer"><p>No. The work is the same — bootstrapped, sponsored, or backed. The only filter is whether the numbers are live and whether the team can absorb a fortnightly read-out.</p></div>
+          </details>
+          <details>
+            <summary><span class="num">Q · 03</span><span>Will you sign an NDA before the diagnostic?</span><span class="marker">+</span></summary>
+            <div class="answer"><p>Yes. The NDA is mutual and pre-printed. It takes ninety seconds.</p></div>
+          </details>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Tabs ===== -->
+  <section class="spec" id="tabs">
+    <div class="label">03 · 6
+      <span class="num">Tabs</span>
+    </div>
+    <div class="body">
+      <h2>Mono labels, <span class="ital">2-pixel rule under the active.</span></h2>
+      <p class="lede">Tabs are flat. No pill. No background fill. The active tab carries a 2-pixel ink rule on its bottom edge, sharing the hairline with the bar.</p>
+
+      <div class="demo demo--paper">
+        <div class="tabs-bar">
+          <span class="tab active">01 · Diagnostic</span>
+          <span class="tab">02 · Build</span>
+          <span class="tab">03 · Run</span>
+        </div>
+        <div class="tabs-panel">
+          <p>Two weeks. Two senior calls. A document at the end. Specific numbers, specific actions, the next ninety days.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Tags + Banners + Toast ===== -->
+  <section class="spec" id="surfaces">
+    <div class="label">03 · 7
+      <span class="num">Tags · banners · toasts</span>
+    </div>
+    <div class="body">
+      <h2>Three signal surfaces, <span class="ital">used sparingly.</span></h2>
+      <p class="lede">Tag is for taxonomy. Banner is for page-level context. Toast is for transient confirmation. Toasts auto-dismiss in 4 seconds and never stack.</p>
+
+      <h3>Tags</h3>
+      <div class="demo demo--paper">
+        <div style="display: flex; gap: var(--sp-3); flex-wrap: wrap;">
+          <span class="tag">Field note</span>
+          <span class="tag tag--accent">New · 2025·11</span>
+          <span class="tag">Cadence · 04</span>
+          <span class="tag tag--ink">NDA · case study</span>
+          <span class="tag">Stack · pipelines</span>
+        </div>
+      </div>
+
+      <h3>Banners</h3>
+      <div class="demo demo--paper" style="display: flex; flex-direction: column; gap: var(--sp-3);">
+        <div class="banner">
+          <span class="lbl">Note</span>
+          <p>The diagnostic calendar is open through 2026·07. Two weeks per slot.</p>
+          <a class="btn btn--sm btn--solid">Book →</a>
+        </div>
+        <div class="banner warn">
+          <span class="lbl">Heads up</span>
+          <p>This essay was written before the v0.2 token migration. Some references are stale.</p>
+          <span></span>
+        </div>
+        <div class="banner halt">
+          <span class="lbl">Halted</span>
+          <p>The Build module is closed for new bookings until 2026·10.</p>
+          <span></span>
+        </div>
+      </div>
+
+      <h3>Toast</h3>
+      <div class="demo demo--paper">
+        <div class="toast">
+          <span class="lbl">Saved</span>
+          <span>Diagnostic intake submitted. You'll hear back inside 48 hours.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Modal ===== -->
+  <section class="spec" id="modal">
+    <div class="label">03 · 8
+      <span class="num">Modal</span>
+    </div>
+    <div class="body">
+      <h2>One modal pattern. <span class="ital">Centre, paper, hairline.</span></h2>
+      <p class="lede">Used for the diagnostic intake confirmation and for full-bleed image viewers. 480px max width. 32px padding. The modal is the only component allowed an elevation shadow (<code>--shadow-2</code>).</p>
+
+      <div class="modal-preview">
+        <div class="modal">
+          <span class="stamp">Diagnostic · 02 wks</span>
+          <h3>Confirm the slot. <span class="ital">You'll hear back inside 48 hours.</span></h3>
+          <p>Tom reads every intake personally. If the question doesn't fit a diagnostic, you'll get a recommendation, not a sales call.</p>
+          <div class="btn-row">
+            <a class="btn btn--solid">Confirm →</a>
+            <a class="btn btn--ghost">Cancel</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Pagination + Crumbs ===== -->
+  <section class="spec" id="navchrome" style="border-bottom: 0;">
+    <div class="label">03 · 9
+      <span class="num">Nav chrome</span>
+    </div>
+    <div class="body">
+      <h2>Pagination, breadcrumbs, <span class="ital">in mono.</span></h2>
+      <p class="lede">Pagination is hairline boxes 32px square. Breadcrumb is mono / / mono. Both are typography, not buttons.</p>
+
+      <div class="demo demo--paper" style="display: flex; flex-direction: column; gap: var(--sp-7);">
+        <div class="pager">
+          <a>←</a>
+          <a class="active">01</a>
+          <a>02</a>
+          <a>03</a>
+          <span class="gap">…</span>
+          <a>09</a>
+          <a>→</a>
+        </div>
+
+        <div class="crumbs">
+          <a>rivett</a>
+          <span class="sep">/</span>
+          <a>field notes</a>
+          <span class="sep">/</span>
+          <b>cadence over volume</b>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="system-foot">
+    <a class="wordmark wordmark--sm" href="Design System.html">rivett<span class="dot-mark"></span></a>
+    <span>03 Components · v1.0</span>
+    <a href="04-patterns.html"><b>Next · 04 Patterns →</b></a>
+  </footer>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Type · Body scale</title>
+<link rel="stylesheet" href="_card.css" />
+<style>
+
+  .stack { display: flex; flex-direction: column; gap: 0; }
+  .row { display: grid; grid-template-columns: 90px 1fr; gap: 16px; align-items: baseline; padding: 9px 0; border-bottom: var(--bw-hair) solid var(--line); }
+  .row:last-child { border-bottom: 0; }
+  .row .lbl { font-family: var(--mono); font-size: 10px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); }
+  .body-xl { font-size: 19px; line-height: 1.55; }
+  .body { font-size: 16px; line-height: 1.55; }
+  .body-md { font-size: 15px; line-height: 1.55; color: var(--ink-dim); }
+  .body-sm { font-size: 13.5px; line-height: 1.5; color: var(--ink-dim); }
+  .meta { font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); }
+  .caption { font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); }
+
+</style>
+</head>
+<body>
+
+<div class="stack">
+  <div class="row"><span class="lbl">body · xl</span><span class="body-xl">19px · feature paragraphs, pull-outs.</span></div>
+  <div class="row"><span class="lbl">body</span><span class="body">16px · default body copy, the page's voice.</span></div>
+  <div class="row"><span class="lbl">body · md</span><span class="body-md">15px · card lede, supporting copy.</span></div>
+  <div class="row"><span class="lbl">body · sm</span><span class="body-sm">13.5px · tables, dense lists. Hard floor.</span></div>
+  <div class="row"><span class="lbl">meta</span><span class="meta">META · 11PX MONO · 0.22EM</span></div>
+  <div class="row"><span class="lbl">caption</span><span class="caption">CAPTION · 10.5PX MONO</span></div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Wordmark · rivett·</title>
+<link rel="stylesheet" href="_card.css"/><style>
+  .stack { display: flex; flex-direction: column; gap: 12px; }
+  .row { display: flex; align-items: center; gap: 28px; padding: 18px 20px; border: var(--bw-hair) solid var(--line); }
+  .row.dark { background: var(--ink); }
+  .wm { display: inline-flex; align-items: center; gap: 0.1em; font-family: var(--grotesk); font-weight: 700; letter-spacing: -0.05em; line-height: 1; color: var(--ink); }
+  .wm .dot { display: inline-block; width: 0.32em; height: 0.32em; border-radius: var(--r-pill); background: var(--accent); transform: translateY(0.04em); }
+  .row.dark .wm { color: var(--on-ink); }
+  .lg { font-size: 56px; }
+  .md { font-size: 28px; }
+  .sm { font-size: 16px; }
+  .lbl { font-family: var(--mono); font-size: 10px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); margin-left: auto; }
+  .row.dark .lbl { color: var(--on-ink-faint); }
+</style></head><body>
+<div class="stack">
+  <div class="row">
+    <span class="wm lg">rivett<span class="dot"></span></span>
+    <span class="lbl">primary · 56 / 0px</span>
+  </div>
+  <div class="row">
+    <span class="wm md">rivett<span class="dot"></span></span>
+    <span class="lbl">nav · 28 / 0px</span>
+  </div>
+  <div class="row dark">
+    <span class="wm sm">rivett<span class="dot"></span></span>
+    <span class="lbl">footer · 16 / on ink</span>
+  </div>
+</div>
+</body></html>

@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Ink steps</title>
+<link rel="stylesheet" href="_card.css" />
+<style>
+
+  .swatch-row { display: grid; grid-template-columns: repeat(5, 1fr); border: var(--bw-hair) solid var(--line); }
+  .sw { padding: 14px 14px 12px; border-right: var(--bw-hair) solid var(--line); min-height: 110px; display: flex; flex-direction: column; justify-content: space-between; color: var(--on-ink); }
+  .sw:last-child { border-right: 0; }
+  .sw .k { font-family: var(--mono); font-size: 9.5px; letter-spacing: var(--track-mono); text-transform: uppercase; opacity: 0.7; }
+  .sw .hex { font-family: var(--mono); font-size: 11px; margin-top: auto; }
+  .sw.light { color: var(--ink); }
+  .sw.light .k { color: var(--ink-faint); opacity: 1; }
+
+</style>
+</head>
+<body>
+
+<div class="swatch-row">
+  <div class="sw" style="background: var(--ink);"><span class="k">ink</span><span class="hex">#0E1A2C</span></div>
+  <div class="sw" style="background: var(--ink-2);"><span class="k">ink · 2</span><span class="hex">#1B2940</span></div>
+  <div class="sw" style="background: var(--ink-dim);"><span class="k">ink-dim</span><span class="hex">#3A4658</span></div>
+  <div class="sw" style="background: var(--ink-faint);"><span class="k">ink-faint</span><span class="hex">#7A8597</span></div>
+  <div class="sw light" style="background: var(--ink-soft);"><span class="k">ink-soft</span><span class="hex">#B6BCC6</span></div>
+</div>
+
+</body>
+</html>

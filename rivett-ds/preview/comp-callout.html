@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Sage callout / migration banner</title>
+<link rel="stylesheet" href="_card.css"/><style>
+  .stack { display: flex; flex-direction: column; gap: 10px; }
+  .callout { padding: 14px 18px; background: var(--accent-bg); border-left: var(--bw-thick) solid var(--accent-deep); display: grid; grid-template-columns: 1fr auto; gap: 18px; align-items: center; }
+  .callout .body { font-size: 13.5px; line-height: 1.5; color: var(--ink); }
+  .callout .body .ital { font-family: var(--serif); font-style: italic; color: var(--ink-dim); }
+  .callout .body b { font-weight: 600; }
+  .callout .cta { font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--accent-deep); }
+  .banner { padding: 10px 16px; background: var(--paper-2); border-bottom: var(--bw-hair) solid var(--line); display: flex; justify-content: space-between; align-items: center; gap: 14px; }
+  .banner .lbl { font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); }
+  .banner .lbl b { color: var(--ink); font-weight: 500; }
+  .banner .cta { font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--accent-deep); }
+</style></head><body>
+<div class="stack">
+  <div class="banner">
+    <span class="lbl">System banner &middot; <b>v1.0 is canonical</b> &middot; supersedes v0.2</span>
+    <a class="cta">Read changelog &rarr;</a>
+  </div>
+  <div class="callout">
+    <div class="body">
+      <b>This page is a system page.</b> <span class="ital">The system wins; the page is wrong.</span> Every value routes through a token in tokens.css &mdash; nothing is hand-set.
+    </div>
+    <a class="cta">design.md &rarr;</a>
+  </div>
+</div>
+</body></html>

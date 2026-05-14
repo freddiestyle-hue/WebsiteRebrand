@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Field notes · Rivett</title>
+<link rel="icon" type="image/svg+xml" href="../../assets/rivet-b1.svg" />
+<link rel="stylesheet" href="../../tokens.css" />
+<style>
+  /* shared chrome — copies the kit.css pattern but inlined per-page */
+  body { background: var(--paper); margin: 0; }
+  .page { max-width: var(--page-max); margin: 0 auto; padding: 0 var(--page-pad); }
+  @media (max-width: 780px) { .page { padding: 0 var(--page-pad-sm); } }
+  .site-nav { display: flex; justify-content: space-between; align-items: center; padding: var(--sp-7) 0; border-bottom: var(--bw-hair) solid var(--line); flex-wrap: wrap; gap: var(--sp-4); }
+  .wm { display: inline-flex; align-items: center; gap: 0.1em; font-family: var(--grotesk); font-weight: 700; font-size: 28px; letter-spacing: -0.05em; line-height: 1; color: var(--ink); text-decoration: none; }
+  .wm .dot { display: inline-block; width: 0.32em; height: 0.32em; background: var(--accent); border-radius: var(--r-pill); transform: translateY(0.04em); }
+  .site-nav .links { display: flex; gap: var(--sp-8); font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); }
+  .site-nav .links a { color: inherit; text-decoration: none; transition: color var(--dur-1) var(--ease); }
+  .site-nav .links a:hover, .site-nav .links a.active { color: var(--ink); }
+  .cta-pri { display: inline-flex; align-items: center; gap: var(--sp-3); padding: 9px 14px; background: var(--ink); color: var(--on-ink); font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; text-decoration: none; }
+  .cta-pri:hover { background: var(--accent-deep); }
+  .stamp { display: inline-flex; align-items: center; font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--accent-deep); }
+  .stamp::before { content: ''; display: inline-block; width: 8px; height: 8px; background: var(--accent); border-radius: var(--r-pill); margin-right: 12px; flex-shrink: 0; }
+  .stamp.neutral { color: var(--ink-faint); }
+  .stamp.neutral::before { background: var(--ink-faint); }
+  .stamp.on-ink { color: var(--on-ink-faint); }
+
+  /* site footer */
+  .site-foot { background: var(--ink); color: var(--on-ink); padding: var(--sp-14) 0 var(--sp-7); margin-top: var(--sp-14); }
+  .site-foot .row { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: var(--sp-10); }
+  @media (max-width: 880px) { .site-foot .row { grid-template-columns: 1fr 1fr; gap: var(--sp-7); } }
+  .site-foot .word { font-family: var(--grotesk); font-weight: 700; font-size: 28px; letter-spacing: -0.05em; color: var(--on-ink); }
+  .site-foot .word .dot { display: inline-block; width: 0.32em; height: 0.32em; background: var(--accent); border-radius: var(--r-pill); transform: translateY(0.04em); }
+  .site-foot .col-h { font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--on-ink-faint); margin-bottom: var(--sp-4); display: block; }
+  .site-foot .col a { display: block; padding: 4px 0; font-family: var(--mono); font-size: 12px; color: var(--on-ink); text-decoration: none; }
+  .site-foot .col a:hover { color: var(--accent); }
+  .site-foot .bot { margin-top: var(--sp-12); padding-top: var(--sp-6); border-top: var(--bw-hair) solid var(--on-ink-line); display: flex; justify-content: space-between; font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--on-ink-faint); flex-wrap: wrap; gap: var(--sp-3); }
+
+  /* end CTA */
+  .end-cta { background: var(--ink); color: var(--on-ink); padding: var(--sp-14) var(--sp-12); display: grid; grid-template-columns: 1.4fr 1fr; gap: 64px; align-items: center; }
+  @media (max-width: 880px) { .end-cta { grid-template-columns: 1fr; gap: var(--sp-8); padding: var(--sp-10); } }
+  .end-cta h3 { font-family: var(--grotesk); font-weight: 700; font-size: clamp(28px, 3.6vw, 44px); line-height: 1.04; letter-spacing: -0.04em; margin: 0; color: var(--on-ink); text-wrap: balance; }
+  .end-cta h3 .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--on-ink-italic); letter-spacing: -0.02em; }
+  .end-cta .right { display: flex; flex-direction: column; gap: 18px; align-items: flex-start; }
+  .end-cta p { color: var(--on-ink-dim); margin: 0; font-size: 16px; line-height: 1.55; max-width: 360px; }
+  .btn-inv { display: inline-flex; padding: 14px 22px; background: var(--paper); color: var(--ink); font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; text-decoration: none; }
+  .btn-inv:hover { background: var(--accent); }
+
+
+  .blog-head { padding: var(--sp-16) 0 var(--sp-12); border-bottom: var(--bw-hair) solid var(--line-strong); }
+  .blog-head h1 { font-family: var(--grotesk); font-weight: 800; font-size: clamp(56px, 8vw, 108px); line-height: 0.92; letter-spacing: var(--track-display); margin: var(--sp-7) 0 0; text-wrap: balance; max-width: 1100px; }
+  .blog-head h1 .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); letter-spacing: -0.02em; }
+  .blog-head .dek { font-family: var(--serif); font-style: italic; font-size: clamp(22px, 2.4vw, 28px); line-height: 1.4; color: var(--ink-dim); margin: var(--sp-8) 0 var(--sp-8); max-width: 780px; }
+
+  .filters { display: flex; gap: var(--sp-7); margin: var(--sp-8) 0 0; padding-top: var(--sp-7); border-top: var(--bw-hair) solid var(--line); flex-wrap: wrap; }
+  .filters a { font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); padding: 4px 0; border-bottom: 2px solid transparent; text-decoration: none; cursor: pointer; transition: color var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease); }
+  .filters a:hover { color: var(--ink); }
+  .filters a.active { color: var(--ink); border-color: var(--ink); }
+  .filters a .count { color: var(--ink-faint); margin-left: 6px; }
+
+  /* featured note */
+  .featured { padding: var(--sp-12) 0 var(--sp-10); border-bottom: var(--bw-hair) solid var(--line-strong); display: grid; grid-template-columns: 240px 1fr; gap: 64px; }
+  @media (max-width: 980px) { .featured { grid-template-columns: 1fr; gap: var(--sp-5); } }
+  .featured .lbl { font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); align-self: start; position: sticky; top: var(--sp-8); }
+  .featured .body { min-width: 0; }
+  .featured h2 { font-family: var(--grotesk); font-weight: 800; font-size: clamp(40px, 5.2vw, 64px); line-height: 0.95; letter-spacing: var(--track-display); margin: var(--sp-3) 0 var(--sp-6); text-wrap: balance; }
+  .featured h2 .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); letter-spacing: -0.02em; }
+  .featured .lede { font-family: var(--serif); font-style: italic; font-size: 22px; line-height: 1.4; color: var(--ink-dim); margin: 0 0 var(--sp-7); max-width: 640px; }
+  .featured .meta { display: flex; gap: var(--sp-7); font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); }
+  .featured .meta a { color: var(--accent-deep); text-decoration: none; }
+  .featured .meta a:hover { color: var(--ink); }
+
+  /* notes grid */
+  .notes { padding: var(--sp-12) 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; border: var(--bw-hair) solid var(--line); border-left: 0; border-right: 0; }
+  @media (max-width: 880px) { .notes { grid-template-columns: 1fr; } }
+  .note { padding: var(--sp-8) var(--sp-7); border-right: var(--bw-hair) solid var(--line); border-bottom: var(--bw-hair) solid var(--line); display: flex; flex-direction: column; gap: var(--sp-3); text-decoration: none; color: inherit; min-height: 240px; transition: background var(--dur-1) var(--ease); }
+  .note:nth-child(3n) { border-right: 0; }
+  .note:nth-last-child(-n+3) { border-bottom: 0; }
+  .note:hover { background: var(--paper-2); }
+  .note h4 { font-family: var(--grotesk); font-weight: 700; font-size: 24px; line-height: 1.15; letter-spacing: var(--track-h-md); margin: var(--sp-2) 0 var(--sp-2); text-wrap: balance; }
+  .note h4 .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); }
+  .note p { font-size: 14.5px; line-height: 1.55; color: var(--ink-dim); margin: 0; flex: 1; }
+  .note .meta { margin-top: var(--sp-5); padding-top: var(--sp-3); border-top: var(--bw-hair) solid var(--line); font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); display: flex; justify-content: space-between; }
+
+  .pag { padding: var(--sp-10) 0 var(--sp-14); display: flex; justify-content: space-between; font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); }
+  .pag a { color: var(--accent-deep); text-decoration: none; }
+
+</style>
+</head>
+<body>
+<div class="page">
+
+<nav class="site-nav">
+  <a href="../marketing/index.html" class="wm">rivett<span class="dot"></span></a>
+  <div class="links">
+    <a href="../marketing/index.html" class="">The work</a>
+    <a href="../blog/index.html" class="active">Field notes</a>
+    <a href="../mri/index.html" class="">Revenue MRI</a>
+    <a class="">About</a>
+  </div>
+  <a class="cta-pri" href="../diagnostic/index.html">Book diagnostic &rarr;</a>
+</nav>
+
+<header class="blog-head">
+  <span class="stamp">Field notes &middot; 06 in total</span>
+  <h1>Field notes. <span class="ital">Honest, not loud.</span></h1>
+  <p class="dek">The reading list of a senior growth practice. A note per fortnight at most &mdash; less if the fortnight didn&rsquo;t produce a clean idea worth shipping.</p>
+  <div class="filters">
+    <a class="active">All <span class="count">06</span></a>
+    <a>Cadence <span class="count">02</span></a>
+    <a>Instrumentation <span class="count">02</span></a>
+    <a>Practice <span class="count">01</span></a>
+    <a>Diagnostic <span class="count">01</span></a>
+  </div>
+</header>
+
+<section class="featured">
+  <span class="lbl">Featured &middot; 09 / 2025</span>
+  <div class="body">
+    <span class="stamp">Note &middot; 04 &middot; Cadence</span>
+    <h2>Cadence <span class="ital">over volume.</span></h2>
+    <p class="lede">Why shipping less, but instrumented, beats shipping more. The fortnightly read-out, the green-light decision, and the budget that follows. A working note for senior operators tired of "weekly check-ins".</p>
+    <div class="meta">
+      <span>2025&middot;09 &middot; 07 min</span>
+      <span>By TR</span>
+      <a href="post.html">Read the note &rarr;</a>
+    </div>
+  </div>
+</section>
+
+<section class="notes">
+
+  <a class="note" href="post.html">
+    <span class="stamp">Note &middot; 04</span>
+    <h4>Cadence <span class="ital">over volume.</span></h4>
+    <p>Why shipping less, but instrumented, beats shipping more. The fortnightly read-out and the budget that follows.</p>
+    <div class="meta"><span>2025·09 &middot; 07 min</span><span>Read &rarr;</span></div>
+  </a>
+  <a class="note" href="post.html">
+    <span class="stamp">Note &middot; 03</span>
+    <h4>The decline letter <span class="ital">earns its keep.</span></h4>
+    <p>Half the value of a senior operator is the vendor that does not get hired and the meeting that does not happen.</p>
+    <div class="meta"><span>2025·08 &middot; 05 min</span><span>Read &rarr;</span></div>
+  </a>
+  <a class="note" href="post.html">
+    <span class="stamp">Note &middot; 02</span>
+    <h4>Instrumented before clever. </h4>
+    <p>The order is non-negotiable. You cannot run a fortnightly read-out off intuition and a slack thread.</p>
+    <div class="meta"><span>2025·07 &middot; 09 min</span><span>Read &rarr;</span></div>
+  </a>
+  <a class="note" href="post.html">
+    <span class="stamp">Note &middot; 01</span>
+    <h4>A pipeline <span class="ital">is a memo.</span></h4>
+    <p>The pipe is the product. Every event is a sentence. The dashboard is the table of contents.</p>
+    <div class="meta"><span>2025·06 &middot; 11 min</span><span>Read &rarr;</span></div>
+  </a>
+  <a class="note" href="post.html">
+    <span class="stamp">Note &middot; 00</span>
+    <h4>The first read. </h4>
+    <p>How a two-week diagnostic ends with one document, one decision — and what goes in.</p>
+    <div class="meta"><span>2025·05 &middot; 06 min</span><span>Read &rarr;</span></div>
+  </a>
+  <a class="note" href="post.html">
+    <span class="stamp">Note &middot; −1</span>
+    <h4>Halt is a verb. </h4>
+    <p>Why "halt" is more useful than "stop" or "deprecate". The halt log and the halt review.</p>
+    <div class="meta"><span>2025·04 &middot; 04 min</span><span>Read &rarr;</span></div>
+  </a>
+</section>
+
+<div class="pag">
+  <span>&larr; Older</span>
+  <span>Page <b style="color:var(--ink); font-weight:500;">01</b> / 01</span>
+  <span></span>
+</div>
+
+<div class="end-cta">
+  <h3>If the read is honest, <span class="ital">the work follows.</span></h3>
+  <div class="right">
+    <span class="stamp on-ink">Two-week engagement</span>
+    <p>Field notes are the reading. The diagnostic is the meeting.</p>
+    <a class="btn-inv" href="../diagnostic/index.html">Book diagnostic &rarr;</a>
+  </div>
+</div>
+
+</div>
+
+<footer class="site-foot">
+  <div class="page">
+    <div class="row">
+      <div><span class="word">rivett<span class="dot"></span></span></div>
+      <div class="col">
+        <span class="col-h">The work</span>
+        <a>Diagnostic</a><a>Build</a><a>Run</a><a href="../mri/index.html">Revenue MRI</a>
+      </div>
+      <div class="col">
+        <span class="col-h">Field notes</span>
+        <a href="../blog/index.html">All notes</a><a>Cadence</a><a>Instrumentation</a><a>Decline</a>
+      </div>
+      <div class="col">
+        <span class="col-h">Contact</span>
+        <a>tom@rivett.tech</a><a>Calendar</a><a>NDA</a>
+      </div>
+    </div>
+    <div class="bot">
+      <span>&copy; rivett &middot; 2026</span>
+      <span>v1.0 &middot; Cape Town &amp; remote</span>
+    </div>
+  </div>
+</footer>
+</body></html>

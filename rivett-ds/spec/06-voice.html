@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Rivett · 06 Voice</title>
+<link rel="stylesheet" href="tokens.css" />
+<style>
+  .voice-grid { display: grid; grid-template-columns: 1fr 1fr; border: var(--bw-hair) solid var(--line); }
+  @media (max-width: 880px) { .voice-grid { grid-template-columns: 1fr; } }
+  .voice-col { padding: var(--sp-7); border-right: var(--bw-hair) solid var(--line); }
+  .voice-col:last-child { border-right: 0; background: var(--paper-2); }
+  .voice-col h4 { font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; margin: 0 0 var(--sp-5); }
+  .voice-col.do h4 { color: var(--accent-deep); }
+  .voice-col.dont h4 { color: var(--signal-halt); }
+  .voice-col ul { margin: 0; padding: 0; list-style: none; }
+  .voice-col li { padding: var(--sp-3) 0; border-bottom: var(--bw-hair) solid var(--line); font-size: 15px; line-height: 1.5; color: var(--ink); }
+  .voice-col li:last-child { border-bottom: 0; }
+  .voice-col li code { font-family: var(--mono); font-size: 13px; background: var(--paper-3); padding: 1px 6px; }
+  .voice-col.dont li code { background: rgba(178,31,40,0.08); color: var(--signal-halt); }
+
+  .ab { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); }
+  @media (max-width: 880px) { .ab { grid-template-columns: 1fr; } }
+  .ab .card { padding: var(--sp-7) var(--sp-8); border: var(--bw-hair) solid var(--line); }
+  .ab .card.bad { border-color: var(--signal-halt); position: relative; }
+  .ab .card.bad::before { content: '✗ AVOID'; position: absolute; top: -10px; left: var(--sp-5); background: var(--signal-halt); color: var(--on-ink); font-family: var(--mono); font-size: 10px; letter-spacing: var(--track-mono); padding: 3px 8px; }
+  .ab .card.good { border-color: var(--accent-deep); position: relative; }
+  .ab .card.good::before { content: '· DO'; position: absolute; top: -10px; left: var(--sp-5); background: var(--accent-deep); color: var(--paper); font-family: var(--mono); font-size: 10px; letter-spacing: var(--track-mono); padding: 3px 8px; }
+  .ab .card .lbl { font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); }
+  .ab .card .copy { font-family: var(--grotesk); font-size: 19px; line-height: 1.5; margin: var(--sp-4) 0 0; color: var(--ink); }
+  .ab .card .copy .ital { font-family: var(--serif); font-style: italic; color: var(--ink-dim); }
+  .ab .card.bad .copy { color: var(--ink-dim); }
+
+  .lex { display: grid; grid-template-columns: 1fr 1fr 1fr; border: var(--bw-hair) solid var(--line); }
+  @media (max-width: 880px) { .lex { grid-template-columns: 1fr; } }
+  .lex-col { padding: var(--sp-7); border-right: var(--bw-hair) solid var(--line); }
+  .lex-col:last-child { border-right: 0; }
+  .lex-col h4 { font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; margin: 0 0 var(--sp-5); color: var(--ink-faint); }
+  .lex-col ul { margin: 0; padding: 0; list-style: none; }
+  .lex-col li { padding: 6px 0; border-bottom: var(--bw-hair) solid var(--line); font-family: var(--grotesk); font-size: 15px; }
+  .lex-col li:last-child { border-bottom: 0; }
+  .lex-col.use li { color: var(--ink); }
+  .lex-col.kill li { color: var(--signal-halt); text-decoration: line-through; }
+  .lex-col.swap li { display: flex; justify-content: space-between; gap: 12px; }
+  .lex-col.swap li .from { color: var(--ink-faint); text-decoration: line-through; font-family: var(--mono); font-size: 12px; }
+  .lex-col.swap li .to { color: var(--ink); font-weight: 500; }
+
+  .micro { border: var(--bw-hair) solid var(--line); }
+  .micro-row { display: grid; grid-template-columns: 240px 1fr; padding: var(--sp-5) var(--sp-7); border-bottom: var(--bw-hair) solid var(--line); align-items: baseline; gap: var(--sp-7); }
+  .micro-row:last-child { border-bottom: 0; }
+  .micro-row .ctx { font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); }
+  .micro-row .copy { font-family: var(--grotesk); font-size: 16px; line-height: 1.5; color: var(--ink); }
+  .micro-row .copy code { font-family: var(--mono); font-size: 13px; background: var(--paper-2); padding: 2px 6px; }
+
+  .pull { padding: var(--sp-8) 0; border-top: var(--bw-hair) solid var(--ink); border-bottom: var(--bw-hair) solid var(--ink); }
+  .pull blockquote { margin: 0; font-family: var(--serif); font-style: italic; font-size: 32px; line-height: 1.25; letter-spacing: -0.02em; color: var(--ink); text-wrap: balance; }
+  .pull cite { display: block; margin-top: 18px; font-style: normal; font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); }
+</style>
+</head>
+<body><div class="page">
+  <nav class="system-nav">
+    <a href="Design System.html" class="wordmark">rivett<span class="dot-mark"></span></a>
+    <div class="meta">
+      <a href="05-templates.html"><b>← 05 Templates</b></a><span>06 / 07</span><a href="07-icons.html"><b>07 Icons →</b></a>
+    </div>
+  </nav>
+  <div class="system-bread"><a href="Design System.html">Design system</a><span class="sep">/</span><b>06 Voice</b></div>
+
+  <header class="hub-hero" style="padding: var(--sp-16) 0 var(--sp-14); border-bottom: var(--bw-hair) solid var(--line-strong);">
+    <span class="stamp">Section 06 · Words on the page</span>
+    <h1 style="font-family: var(--grotesk); font-weight: 800; font-size: clamp(56px, 8vw, 112px); line-height: 0.92; letter-spacing: var(--track-display); margin: var(--sp-8) 0 0;">A senior operator, <span class="ital">writing late at night.</span></h1>
+    <p class="dek" style="font-family: var(--serif); font-style: italic; font-size: clamp(22px, 2.4vw, 28px); line-height: 1.4; margin: var(--sp-8) 0 0; max-width: 780px; color: var(--ink-dim);">Not a marketer. Not a coach. A practitioner who has done the work, has the numbers, and is telling you the cheapest way to bend the curve. The em-dash is replaced by the period.</p>
+  </header>
+
+  <section class="spec" id="rules">
+    <div class="label">06 · 1<span class="num">Rules</span></div>
+    <div class="body">
+      <h2>Do. <span class="ital">Don't.</span></h2>
+      <p class="lede">The voice has been distilled into eighteen rules — nine to follow, nine to refuse. Read them once. Pin them to the wall. The system enforces about half automatically; the other half is on you.</p>
+      <div class="voice-grid">
+        <div class="voice-col do">
+          <h4>· Do</h4>
+          <ul>
+            <li>One idea per sentence.</li>
+            <li>Specific numbers — <code>£4k</code>, <code>14 days</code>, <code>fortnightly</code>.</li>
+            <li>Concrete verbs — <code>run</code>, <code>ship</code>, <code>instrument</code>, <code>decline</code>, <code>halt</code>.</li>
+            <li>Use the period where you wanted an em-dash.</li>
+            <li>Italic for the second clause. Never the first.</li>
+            <li>En-dash for ranges only — <code>40–60</code>, <code>D14–D30</code>.</li>
+            <li>Question marks in the FAQ. Generously.</li>
+            <li>Lowercase the wordmark — <code>rivett</code>, never <code>Rivett</code> or <code>RIVETT</code>.</li>
+            <li>Sign off with initials and a date — <code>— TR · 2025·09</code>.</li>
+          </ul>
+        </div>
+        <div class="voice-col dont">
+          <h4>· Don't</h4>
+          <ul>
+            <li>No emoji. Not in copy, not in headers, not in CTAs.</li>
+            <li>No exclamation marks except inside a quote.</li>
+            <li>No em-dashes. Use the period.</li>
+            <li>No <code>leverage</code>, <code>unlock</code>, <code>empower</code>, <code>10x</code>, <code>synergy</code>.</li>
+            <li>No <code>journey</code>, <code>solution</code>, <code>partner with</code>, <code>at scale</code>.</li>
+            <li>No question marks in headlines outside the FAQ.</li>
+            <li>No whole-sentence italic. Italic is the turn, not the statement.</li>
+            <li>No "we." Singular. The practice is one operator.</li>
+            <li>No future tense in pricing — "is", not "will be".</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="spec" id="ab">
+    <div class="label">06 · 2<span class="num">Before / after</span></div>
+    <div class="body">
+      <h2>Three rewrites. <span class="ital">Same point, half the words.</span></h2>
+      <p class="lede">The fastest way to internalize the voice. Reach for the right column. The left column is what the rest of the internet already does.</p>
+
+      <div style="display: flex; flex-direction: column; gap: var(--sp-7);">
+        <div class="ab">
+          <div class="card bad"><span class="lbl">Headline · marketing-default</span><p class="copy">Unlock 10x growth with our proven framework — partner with us to empower your team and accelerate your journey.</p></div>
+          <div class="card good"><span class="lbl">Headline · rivett</span><p class="copy">Two-week diagnostic. <span class="ital">Specific numbers, not a deck.</span></p></div>
+        </div>
+
+        <div class="ab">
+          <div class="card bad"><span class="lbl">Body · agency-default</span><p class="copy">Our team will dive deep into your data to surface key insights and identify opportunities for optimization across your entire customer journey.</p></div>
+          <div class="card good"><span class="lbl">Body · rivett</span><p class="copy">Twelve vitals, scored. One document at the end. The next ninety days stop being a guess.</p></div>
+        </div>
+
+        <div class="ab">
+          <div class="card bad"><span class="lbl">CTA · cold</span><p class="copy">Get started today!</p></div>
+          <div class="card good"><span class="lbl">CTA · rivett</span><p class="copy">Book diagnostic →</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="spec" id="lex">
+    <div class="label">06 · 3<span class="num">Lexicon</span></div>
+    <div class="body">
+      <h2>Words we use, <span class="ital">words we don't, words we swap.</span></h2>
+      <p class="lede">A short, opinionated dictionary. The "use" list earns repetition. The "kill" list is banned across the system. The "swap" list catches the drift before it hits the page.</p>
+      <div class="lex">
+        <div class="lex-col use">
+          <h4>· Use generously</h4>
+          <ul>
+            <li>diagnostic</li><li>fortnight</li><li>cadence</li><li>instrumented</li><li>halt</li><li>decline</li><li>read-out</li><li>memo</li><li>vital</li><li>signal</li><li>specific</li><li>operator</li><li>field note</li>
+          </ul>
+        </div>
+        <div class="lex-col kill">
+          <h4>· Kill on sight</h4>
+          <ul>
+            <li>leverage</li><li>unlock</li><li>empower</li><li>10x</li><li>synergy</li><li>journey</li><li>solution</li><li>game-changer</li><li>at scale</li><li>seamless</li><li>frictionless</li><li>thought leader</li><li>best-in-class</li>
+          </ul>
+        </div>
+        <div class="lex-col swap">
+          <h4>· Swap</h4>
+          <ul>
+            <li><span class="from">utilize</span><span class="to">use</span></li>
+            <li><span class="from">leverage</span><span class="to">use</span></li>
+            <li><span class="from">solution</span><span class="to">tool</span></li>
+            <li><span class="from">deliver</span><span class="to">ship</span></li>
+            <li><span class="from">journey</span><span class="to">funnel</span></li>
+            <li><span class="from">growth hack</span><span class="to">experiment</span></li>
+            <li><span class="from">strategy session</span><span class="to">call</span></li>
+            <li><span class="from">touchpoint</span><span class="to">step</span></li>
+            <li><span class="from">go-to-market</span><span class="to">how it sells</span></li>
+            <li><span class="from">north star</span><span class="to">number that matters</span></li>
+            <li><span class="from">game-changer</span><span class="to">a thing that worked</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="spec" id="micro">
+    <div class="label">06 · 4<span class="num">Microcopy</span></div>
+    <div class="body">
+      <h2>The exact strings. <span class="ital">Use these. Don't rewrite them.</span></h2>
+      <p class="lede">Every recurring string in the product, locked. Buttons, errors, confirmations, empty states, status badges. If you find yourself drafting a new one, the answer is probably already on this page.</p>
+      <div class="micro">
+        <div class="micro-row"><span class="ctx">Primary CTA</span><span class="copy"><code>Book diagnostic →</code></span></div>
+        <div class="micro-row"><span class="ctx">Secondary CTA</span><span class="copy"><code>Read field notes</code></span></div>
+        <div class="micro-row"><span class="ctx">Ghost CTA</span><span class="copy"><code>All field notes</code></span></div>
+        <div class="micro-row"><span class="ctx">MRI CTA</span><span class="copy"><code>Book the MRI →</code></span></div>
+        <div class="micro-row"><span class="ctx">Form · required</span><span class="copy"><code>FIELD REQUIRED</code> — never "this field is required please".</span></div>
+        <div class="micro-row"><span class="ctx">Form · email error</span><span class="copy"><code>EMAIL — CHECK FORMAT</code></span></div>
+        <div class="micro-row"><span class="ctx">Form · success toast</span><span class="copy"><code>Saved · we'll reply inside 48 hours.</code></span></div>
+        <div class="micro-row"><span class="ctx">Modal · confirm</span><span class="copy"><code>Confirm the slot. You'll hear back inside 48 hours.</code></span></div>
+        <div class="micro-row"><span class="ctx">Empty · no notes</span><span class="copy"><code>No notes for this section yet. Try cadence or stack.</code></span></div>
+        <div class="micro-row"><span class="ctx">Sold-out · waitlist</span><span class="copy"><code>Waitlist · open in 2026·10.</code></span></div>
+        <div class="micro-row"><span class="ctx">Banner · note halted</span><span class="copy"><code>This essay was written before v0.2. Some references are stale.</code></span></div>
+        <div class="micro-row"><span class="ctx">404 · headline</span><span class="copy"><code>The page isn't here.</code> — never "Oops!" or "404 not found".</span></div>
+        <div class="micro-row"><span class="ctx">Sign-off</span><span class="copy"><code>— TR, Cape Town. 2026·MM</code></span></div>
+        <div class="micro-row"><span class="ctx">Footer credit</span><span class="copy"><code>© rivett · 2026 · v1.0 · Cape Town &amp; remote</code></span></div>
+        <div class="micro-row"><span class="ctx">Loading · long</span><span class="copy"><code>One moment. Reading the curve.</code> — never "Loading…".</span></div>
+        <div class="micro-row"><span class="ctx">Disabled · primary</span><span class="copy"><code>Awaiting reply</code> — never "Submitted!".</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="spec" id="format">
+    <div class="label">06 · 5<span class="num">Format conventions</span></div>
+    <div class="body">
+      <h2>Numbers, dates, currency, <span class="ital">in one form.</span></h2>
+      <p class="lede">A house style for the small things. The system reads as a single voice because the small things never vary.</p>
+
+      <div class="micro">
+        <div class="micro-row"><span class="ctx">Currency</span><span class="copy"><code>£4k</code> · <code>£12k / mo</code> · <code>£18,000</code> on board packs only.</span></div>
+        <div class="micro-row"><span class="ctx">Dates</span><span class="copy"><code>2025·09·14</code> in metadata · <code>2025·09</code> in prose · <code>2025·MM</code> as placeholder.</span></div>
+        <div class="micro-row"><span class="ctx">Time spans</span><span class="copy"><code>02 wks</code> · <code>04–06 wks</code> · <code>14 days</code>. Numerals leading; serif italic for the unit only in numbox.</span></div>
+        <div class="micro-row"><span class="ctx">Numerals</span><span class="copy">Lead-zero pad versions, modules, vitals — <code>v1.0</code>, <code>M · 01</code>, <code>V · 09</code>.</span></div>
+        <div class="micro-row"><span class="ctx">Lists</span><span class="copy">Title-case the brand list (modules, audiences). Sentence-case all body lists.</span></div>
+        <div class="micro-row"><span class="ctx">Punctuation in mono</span><span class="copy">Use <code>·</code> as separator inside mono labels — <code>NOTE · 04 · CADENCE</code>.</span></div>
+        <div class="micro-row"><span class="ctx">Quotation</span><span class="copy">Curly quotes in prose <code>“ ”</code>. Straight quotes in mono <code>" "</code>. Single quotes only inside doubles.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="spec" id="examples" style="border-bottom: 0;">
+    <div class="label">06 · 6<span class="num">In the wild</span></div>
+    <div class="body">
+      <h2>Three sentences <span class="ital">that pass the test.</span></h2>
+      <p class="lede">If you can write a sentence that fits next to these without a flinch, you have the voice.</p>
+
+      <div class="pull"><blockquote>"The work isn't to ship more. It's to ship the right thing, instrumented, on the right cadence — and to know within a fortnight whether it's bending the curve."</blockquote><cite>— field note 04 · Cadence over volume</cite></div>
+      <div class="pull"><blockquote>"Half the value of a senior operator is the meeting that doesn't happen. The vendor that doesn't get hired."</blockquote><cite>— field note 03 · The decline letter</cite></div>
+      <div class="pull"><blockquote>"A red is a finding. An insufficiency is a question that has not been asked."</blockquote><cite>— Revenue MRI · v1.0 rubric</cite></div>
+    </div>
+  </section>
+
+  <footer class="system-foot">
+    <a class="wordmark wordmark--sm" href="Design System.html">rivett<span class="dot-mark"></span></a>
+    <span>06 Voice · v1.0</span>
+    <a href="07-icons.html"><b>Next · 07 Icons →</b></a>
+  </footer>
+</div></body></html>

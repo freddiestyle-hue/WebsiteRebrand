@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Card · stamp · headline · meta</title>
+<link rel="stylesheet" href="_card.css"/><style>
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border: var(--bw-hair) solid var(--line); }
+  .card { padding: 18px 20px 16px; display: flex; flex-direction: column; gap: 10px; border-right: var(--bw-hair) solid var(--line); min-height: 200px; }
+  .card:last-child { border-right: 0; }
+  .stamp-x { color: var(--accent-deep); }
+  h3 { font-family: var(--grotesk); font-weight: 700; font-size: 22px; line-height: 1.15; letter-spacing: var(--track-h-md); margin: 0; text-wrap: balance; }
+  h3 .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); letter-spacing: -0.02em; }
+  p { margin: 0; font-size: 14px; line-height: 1.55; color: var(--ink-dim); flex: 1; }
+  .foot { margin-top: 8px; padding-top: 8px; border-top: var(--bw-hair) solid var(--line); font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); display: flex; justify-content: space-between; }
+</style></head><body>
+<div class="row">
+  <div class="card">
+    <span class="stamp-x">Note · 04</span>
+    <h3>Cadence <span class="ital">over volume.</span></h3>
+    <p>Why shipping less but instrumented beats shipping more. The fortnightly read-out.</p>
+    <div class="foot"><span>2025·09</span><span>07 min · Read →</span></div>
+  </div>
+  <div class="card">
+    <span class="stamp-x">Note · 03</span>
+    <h3>The decline letter <span class="ital">earns its keep.</span></h3>
+    <p>Half the value of a senior operator is the vendor that doesn't get hired.</p>
+    <div class="foot"><span>2025·08</span><span>05 min · Read →</span></div>
+  </div>
+</div>
+</body></html>

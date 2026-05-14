@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Spacing · 4-px scale</title>
+<link rel="stylesheet" href="_card.css"/><style>
+  .stack { display: flex; flex-direction: column; gap: 4px; }
+  .row { display: grid; grid-template-columns: 70px 1fr 60px; align-items: center; gap: 12px; padding: 4px 0; }
+  .row .lbl { font-family: var(--mono); font-size: 10px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); }
+  .row .bar { background: var(--ink); height: 12px; }
+  .row .val { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); }
+</style></head><body>
+<div class="stack">
+  <div class="row"><span class="lbl">sp · 1</span><div class="bar" style="width: 4px;"></div><span class="val">04 px</span></div>
+  <div class="row"><span class="lbl">sp · 2</span><div class="bar" style="width: 8px;"></div><span class="val">08 px</span></div>
+  <div class="row"><span class="lbl">sp · 4</span><div class="bar" style="width: 16px;"></div><span class="val">16 px</span></div>
+  <div class="row"><span class="lbl">sp · 6</span><div class="bar" style="width: 24px;"></div><span class="val">24 px</span></div>
+  <div class="row"><span class="lbl">sp · 8</span><div class="bar" style="width: 32px;"></div><span class="val">32 px</span></div>
+  <div class="row"><span class="lbl">sp · 12</span><div class="bar" style="width: 48px;"></div><span class="val">48 px</span></div>
+  <div class="row"><span class="lbl">sp · 16</span><div class="bar" style="width: 64px;"></div><span class="val">64 px</span></div>
+  <div class="row"><span class="lbl">sp · 20</span><div class="bar" style="width: 80px;"></div><span class="val">80 px</span></div>
+  <div class="row"><span class="lbl">sp · 24</span><div class="bar" style="width: 96px;"></div><span class="val">96 px</span></div>
+  <div class="row"><span class="lbl">sp · 32</span><div class="bar" style="width: 128px;"></div><span class="val">128 px</span></div>
+</div>
+</body></html>

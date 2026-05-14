@@ -46,13 +46,18 @@ Sitting across from a senior consultant who just read their site for fifteen min
 
 ## 2 · Design system to consume
 
-The Rivett design system v1.0 is the source of truth. **Do not invent values.** Pull from these files:
+The final packaged Rivett design system v1.0 is the source of truth. **Do not invent values.** Pull from these files:
 
+- `rivett-ds/README.md` — package map and entry points.
 - `rivett-ds/design.md` — the full rules (§1 stance, §2 tokens, §4 components, §7 voice).
 - `rivett-ds/tokens.css` — every variable. Imports are CSS custom properties.
+- `rivett-ds/components.css` — production component layer over the token set.
+- `rivett-ds/assets/` — canonical wordmark, B1 mark, favicon exports, and 24-icon library.
+- `rivett-ds/spec/00-hub.html` through `rivett-ds/spec/07-icons.html` — rendered design-system hub and section pages.
 - `rivett-ds/templates/audit.html` — **the canonical audit memo design.** This is the reference Claude should match in spirit. Cover · TL;DR · 6 numbered sections · ranked recommendations · end-CTA.
-- `rivett-ds/06-voice.html` and `docs/voice.md` — voice rules.
-- `design-spec/Rivett Homepage.html`, `Rivett Blog.html`, `Rivett Blog Post.html` — reference for how an actual Rivett page looks.
+- `rivett-ds/voice.md` and `rivett-ds/06-voice.html` — voice rules.
+
+Do not use `design-spec/` or `docs/voice.md` as active design inputs. Their useful content has been consolidated into `rivett-ds/`; old source files are historical references only.
 
 ### 2.1 Locked tokens (do not change)
 
@@ -248,14 +253,17 @@ These are decisions Claude should NOT make alone. Surface them to Fred at the en
 ## 9 · References (paths in the repo)
 
 - `rivett-ds/design.md` — full design system rules v1.0
+- `rivett-ds/README.md` — final package guide and entry points
 - `rivett-ds/tokens.css` — every CSS custom property
+- `rivett-ds/components.css` — component layer over the token set
+- `rivett-ds/assets/` — wordmark, B1 mark, favicon exports, icons
+- `rivett-ds/spec/00-hub.html` through `rivett-ds/spec/07-icons.html` — rendered package pages
 - `rivett-ds/templates/audit.html` — canonical audit memo design ← **start here**
 - `rivett-ds/templates/home.html`, `mri.html`, `post.html` — adjacent reference templates
 - `rivett-ds/01-foundations.html` through `07-icons.html` — visual breakdown of the system
-- `design-spec/Rivett Homepage.html`, `Rivett Blog.html`, `Rivett Blog Post.html` — site-level reference
-- `docs/voice.md` — voice rules as plain markdown
+- `rivett-ds/voice.md` — voice rules as plain markdown
 - `src/styles/tokens.css` — the site's token bridge (consumes rivett-ds/tokens.css)
 
 ---
 
-*— Brief maintained by Fred Style. Last edited 2026·05·12. The system is the moat. If a design contradicts this brief, the brief wins. The variant is wrong.*
+*— Brief maintained by Fred Style. Last edited 2026·05·14. The system is the moat. If a design contradicts the final `rivett-ds/` package, the package wins. The variant is wrong.*

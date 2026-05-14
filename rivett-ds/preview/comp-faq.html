@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>FAQ · details/summary</title>
+<link rel="stylesheet" href="_card.css"/><style>
+  .faq { border-top: var(--bw-hair) solid var(--line); }
+  details { border-bottom: var(--bw-hair) solid var(--line); padding: 12px 0; }
+  summary { list-style: none; cursor: pointer; display: grid; grid-template-columns: 32px 1fr 20px; gap: 10px; align-items: baseline; font-family: var(--grotesk); font-weight: 600; font-size: 17px; letter-spacing: var(--track-h-sm); line-height: 1.35; color: var(--ink); }
+  summary::-webkit-details-marker { display: none; }
+  summary .num { font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); color: var(--ink-faint); padding-top: 3px; }
+  summary .marker { font-family: var(--mono); font-size: 16px; color: var(--accent-deep); line-height: 1; text-align: right; transition: transform 200ms cubic-bezier(0.2,0.6,0.2,1); }
+  details[open] summary .marker { transform: rotate(45deg); }
+  .answer { padding: 10px 20px 0 42px; font-size: 14px; line-height: 1.6; color: var(--ink-dim); }
+</style></head><body>
+<div class="faq">
+  <details open>
+    <summary><span class="num">01</span><span>What does a diagnostic look like?</span><span class="marker">+</span></summary>
+    <div class="answer">Two weeks. Senior eyes on the funnel, the spend, and the next ninety days. One document, one decision.</div>
+  </details>
+  <details>
+    <summary><span class="num">02</span><span>How do you charge?</span><span class="marker">+</span></summary>
+  </details>
+  <details>
+    <summary><span class="num">03</span><span>Can you run it without a build first?</span><span class="marker">+</span></summary>
+  </details>
+</div>
+</body></html>

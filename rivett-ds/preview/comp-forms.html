@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Forms · input · select · checkbox</title>
+<link rel="stylesheet" href="_card.css"/><style>
+  .frame { padding: 16px; display: flex; flex-direction: column; gap: 12px; border: var(--bw-hair) solid var(--line); }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label { font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); }
+  .field .req { color: var(--signal-halt); margin-left: 6px; }
+  .input { font-family: var(--grotesk); font-size: 15px; color: var(--ink); border: var(--bw-hair) solid var(--ink-faint); background: var(--paper); padding: 10px 12px; border-radius: 0; }
+  .input:focus { outline: none; border-color: var(--accent-deep); box-shadow: inset 0 -2px 0 var(--accent-deep); }
+  .input.err { border-color: var(--signal-halt); box-shadow: inset 0 -2px 0 var(--signal-halt); }
+  .err-msg { font-family: var(--mono); font-size: 10px; letter-spacing: 0.04em; color: var(--signal-halt); }
+  .ctl-row { display: flex; gap: 16px; }
+  .checkbox { display: inline-flex; gap: 8px; align-items: center; cursor: pointer; font-size: 13px; }
+  .checkbox .box { width: 16px; height: 16px; border: var(--bw-hair) solid var(--ink); border-radius: 2px; position: relative; }
+  .checkbox.on .box { background: var(--ink); }
+  .checkbox.on .box::after { content: ''; position: absolute; left: 4px; top: 1px; width: 5px; height: 9px; border: solid var(--accent); border-width: 0 2px 2px 0; transform: rotate(45deg); }
+  .toggle { display: inline-flex; gap: 10px; align-items: center; font-size: 13px; }
+  .toggle .track { width: 32px; height: 18px; background: var(--ink-soft); position: relative; }
+  .toggle.on .track { background: var(--accent-deep); }
+  .toggle .track::after { content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; background: var(--paper); }
+  .toggle.on .track::after { transform: translateX(14px); }
+</style></head><body>
+<div class="frame">
+  <div class="field">
+    <label>Email <span class="req">REQUIRED</span></label>
+    <input class="input" value="tom@rivett.tech" />
+  </div>
+  <div class="field">
+    <label>Stage</label>
+    <input class="input err" value="not-quite" />
+    <span class="err-msg">PICK FROM THE LIST</span>
+  </div>
+  <div class="ctl-row">
+    <label class="checkbox on"><span class="box"></span><span>Send the read-out</span></label>
+    <label class="checkbox"><span class="box"></span><span>NDA first</span></label>
+    <label class="toggle on"><span class="track"></span><span>Fortnight</span></label>
+  </div>
+</div>
+</body></html>

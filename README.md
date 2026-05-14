@@ -71,9 +71,13 @@ The `## FAQ` section at the bottom is parsed into the typographic accordion. Q i
 
 ## Design source of truth
 
-`rivett-ds/design.md` is gospel. `rivett-ds/tokens.css` is the only token source. The production `src/styles/tokens.css` file is a compatibility bridge that imports those canonical tokens and maps site variable names without redefining the system.
+The final packaged Rivett design system lives in `rivett-ds/`. It was loaded from `/Users/gandalf/Downloads/Rivett Design System.zip` on 2026-05-14, excluding the archive's stale `uploads/` folder.
 
-Do not add parallel style guides, old reference folders, or competing token files. Voice rules live in `rivett-ds/design.md` and `rivett-ds/06-voice.html`.
+Start at `rivett-ds/README.md` for the package map, `rivett-ds/design.md` for the written contract, `rivett-ds/tokens.css` for the canonical token source, `rivett-ds/components.css` for production-ready component styles, `rivett-ds/assets/` for marks and icons, and `rivett-ds/spec/00-hub.html` for the rendered design-system hub.
+
+The production `src/styles/tokens.css` file is a compatibility bridge that imports the canonical tokens and maps site variable names without redefining the system.
+
+Do not add parallel style guides, old reference folders, or competing token files. Voice rules live in `rivett-ds/design.md`, `rivett-ds/voice.md`, and `rivett-ds/06-voice.html`. The old `design-spec/` and `docs/voice.md` files are historical references only.
 
 ## Deploy
 

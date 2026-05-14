@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Icons · core</title>
+<link rel="stylesheet" href="_card.css"/><style>
+  .grid { display: grid; grid-template-columns: repeat(6, 1fr); border: var(--bw-hair) solid var(--line); }
+  .cell { padding: 18px 8px 12px; border-right: var(--bw-hair) solid var(--line); display: flex; flex-direction: column; align-items: center; gap: 8px; min-height: 110px; justify-content: center; }
+  .cell:last-child { border-right: 0; }
+  .cell svg { width: 32px; height: 32px; fill: none; stroke: var(--ink); stroke-width: 1.6; stroke-linecap: square; stroke-linejoin: miter; }
+  .cell svg .dot { fill: var(--accent); stroke: none; }
+  .cell svg .fill { fill: var(--ink); stroke: none; }
+  .cell .name { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-faint); text-align: center; }
+</style></head><body>
+<div class="grid">
+  <div class="cell"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M15.5 15.5 L20 20"/><circle class="dot" cx="11" cy="11" r="1.4"/></svg><span class="name">diagnostic</span></div>
+  <div class="cell"><svg viewBox="0 0 24 24"><path d="M3 7 H17 a3 3 0 0 1 0 6 H7 a3 3 0 0 0 0 6 H21"/><circle class="dot" cx="3" cy="7" r="1.6"/></svg><span class="name">pipeline</span></div>
+  <div class="cell"><svg viewBox="0 0 24 24"><path d="M3 18 L9 12 L13 16 L21 6"/><circle class="dot" cx="21" cy="6" r="1.6"/></svg><span class="name">signal</span></div>
+  <div class="cell"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 6 V12 L17 14"/></svg><span class="name">cadence</span></div>
+  <div class="cell"><svg viewBox="0 0 24 24"><path d="M3 7 L12 3 L21 7 L12 11 Z"/><path d="M3 12 L12 16 L21 12"/><path d="M3 17 L12 21 L21 17"/></svg><span class="name">stack</span></div>
+  <div class="cell"><svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="4"/><path d="M4 21 a8 8 0 0 1 16 0"/></svg><span class="name">operator</span></div>
+</div>
+</body></html>

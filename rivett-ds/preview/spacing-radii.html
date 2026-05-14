@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Radii · square geometry</title>
+<link rel="stylesheet" href="_card.css"/><style>
+  .row { display: grid; grid-template-columns: 1fr 1fr 1fr; border: var(--bw-hair) solid var(--line); }
+  .sw { padding: 18px; border-right: var(--bw-hair) solid var(--line); min-height: 140px; display: flex; flex-direction: column; align-items: center; gap: 12px; justify-content: center; }
+  .sw:last-child { border-right: 0; }
+  .sw .lbl { font-family: var(--mono); font-size: 10px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); text-align: center; line-height: 1.5; }
+  .sw .lbl b { display: block; color: var(--ink); font-family: var(--grotesk); font-weight: 600; font-size: 13px; text-transform: none; letter-spacing: -0.01em; margin-bottom: 2px; }
+  .sq { width: 56px; height: 56px; background: var(--ink); }
+  .sq.sm { border-radius: 2px; }
+  .pill { width: 12px; height: 12px; border-radius: var(--r-pill); background: var(--accent); }
+  .pill.lg { width: 56px; height: 24px; background: var(--paper-2); border: var(--bw-hair) solid var(--ink); }
+</style></head><body>
+<div class="row">
+  <div class="sw"><div class="sq"></div><span class="lbl"><b>r · 0</b>default · everything</span></div>
+  <div class="sw"><div class="sq sm"></div><span class="lbl"><b>r · sm · 2px</b>checkbox tick only</span></div>
+  <div class="sw"><div class="pill"></div><div class="pill lg"></div><span class="lbl"><b>r · pill · 999</b>the dot · pill stamps</span></div>
+</div>
+</body></html>

@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Shadow · almost off</title>
+<link rel="stylesheet" href="_card.css"/><style>
+  .row { display: grid; grid-template-columns: 1fr 1fr 1fr; border: var(--bw-hair) solid var(--line); background: var(--paper-2); }
+  .sw { padding: 20px 18px; border-right: var(--bw-hair) solid var(--line); min-height: 150px; display: flex; flex-direction: column; gap: 16px; align-items: center; justify-content: center; }
+  .sw:last-child { border-right: 0; }
+  .lbl { font-family: var(--mono); font-size: 10px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); text-align: center; line-height: 1.5; }
+  .lbl b { display: block; color: var(--ink); font-family: var(--grotesk); font-weight: 600; font-size: 13px; text-transform: none; letter-spacing: -0.01em; margin-bottom: 2px; }
+  .plate { width: 110px; height: 60px; background: var(--paper); border: var(--bw-hair) solid var(--line); }
+  .plate.s1 { box-shadow: 0 1px 0 rgba(14,26,44,0.04); }
+  .plate.s2 { box-shadow: 0 8px 24px -10px rgba(14,26,44,0.18); }
+</style></head><body>
+<div class="row">
+  <div class="sw"><div class="plate"></div><span class="lbl"><b>shadow · 0</b>default · everything</span></div>
+  <div class="sw"><div class="plate s1"></div><span class="lbl"><b>shadow · 1</b>card press · 1px line</span></div>
+  <div class="sw"><div class="plate s2"></div><span class="lbl"><b>shadow · 2</b>modal only</span></div>
+</div>
+</body></html>

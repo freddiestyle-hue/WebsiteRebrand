@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Paper steps</title>
+<link rel="stylesheet" href="_card.css" />
+<style>
+
+  .swatch-row { display: grid; grid-template-columns: repeat(5, 1fr); border: var(--bw-hair) solid var(--line); }
+  .sw { padding: 14px 14px 12px; border-right: var(--bw-hair) solid var(--line); min-height: 110px; display: flex; flex-direction: column; justify-content: space-between; }
+  .sw:last-child { border-right: 0; }
+  .sw .k { font-family: var(--mono); font-size: 9.5px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); }
+  .sw .hex { font-family: var(--mono); font-size: 11px; color: var(--ink); margin-top: auto; }
+  .sw.sage .k, .sw.sage .hex { color: var(--accent-deep); }
+
+</style>
+</head>
+<body>
+
+<div class="swatch-row">
+  <div class="sw" style="background: var(--paper);"><span class="k">paper</span><span class="hex">#FFFFFF</span></div>
+  <div class="sw" style="background: var(--paper-2);"><span class="k">paper · 2</span><span class="hex">#F4F2ED</span></div>
+  <div class="sw" style="background: var(--paper-3);"><span class="k">paper · 3</span><span class="hex">#EBE6DC</span></div>
+  <div class="sw" style="background: var(--paper-4);"><span class="k">paper · 4</span><span class="hex">#DDD7C9</span></div>
+  <div class="sw sage" style="background: var(--sage);"><span class="k">sage</span><span class="hex">#E8F0D9</span></div>
+</div>
+
+</body>
+</html>

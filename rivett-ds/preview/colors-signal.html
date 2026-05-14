@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Signal — sparingly</title>
+<link rel="stylesheet" href="_card.css" />
+<style>
+
+  .row { display: grid; grid-template-columns: 1fr 1fr; border: var(--bw-hair) solid var(--line); }
+  .sw { padding: 18px 20px; border-right: var(--bw-hair) solid var(--line); min-height: 150px; }
+  .sw:last-child { border-right: 0; }
+  .sw .k { font-family: var(--mono); font-size: 10px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); }
+  .sw .v { font-family: var(--grotesk); font-weight: 700; font-size: 28px; letter-spacing: var(--track-h-md); margin-top: 8px; line-height: 1.1; }
+  .sw .v .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); letter-spacing: -0.02em; }
+  .sw .hex { font-family: var(--mono); font-size: 11px; margin-top: 14px; color: var(--ink-faint); }
+  .sw .bar { height: 6px; margin-top: 10px; }
+  .sw .desc { font-size: 12.5px; color: var(--ink-dim); margin-top: 8px; line-height: 1.5; }
+
+</style>
+</head>
+<body>
+
+<div class="row">
+  <div class="sw">
+    <span class="k">signal · warn</span>
+    <div class="v" style="color: var(--signal-warn);">Amber. <span class="ital">MRI risk row.</span></div>
+    <div class="bar" style="background: var(--signal-warn);"></div>
+    <p class="desc">Used only for the amber band in the Revenue MRI rubric. Nothing else.</p>
+    <div class="hex">#B8651F</div>
+  </div>
+  <div class="sw">
+    <span class="k">signal · halt</span>
+    <div class="v" style="color: var(--signal-halt);">Red. <span class="ital">Halt or decline.</span></div>
+    <div class="bar" style="background: var(--signal-halt);"></div>
+    <p class="desc">Destructive flows. Halt icons. Form error borders. No other surface.</p>
+    <div class="hex">#9A2B2B</div>
+  </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Borders · weights</title>
+<link rel="stylesheet" href="_card.css"/><style>
+  .row { display: grid; grid-template-columns: 1fr 1fr 1fr; border: var(--bw-hair) solid var(--line); }
+  .sw { padding: 22px 18px; border-right: var(--bw-hair) solid var(--line); min-height: 140px; display: flex; flex-direction: column; gap: 12px; justify-content: center; align-items: center; }
+  .sw:last-child { border-right: 0; }
+  .sw .lbl { font-family: var(--mono); font-size: 10px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); text-align: center; line-height: 1.5; }
+  .sw .lbl b { display: block; color: var(--ink); font-family: var(--grotesk); font-weight: 600; font-size: 13px; text-transform: none; letter-spacing: -0.01em; margin-bottom: 2px; }
+  .demo { width: 100%; }
+</style></head><body>
+<div class="row">
+  <div class="sw">
+    <div class="demo" style="height: 1px; background: var(--ink);"></div>
+    <span class="lbl"><b>bw · hair · 1px</b>default · cells · fields</span>
+  </div>
+  <div class="sw">
+    <div class="demo" style="height: 2px; background: var(--ink);"></div>
+    <span class="lbl"><b>bw · rule · 2px</b>focus · under-rule</span>
+  </div>
+  <div class="sw">
+    <div class="demo" style="height: 3px; background: var(--accent-deep);"></div>
+    <span class="lbl"><b>bw · thick · 3px</b>numbox left rail</span>
+  </div>
+</div>
+</body></html>

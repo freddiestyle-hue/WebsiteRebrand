@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Book the diagnostic · Rivett</title>
+<link rel="icon" type="image/svg+xml" href="../../assets/rivet-b1.svg" />
+<link rel="stylesheet" href="../../tokens.css" />
+<style>
+  body { background: var(--paper); margin: 0; }
+  .page { max-width: var(--page-max); margin: 0 auto; padding: 0 var(--page-pad); }
+  @media (max-width: 780px) { .page { padding: 0 var(--page-pad-sm); } }
+  .site-nav { display: flex; justify-content: space-between; align-items: center; padding: var(--sp-7) 0; border-bottom: var(--bw-hair) solid var(--line); flex-wrap: wrap; gap: var(--sp-4); }
+  .wm { display: inline-flex; align-items: center; gap: 0.1em; font-family: var(--grotesk); font-weight: 700; font-size: 28px; letter-spacing: -0.05em; line-height: 1; color: var(--ink); text-decoration: none; }
+  .wm .dot { display: inline-block; width: 0.32em; height: 0.32em; background: var(--accent); border-radius: var(--r-pill); transform: translateY(0.04em); }
+  .site-nav .links { display: flex; gap: var(--sp-8); font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); }
+  .site-nav .links a { color: inherit; text-decoration: none; }
+  .site-nav .links a:hover, .site-nav .links a.active { color: var(--ink); }
+  .cta-pri { display: inline-flex; align-items: center; gap: var(--sp-3); padding: 9px 14px; background: var(--ink); color: var(--on-ink); font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; text-decoration: none; }
+  .cta-pri:hover { background: var(--accent-deep); }
+  .stamp { display: inline-flex; align-items: center; font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--accent-deep); }
+  .stamp::before { content: ''; display: inline-block; width: 8px; height: 8px; background: var(--accent); border-radius: var(--r-pill); margin-right: 12px; flex-shrink: 0; }
+  .stamp.on-ink { color: var(--on-ink-faint); }
+  .site-foot { background: var(--ink); color: var(--on-ink); padding: var(--sp-14) 0 var(--sp-7); margin-top: var(--sp-14); }
+  .site-foot .row { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: var(--sp-10); }
+  @media (max-width: 880px) { .site-foot .row { grid-template-columns: 1fr 1fr; gap: var(--sp-7); } }
+  .site-foot .word { font-family: var(--grotesk); font-weight: 700; font-size: 28px; letter-spacing: -0.05em; color: var(--on-ink); }
+  .site-foot .word .dot { display: inline-block; width: 0.32em; height: 0.32em; background: var(--accent); border-radius: var(--r-pill); transform: translateY(0.04em); }
+  .site-foot .col-h { font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--on-ink-faint); margin-bottom: var(--sp-4); display: block; }
+  .site-foot .col a { display: block; padding: 4px 0; font-family: var(--mono); font-size: 12px; color: var(--on-ink); text-decoration: none; }
+  .site-foot .col a:hover { color: var(--accent); }
+  .site-foot .bot { margin-top: var(--sp-12); padding-top: var(--sp-6); border-top: var(--bw-hair) solid var(--on-ink-line); display: flex; justify-content: space-between; font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--on-ink-faint); flex-wrap: wrap; gap: var(--sp-3); }
+
+  .diag-hero { padding: var(--sp-16) 0 var(--sp-12); border-bottom: var(--bw-hair) solid var(--line-strong); }
+  .diag-hero h1 { font-family: var(--grotesk); font-weight: 800; font-size: clamp(56px, 8vw, 108px); line-height: 0.92; letter-spacing: var(--track-display); margin: var(--sp-7) 0 0; text-wrap: balance; max-width: 1100px; }
+  .diag-hero h1 .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); letter-spacing: -0.02em; }
+  .diag-hero .dek { font-family: var(--serif); font-style: italic; font-size: clamp(22px, 2.4vw, 28px); line-height: 1.4; color: var(--ink-dim); margin: var(--sp-8) 0 var(--sp-10); max-width: 780px; }
+
+  /* Two-column body: form (left) + sidebar (right) */
+  .diag-body { display: grid; grid-template-columns: 1.4fr 1fr; gap: 80px; padding: var(--sp-14) 0; border-bottom: var(--bw-hair) solid var(--line); }
+  @media (max-width: 980px) { .diag-body { grid-template-columns: 1fr; gap: var(--sp-12); } }
+
+  .sec-lbl { font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); display: block; margin-bottom: var(--sp-3); }
+  .sec-h { font-family: var(--grotesk); font-weight: 700; font-size: 36px; line-height: 1.1; letter-spacing: var(--track-h); margin: 0 0 var(--sp-6); text-wrap: balance; }
+  .sec-h .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); letter-spacing: -0.02em; }
+  .sec-lede { font-family: var(--serif); font-style: italic; font-size: 21px; line-height: 1.45; color: var(--ink-dim); margin: 0 0 var(--sp-10); max-width: 600px; }
+
+  .form { display: flex; flex-direction: column; gap: var(--sp-6); }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-5); }
+  @media (max-width: 780px) { .row2 { grid-template-columns: 1fr; } }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label { font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); }
+  .field .req { color: var(--signal-halt); margin-left: 6px; }
+  .field .hint { font-size: 13px; color: var(--ink-dim); }
+  .input { font-family: var(--grotesk); font-size: 16px; color: var(--ink); border: var(--bw-hair) solid var(--ink-faint); background: var(--paper); padding: 12px 14px; border-radius: 0; transition: border-color var(--dur-1) var(--ease); width: 100%; box-sizing: border-box; }
+  .input:hover { border-color: var(--ink); }
+  .input:focus { outline: none; border-color: var(--accent-deep); box-shadow: inset 0 -2px 0 var(--accent-deep); }
+  textarea.input { min-height: 120px; resize: vertical; line-height: 1.5; }
+
+  .radios { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border: var(--bw-hair) solid var(--ink-faint); }
+  @media (max-width: 780px) { .radios { grid-template-columns: 1fr; } }
+  .radios label { padding: var(--sp-4) var(--sp-5); border-right: var(--bw-hair) solid var(--line); cursor: pointer; display: flex; align-items: center; gap: var(--sp-3); transition: background var(--dur-1) var(--ease); }
+  .radios label:nth-child(2n) { border-right: 0; }
+  .radios label:hover { background: var(--paper-2); }
+  .radios input { position: absolute; opacity: 0; pointer-events: none; }
+  .radios .box { width: 16px; height: 16px; border: var(--bw-hair) solid var(--ink); border-radius: var(--r-pill); flex-shrink: 0; position: relative; }
+  .radios input:checked + .box { background: var(--paper); }
+  .radios input:checked + .box::after { content: ''; position: absolute; inset: 3px; background: var(--accent-deep); border-radius: var(--r-pill); }
+  .radios .lbl-txt { font-size: 14.5px; color: var(--ink); }
+  .radios .lbl-txt .ital { font-family: var(--serif); font-style: italic; color: var(--ink-dim); }
+
+  .submit-row { display: flex; gap: var(--sp-3); margin-top: var(--sp-5); flex-wrap: wrap; }
+  .btn-solid { display: inline-flex; align-items: center; gap: var(--sp-3); padding: 14px 22px; background: var(--ink); color: var(--on-ink); font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; border: none; cursor: pointer; }
+  .btn-solid:hover { background: var(--accent-deep); }
+  .btn-out { display: inline-flex; align-items: center; gap: var(--sp-3); padding: 14px 22px; background: transparent; color: var(--ink); border: var(--bw-hair) solid var(--ink); font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; cursor: pointer; text-decoration: none; }
+  .btn-out:hover { background: var(--ink); color: var(--on-ink); }
+
+  /* Right column — what you get back */
+  .aside { display: flex; flex-direction: column; gap: var(--sp-7); }
+  .price-card { border: var(--bw-hair) solid var(--ink); padding: var(--sp-8); }
+  .price-card .price { font-family: var(--grotesk); font-weight: 800; font-size: 64px; line-height: 0.95; letter-spacing: var(--track-display); margin: var(--sp-3) 0; }
+  .price-card .price .ital { font-family: var(--serif); font-style: italic; font-weight: 400; font-size: 28px; color: var(--ink-dim); vertical-align: 12px; margin-left: 6px; }
+  .price-card .price-sub { font-family: var(--serif); font-style: italic; font-size: 17px; color: var(--ink-dim); margin: 0 0 var(--sp-6); }
+  .price-card ul { list-style: none; padding: 0; margin: 0; }
+  .price-card li { padding: var(--sp-3) 0; border-top: var(--bw-hair) solid var(--line); display: grid; grid-template-columns: 18px 1fr; gap: var(--sp-3); font-size: 14px; color: var(--ink); }
+  .price-card li::before { content: '+'; font-family: var(--mono); color: var(--accent-deep); font-size: 12px; padding-top: 2px; }
+
+  .reassure { background: var(--paper-2); padding: var(--sp-7) var(--sp-8); }
+  .reassure h4 { font-family: var(--grotesk); font-weight: 700; font-size: 22px; letter-spacing: var(--track-h-md); margin: var(--sp-3) 0 var(--sp-3); }
+  .reassure h4 .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); }
+  .reassure p { font-size: 14px; line-height: 1.55; color: var(--ink-dim); margin: 0; }
+
+  /* FAQ */
+  .faq-sec { padding: var(--sp-14) 0; border-bottom: var(--bw-hair) solid var(--line); }
+  .faq-sec h2 { font-family: var(--grotesk); font-weight: 700; font-size: 44px; line-height: 1.04; letter-spacing: -0.04em; margin: var(--sp-4) 0 var(--sp-8); text-wrap: balance; max-width: 1000px; }
+  .faq-sec h2 .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); }
+  .faq { border-top: var(--bw-hair) solid var(--ink); max-width: 900px; }
+  details { border-bottom: var(--bw-hair) solid var(--line); padding: var(--sp-5) 0; }
+  details summary { list-style: none; cursor: pointer; display: grid; grid-template-columns: 36px 1fr 24px; align-items: baseline; gap: var(--sp-3); font-family: var(--grotesk); font-weight: 600; font-size: 19px; letter-spacing: var(--track-h-sm); line-height: 1.35; color: var(--ink); }
+  details summary::-webkit-details-marker { display: none; }
+  details summary .num { font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); color: var(--ink-faint); padding-top: 5px; }
+  details summary .marker { font-family: var(--mono); font-size: 18px; color: var(--accent-deep); transition: transform 200ms cubic-bezier(0.2,0.6,0.2,1); display: inline-block; line-height: 1; text-align: right; }
+  details[open] summary .marker { transform: rotate(45deg); }
+  .answer { padding: var(--sp-4) 36px 0 calc(36px + var(--sp-3)); font-size: 16px; line-height: 1.65; color: var(--ink-dim); max-width: 720px; }
+  .answer p { margin: 0; }
+
+  /* End */
+  .end-cta { background: var(--ink); color: var(--on-ink); padding: var(--sp-14) var(--sp-12); display: grid; grid-template-columns: 1.4fr 1fr; gap: 64px; align-items: center; margin-top: var(--sp-14); }
+  @media (max-width: 880px) { .end-cta { grid-template-columns: 1fr; gap: var(--sp-8); padding: var(--sp-10); } }
+  .end-cta h3 { font-family: var(--grotesk); font-weight: 700; font-size: clamp(28px, 3.6vw, 44px); line-height: 1.04; letter-spacing: -0.04em; margin: 0; color: var(--on-ink); text-wrap: balance; }
+  .end-cta h3 .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--on-ink-italic); letter-spacing: -0.02em; }
+
+</style>
+</head>
+<body>
+<div class="page">
+
+<nav class="site-nav">
+  <a href="../marketing/index.html" class="wm">rivett<span class="dot"></span></a>
+  <div class="links">
+    <a href="../marketing/index.html" class="active">The work</a>
+    <a href="../blog/index.html" class="">Field notes</a>
+    <a href="../mri/index.html" class="">Revenue MRI</a>
+    <a class="">About</a>
+  </div>
+  <a class="cta-pri" href="index.html">Book diagnostic &rarr;</a>
+</nav>
+
+<header class="diag-hero">
+  <span class="stamp">Two-week diagnostic &middot; &pound;4k &middot; No retainer required</span>
+  <h1>Book the diagnostic. <span class="ital">14 days. One memo.</span></h1>
+  <p class="dek">Senior eyes on your funnel, your spend, and the next 90 days. The output is a one-page memo with the diagnosis, the next 90 days, and what to halt. Drop the form below; we&rsquo;ll come back inside 48 hours with two slots.</p>
+</header>
+
+<div class="diag-body">
+
+  <div>
+    <span class="sec-lbl">Intake &middot; 03 minutes</span>
+    <h2 class="sec-h">Tell us where the numbers are. <span class="ital">Nothing else.</span></h2>
+    <p class="sec-lede">No NDA required for the intake. If we proceed, we&rsquo;ll send our standard NDA inside 24 hours.</p>
+
+    <form class="form">
+      <div class="row2">
+        <div class="field">
+          <label>Name <span class="req">REQUIRED</span></label>
+          <input class="input" value="" placeholder="Tom Rivett" />
+        </div>
+        <div class="field">
+          <label>Email <span class="req">REQUIRED</span></label>
+          <input class="input" type="email" placeholder="tom@rivett.tech" />
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Company <span style="color:var(--ink-faint); margin-left:6px;">(optional)</span></label>
+        <input class="input" placeholder="rivett" />
+      </div>
+
+      <div class="field">
+        <label>Stage</label>
+        <div class="radios">
+          <label><input type="radio" name="stage" checked /><span class="box"></span><span class="lbl-txt">Pre-revenue, <span class="ital">first 12 months.</span></span></label>
+          <label><input type="radio" name="stage" /><span class="box"></span><span class="lbl-txt">&pound;100k&ndash;&pound;1m, <span class="ital">looking for the bend.</span></span></label>
+          <label><input type="radio" name="stage" /><span class="box"></span><span class="lbl-txt">&pound;1m&ndash;&pound;10m, <span class="ital">curve is flat.</span></span></label>
+          <label><input type="radio" name="stage" /><span class="box"></span><span class="lbl-txt">Board / portfolio, <span class="ital">sober read.</span></span></label>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Where are the numbers?</label>
+        <input class="input" placeholder="stripe.com/&hellip; &middot; sheet &middot; warehouse URL &middot; or paste in a follow-up email" />
+        <span class="hint">Any plain text works. We&rsquo;ll read in whatever you send.</span>
+      </div>
+
+      <div class="field">
+        <label>One sentence on what is happening</label>
+        <textarea class="input" placeholder="The curve is flat after a strong Q1. Outreach reply is down. We are not sure if the diag is product or pipeline."></textarea>
+      </div>
+
+      <div class="field">
+        <label>Anything we should not say to a board</label>
+        <input class="input" placeholder="e.g. don&rsquo;t mention CAC payback to investors yet" />
+      </div>
+
+      <div class="submit-row">
+        <button class="btn-solid" type="submit">Book diagnostic &rarr;</button>
+        <a class="btn-out" href="../marketing/index.html">Back to home</a>
+      </div>
+
+      <p style="font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); margin: var(--sp-3) 0 0;">Saved &middot; we&rsquo;ll reply inside 48 hours</p>
+    </form>
+  </div>
+
+  <aside class="aside">
+    <div class="price-card">
+      <span class="stamp">What it costs</span>
+      <div class="price">&pound;4k<span class="ital">&middot; flat</span></div>
+      <p class="price-sub">Two-week engagement. No retainer required.</p>
+      <ul>
+        <li>One read-in call (60 <span style="font-family:var(--serif); font-style:italic; color:var(--ink-dim);">min</span>) inside 48 hours</li>
+        <li>Twelve vitals scored against the rubric</li>
+        <li>One-page memo &middot; diagnosis, 90-day plan, halt list</li>
+        <li>Read-out call with you (and your board, if you want)</li>
+        <li>14-day SLA &middot; <b>02 wks</b> end-to-end</li>
+        <li>No upsell. The memo is the product.</li>
+      </ul>
+    </div>
+
+    <div class="reassure">
+      <span class="stamp">Reassurance</span>
+      <h4>If the read is wrong, <span class="ital">we refund the second week.</span></h4>
+      <p>Half the diagnostic is the meeting that does not happen. If the memo lands and you say "I knew that", we refund &pound;2k and you keep the document.</p>
+    </div>
+
+    <div class="reassure">
+      <span class="stamp">Calendar</span>
+      <h4>Next available read-in</h4>
+      <p style="font-family: var(--grotesk); font-weight: 600; font-size: 18px; color: var(--ink); margin-bottom: 8px;">Mon &middot; 2026&middot;05&middot;19 &middot; 14:00 SAST</p>
+      <p>Or Thu the same week, 11:00 SAST. Pick on the intake form, or we&rsquo;ll suggest two more in the follow-up.</p>
+    </div>
+  </aside>
+</div>
+
+<section class="faq-sec">
+  <span class="stamp">Frequently asked &middot; 04 questions</span>
+  <h2>Things people ask <span class="ital">before booking.</span></h2>
+  <div class="faq">
+    <details open>
+      <summary><span class="num">01</span><span>What if we don&rsquo;t have warehouse access yet?</span><span class="marker">+</span></summary>
+      <div class="answer"><p>We can run the diagnostic off Stripe, a CRM, a pasted Sheet, or screenshots of your current dashboard. The warehouse is ideal; it is not the gate. If we can&rsquo;t score a vital, it is logged as <b>insufficient</b> and becomes a question for the 90-day plan.</p></div>
+    </details>
+    <details>
+      <summary><span class="num">02</span><span>What is the difference between Diagnostic and Revenue MRI?</span><span class="marker">+</span></summary>
+    </details>
+    <details>
+      <summary><span class="num">03</span><span>Can we run a diagnostic across multiple portfolio companies?</span><span class="marker">+</span></summary>
+    </details>
+    <details>
+      <summary><span class="num">04</span><span>Is there an NDA?</span><span class="marker">+</span></summary>
+    </details>
+  </div>
+</section>
+
+<div class="end-cta">
+  <h3>The intake is three minutes. <span class="ital">The reply is 48 hours.</span></h3>
+  <div class="right">
+    <span class="stamp on-ink">14-day engagement</span>
+    <p style="color: var(--on-ink-dim); margin: 0; font-size: 16px; line-height: 1.55; max-width: 360px;">No retainer. No pitch deck. One memo, one decision.</p>
+    <a class="cta-pri" style="background: var(--paper); color: var(--ink); padding: 14px 22px;">Scroll to intake &uarr;</a>
+  </div>
+</div>
+
+</div>
+
+<footer class="site-foot">
+  <div class="page">
+    <div class="row">
+      <div><span class="word">rivett<span class="dot"></span></span></div>
+      <div class="col">
+        <span class="col-h">The work</span>
+        <a>Diagnostic</a><a>Build</a><a>Run</a><a href="../mri/index.html">Revenue MRI</a>
+      </div>
+      <div class="col">
+        <span class="col-h">Field notes</span>
+        <a href="../blog/index.html">All notes</a>
+      </div>
+      <div class="col">
+        <span class="col-h">Contact</span>
+        <a>tom@rivett.tech</a><a>Calendar</a>
+      </div>
+    </div>
+    <div class="bot">
+      <span>&copy; rivett &middot; 2026</span>
+      <span>v1.0 &middot; Cape Town &amp; remote</span>
+    </div>
+  </div>
+</footer>
+</body></html>

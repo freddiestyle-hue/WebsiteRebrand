@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cadence over volume · Field note 04 · Rivett</title>
+<link rel="stylesheet" href="../tokens.css" />
+<style>
+  body { background: var(--paper); }
+  .nav { display: flex; justify-content: space-between; align-items: center; padding: var(--sp-7) 0; border-bottom: var(--bw-hair) solid var(--line); }
+  .nav .links { display: flex; gap: var(--sp-8); font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); }
+
+  /* meta strip */
+  .meta-strip {
+    padding: var(--sp-10) 0 var(--sp-4); display: grid; grid-template-columns: 240px 1fr;
+    gap: 64px; align-items: end; border-bottom: var(--bw-hair) solid var(--line);
+  }
+  @media (max-width: 880px) { .meta-strip { grid-template-columns: 1fr; gap: var(--sp-4); } }
+  .meta-strip .lh {
+    font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono);
+    text-transform: uppercase; color: var(--ink-faint); display: flex; flex-direction: column; gap: 6px;
+  }
+  .meta-strip .lh b { color: var(--ink); font-weight: 500; font-family: var(--grotesk); font-size: 13px; letter-spacing: -0.01em; text-transform: none; }
+  .meta-strip .crumbs { display: flex; gap: var(--sp-3); font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); }
+
+  /* article header */
+  .art-head { padding: var(--sp-12) 0 var(--sp-10); border-bottom: var(--bw-hair) solid var(--line-strong); }
+  .art-head h1 {
+    font-family: var(--grotesk); font-weight: 800; font-size: clamp(48px, 6.5vw, 96px);
+    line-height: 0.95; letter-spacing: var(--track-display); margin: var(--sp-6) 0 var(--sp-7);
+    text-wrap: balance; max-width: 1100px;
+  }
+  .art-head h1 .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); letter-spacing: -0.02em; }
+  .art-head .dek { font-family: var(--serif); font-style: italic; font-size: clamp(20px, 2.2vw, 26px); line-height: 1.4; color: var(--ink-dim); margin: 0; max-width: 760px; }
+
+  /* article body */
+  .art {
+    display: grid; grid-template-columns: 240px minmax(0, 720px);
+    gap: 64px; padding: var(--sp-12) 0;
+  }
+  @media (max-width: 980px) { .art { grid-template-columns: 1fr; gap: var(--sp-7); } }
+  .art-side { font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); align-self: start; position: sticky; top: var(--sp-8); display: flex; flex-direction: column; gap: var(--sp-7); }
+  .art-side .toc { display: flex; flex-direction: column; gap: 8px; }
+  .art-side .toc a { color: var(--ink-faint); padding: 4px 0; border-bottom: var(--bw-hair) solid var(--line); }
+  .art-side .toc a:hover { color: var(--ink); }
+  .art-side .toc a.active { color: var(--ink); border-color: var(--ink); }
+
+  .prose { font-family: var(--grotesk); font-size: 19px; line-height: 1.65; color: var(--ink); max-width: 700px; }
+  .prose p { margin: 0 0 var(--sp-5); }
+  .prose p:first-child::first-letter {
+    font-family: var(--serif); font-weight: 500; font-size: 5em;
+    line-height: 0.85; float: left; margin: 8px 12px 0 0; color: var(--ink);
+  }
+  .prose h2 {
+    font-family: var(--grotesk); font-weight: 700; font-size: 32px;
+    line-height: 1.1; letter-spacing: -0.03em; margin: var(--sp-12) 0 var(--sp-5);
+    text-wrap: balance;
+  }
+  .prose h2 .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); }
+  .prose h2 .num { font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); display: block; margin-bottom: var(--sp-3); font-weight: 400; }
+  .prose em, .prose i { font-family: var(--serif); font-style: italic; color: var(--ink-dim); }
+  .prose strong { font-weight: 600; }
+  .prose ul, .prose ol { padding-left: 0; margin: var(--sp-5) 0 var(--sp-6); list-style: none; }
+  .prose ul li, .prose ol li {
+    padding: var(--sp-3) 0 var(--sp-3) 32px; border-bottom: var(--bw-hair) solid var(--line);
+    position: relative;
+  }
+  .prose ul li::before { content: ''; width: 8px; height: 8px; background: var(--accent); position: absolute; left: 0; top: 16px; border-radius: var(--r-pill); }
+  .prose ol { counter-reset: ol; }
+  .prose ol li { counter-increment: ol; }
+  .prose ol li::before { content: counter(ol, decimal-leading-zero); position: absolute; left: 0; top: 14px; font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); color: var(--accent-deep); }
+  .prose blockquote {
+    margin: var(--sp-8) 0; padding: var(--sp-7) var(--sp-8) var(--sp-7) var(--sp-8);
+    border-top: var(--bw-hair) solid var(--ink); border-bottom: var(--bw-hair) solid var(--ink);
+    font-family: var(--serif); font-style: italic; font-size: 26px; line-height: 1.3; letter-spacing: -0.01em; color: var(--ink);
+  }
+  .prose code { font-family: var(--mono); font-size: 0.85em; background: var(--paper-3); padding: 2px 6px; }
+  .prose hr { border: 0; border-top: var(--bw-hair) solid var(--line); margin: var(--sp-10) 0; }
+  .prose .lede { font-family: var(--serif); font-style: italic; font-size: 22px; line-height: 1.45; color: var(--ink-dim); margin-bottom: var(--sp-7); }
+
+  /* numbox inline */
+  .numbox { background: var(--sage); padding: var(--sp-6) var(--sp-7); display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--sp-5); border-left: var(--bw-thick) solid var(--accent-deep); margin: var(--sp-7) 0; }
+  .numbox .k { font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--accent-deep); display: block; margin-bottom: 6px; }
+  .numbox .v { font-family: var(--grotesk); font-weight: 700; font-size: 28px; line-height: 1; letter-spacing: var(--track-tighter); }
+  .numbox .v .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); }
+
+  /* end-of-article rail */
+  .end-rail { margin-top: var(--sp-12); padding-top: var(--sp-7); border-top: var(--bw-rule) solid var(--ink); display: flex; justify-content: space-between; align-items: center; font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); }
+  .end-rail a:hover { color: var(--accent-deep); }
+
+  /* related */
+  .related { padding: var(--sp-14) 0 var(--sp-8); border-top: var(--bw-hair) solid var(--line-strong); }
+  .related h3 { font-family: var(--grotesk); font-weight: 700; font-size: 32px; letter-spacing: -0.03em; margin: 0 0 var(--sp-7); }
+  .related h3 .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); }
+  .rel-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--sp-3); }
+  @media (max-width: 880px) { .rel-grid { grid-template-columns: 1fr; } }
+  .rel { padding: var(--sp-7); border: var(--bw-hair) solid var(--line); display: flex; flex-direction: column; }
+  .rel:hover { background: var(--paper-2); border-color: var(--ink); }
+  .rel h4 { font-family: var(--grotesk); font-weight: 700; font-size: 22px; line-height: 1.15; letter-spacing: -0.02em; margin: var(--sp-4) 0 var(--sp-3); }
+  .rel h4 .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); }
+  .rel p { font-size: 14.5px; line-height: 1.55; color: var(--ink-dim); margin: 0; flex: 1; }
+  .rel .m { margin-top: var(--sp-5); font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); }
+
+  .stamp { font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--accent-deep); display: inline-flex; align-items: center; }
+  .stamp::before { content: ''; display: inline-block; width: 8px; height: 8px; background: var(--accent); border-radius: var(--r-pill); margin-right: 12px; }
+
+  /* footer */
+  .ft { padding: var(--sp-12) 0; border-top: var(--bw-hair) solid var(--line-strong); display: flex; justify-content: space-between; align-items: center; font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); }
+
+  /* end CTA on dark */
+  .end-cta { background: var(--ink); color: var(--on-ink); padding: var(--sp-12); display: grid; grid-template-columns: 1.4fr 1fr; gap: 64px; align-items: center; margin-top: var(--sp-12); }
+  @media (max-width: 880px) { .end-cta { grid-template-columns: 1fr; gap: var(--sp-8); padding: var(--sp-8); } }
+  .end-cta h3 { font-family: var(--grotesk); font-weight: 700; font-size: 32px; line-height: 1.04; letter-spacing: -0.03em; margin: 0; color: var(--on-ink); text-wrap: balance; }
+  .end-cta h3 .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--on-ink-italic); }
+  .end-cta .right { display: flex; flex-direction: column; gap: 18px; }
+  .end-cta .stamp { color: var(--on-ink-faint); }
+  .end-cta p { color: var(--on-ink-dim); margin: 0; font-size: 16px; line-height: 1.55; max-width: 360px; }
+  .btn-inv { display: inline-flex; padding: 13px 20px; background: var(--paper); color: var(--ink); font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; gap: var(--sp-3); align-self: flex-start; }
+  .btn-inv:hover { background: var(--accent); }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <nav class="nav">
+    <a class="wordmark">rivett<span class="dot-mark"></span></a>
+    <div class="links">
+      <a>The work</a><a>Field notes</a><a>About</a>
+    </div>
+  </nav>
+
+  <div class="meta-strip">
+    <div class="crumbs"><a>rivett</a> <span>/</span> <a>field notes</a> <span>/</span> <span style="color: var(--ink);">04</span></div>
+    <div class="lh" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-7); align-items: end;">
+      <div>Note · <b>04</b></div>
+      <div>Published · <b>2025·09·14</b></div>
+      <div>Reading time · <b>7 min</b></div>
+      <div>Section · <b>Cadence</b></div>
+    </div>
+  </div>
+
+  <header class="art-head">
+    <span class="stamp">Field note · 04 · Cadence</span>
+    <h1>Cadence <span class="ital">over volume.</span></h1>
+    <p class="dek">Why shipping less, but instrumented, beats shipping more. The fortnightly read-out, the green-light decision, and the budget that follows.</p>
+  </header>
+
+  <section class="art">
+    <aside class="art-side">
+      <div>
+        <div>In this note</div>
+        <div class="toc">
+          <a class="active">01 · The wrong question</a>
+          <a>02 · The fortnight</a>
+          <a>03 · Reading the curve</a>
+          <a>04 · Decline as a posture</a>
+        </div>
+      </div>
+      <div>
+        <div>Tags</div>
+        <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;">
+          <span style="display: inline-flex; padding: 4px 8px; background: var(--paper-2); border: var(--bw-hair) solid var(--line); font-family: var(--mono); font-size: 10px; letter-spacing: var(--track-mono-tight); color: var(--ink-dim);">Cadence</span>
+          <span style="display: inline-flex; padding: 4px 8px; background: var(--paper-2); border: var(--bw-hair) solid var(--line); font-family: var(--mono); font-size: 10px; letter-spacing: var(--track-mono-tight); color: var(--ink-dim);">Instrumented</span>
+          <span style="display: inline-flex; padding: 4px 8px; background: var(--paper-2); border: var(--bw-hair) solid var(--line); font-family: var(--mono); font-size: 10px; letter-spacing: var(--track-mono-tight); color: var(--ink-dim);">Memo</span>
+        </div>
+      </div>
+    </aside>
+
+    <article class="prose">
+      <p class="lede">Four founders have asked me the same question this quarter. Some version of: <em>we are shipping, the team is busy, but the curve is flat. What now?</em></p>
+
+      <p>The honest answer is rarely the loud one. It is almost always cheaper than the playbook says. And it is almost never about shipping more.</p>
+
+      <p>The work isn't to ship more. It's to ship the right thing, instrumented, on the right cadence — and to know within a fortnight whether it's bending the curve.</p>
+
+      <h2><span class="num">01</span>The wrong question</h2>
+
+      <p>"What should we ship next" is the wrong question. Three months in, six months in, the team has shipped plenty. The cabinet is full. The dashboard exists. The graphs slope up and to the right when you squint at them, and sideways when you don't.</p>
+
+      <p>The right question is harder. <em>What did the last thing we shipped actually do?</em> If you cannot answer that in one paragraph with a number in it, the next thing should not ship. The next thing is instrumentation.</p>
+
+      <blockquote>Half the value of a senior operator is the meeting that doesn't happen and the vendor that doesn't get hired.</blockquote>
+
+      <h2><span class="num">02</span>The fortnight</h2>
+
+      <p>A fortnight is the right unit. A week is too short — noise drowns signal, especially in B2B funnels where the cycle is two to six weeks long. A month is too long — by the time the data lands, the team has shipped three more things and you cannot attribute anything to anything.</p>
+
+      <p>So: every fortnight, on the same day, a one-page read-out lands in the same inbox. It contains:</p>
+
+      <ol>
+        <li>The single number that matters this fortnight.</li>
+        <li>What was shipped, and what each thing was supposed to do.</li>
+        <li>What actually happened, instrumented.</li>
+        <li>The decision: green-light, halt, or wait one more cycle.</li>
+      </ol>
+
+      <p>That is the entire artifact. Four sections. One page. No charts unless a chart earns its place.</p>
+
+      <div class="numbox">
+        <div><span class="k">Cycle</span><span class="v">14 <span class="ital">days</span></span></div>
+        <div><span class="k">Read-out</span><span class="v">01 <span class="ital">page</span></span></div>
+        <div><span class="k">Decisions</span><span class="v">3 <span class="ital">states</span></span></div>
+        <div><span class="k">Charts</span><span class="v">≤ 02</span></div>
+      </div>
+
+      <h2><span class="num">03</span>Reading the curve</h2>
+
+      <p>By the third fortnight you have a curve. Not a chart — a felt sense, an instinct, a thing you can hold in your head while you read the read-out. The curve is bending or it is not. The team's effort is connected to the number or it is not.</p>
+
+      <p>If it is bending: stop. Ship more of what you just shipped. Do not get clever. The clever instinct is what got you flat in the first place.</p>
+
+      <p>If it is not bending: stop the experiment, write down what you learned, and pick the next one. Do not run it for another fortnight on hope. Hope is not an instrument.</p>
+
+      <h2><span class="num">04</span>Decline as a posture</h2>
+
+      <p>Most of what arrives in the inbox of a senior operator does not deserve to be shipped. The vendor who promises a 2x lift. The agency who has done it before "in your space." The headline change with no instrumentation plan. The dashboard that is added because someone saw it on a podcast.</p>
+
+      <p>Decline is the posture. The fortnight is the rhythm. The number is the answer. Everything else is noise dressed up as work.</p>
+
+      <hr />
+      <p style="font-family: var(--serif); font-style: italic; color: var(--ink-dim); font-size: 17px;">— TR, Cape Town. <code>2025·09</code></p>
+
+      <div class="end-rail">
+        <a>← 03 · The decline letter</a>
+        <span>04 / 11</span>
+        <a>05 · One number per fortnight →</a>
+      </div>
+    </article>
+  </section>
+
+  <section class="related">
+    <h3>Adjacent <span class="ital">notes.</span></h3>
+    <div class="rel-grid">
+      <a class="rel">
+        <span class="stamp">Note · 03</span>
+        <h4>The decline letter <span class="ital">earns its keep.</span></h4>
+        <p>Half the value of a senior operator is the vendor that doesn't get hired. A field guide to the polite "no".</p>
+        <span class="m">2025·08 · 5 min · Decline →</span>
+      </a>
+      <a class="rel">
+        <span class="stamp">Note · 02</span>
+        <h4>Instrumented before clever.</h4>
+        <p>The order is non-negotiable. A founder's checklist for what gets built before the next experiment ships.</p>
+        <span class="m">2025·07 · 9 min · Stack →</span>
+      </a>
+    </div>
+  </section>
+
+  <div class="end-cta">
+    <h3>Want a fortnightly read-out for your own funnel? <span class="ital">That's the run.</span></h3>
+    <div class="right">
+      <span class="stamp">M · 03 · Run</span>
+      <p>Senior operator, fortnightly read-out, monthly decision memo. £12k / month. Twelve-week minimum.</p>
+      <a class="btn-inv">Book diagnostic →</a>
+    </div>
+  </div>
+
+  <footer class="ft">
+    <span class="wordmark" style="font-size: 14px;">rivett<span class="dot-mark"></span></span>
+    <span>© rivett · 2026 · v1.0</span>
+  </footer>
+
+</div>
+</body>
+</html>

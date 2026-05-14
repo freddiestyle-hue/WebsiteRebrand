@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Stamps · the mono label</title>
+<link rel="stylesheet" href="_card.css"/><style>
+  .stack { display: flex; flex-direction: column; gap: 8px; }
+  .row { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; border: var(--bw-hair) solid var(--line); }
+  .row.sage { background: var(--sage); }
+  .row.dark { background: var(--ink); }
+  .lbl { font-family: var(--mono); font-size: 10px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); }
+  .row.dark .lbl { color: var(--on-ink-faint); }
+  .stamp-x { color: var(--accent-deep); font-size: 11px; }
+  .row.dark .stamp-x { color: var(--on-ink-faint); }
+  .row.dark .stamp-x::before { background: var(--accent); }
+  .stamp-x.ink { color: var(--ink); }
+</style></head><body>
+<div class="stack">
+  <div class="row"><span class="stamp-x">A SENIOR PRACTICE · CAPE TOWN</span><span class="lbl">on paper</span></div>
+  <div class="row sage"><span class="stamp-x">FOR FOUNDERS</span><span class="lbl">on sage</span></div>
+  <div class="row"><span class="stamp-x ink">M · 01 · 02 WKS</span><span class="lbl">ink variant</span></div>
+  <div class="row dark"><span class="stamp-x">TWO-WEEK ENGAGEMENT</span><span class="lbl">on ink</span></div>
+</div>
+</body></html>

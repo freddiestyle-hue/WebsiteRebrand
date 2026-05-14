@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>On-ink ramp</title>
+<link rel="stylesheet" href="_card.css" />
+<style>
+
+  .panel { background: var(--ink); color: var(--on-ink); padding: 22px 24px; border: var(--bw-hair) solid var(--line); }
+  .panel .row { display: flex; flex-direction: column; gap: 8px; }
+  .panel .line { display: grid; grid-template-columns: 130px 1fr 80px; align-items: center; gap: 14px; padding: 6px 0; border-bottom: var(--bw-hair) solid var(--on-ink-line); font-size: 14px; }
+  .panel .line:last-child { border-bottom: 0; }
+  .panel .k { font-family: var(--mono); font-size: 10px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--on-ink-faint); }
+  .panel .t { font-family: var(--grotesk); }
+  .panel .hex { font-family: var(--mono); font-size: 10.5px; color: var(--on-ink-faint); text-align: right; }
+  .panel .it { font-family: var(--serif); font-style: italic; color: var(--on-ink-italic); }
+
+</style>
+</head>
+<body>
+
+<div class="panel">
+  <div class="row">
+    <div class="line"><span class="k">on-ink</span><span class="t" style="color: var(--on-ink);">Primary on dark.</span><span class="hex">#FFFFFF</span></div>
+    <div class="line"><span class="k">on-ink-dim</span><span class="t" style="color: var(--on-ink-dim);">Body on dark surface.</span><span class="hex">rgba 0.78</span></div>
+    <div class="line"><span class="k">on-ink-italic</span><span class="t it">The second clause.</span><span class="hex">rgba 0.62</span></div>
+    <div class="line"><span class="k">on-ink-faint</span><span class="t" style="color: var(--on-ink-faint);">META · 11PX MONO</span><span class="hex">rgba 0.55</span></div>
+    <div class="line"><span class="k">on-ink-line</span><span class="t" style="color: var(--on-ink-faint); font-size: 12px;">— hairline below —</span><span class="hex">rgba 0.18</span></div>
+  </div>
+</div>
+
+</body>
+</html>

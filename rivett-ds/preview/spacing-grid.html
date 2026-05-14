@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Layout · 12-column grid</title>
+<link rel="stylesheet" href="_card.css"/><style>
+  .frame { padding: 14px 16px; border: var(--bw-hair) solid var(--line); }
+  .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 8px; margin-top: 10px; }
+  .col { background: var(--paper-2); border: var(--bw-hair) solid var(--line); height: 60px; display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 10px; color: var(--ink-faint); letter-spacing: var(--track-mono); }
+  .meta-row { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 10px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); margin-top: 10px; }
+  .meta-row b { color: var(--ink); font-weight: 500; }
+</style></head><body>
+<div class="frame">
+  <div class="meta-row" style="margin-top: 0; margin-bottom: 8px;">
+    <span><b>page-max</b> · 1240</span>
+    <span><b>page-pad</b> · 56</span>
+    <span><b>col-gap</b> · 24</span>
+    <span><b>cols</b> · 12</span>
+  </div>
+  <div class="grid">
+    <div class="col">01</div><div class="col">02</div><div class="col">03</div><div class="col">04</div><div class="col">05</div><div class="col">06</div><div class="col">07</div><div class="col">08</div><div class="col">09</div><div class="col">10</div><div class="col">11</div><div class="col">12</div>
+  </div>
+</div>
+</body></html>

@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Rivett · Design System v1.0</title>
+<link rel="stylesheet" href="tokens.css" />
+<style>
+  /* ---------- Hub-specific ---------- */
+  .hub-hero {
+    padding: var(--sp-20) 0 var(--sp-16);
+    border-bottom: var(--bw-hair) solid var(--line-strong);
+  }
+  .hub-hero h1 {
+    font-family: var(--grotesk);
+    font-weight: 800;
+    font-size: clamp(64px, 9vw, 144px);
+    line-height: 0.9;
+    letter-spacing: var(--track-display);
+    margin: var(--sp-8) 0 0;
+    text-wrap: balance;
+    max-width: 1100px;
+  }
+  .hub-hero .dek {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: clamp(22px, 2.4vw, 30px);
+    line-height: 1.4;
+    margin: var(--sp-10) 0 0;
+    max-width: 780px;
+    color: var(--ink-dim);
+    text-wrap: pretty;
+  }
+
+  /* Status strip */
+  .status {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    border: var(--bw-hair) solid var(--line);
+    margin: var(--sp-12) 0 0;
+  }
+  @media (max-width: 880px) { .status { grid-template-columns: repeat(2, 1fr); } }
+  .status .cell {
+    padding: var(--sp-6) var(--sp-7);
+    border-right: var(--bw-hair) solid var(--line);
+    border-bottom: var(--bw-hair) solid var(--line);
+  }
+  .status .cell:last-child { border-right: 0; }
+  .status .k {
+    display: block;
+    font-family: var(--mono);
+    font-size: var(--t-caption);
+    letter-spacing: var(--track-mono);
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 6px;
+  }
+  .status .v {
+    font-family: var(--grotesk);
+    font-weight: 700;
+    font-size: 28px;
+    line-height: 1;
+    letter-spacing: var(--track-tighter);
+  }
+  .status .v .ital {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 400;
+    color: var(--ink-dim);
+  }
+
+  /* Index grid */
+  .index {
+    padding: var(--sp-20) 0;
+    border-bottom: var(--bw-hair) solid var(--line-strong);
+  }
+  .index-head {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 64px;
+    margin-bottom: var(--sp-12);
+  }
+  @media (max-width: 980px) { .index-head { grid-template-columns: 1fr; gap: var(--sp-6); } }
+  .index-head .label {
+    font-family: var(--mono);
+    font-size: var(--t-meta);
+    letter-spacing: var(--track-mono);
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .index-head h2 {
+    font-family: var(--grotesk);
+    font-weight: 700;
+    font-size: var(--t-h-xl);
+    line-height: var(--lh-h);
+    letter-spacing: var(--track-h);
+    margin: 0;
+    text-wrap: balance;
+  }
+  .index-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0;
+    border-top: var(--bw-hair) solid var(--line-strong);
+  }
+  @media (max-width: 880px) { .index-grid { grid-template-columns: 1fr; } }
+  .index-card {
+    display: block;
+    padding: var(--sp-10) var(--sp-8);
+    border-right: var(--bw-hair) solid var(--line);
+    border-bottom: var(--bw-hair) solid var(--line);
+    transition: background var(--dur-1) var(--ease);
+    position: relative;
+    min-height: 220px;
+  }
+  .index-grid .index-card:nth-child(2n) { border-right: 0; }
+  @media (max-width: 880px) { .index-grid .index-card { border-right: 0; } }
+  .index-card:hover { background: var(--paper-2); }
+  .index-card .num {
+    font-family: var(--mono);
+    font-size: var(--t-meta);
+    letter-spacing: var(--track-mono);
+    color: var(--ink-faint);
+    text-transform: uppercase;
+  }
+  .index-card h3 {
+    font-family: var(--grotesk);
+    font-weight: 700;
+    font-size: 32px;
+    line-height: 1.05;
+    letter-spacing: var(--track-h-md);
+    margin: var(--sp-3) 0 var(--sp-3);
+    color: var(--ink);
+    text-wrap: balance;
+  }
+  .index-card h3 .ital {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 400;
+    color: var(--ink-dim);
+    letter-spacing: -0.02em;
+  }
+  .index-card p {
+    margin: 0;
+    font-size: var(--t-body-md);
+    line-height: var(--lh-body);
+    color: var(--ink-dim);
+    max-width: 480px;
+  }
+  .index-card .arrow {
+    position: absolute;
+    top: var(--sp-10);
+    right: var(--sp-8);
+    font-family: var(--mono);
+    color: var(--ink-faint);
+    font-size: 18px;
+    transition: transform var(--dur-1) var(--ease), color var(--dur-1) var(--ease);
+  }
+  .index-card:hover .arrow { transform: translateX(4px); color: var(--accent-deep); }
+  .index-card .meta-row {
+    margin-top: var(--sp-6);
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: var(--track-mono);
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    display: flex;
+    gap: var(--sp-4);
+    flex-wrap: wrap;
+  }
+
+  /* Principles */
+  .principles {
+    padding: var(--sp-20) 0;
+    border-bottom: var(--bw-hair) solid var(--line-strong);
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 64px;
+  }
+  @media (max-width: 980px) { .principles { grid-template-columns: 1fr; gap: var(--sp-6); padding: var(--sp-14) 0; } }
+  .principles .label {
+    font-family: var(--mono);
+    font-size: var(--t-meta);
+    letter-spacing: var(--track-mono);
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    align-self: start;
+    position: sticky;
+    top: var(--sp-8);
+  }
+  .principles .body { min-width: 0; }
+  .principles h2 {
+    font-family: var(--grotesk);
+    font-weight: 700;
+    font-size: var(--t-h-xl);
+    line-height: var(--lh-h);
+    letter-spacing: var(--track-h);
+    margin: 0 0 var(--sp-12);
+    text-wrap: balance;
+  }
+  .principles ol { list-style: none; counter-reset: p; padding: 0; margin: 0; }
+  .principles li {
+    counter-increment: p;
+    padding: var(--sp-7) 0;
+    border-top: var(--bw-hair) solid var(--line);
+    display: grid;
+    grid-template-columns: 80px 1fr;
+    gap: var(--sp-6);
+  }
+  .principles li:last-child { border-bottom: var(--bw-hair) solid var(--line); }
+  .principles li::before {
+    content: counter(p, decimal-leading-zero);
+    font-family: var(--mono);
+    font-size: var(--t-meta);
+    letter-spacing: var(--track-mono);
+    color: var(--ink-faint);
+    padding-top: 6px;
+  }
+  .principles li b {
+    font-family: var(--grotesk);
+    font-weight: 700;
+    font-size: 22px;
+    letter-spacing: var(--track-h-sm);
+    line-height: 1.2;
+    display: block;
+    margin-bottom: var(--sp-2);
+  }
+  .principles li b .ital {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 400;
+    color: var(--ink-dim);
+  }
+  .principles li p {
+    margin: 0;
+    font-size: var(--t-body);
+    line-height: var(--lh-body);
+    color: var(--ink-dim);
+    max-width: 640px;
+    text-wrap: pretty;
+  }
+
+  /* Tldr */
+  .tldr {
+    background: var(--paper-2);
+    border: var(--bw-hair) solid var(--ink);
+    padding: var(--sp-7) var(--sp-8);
+    display: grid;
+    grid-template-columns: 90px 1fr;
+    gap: var(--sp-6);
+    align-items: start;
+    margin: var(--sp-12) 0 0;
+  }
+  .tldr p {
+    margin: 0;
+    font-size: var(--t-body-xl);
+    line-height: var(--lh-prose);
+    font-family: var(--grotesk);
+    font-weight: 500;
+    text-wrap: pretty;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ===== System nav ===== -->
+  <nav class="system-nav">
+    <span class="wordmark">rivett<span class="dot-mark"></span></span>
+    <div class="meta">
+      <span>Design system <b>v1.0</b></span>
+      <span>Issued <b>2026·05</b></span>
+      <a href="design.md"><b>design.md</b></a>
+      <a href="tokens.css"><b>tokens.css</b></a>
+    </div>
+  </nav>
+
+  <!-- ===== Hero ===== -->
+  <header class="hub-hero">
+    <span class="stamp">A working manual · the system, fully loaded</span>
+    <h1>The whole system, <span class="ital">in one repository.</span></h1>
+    <p class="dek">Tokens, marks, type, components, page templates, voice and microcopy. Everything that ships under the rivett name is defined here. If it isn't here, it isn't part of the system. If it conflicts with what you see live, the system wins; the page is wrong.</p>
+
+    <div class="tldr">
+      <span class="stamp">TL · DR</span>
+      <p>Paper, ink, one green. Three families, three jobs. Fifteen components, twenty-four icons, eight templates, one voice. Square geometry. No emoji. No gradients. No exceptions without a commit and a reviewer.</p>
+    </div>
+
+    <div class="status">
+      <div class="cell">
+        <span class="k">Version</span>
+        <span class="v">v1.0</span>
+      </div>
+      <div class="cell">
+        <span class="k">Tokens</span>
+        <span class="v">112 <span class="ital">defined</span></span>
+      </div>
+      <div class="cell">
+        <span class="k">Components</span>
+        <span class="v">15 <span class="ital">primitives</span></span>
+      </div>
+      <div class="cell">
+        <span class="k">Templates</span>
+        <span class="v">08 <span class="ital">page kits</span></span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===== Principles ===== -->
+  <section class="principles">
+    <span class="label">First principles</span>
+    <div class="body">
+      <h2>Six rules <span class="ital">that decide every other rule.</span></h2>
+      <ol>
+        <li>
+          <div>
+            <b>Restraint is the brand.</b>
+            <p>The palette is small, the type kit is small, the icon set is small, the component library is small. If a problem can be solved with what's already in the system, the answer is to use it. Inventing new tokens, new colours, or new components is a last resort and requires a commit.</p>
+          </div>
+        </li>
+        <li>
+          <div>
+            <b>Geometry is square.</b>
+            <p>Default radius is zero. Hairlines are 1px. Stroke caps are square, joins are mitre. The only allowed curve is the dot mark and the pill stamp. Rounded corners read as web-app slop and are forbidden on chrome.</p>
+          </div>
+        </li>
+        <li>
+          <div>
+            <b>The italic is the whisper, <span class="ital">never the statement.</span></b>
+            <p>Newsreader italic carries the second clause of a thought, never the first. It runs in <code>--ink-dim</code> on light, <code>--on-ink-italic</code> on dark. It is not bold, it is not full-sentence, and it does not appear in buttons, stamps, or labels.</p>
+          </div>
+        </li>
+        <li>
+          <div>
+            <b>Numbers do the persuading.</b>
+            <p>Specific numbers — <code>£12k</code>, <code>30 markets</code>, <code>14 days</code> — replace adjectives. Two-digit zero-pad in mono labels: <code>01</code>, <code>02</code>. En-dash for ranges only. Numbers are voice.</p>
+          </div>
+        </li>
+        <li>
+          <div>
+            <b>Tokens, not values.</b>
+            <p>Every spacing, colour, type, motion and radius value in component CSS routes through a token. Raw <code>#hex</code>, raw <code>px</code>, and raw <code>ms</code> in component code are bugs. The token file is the contract.</p>
+          </div>
+        </li>
+        <li>
+          <div>
+            <b>The page is the proof.</b>
+            <p>Every component, pattern, and template in the system has a working example you can read the source of. No screenshots, no Figma-only specs. If it isn't a working page, it isn't shipped.</p>
+          </div>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ===== Index ===== -->
+  <section class="index">
+    <div class="index-head">
+      <span class="label">Sections · 07 in total</span>
+      <h2>Read in order, <span class="ital">or jump to what's burning.</span></h2>
+    </div>
+
+    <div class="index-grid">
+      <a class="index-card" href="01-foundations.html">
+        <span class="num">01 · Foundations</span>
+        <h3>Tokens, type, <span class="ital">spacing, motion.</span></h3>
+        <p>The atomic layer. Colour ramps, the type scale, the 4-pixel spacing scale, easing curves, focus rules, the grid.</p>
+        <div class="meta-row">
+          <span>112 tokens</span>
+          <span>3 families</span>
+          <span>13-step scale</span>
+        </div>
+        <span class="arrow">→</span>
+      </a>
+
+      <a class="index-card" href="02-identity.html">
+        <span class="num">02 · Identity</span>
+        <h3>Wordmark, B1 mark, <span class="ital">the dot.</span></h3>
+        <p>The signature, the favicon, the social card, the email signature. Clear space, misuse, the OG generator. The dot is sacred.</p>
+        <div class="meta-row">
+          <span>1 wordmark</span>
+          <span>1 B1 mark</span>
+          <span>1 dot</span>
+        </div>
+        <span class="arrow">→</span>
+      </a>
+
+      <a class="index-card" href="03-components.html">
+        <span class="num">03 · Components</span>
+        <h3>Buttons, forms, cards, <span class="ital">tables, modals, FAQ.</span></h3>
+        <p>The full primitive library. Three buttons, six form controls, four card variants, the data table, the FAQ accordion, the modal sheet.</p>
+        <div class="meta-row">
+          <span>15 primitives</span>
+          <span>token-driven</span>
+        </div>
+        <span class="arrow">→</span>
+      </a>
+
+      <a class="index-card" href="04-patterns.html">
+        <span class="num">04 · Patterns</span>
+        <h3>Editorial blocks, <span class="ital">section heads, heroes.</span></h3>
+        <p>Composed patterns. The numbered section head, the TLDR, the pull quote, the numbox, the migration callout, the audience cards, the dark closer.</p>
+        <div class="meta-row">
+          <span>9 patterns</span>
+          <span>compose, don't fork</span>
+        </div>
+        <span class="arrow">→</span>
+      </a>
+
+      <a class="index-card" href="05-templates.html">
+        <span class="num">05 · Templates</span>
+        <h3>Home, blog, <span class="ital">Revenue MRI, diagnostic.</span></h3>
+        <p>Eight page kits. Home/landing, the Field Notes index and post, the Revenue MRI report, the diagnostic booking, the case study, the 404, the email.</p>
+        <div class="meta-row">
+          <span>8 templates</span>
+          <span>built from patterns</span>
+        </div>
+        <span class="arrow">→</span>
+      </a>
+
+      <a class="index-card" href="06-voice.html">
+        <span class="num">06 · Voice</span>
+        <h3>The senior operator, <span class="ital">writing late at night.</span></h3>
+        <p>Do/don't rules. The italic clause. Numbers convention. Microcopy library — buttons, errors, empty states, FAQ, transactional email.</p>
+        <div class="meta-row">
+          <span>40 do/don'ts</span>
+          <span>120 microcopy strings</span>
+        </div>
+        <span class="arrow">→</span>
+      </a>
+
+      <a class="index-card" href="07-icons.html">
+        <span class="num">07 · Icon library</span>
+        <h3>Twenty-four marks, <span class="ital">no twenty-fifth.</span></h3>
+        <p>The full icon set on a 24-grid, 1.6 stroke. The accent dot rule. Where each icon is allowed to live. How to commission a new one (you don't).</p>
+        <div class="meta-row">
+          <span>24 icons</span>
+          <span>1.6 stroke</span>
+          <span>square caps</span>
+        </div>
+        <span class="arrow">→</span>
+      </a>
+
+    </div>
+    <p style="font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); margin: var(--sp-8) 0 0;">Motion, accessibility &amp; the changelog live in <a href="design.md" style="color: var(--accent-deep);"><b>design.md</b></a> · §10–§12.</p>
+  </section>
+
+  <!-- ===== How to use ===== -->
+  <section class="spec" id="how-to-use">
+    <div class="label">How to use
+      <span class="num">→</span>
+    </div>
+    <div class="body">
+      <h2>Three ways in. <span class="ital">Pick the one that matches the question.</span></h2>
+      <p class="lede">The system serves three audiences: the operator shipping a page, the writer drafting a post, the founder briefing a contractor. Each lands in a different door.</p>
+
+      <h3>If you are shipping a page</h3>
+      <p class="body-xl">Start at <a href="01-foundations.html"><b>Foundations</b></a> for tokens. Pull the <code>tokens.css</code> stylesheet. Compose with <a href="03-components.html"><b>Components</b></a> and <a href="04-patterns.html"><b>Patterns</b></a>. If the page is one of the eight named kinds, copy the matching <a href="05-templates.html"><b>Template</b></a>.</p>
+
+      <h3>If you are writing copy</h3>
+      <p class="body-xl">Read <a href="06-voice.html"><b>Voice</b></a> first, then the relevant <a href="05-templates.html"><b>Template</b></a> microcopy. The italic rule, the numbers rule, and the no-marketer-words list are non-negotiable.</p>
+
+      <h3>If you are briefing a contractor</h3>
+      <p class="body-xl">Send <a href="design.md"><b>design.md</b></a>, this hub URL, and the relevant template. Anything not in those three documents is out of scope until it lands in the repo.</p>
+    </div>
+  </section>
+
+  <!-- ===== Migration / version note ===== -->
+  <section class="spec" id="version" style="border-bottom: 0;">
+    <div class="label">Version
+      <span class="num">v1</span>
+    </div>
+    <div class="body">
+      <h2>v1.0, <span class="ital">absorbing v0.2.</span></h2>
+      <p class="lede">v0.2 was a token sweep. v1.0 is the full system: every component documented, every page kind templated, voice and microcopy under repo control, the icon set doubled.</p>
+
+      <div class="status" style="margin-top: var(--sp-8);">
+        <div class="cell">
+          <span class="k">Released</span>
+          <span class="v">v1.0</span>
+        </div>
+        <div class="cell">
+          <span class="k">Supersedes</span>
+          <span class="v">v0.2</span>
+        </div>
+        <div class="cell">
+          <span class="k">Tokens added</span>
+          <span class="v">+38</span>
+        </div>
+        <div class="cell">
+          <span class="k">Icons added</span>
+          <span class="v">+12</span>
+        </div>
+      </div>
+
+      <h3 style="margin-top: var(--sp-12);">What does not move from v0.2</h3>
+      <p class="body-xl">The accent values. The dot position. The wordmark cut. Inter Tight, Newsreader, DM Mono. Square geometry. The italic-is-the-whisper rule. The voice doc. If you fork v0.2 today, you ship a v1.0 page tomorrow without rewriting copy.</p>
+    </div>
+  </section>
+
+  <footer class="system-foot">
+    <span class="wordmark wordmark--sm">rivett<span class="dot-mark"></span></span>
+    <span>Design system v1.0 · 2026·05 · canonical</span>
+    <span><a href="design.md">design.md →</a></span>
+  </footer>
+
+</div>
+</body>
+</html>
