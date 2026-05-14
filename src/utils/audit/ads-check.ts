@@ -1,17 +1,16 @@
 // Ads-running check via ScrapeCreators.
 //
-// Queries the Meta Ad Library for active ads run by the target company.
-// Returns null if no SCRAPECREATORS_API_KEY is set — the verdict cell
-// degrades to "not measured · needs SCRAPECREATORS_API_KEY".
+// Queries three ad libraries in parallel:
+//   - Meta (Facebook + Instagram) by company name
+//   - Google by domain
+//   - LinkedIn by company name
 //
-// Same API surface as `_scrapecreators_meta_ads` in the Python pipeline
-// (prospect-teardown/teardown/enrichers.py), so memos generated either
-// way agree about ad activity.
+// Returns null if SCRAPECREATORS_API_KEY is missing — verdict cell degrades
+// to "not measured". Each platform call is independent: a 404 or 0 results
+// from one does not affect the others.
 //
-// The "company name" is inferred from the domain since we don't have a
-// real company name in the live form path. ScrapeCreators searches by
-// fuzzy company name match, so e.g. "pellaofcolumbus.com" → search query
-// "pellaofcolumbus" works reasonably well for most operator sites.
+// Cost note: ScrapeCreators bills ~1 credit per ad-library call, so each
+// /audit/v3 scan with this enabled burns ~3 credits.
 
 export interface AdsResult {
   metaActive: number | null;
@@ -46,6 +45,33 @@ async function safeJson(url: string, headers: Record<string, string>): Promise<a
   }
 }
 
+function countResults(json: any): number {
+  if (!json) return 0;
+  if (Array.isArray(json.results)) return json.results.length;
+  if (Array.isArray(json.ads)) return json.ads.length;
+  return 0;
+}
+
+function extractMetaLandingPages(json: any): string[] {
+  const out = new Set<string>();
+  const items = json?.results ?? json?.ads ?? [];
+  for (const item of items) {
+    const lp = item?.snapshot?.link_url ?? item?.snapshotUrl;
+    if (lp) out.add(lp);
+    if (out.size >= 3) break;
+  }
+  return [...out];
+}
+
+function extractEarliest(json: any): string | null {
+  const items = json?.results ?? json?.ads ?? [];
+  const dates = items
+    .map((r: any) => r.started_running ?? r.start_date ?? r.startDate)
+    .filter((d: any): d is string => typeof d === 'string')
+    .sort();
+  return dates[0] ?? null;
+}
+
 export async function checkAds(hostname: string): Promise<AdsResult | null> {
   const apiKey = process.env.SCRAPECREATORS_API_KEY;
   if (!apiKey) return null;
@@ -57,56 +83,40 @@ export async function checkAds(hostname: string): Promise<AdsResult | null> {
     `${SC_BASE}/facebook/adLibrary/company/ads?companyName=${encodeURIComponent(company)}` +
     `&country=US&status=ACTIVE&trim=true`;
   const googleUrl = `${SC_BASE}/google/company/ads?domain=${encodeURIComponent(hostname)}&region=US`;
+  const linkedinUrl = `${SC_BASE}/linkedin/ads/search?company=${encodeURIComponent(company)}&countries=US`;
 
-  const [metaJson, googleJson] = await Promise.all([
+  const [metaJson, googleJson, linkedinJson] = await Promise.all([
     safeJson(metaUrl, headers),
     safeJson(googleUrl, headers),
+    safeJson(linkedinUrl, headers),
   ]);
 
-  const metaResults = (metaJson?.results ?? []) as Array<{
-    id?: string;
-    page_id?: string;
-    snapshot?: { link_url?: string };
-    snapshotUrl?: string;
-    started_running?: string;
-  }>;
-  const googleResults = (googleJson?.results ?? googleJson?.ads ?? []) as Array<any>;
+  const metaActive = countResults(metaJson);
+  const googleActive = countResults(googleJson);
+  const linkedinActive = countResults(linkedinJson);
 
-  const metaActive = metaResults.length;
-  const googleActive = googleResults.length;
+  const earliestSeen = extractEarliest(metaJson);
+  const sampleLandingPages = extractMetaLandingPages(metaJson);
 
-  // Earliest first-seen
-  const allDates = metaResults
-    .map((r) => r.started_running)
-    .filter((d): d is string => typeof d === 'string')
-    .sort();
-  const earliestSeen = allDates[0] ?? null;
-
-  // Sample LPs (de-dupe, max 3)
-  const lps = new Set<string>();
-  for (const r of metaResults) {
-    const lp = r.snapshot?.link_url ?? r.snapshotUrl;
-    if (lp && lps.size < 3) lps.add(lp);
-  }
-
-  let commentary = '';
-  if (metaActive === 0 && googleActive === 0) {
-    commentary = `No active paid ads detected for ${hostname} on Meta or Google.`;
+  const total = metaActive + googleActive + linkedinActive;
+  let commentary: string;
+  if (total === 0) {
+    commentary = `No active paid ads detected for ${hostname} across Meta, Google, or LinkedIn.`;
   } else {
     const parts: string[] = [];
-    if (metaActive > 0) parts.push(`${metaActive} active ${metaActive === 1 ? 'ad' : 'ads'} on Meta`);
-    if (googleActive > 0)
-      parts.push(`${googleActive} active ${googleActive === 1 ? 'ad' : 'ads'} on Google`);
-    commentary = parts.join(', ') + '.';
-    if (earliestSeen) commentary += ` Earliest creative dates back to ${earliestSeen}.`;
+    if (metaActive > 0) parts.push(`${metaActive} on Meta`);
+    if (googleActive > 0) parts.push(`${googleActive} on Google`);
+    if (linkedinActive > 0) parts.push(`${linkedinActive} on LinkedIn`);
+    commentary = `${total} active ${total === 1 ? 'ad' : 'ads'} (${parts.join(', ')}).`;
+    if (earliestSeen) commentary += ` Earliest Meta creative dates back to ${earliestSeen}.`;
   }
 
   return {
     metaActive,
     googleActive,
-    linkedinActive: null,
+    linkedinActive,
     earliestSeen,
-    sampleLandingPages: [...lps],
+    sampleLandingPages,
     commentary,
   };
 }
