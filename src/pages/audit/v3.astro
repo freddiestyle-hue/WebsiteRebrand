@@ -1,10 +1,7 @@
 ---
-// Live v3 memo: enter a domain, run the in-browser audit + parallel
-// enrichments (deliverability, mobile, page speed, ads), render the
-// 5-chunk IA inline. No KV write, no Codex, no auth gate.
-//
-// Page speed (PSI) is the long pole at ~20-25 seconds. Everything else
-// parallelizes under it. Total scan time is typically 20-30 seconds.
+// Live v3 audit — verbatim implementation of the audit.html / landing.html
+// design dropped in audit.zip. Form state mirrors landing.html, result state
+// mirrors audit.html. Score animation + scan overlay deferred to follow-up.
 export const prerender = false;
 
 import PostHog from '../../components/PostHog.astro';
@@ -16,7 +13,7 @@ import { checkPageSpeed } from '../../utils/audit/pagespeed';
 import { checkAds } from '../../utils/audit/ads-check';
 import { detectTechStack } from '../../utils/audit/tech-stack-check';
 import { runHeadlessCheck } from '../../utils/audit/headless-check';
-import type { Memo, VerdictIcon } from '../../utils/audit/memo-schema';
+import type { Memo, VerdictCell, VerdictIcon } from '../../utils/audit/memo-schema';
 import { sanitizeMemoHtml } from '../../utils/audit/safe-html';
 
 const isPOST = Astro.request.method === 'POST';
@@ -39,17 +36,10 @@ if (isPOST) {
       if ('error' in norm) {
         inputError = norm.error;
       } else {
-        // Step 1: run the base audit (needs to complete first so we have
-        // the homepageHtml for mobile inference).
         audit = await runAudit(norm.url);
         if (audit.error) {
           runtimeError = audit.error;
         } else {
-          // Step 2: enrichments in parallel. Each returns null on failure
-          // (network, key missing, timeout) so the cell degrades gracefully.
-          // Headless is the heaviest (~10-15s including Chromium boot) but
-          // returns the most signal — rendered HTML for runtime tracking,
-          // real mobile measurements.
           const [deliverability, pageSpeed, ads, headless] = await Promise.all([
             checkDeliverability(audit.hostname),
             checkPageSpeed(audit.url, 'mobile'),
@@ -58,19 +48,11 @@ if (isPOST) {
           ]);
           const mobile = checkMobileFromHtml(audit.homepageHtml);
           const techStack = detectTechStack(audit.homepageHtml ?? '', audit.homepageHeaders);
-          // Re-run fingerprints against the headless-rendered HTML — this
-          // is where we catch GTM-injected pixels, async-loaded widgets, etc.
           const techStackRuntime = headless
             ? detectTechStack(headless.renderedHtml, audit.homepageHeaders)
             : null;
           enrichment = {
-            deliverability,
-            mobile,
-            pageSpeed,
-            ads,
-            techStack,
-            techStackRuntime,
-            headless,
+            deliverability, mobile, pageSpeed, ads, techStack, techStackRuntime, headless,
           };
           memo = buildMemoFromAudit(audit, enrichment);
         }
@@ -82,285 +64,662 @@ if (isPOST) {
   }
 }
 
-const fmtDate = (iso: string): string => {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  const yyyy = d.getUTCFullYear();
-  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
-  const dd = String(d.getUTCDate()).padStart(2, '0');
-  return `${yyyy}·${mm}·${dd}`;
+const fmtDate = (iso?: string): string => {
+  const d = iso ? new Date(iso) : new Date();
+  if (Number.isNaN(d.getTime())) return iso ?? '';
+  return `${d.getUTCFullYear()}·${String(d.getUTCMonth() + 1).padStart(2, '0')}·${String(d.getUTCDate()).padStart(2, '0')}`;
 };
 
-const iconHref = (icon: VerdictIcon): string => `#ic-${icon}`;
+const fmtTime = (iso: string): string => {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`;
+};
+
+const DIM_MAP: Record<VerdictIcon, { num: string; suffix: string; sprite: string }> = {
+  search:    { num: '01', suffix: '',            sprite: 'ic-01-diagnostic' },
+  spark:     { num: '02', suffix: 'NEW',         sprite: 'ic-03-signal' },
+  bolt:      { num: '03', suffix: 'PSI',         sprite: 'ic-23-vital' },
+  target:    { num: '04', suffix: '',            sprite: 'ic-19-numbers' },
+  megaphone: { num: '05', suffix: 'LIVE',        sprite: 'ic-20-share' },
+  eye:       { num: '06', suffix: '',            sprite: 'ic-12-confirm' },
+  phone:     { num: '07', suffix: 'HEADLESS',    sprite: 'ic-06-operator' },
+  mail:      { num: '08', suffix: 'DOH',         sprite: 'ic-14-outreach' },
+  flag:      { num: '09', suffix: 'FINGERPRINT', sprite: 'ic-05-stack' },
+  bar:       { num: '10', suffix: '',            sprite: 'ic-21-curve' },
+  clock:     { num: '11', suffix: '',            sprite: 'ic-04-cadence' },
+};
+
+const dimFor = (icon: VerdictIcon) => DIM_MAP[icon] ?? DIM_MAP.flag;
+const subKey = (icon: VerdictIcon): string => {
+  const d = dimFor(icon);
+  return d.suffix ? `D · ${d.num} · ${d.suffix}` : `D · ${d.num}`;
+};
+const chipKey = (icon: VerdictIcon): string => {
+  const d = dimFor(icon);
+  const short = (() => {
+    switch (icon) {
+      case 'search': return 'Search';
+      case 'spark': return 'AI';
+      case 'bolt': return 'Speed';
+      case 'target': return 'Pixels';
+      case 'megaphone': return 'Ads';
+      case 'eye': return 'Conv.';
+      case 'phone': return 'Mobile';
+      case 'mail': return 'Email';
+      case 'flag': return 'Stack';
+      default: return '';
+    }
+  })();
+  return `D · ${d.num} ${short}`;
+};
+
+const cellSeverity = (cell: VerdictCell): 'r' | 'a' | 'g' | '' => {
+  if (cell.checks.length === 0) return '';
+  const passed = cell.checks.filter((c) => c.ok).length;
+  const ratio = passed / cell.checks.length;
+  if (ratio >= 0.85) return 'g';
+  if (ratio >= 0.5) return 'a';
+  return 'r';
+};
+
+const splitValue = (value: string): { num: string; denom: string } => {
+  const m1 = value.match(/^([0-9.]+)\s*\/\s*(.+)$/);
+  if (m1) return { num: m1[1], denom: `/ ${m1[2]}` };
+  const m2 = value.match(/^([0-9.]+)\s+of\s+([0-9.]+)$/i);
+  if (m2) return { num: m2[1], denom: `/ ${m2[2]}` };
+  const m3 = value.match(/^([0-9.]+)\s+(.+)$/);
+  if (m3) return { num: m3[1], denom: m3[2] };
+  return { num: value, denom: '' };
+};
+
+const chipValue = (cell: VerdictCell): string => {
+  const v = cell.value.trim();
+  const m1 = v.match(/^([0-9]+)\s+of\s+([0-9]+)$/i);
+  if (m1) return `${m1[1]}/${m1[2]}`;
+  const m2 = v.match(/^([0-9]+)\s*\/\s*100$/);
+  if (m2) return m2[1];
+  const m3 = v.match(/^([0-9]+)\s+active/i);
+  if (m3) return m3[1];
+  const m4 = v.match(/^([0-9]+)\s+issues?/i);
+  if (m4) return `${m4[1]} iss.`;
+  if (v === 'None active') return '0';
+  if (v === 'Clean') return '✓';
+  return v.slice(0, 8);
+};
+
+const compositeScore = audit
+  ? Math.round((audit.scoreNumeric / Math.max(audit.scoreMax, 1)) * 100)
+  : 0;
+
+const scoreSegment = compositeScore < 20 ? 0
+  : compositeScore < 40 ? 1
+  : compositeScore < 60 ? 2
+  : compositeScore < 80 ? 3
+  : 4;
+
+const statusBadge = (ok: boolean, cellSev: 'r' | 'a' | 'g' | ''): { cls: string; label: string } => {
+  if (ok) return { cls: 'ok', label: 'OK' };
+  if (cellSev === 'a') return { cls: 'warn', label: 'WARN' };
+  return { cls: 'fail', label: 'FAIL' };
+};
+
+const verdictItalic = memo?.cover.italic ?? '';
+const headerDate = fmtDate(memo?.generatedAt);
+const headerTime = memo ? fmtTime(memo.generatedAt) : '';
 
 const pageTitle = memo
-  ? `Live audit · ${memo.domain} · Rivett`
-  : 'Live teardown audit · Rivett';
+  ? `${memo.domain} · ${compositeScore} of 100 · Teardown memo · rivett`
+  : 'Live audit · rivett';
+
+const splitHeading = (heading: string): { lead: string; tail: string } => {
+  // "How Google sees you" → lead="How Google", tail="sees you."
+  const parts = heading.trim().replace(/\.$/, '').split(' ');
+  if (parts.length <= 2) return { lead: heading, tail: '' };
+  const lead = parts.slice(0, 2).join(' ');
+  const tail = parts.slice(2).join(' ') + '.';
+  return { lead, tail };
+};
 ---
 <!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>{pageTitle}</title>
 <meta name="robots" content="noindex,nofollow" />
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&family=Newsreader:ital,wght@0,400;0,500;1,400;1,500&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="/audit/memo.css" />
+<link rel="icon" href="/audit/rivet-b1.svg" type="image/svg+xml" />
+<link rel="stylesheet" href="/audit/tokens.css" />
+<link rel="stylesheet" href="/audit/audit-v3.css" />
 <PostHog capturePageview={true} />
 <style>
-  .v3-form-wrap{padding:88px 0 64px;display:grid;gap:32px;max-width:680px}
-  @media (max-width:780px){.v3-form-wrap{padding:48px 0 32px}}
-  .v3-form-wrap h1{font-family:var(--grotesk);font-weight:800;font-size:clamp(40px,5.4vw,72px);line-height:0.96;letter-spacing:-0.04em;margin:0;text-wrap:balance}
-  .v3-form-wrap h1 .ital{font-family:var(--serif);font-style:italic;font-weight:400;color:var(--ink-dim)}
-  .v3-form-wrap .lede{font-family:var(--grotesk);font-size:19px;line-height:1.5;color:var(--ink-dim);margin:0;max-width:580px;text-wrap:pretty}
-  .v3-form-wrap .lede em{font-family:var(--serif);font-style:italic;color:var(--ink)}
-  .v3-form{display:grid;grid-template-columns:1fr auto;gap:0;border:1px solid var(--ink);background:var(--paper);margin-top:8px}
-  @media (max-width:540px){.v3-form{grid-template-columns:1fr}}
-  .v3-form input{padding:18px 22px;border:0;background:transparent;font-family:var(--mono);font-size:14px;letter-spacing:0.02em;color:var(--ink);outline:none;width:100%}
-  .v3-form input::placeholder{color:var(--ink-faint)}
-  .v3-form input:focus{background:var(--paper-2)}
-  .v3-form button{padding:18px 32px;border:0;border-left:1px solid var(--ink);background:var(--ink);color:var(--paper);font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;cursor:pointer;transition:background 120ms}
-  @media (max-width:540px){.v3-form button{border-left:0;border-top:1px solid var(--ink);width:100%}}
-  .v3-form button:hover{background:var(--accent-deep)}
-  .v3-error{margin-top:16px;padding:14px 18px;border:1px solid var(--ink);background:var(--paper-2);font-family:var(--mono);font-size:12.5px;color:var(--ink)}
-  .v3-hint{font-family:var(--mono);font-size:10.5px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint);margin-top:12px}
-  .v3-rerun{margin-top:36px;display:flex;align-items:center;gap:18px;font-family:var(--mono);font-size:10.5px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint);padding-top:24px;border-top:1px solid var(--line)}
-  .v3-rerun a{color:var(--ink);text-decoration:underline;text-underline-offset:4px}
-  .v3-rerun a:hover{color:var(--accent-deep)}
+  /* Landing form state */
+  .hero { padding: var(--sp-16) 0 var(--sp-14); border-bottom: var(--bw-hair) solid var(--line); }
+  .hero .kicker { font-family: var(--mono); font-size: var(--t-meta); letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--accent-deep); display: inline-flex; align-items: center; }
+  .hero .kicker::before { content: ''; display: inline-block; width: 8px; height: 8px; background: var(--accent); border-radius: var(--r-pill); margin-right: 12px; animation: pulse 2.4s var(--ease) infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+  .hero h1 { font-family: var(--grotesk); font-weight: 800; font-size: clamp(56px, 7.4vw, 116px); line-height: 0.92; letter-spacing: var(--track-display); margin: var(--sp-6) 0 var(--sp-8); text-wrap: balance; max-width: 980px; }
+  .hero h1 .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); letter-spacing: -0.02em; }
+  .hero .dek { font-family: var(--serif); font-style: italic; font-size: clamp(20px, 1.9vw, 24px); line-height: 1.45; color: var(--ink-dim); margin: 0 0 var(--sp-10); max-width: 640px; text-wrap: pretty; }
+
+  .form-wrap { display: grid; grid-template-columns: 1.45fr 1fr; gap: 0; border-top: var(--bw-rule) solid var(--ink); border-bottom: var(--bw-rule) solid var(--ink); }
+  @media (max-width: 880px) { .form-wrap { grid-template-columns: 1fr; } }
+  .form-wrap .form-left { padding: var(--sp-8) 0 var(--sp-8) 0; }
+  .form-wrap .form-right { padding: var(--sp-8) 0 var(--sp-8) var(--sp-12); border-left: var(--bw-hair) solid var(--line); display: flex; flex-direction: column; justify-content: space-between; min-height: 220px; }
+  @media (max-width: 880px) { .form-wrap .form-right { padding: var(--sp-7) 0; border-left: 0; border-top: var(--bw-hair) solid var(--line); } }
+  .form-lbl { font-family: var(--mono); font-size: var(--t-meta); letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); margin-bottom: var(--sp-4); display: block; }
+  .form-lbl b { color: var(--ink); font-weight: 500; }
+
+  .url-input { display: grid; grid-template-columns: auto 1fr auto; align-items: stretch; gap: 0; border: var(--bw-hair) solid var(--ink); background: var(--paper); }
+  .url-input .scheme { background: var(--ink); color: var(--on-ink); font-family: var(--mono); font-size: 14px; padding: 0 var(--sp-5); display: flex; align-items: center; }
+  .url-input input[type="text"] { border: 0; font-family: var(--grotesk); font-weight: 500; font-size: clamp(22px, 2.6vw, 32px); letter-spacing: -0.02em; padding: var(--sp-5) var(--sp-6); width: 100%; background: transparent; color: var(--ink); outline: none; line-height: 1; }
+  .url-input input::placeholder { color: var(--ink-soft); }
+  .url-input .submit { background: var(--ink); color: var(--on-ink); border: 0; font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; padding: 0 var(--sp-7); display: flex; align-items: center; gap: var(--sp-3); cursor: pointer; transition: background var(--dur-1) var(--ease); }
+  .url-input .submit:hover { background: var(--accent-deep); }
+  @media (max-width: 640px) { .url-input { grid-template-columns: 1fr; } .url-input .scheme { padding: var(--sp-3) var(--sp-5); } .url-input .submit { padding: var(--sp-5); justify-content: center; } }
+
+  .form-meta { margin-top: var(--sp-4); display: flex; gap: var(--sp-7); flex-wrap: wrap; font-family: var(--mono); font-size: var(--t-meta); letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); }
+  .form-meta b { color: var(--ink); font-weight: 500; }
+  .form-error { margin-top: var(--sp-4); padding: var(--sp-3) var(--sp-4); border: 1px solid var(--signal-halt); color: var(--signal-halt); font-family: var(--mono); font-size: 12.5px; }
+
+  .sample { display: inline-flex; align-items: baseline; gap: var(--sp-3); padding-bottom: 2px; border-bottom: 1px solid var(--line-strong); color: var(--ink); font-weight: 500; width: max-content; }
+  .sample:hover { color: var(--accent-deep); border-bottom-color: var(--accent-deep); }
+
+  .dims { padding: var(--sp-14) 0 var(--sp-12); border-bottom: var(--bw-hair) solid var(--line-strong); }
+  .dims-head, .how-head { display: grid; grid-template-columns: 240px 1fr; gap: 64px; margin-bottom: var(--sp-10); }
+  @media (max-width: 880px) { .dims-head, .how-head { grid-template-columns: 1fr; gap: var(--sp-5); } }
+  .dims-head .lbl, .how-head .lbl { font-family: var(--mono); font-size: var(--t-meta); letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); }
+  .dims-head .lbl .num, .how-head .lbl .num { display: block; font-family: var(--grotesk); font-weight: 700; font-size: 56px; line-height: 1; color: var(--ink); letter-spacing: var(--track-tighter); margin-top: var(--sp-3); }
+  .dims-head h2, .how-head h2 { font-family: var(--grotesk); font-weight: 700; font-size: clamp(36px, 4.4vw, 48px); line-height: 1.05; letter-spacing: var(--track-h); margin: 0; text-wrap: balance; }
+
+  .dim-grid { display: grid; grid-template-columns: repeat(3, 1fr); border: var(--bw-hair) solid var(--line); }
+  @media (max-width: 880px) { .dim-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 560px) { .dim-grid { grid-template-columns: 1fr; } }
+  .dim { padding: var(--sp-7); border-right: var(--bw-hair) solid var(--line); border-bottom: var(--bw-hair) solid var(--line); display: flex; flex-direction: column; gap: var(--sp-3); min-height: 180px; }
+  .dim:nth-child(3n) { border-right: 0; }
+  .dim:nth-last-child(-n+3) { border-bottom: 0; }
+  @media (max-width: 880px) { .dim:nth-child(3n) { border-right: var(--bw-hair) solid var(--line); } .dim:nth-child(2n) { border-right: 0; } .dim:nth-last-child(-n+3) { border-bottom: var(--bw-hair) solid var(--line); } .dim:nth-last-child(-n+2) { border-bottom: 0; } }
+  @media (max-width: 560px) { .dim { border-right: 0 !important; border-bottom: var(--bw-hair) solid var(--line) !important; } .dim:last-child { border-bottom: 0 !important; } }
+  .dim .top { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+  .dim .num { font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); color: var(--ink-faint); }
+  .dim h3 { font-family: var(--grotesk); font-weight: 700; font-size: 20px; letter-spacing: var(--track-h-sm); line-height: 1.2; margin: var(--sp-2) 0 0; text-wrap: balance; }
+  .dim h3 .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); }
+  .dim p { font-size: 14px; line-height: 1.5; color: var(--ink-dim); margin: 0; }
+
+  .how { padding: var(--sp-14) 0; border-bottom: var(--bw-hair) solid var(--line-strong); }
+  .steps { display: grid; grid-template-columns: repeat(4, 1fr); border-left: var(--bw-thick) solid var(--accent-deep); background: var(--paper-2); }
+  @media (max-width: 880px) { .steps { grid-template-columns: 1fr; border-left: 0; border-top: var(--bw-thick) solid var(--accent-deep); } }
+  .step { padding: var(--sp-7); border-right: var(--bw-hair) solid var(--line); }
+  .step:last-child { border-right: 0; }
+  .step .day { font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--accent-deep); }
+  .step .num { font-family: var(--grotesk); font-weight: 800; font-size: 56px; line-height: 1; letter-spacing: var(--track-tighter); margin: var(--sp-4) 0 var(--sp-5); }
+  .step h4 { font-family: var(--grotesk); font-weight: 700; font-size: 19px; letter-spacing: var(--track-h-sm); margin: 0 0 6px; }
+  .step p { font-size: 14px; line-height: 1.55; color: var(--ink-dim); margin: 0; }
+
+  /* Result hook */
+  .hook { padding: var(--sp-12) 0 var(--sp-14); border-bottom: var(--bw-rule) solid var(--ink); display: grid; grid-template-columns: 1.35fr 1fr; gap: 64px; align-items: end; }
+  @media (max-width: 980px) { .hook { grid-template-columns: 1fr; gap: var(--sp-10); } }
+  .hook .kicker { font-family: var(--mono); font-size: var(--t-meta); letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--accent-deep); display: inline-flex; align-items: center; }
+  .hook .kicker::before { content: ''; display: inline-block; width: 8px; height: 8px; background: var(--accent); border-radius: var(--r-pill); margin-right: 12px; animation: pulse 2.4s var(--ease) infinite; }
+  .hook h1 { font-family: var(--grotesk); font-weight: 800; font-size: clamp(48px, 6.4vw, 96px); line-height: 0.92; letter-spacing: var(--track-display); margin: var(--sp-6) 0 var(--sp-7); text-wrap: balance; }
+  .hook h1 .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); letter-spacing: -0.02em; }
+  .hook .dek { font-family: var(--serif); font-style: italic; font-size: clamp(18px, 1.7vw, 22px); line-height: 1.5; color: var(--ink-dim); margin: 0 0 var(--sp-8); max-width: 600px; text-wrap: pretty; }
+  .hook .meta-row { border-top: var(--bw-hair) solid var(--line); padding-top: var(--sp-4); display: flex; gap: var(--sp-8); flex-wrap: wrap; font-family: var(--mono); font-size: var(--t-meta); letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); }
+  .hook .meta-row b { color: var(--ink); font-weight: 500; }
+
+  .score-panel { background: var(--ink); color: var(--on-ink); padding: var(--sp-8); display: flex; flex-direction: column; gap: var(--sp-5); }
+  .score-panel .lab { font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--on-ink-faint); display: inline-flex; align-items: center; }
+  .score-panel .lab::before { content: ''; display: inline-block; width: 8px; height: 8px; background: var(--accent); border-radius: var(--r-pill); margin-right: 12px; }
+  .score-panel .read { font-family: var(--grotesk); font-weight: 800; font-size: clamp(100px, 14vw, 184px); letter-spacing: var(--track-display); line-height: 0.86; color: var(--on-ink); display: inline-flex; align-items: baseline; gap: var(--sp-3); }
+  .score-panel .read .denom { font-size: 0.28em; color: var(--on-ink-faint); font-weight: 600; letter-spacing: 0; line-height: 1; transform: translateY(-0.6em); }
+  .score-panel .scale { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-top: var(--sp-3); }
+  .score-panel .scale .seg { height: 6px; background: var(--on-ink-line); }
+  .score-panel .scale .seg.lit { background: var(--accent); }
+  .score-panel .scale .seg.dim-lit { background: var(--accent-deep); }
+  .score-panel .markers { display: flex; justify-content: space-between; margin-top: 8px; font-family: var(--mono); font-size: 10px; letter-spacing: var(--track-mono-tight); text-transform: uppercase; color: var(--on-ink-faint); }
+  .score-panel .markers b { color: var(--on-ink); font-weight: 500; }
+  .score-panel .chips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-top: var(--sp-6); }
+  .score-panel .chip { border: 1px solid var(--on-ink-line); padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; }
+  .score-panel .chip .k { font-family: var(--mono); font-size: 9.5px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--on-ink-faint); }
+  .score-panel .chip .v { font-family: var(--grotesk); font-weight: 700; font-size: 17px; color: var(--on-ink); letter-spacing: -0.02em; }
+  .score-panel .chip.g .v { color: var(--accent); }
+  .score-panel .chip.a .v { color: #E0A24E; }
+  .score-panel .chip.r .v { color: #E36868; }
+
+  /* Section scaffold */
+  .sec { padding: var(--sp-14) 0 var(--sp-10); border-bottom: var(--bw-hair) solid var(--line-strong); }
+  .sec-head { display: grid; grid-template-columns: 240px 1fr; gap: 64px; margin-bottom: var(--sp-10); }
+  @media (max-width: 880px) { .sec-head { grid-template-columns: 1fr; gap: var(--sp-5); } }
+  .sec-head .lbl { font-family: var(--mono); font-size: var(--t-meta); letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); }
+  .sec-head .lbl .num { display: block; font-family: var(--grotesk); font-weight: 700; font-size: 56px; line-height: 1; color: var(--ink); letter-spacing: var(--track-tighter); margin-top: var(--sp-3); }
+  .sec-head h2 { font-family: var(--grotesk); font-weight: 700; font-size: clamp(36px, 4.4vw, 56px); line-height: 1.04; letter-spacing: var(--track-h); margin: 0; text-wrap: balance; }
+
+  /* Verdict grid */
+  .vgrid { display: grid; grid-template-columns: repeat(3, 1fr); border: var(--bw-hair) solid var(--line); background: var(--paper); }
+  @media (max-width: 980px) { .vgrid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 640px) { .vgrid { grid-template-columns: 1fr; } }
+  .vcell { border-right: var(--bw-hair) solid var(--line); border-bottom: var(--bw-hair) solid var(--line); padding: 0; display: flex; flex-direction: column; }
+  .vgrid > .vcell:nth-child(3n) { border-right: 0; }
+  .vgrid > .vcell:nth-last-child(-n+3) { border-bottom: 0; }
+  @media (max-width: 980px) { .vgrid > .vcell { border-right: var(--bw-hair) solid var(--line) !important; border-bottom: var(--bw-hair) solid var(--line) !important; } .vgrid > .vcell:nth-child(2n) { border-right: 0 !important; } .vgrid > .vcell:nth-last-child(-n+2) { border-bottom: 0 !important; } }
+  @media (max-width: 640px) { .vgrid > .vcell { border-right: 0 !important; } .vgrid > .vcell:last-child { border-bottom: 0 !important; } }
+  .vcell .vtop { padding: var(--sp-6); display: flex; flex-direction: column; gap: var(--sp-3); flex: 1; }
+  .vcell .icon-row { display: flex; justify-content: space-between; align-items: center; }
+  .vcell .icon-row .key { font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); }
+  .vcell h3 { font-family: var(--grotesk); font-weight: 700; font-size: 18px; letter-spacing: var(--track-h-sm); line-height: 1.2; margin: 0; text-wrap: balance; }
+  .vcell h3 .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); letter-spacing: -0.02em; }
+  .vcell .big { font-family: var(--grotesk); font-weight: 800; font-size: clamp(40px, 4.6vw, 56px); line-height: 1; letter-spacing: var(--track-display); margin-top: 4px; display: flex; align-items: baseline; gap: var(--sp-2); }
+  .vcell .big .denom { font-size: 0.42em; color: var(--ink-faint); font-weight: 600; letter-spacing: 0; }
+  .vcell .big.r { color: var(--signal-halt); }
+  .vcell .big.a { color: var(--signal-warn); }
+  .vcell .big.g { color: var(--accent-deep); }
+  .vcell .note { font-size: 14.5px; line-height: 1.5; color: var(--ink-dim); margin: 0; max-width: 36ch; text-wrap: pretty; }
+  .vcell .bench { margin-top: auto; font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); border-top: 1px dashed var(--line-strong); padding-top: var(--sp-3); display: flex; justify-content: space-between; gap: var(--sp-3); }
+  .vcell .bench b { color: var(--ink); font-weight: 500; }
+  .vcell details { border-top: var(--bw-hair) solid var(--line); }
+  .vcell summary { list-style: none; cursor: pointer; padding: var(--sp-4) var(--sp-6); font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); display: flex; justify-content: space-between; align-items: center; transition: background var(--dur-1) var(--ease); }
+  .vcell summary::-webkit-details-marker { display: none; }
+  .vcell summary:hover { background: var(--paper-2); color: var(--ink); }
+  .vcell summary .marker { font-family: var(--mono); font-size: 14px; color: var(--accent-deep); line-height: 1; transition: transform var(--dur-2) var(--ease); display: inline-block; }
+  .vcell details[open] summary { background: var(--paper-2); color: var(--ink); }
+  .vcell details[open] summary .marker { transform: rotate(45deg); }
+  .vcell .checks { padding: var(--sp-2) var(--sp-6) var(--sp-5); background: var(--paper-2); border-top: var(--bw-hair) solid var(--line); }
+  .vcell .checks .check { display: grid; grid-template-columns: 60px 1fr auto; gap: var(--sp-3); padding: 7px 0; border-bottom: var(--bw-hair) solid var(--line-soft); font-size: 13.5px; line-height: 1.4; align-items: baseline; }
+  .vcell .checks .check:last-child { border-bottom: 0; }
+  .vcell .checks .check .st { font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); text-transform: uppercase; line-height: 1.5; }
+  .vcell .checks .check.ok .st { color: var(--accent-deep); }
+  .vcell .checks .check.warn .st { color: var(--signal-warn); }
+  .vcell .checks .check.fail .st { color: var(--signal-halt); }
+  .vcell .checks .check .lbl { color: var(--ink); }
+  .vcell .checks .check .lbl b { font-weight: 600; }
+  .vcell .checks .check .val { font-family: var(--mono); font-size: 11.5px; color: var(--ink-faint); text-align: right; white-space: nowrap; }
+  .vcell .checks .check .val b { color: var(--ink); font-weight: 500; }
+
+  /* Top 3 Fixes */
+  .fixes { border: var(--bw-hair) solid var(--line); }
+  .fix { display: grid; grid-template-columns: 80px 1.4fr 1fr 200px; gap: 0; border-bottom: var(--bw-hair) solid var(--line); }
+  .fix:last-child { border-bottom: 0; }
+  @media (max-width: 880px) { .fix { grid-template-columns: 1fr; } }
+  .fix > div { padding: var(--sp-7) var(--sp-6); border-right: var(--bw-hair) solid var(--line); }
+  .fix > div:last-child { border-right: 0; }
+  @media (max-width: 880px) { .fix > div { border-right: 0; border-bottom: var(--bw-hair) solid var(--line); } .fix > div:last-child { border-bottom: 0; } }
+  .fix .rank { background: var(--ink); color: var(--on-ink); font-family: var(--grotesk); font-weight: 800; font-size: 40px; letter-spacing: var(--track-display); line-height: 1; display: flex; flex-direction: column; gap: 4px; justify-content: center; }
+  .fix .rank .k { font-family: var(--mono); font-weight: 400; font-size: 10.5px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--on-ink-faint); }
+  .fix .what h4 { font-family: var(--grotesk); font-weight: 700; font-size: clamp(22px, 2.4vw, 30px); line-height: 1.15; letter-spacing: var(--track-h-md); margin: 0 0 var(--sp-3); text-wrap: balance; }
+  .fix .what h4 .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); letter-spacing: -0.02em; }
+  .fix .what .src { font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); margin-top: var(--sp-4); display: block; }
+  .fix .what .src b { color: var(--ink); }
+  .fix .why { font-size: 15px; line-height: 1.55; color: var(--ink-dim); }
+  .fix .meta-col { display: flex; flex-direction: column; justify-content: center; gap: var(--sp-3); }
+  .fix .meta-row { display: flex; justify-content: space-between; align-items: baseline; gap: var(--sp-3); }
+  .fix .meta-row .k { font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); }
+  .fix .pill { font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; padding: 4px 10px; }
+  .fix .pill.low { background: var(--accent-bg); color: var(--accent-deep); }
+  .fix .pill.med { background: rgba(184, 101, 31, 0.12); color: var(--signal-warn); }
+  .fix .pill.high { background: rgba(154, 43, 43, 0.10); color: var(--signal-halt); }
+
+  /* Observation */
+  .obs { padding: var(--sp-14) 0; border-bottom: var(--bw-hair) solid var(--line-strong); }
+  .obs .wrap { display: grid; grid-template-columns: 240px 1fr; gap: 64px; }
+  @media (max-width: 880px) { .obs .wrap { grid-template-columns: 1fr; gap: var(--sp-5); } }
+  .obs .lbl { font-family: var(--mono); font-size: var(--t-meta); letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); }
+  .obs .lbl .num { display: block; font-family: var(--grotesk); font-weight: 700; font-size: 56px; line-height: 1; color: var(--ink); letter-spacing: var(--track-tighter); margin-top: var(--sp-3); }
+  .obs blockquote { margin: 0; font-family: var(--serif); font-style: italic; font-weight: 400; font-size: clamp(22px, 2.4vw, 30px); line-height: 1.45; color: var(--ink); max-width: 760px; border-left: var(--bw-thick) solid var(--accent); padding-left: var(--sp-7); text-wrap: pretty; }
+  .obs blockquote em { font-style: normal; color: var(--ink); background: var(--accent-bg); padding: 0 6px; }
+  .obs .author { margin-top: var(--sp-7); padding-left: calc(var(--bw-thick) + var(--sp-7)); font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); }
+  .obs .author b { color: var(--ink); font-weight: 500; }
+
+  .teaser { margin: var(--sp-12) 0 0; border: var(--bw-hair) solid var(--line); background: var(--paper-2); padding: var(--sp-7) var(--sp-8); display: grid; grid-template-columns: 1fr auto; gap: var(--sp-7); align-items: center; }
+  @media (max-width: 780px) { .teaser { grid-template-columns: 1fr; } }
+  .teaser .lh { font-family: var(--grotesk); font-weight: 700; font-size: 22px; line-height: 1.25; letter-spacing: var(--track-h-md); color: var(--ink); margin: 0 0 6px; }
+  .teaser .lh .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); }
+  .teaser p { margin: 0; color: var(--ink-dim); font-size: 14.5px; line-height: 1.5; max-width: 560px; }
+  .teaser .stack { display: flex; gap: var(--sp-3); flex-wrap: wrap; }
 </style>
 </head>
 <body>
 
-<!-- Icon sprite (same set as /audit/p/[slug].astro) -->
-<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
   <defs>
-    <symbol id="ic-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square" stroke-linejoin="miter"><circle cx="11" cy="11" r="6"/><path d="m15.5 15.5 4.5 4.5"/></symbol>
-    <symbol id="ic-bolt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square" stroke-linejoin="miter"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z"/></symbol>
-    <symbol id="ic-target" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square" stroke-linejoin="miter"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/></symbol>
-    <symbol id="ic-megaphone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square" stroke-linejoin="miter"><path d="M3 10v4l11 4V6L3 10z"/><path d="M14 8.5c2 0 3 1.5 3 3.5s-1 3.5-3 3.5"/><path d="M7 14v4l3 1v-4"/></symbol>
-    <symbol id="ic-bar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square" stroke-linejoin="miter"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></symbol>
-    <symbol id="ic-spark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square" stroke-linejoin="miter"><path d="M12 3v6M12 15v6M3 12h6M15 12h6M5.6 5.6l4.2 4.2M14.2 14.2l4.2 4.2M5.6 18.4l4.2-4.2M14.2 9.8l4.2-4.2"/></symbol>
-    <symbol id="ic-mail" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square" stroke-linejoin="miter"><rect x="3" y="5" width="18" height="14"/><path d="m3 6 9 7 9-7"/></symbol>
-    <symbol id="ic-phone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square" stroke-linejoin="miter"><rect x="7" y="2" width="10" height="20" rx="1"/><path d="M11 18h2"/></symbol>
-    <symbol id="ic-flag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square" stroke-linejoin="miter"><path d="M5 22V3"/><path d="M5 3h12l-3 4 3 4H5"/></symbol>
-    <symbol id="ic-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square" stroke-linejoin="miter"><path d="M2.5 12c2.5-4.5 6-7 9.5-7s7 2.5 9.5 7c-2.5 4.5-6 7-9.5 7s-7-2.5-9.5-7z"/><circle cx="12" cy="12" r="3"/></symbol>
-    <symbol id="ic-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square" stroke-linejoin="miter"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></symbol>
-    <symbol id="ic-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="square" stroke-linejoin="miter"><path d="m4 12 5 5 11-12"/></symbol>
-    <symbol id="ic-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="square" stroke-linejoin="miter"><path d="m5 5 14 14M19 5 5 19"/></symbol>
-    <symbol id="ic-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square" stroke-linejoin="miter"><path d="M4 12h15M13 6l6 6-6 6"/></symbol>
+    <symbol id="ic-01-diagnostic" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M15.5 15.5 L20 20"/><circle class="dot" cx="11" cy="11" r="1.4"/></symbol>
+    <symbol id="ic-03-signal" viewBox="0 0 24 24"><path d="M3 18 L9 12 L13 16 L21 6"/><circle class="dot" cx="21" cy="6" r="1.6"/></symbol>
+    <symbol id="ic-04-cadence" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 6 V12 L17 14"/></symbol>
+    <symbol id="ic-05-stack" viewBox="0 0 24 24"><path d="M3 7 L12 3 L21 7 L12 11 Z"/><path d="M3 12 L12 16 L21 12"/><path d="M3 17 L12 21 L21 17"/></symbol>
+    <symbol id="ic-06-operator" viewBox="0 0 24 24"><circle cx="12" cy="9" r="4"/><path d="M4 21 a8 8 0 0 1 16 0"/></symbol>
+    <symbol id="ic-11-arrow" viewBox="0 0 24 24"><path d="M5 12 H19 M13 6 L19 12 L13 18"/></symbol>
+    <symbol id="ic-12-confirm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 12 L11 14 L15 10"/><circle class="dot" cx="12" cy="12" r="1.2"/></symbol>
+    <symbol id="ic-14-outreach" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13"/><path d="M3 6 L12 14 L21 6"/></symbol>
+    <symbol id="ic-19-numbers" viewBox="0 0 24 24"><path d="M3 21 V11 H7 V21 Z M10 21 V5 H14 V21 Z M17 21 V15 H21 V21 Z"/></symbol>
+    <symbol id="ic-20-share" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 12 L12 3 M12 12 L21 12"/><circle class="dot" cx="12" cy="12" r="1.2"/></symbol>
+    <symbol id="ic-21-curve" viewBox="0 0 24 24"><path d="M3 17 Q9 17 12 11 T21 5"/><path d="M3 21 H21"/><circle class="dot" cx="21" cy="5" r="1.6"/></symbol>
+    <symbol id="ic-23-vital" viewBox="0 0 24 24"><path d="M3 12 H8 L10 6 L14 18 L16 12 H21"/><circle class="dot" cx="14" cy="18" r="1.4"/></symbol>
   </defs>
 </svg>
 
 <div class="page">
-  <nav class="top">
-    <div class="l"><a href="/audit" class="wordmark" aria-label="Rivett, audit index">rivett<span class="dot-mark" aria-hidden="true"></span></a> <b>· Live audit</b></div>
-    <div class="r">
-      <span>By <a href="https://www.linkedin.com/in/fredstyle/" style="color:var(--ink);font-weight:500" target="_blank" rel="noopener">Fred Style</a></span>
-      <span>{fmtDate(new Date().toISOString())}</span>
-    </div>
-  </nav>
 
-  <div class="crumb">
-    <a href="/audit">↑ Audit index</a>
-    <span class="sep">/</span>
-    <span>v3</span>
-    {memo && (<><span class="sep">/</span><span>{memo.domain}</span></>)}
+  <header class="band">
+    <div class="row">
+      <div class="left">
+        <a class="wordmark" href="/audit/v3">rivett<span class="dot-mark"></span></a>
+        <span style="color: var(--ink-faint);">·</span>
+        <span><b>Teardown memo</b> · Live audit</span>
+      </div>
+      <div class="right">
+        <span>By <b>Fred Style</b> · <a href="https://www.linkedin.com/in/fredstyle/" target="_blank" rel="noopener" style="border-bottom: 1px solid var(--line-strong);">LinkedIn</a></span>
+        <span>{headerDate}</span>
+      </div>
+    </div>
+  </header>
+  <div class="subband">
+    {memo
+      ? <span class="crumb">↑ <a href="/audit/v3">Audit index</a> <span class="sep">/</span> <b>v3</b> <span class="sep">/</span> <b>{memo.domain}</b></span>
+      : <span class="crumb">↑ Audit index <span class="sep">/</span> <b>v3</b> <span class="sep">/</span> new run</span>}
+    <span><b>v3.4</b> · in-browser scan{audit ? ` · ${audit.durationMs} ms` : ''}</span>
   </div>
 
   {!memo && (
-    <div class="v3-form-wrap">
-      <div class="kicker">Live audit · type any domain</div>
-      <h1>
-        Type a domain.
-        <span class="ital">See the read.</span>
-      </h1>
-      <p class="lede">
-        Live teardown across nine dimensions. <em>Search hygiene, AEO surfaces, page speed (Lighthouse), tracking, paid ads across Meta + Google + LinkedIn, conversion path, real mobile rendering at 390×844, email deliverability, and full tech stack detection.</em> Static fingerprint scan plus a headless Chromium pass to catch GTM-injected pixels.
-      </p>
-      <form class="v3-form" method="POST" action="/audit/v3">
-        <input type="text" name="url" placeholder="example.com" value={submittedUrl} required autocomplete="off" autofocus />
-        <button type="submit">Run audit</button>
+    <section class="hero">
+      <span class="kicker">Live · in-browser scan · ~30s</span>
+      <h1>What does the open web <span class="ital">actually say about you.</span></h1>
+      <p class="dek">Paste a domain. Nine teardowns run live in the browser. Page speed against the real Lighthouse numbers, schema, mail authentication, the ads you have running today, the pixels you forgot to remove. One memo. No login.</p>
+
+      <form class="form-wrap" method="POST" action="/audit/v3">
+        <div class="form-left">
+          <span class="form-lbl"><b>Domain</b> · enter the site you want read</span>
+          <div class="url-input">
+            <span class="scheme">https://</span>
+            <input type="text" name="url" placeholder="somewhere.com" autocomplete="off" spellcheck="false" value={submittedUrl} required autofocus />
+            <button class="submit" type="submit">Run audit <span aria-hidden="true">→</span></button>
+          </div>
+          <div class="form-meta">
+            <span>Median run · <b>~30s</b></span>
+            <span>No login</span>
+            <span>No queue</span>
+            <span>9 dimensions</span>
+          </div>
+          {inputError && <div class="form-error">{inputError}</div>}
+          {runtimeError && <div class="form-error">{runtimeError}</div>}
+        </div>
+        <div class="form-right">
+          <div>
+            <span class="form-lbl"><b>Or read a sample.</b> Real domain. Real numbers.</span>
+            <a class="sample" href="/audit/p/pellaofcolumbus-com-x7k2abcdefgh1234">pellaofcolumbus.com <span style="font-family: var(--serif); font-style: italic; color: var(--ink-dim); font-size: 0.92em;">read this</span> →</a>
+          </div>
+          <p style="margin: var(--sp-6) 0 0; font-family: var(--serif); font-style: italic; font-size: 17px; line-height: 1.5; color: var(--ink-dim); max-width: 360px;">The full read includes an AI citation probe and a benchmark percentile. Those need the offline pipeline. The rest is live in your browser.</p>
+        </div>
       </form>
-      {inputError && <div class="v3-error">{inputError}</div>}
-      {runtimeError && <div class="v3-error">{runtimeError}</div>}
-      <p class="v3-hint">Takes 20-30 seconds (PageSpeed is the long pole). Renders on submit.</p>
-    </div>
+    </section>
   )}
 
-  {memo && (
-    <>
-      {/* 1. HOOK */}
-      <header class="cover">
-        <div class="kicker">{memo.cover.kicker}</div>
-        <h1 class="cv">
-          {memo.cover.roman}
-          {memo.cover.italic && <> <span class="ital">{memo.cover.italic}</span></>}
+  {!memo && (
+    <section class="dims">
+      <div class="dims-head">
+        <span class="lbl">What it reads<span class="num">01</span></span>
+        <h2>Nine dimensions. <span class="ital">Read live. Read together.</span></h2>
+      </div>
+      <div class="dim-grid">
+        <div class="dim"><div class="top"><svg class="ico"><use href="#ic-01-diagnostic"/></svg><span class="num">D · 01</span></div><h3>How Google <span class="ital">sees you.</span></h3><p>Sitemap, robots, canonical, schema, og:type. The crawler's view.</p></div>
+        <div class="dim"><div class="top"><svg class="ico"><use href="#ic-03-signal"/></svg><span class="num">D · 02</span></div><h3>How AI engines <span class="ital">cite you.</span></h3><p>/llms.txt, /llms-full.txt, structured data parseable by LLM crawlers.</p></div>
+        <div class="dim"><div class="top"><svg class="ico"><use href="#ic-23-vital"/></svg><span class="num">D · 03</span></div><h3>How fast <span class="ital">it loads.</span></h3><p>Real Lighthouse: LCP, FCP, CLS, INP against Google's "good" thresholds.</p></div>
+        <div class="dim"><div class="top"><svg class="ico"><use href="#ic-19-numbers"/></svg><span class="num">D · 04</span></div><h3>What you <span class="ital">measure.</span></h3><p>Meta, GA4, GTM, LinkedIn, X, TikTok, Reddit. Including pixels only loaded after JS.</p></div>
+        <div class="dim"><div class="top"><svg class="ico"><use href="#ic-20-share"/></svg><span class="num">D · 05</span></div><h3>Ads <span class="ital">running today.</span></h3><p>Meta, Google, LinkedIn ad libraries. Creative count, platforms, earliest run.</p></div>
+        <div class="dim"><div class="top"><svg class="ico"><use href="#ic-12-confirm"/></svg><span class="num">D · 06</span></div><h3>How visitors <span class="ital">convert.</span></h3><p>Top-1024 CTA, tappable contact, form fields, pricing visibility, social proof.</p></div>
+        <div class="dim"><div class="top"><svg class="ico"><use href="#ic-06-operator"/></svg><span class="num">D · 07</span></div><h3>How it behaves <span class="ital">on mobile.</span></h3><p>Headless render at 390×844. Real scrollWidth, real tap targets, real text size.</p></div>
+        <div class="dim"><div class="top"><svg class="ico"><use href="#ic-14-outreach"/></svg><span class="num">D · 08</span></div><h3>Email <span class="ital">reputation.</span></h3><p>SPF, DMARC, MX. DoH lookups against Cloudflare. Reject, quarantine, missing.</p></div>
+        <div class="dim"><div class="top"><svg class="ico"><use href="#ic-05-stack"/></svg><span class="num">D · 09</span></div><h3>The stack <span class="ital">you actually run.</span></h3><p>Static + runtime fingerprint. Analytics, CMS, CDN, A/B, consent, support.</p></div>
+      </div>
+    </section>
+  )}
+
+  {!memo && (
+    <section class="how">
+      <div class="how-head">
+        <span class="lbl">How it runs<span class="num">02</span></span>
+        <h2>One paste. <span class="ital">Thirty seconds. One memo.</span></h2>
+      </div>
+      <div class="steps">
+        <div class="step"><span class="day">Step · 01</span><div class="num">01</div><h4>Paste a domain.</h4><p>No login. No queue. The scan starts in your browser the moment you press run.</p></div>
+        <div class="step"><span class="day">Step · 02</span><div class="num">02</div><h4>Scan runs live.</h4><p>Nine readers fire in parallel. PSI for speed, DoH for mail, Ad Library for spend.</p></div>
+        <div class="step"><span class="day">Step · 03</span><div class="num">03</div><h4>Read the memo.</h4><p>Score of 100. Nine cells with the raw numbers. Top three fixes ranked by leverage.</p></div>
+        <div class="step"><span class="day">Step · 04</span><div class="num">04</div><h4>Decide.</h4><p>Pick the fix and ship. Or book a call. The full pipeline picks up the gaps this one cannot.</p></div>
+      </div>
+    </section>
+  )}
+
+  {!memo && (
+    <section class="end-cta">
+      <div>
+        <span class="lab">For when the scan isn't enough</span>
+        <h2>Pick a time. Twenty minutes. <span class="ital">I'll bring the rest of the read.</span></h2>
+        <p>The browser scan is the cheap version. The AI citation probe, the benchmark percentile, the deliverability test against a live mailbox. Those need the offline pipeline. Book a call, I'll bring those numbers.</p>
+        <div class="end-actions">
+          <a class="btn btn--inv" href="/diagnostic">Book a call <span aria-hidden="true">→</span></a>
+        </div>
+      </div>
+      <div class="sig">
+        <span class="lab" style="margin-bottom: 12px;">Signature</span>
+        <div style="margin-top: 8px;"><b>Fred Style</b> · rivett.tech · {headerDate}</div>
+      </div>
+    </section>
+  )}
+
+  {memo && audit && (
+    <section class="hook">
+      <div>
+        <span class="kicker">Live audit · {memo.domain}</span>
+        <h1>
+          Your site scores <span id="scoreNum">{compositeScore}</span> of 100.
+          {verdictItalic && <> <span class="ital">{verdictItalic}</span></>}
         </h1>
-        {memo.cover.dek && <p class="cv-dek">{memo.cover.dek}</p>}
-
-        <div class="cv-sub">
-          <div class="cv-meta">
-            <div>Domain<b>{memo.domain}</b></div>
-            <div>Generated<b>{fmtDate(memo.generatedAt)}</b></div>
-            {audit && <div>Scan<b>{audit.durationMs}ms</b></div>}
-          </div>
+        {memo.cover.dek && <p class="dek">{memo.cover.dek}</p>}
+        <div class="meta-row">
+          <span>Domain · <b>{memo.domain}</b></span>
+          <span>Run · <b>{headerDate}{headerTime ? ` · ${headerTime}` : ''}</b></span>
+          <span>Duration · <b>{audit.durationMs} ms</b></span>
+          <span>Scan · <b>{memo.verdictCells.length} of 9</b></span>
         </div>
-      </header>
+      </div>
 
-      {/* 3. VERDICT GRID */}
-      <section id="verdict" class="sec sec--tight">
-        <div class="sec-head">
-          <div class="num">01 · The read</div>
-          <div>
-            <h2>
-              {memo.verdictCells.length} dimensions, one verdict each.
-              <span class="ital">Tap a cell to see what we checked.</span>
-            </h2>
-          </div>
-        </div>
-        <div class="verdict" aria-label="Verdict grid">
-          {memo.verdictCells.map((cell) => (
-            <details class="v">
-              <summary>
-                <div class="k"><svg class="ic"><use href={iconHref(cell.icon)}/></svg>{cell.heading}</div>
-                <div class="g">{cell.value}</div>
-                <div class="n">{cell.note}</div>
-                {cell.benchmark && <div class="bench" set:html={sanitizeMemoHtml(cell.benchmark)} />}
-                {cell.checks.length > 0 && (
-                  <div class="expand"><span class="label">+ Checks</span><span class="chev">↑</span></div>
-                )}
-              </summary>
-              {cell.checks.length > 0 && (
-                <div class="checks">
-                  <ul>
-                    {cell.checks.map((check) => (
-                      <li>
-                        <svg class={check.ok ? 'ic ok' : 'ic no'}>
-                          <use href={check.ok ? '#ic-check' : '#ic-x'}/>
-                        </svg>
-                        <span class={check.ok ? 'ok' : 'no'} set:html={sanitizeMemoHtml(check.text)} />
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </details>
+      <aside class="score-panel">
+        <span class="lab">Composite read · v3.4</span>
+        <div class="read"><span id="scoreBig">{compositeScore}</span><span class="denom">/ 100</span></div>
+        <div class="scale">
+          {[0,1,2,3,4].map((i) => (
+            <div class={`seg ${i < scoreSegment ? 'dim-lit' : i === scoreSegment ? 'lit' : ''}`}></div>
           ))}
         </div>
-      </section>
-
-      {/* 4. TOP 3 FIXES */}
-      <section id="fixes" class="sec">
-        <div class="sec-head">
-          <div class="num">02 · Do these first</div>
-          <div>
-            <h2>
-              {memo.rankedFixes.length === 1 ? 'One fix that matters' : `The ${memo.rankedFixes.length} fixes that move the score most`}.
-              <span class="ital">Effort and impact, named.</span>
-            </h2>
-          </div>
+        <div class="markers">
+          <span>{scoreSegment === 0 ? <b>Halt</b> : 'Halt'}</span>
+          <span>{scoreSegment === 1 ? <b>Watch</b> : 'Watch'}</span>
+          <span>{scoreSegment === 2 ? <b>Read</b> : 'Read'}</span>
+          <span>{scoreSegment === 3 ? <b>Run</b> : 'Run'}</span>
+          <span>{scoreSegment === 4 ? <b>Push</b> : 'Push'}</span>
         </div>
-        <div class="recs">
-          {memo.rankedFixes.map((fix) => (
-            <div class="row">
-              <div class="rank">F{String(fix.rank).padStart(2, '0')}</div>
-              <div class="what">
-                <div class="what-h" set:html={sanitizeMemoHtml(fix.what)} />
-                <p class="why" set:html={sanitizeMemoHtml(fix.why)} />
-              </div>
-              <div class="effort">Effort<b>{fix.effort}</b></div>
-              <div class="impact">Impact<b>{fix.impact}</b></div>
+        <div class="chips">
+          {memo.verdictCells.map((cell) => (
+            <div class={`chip ${cellSeverity(cell)}`}>
+              <span class="k">{chipKey(cell.icon)}</span>
+              <span class="v">{chipValue(cell)}</span>
             </div>
           ))}
         </div>
-      </section>
-
-      {/* 5. PERSONAL OBSERVATION */}
-      <section id="observation" class="sec">
-        <div class="sec-head">
-          <div class="num">03 · What this scan does not see</div>
-          <div>
-            <h2>The signals worth answering next.</h2>
-          </div>
-        </div>
-        <p class="body body--obs" set:html={sanitizeMemoHtml(memo.personalObservation.text)} />
-      </section>
-
-      {/* Dark closing CTA */}
-      <aside class="memo">
-        <div class="lab">Want the full read</div>
-        <div>
-          <h2>
-            Pick a time.
-            <span class="ital">Twenty minutes. I'll bring the ads, the page speed numbers, the AI citation probe results, and the deliverability check this scan could not run.</span>
-          </h2>
-          <p>No deck, no sales motion. You bring questions, I bring the read.</p>
-          <div class="actions">
-            <a class="btn btn--inv" href="/diagnostic">Book a call <svg class="ic" style="width:14px;height:14px"><use href="#ic-arrow"/></svg></a>
-            <a class="btn" href="/audit/v3">Audit another domain</a>
-          </div>
-          <div class="sig">
-            <b>Fred Style</b>
-            rivett.tech · {fmtDate(memo.generatedAt)}
-          </div>
-        </div>
       </aside>
-
-      <div class="v3-rerun">
-        <span>Audit again</span>
-        <a href="/audit/v3">Type a different domain</a>
-      </div>
-
-      <footer class="foot">
-        <span>Live in-browser scan. Not a formal assessment.</span>
-        <span>rivett.tech · {fmtDate(memo.generatedAt)}</span>
-      </footer>
-    </>
+    </section>
   )}
+
+  {memo && (
+    <section class="sec">
+      <div class="sec-head">
+        <span class="lbl">The verdict<span class="num">03</span></span>
+        <h2>{memo.verdictCells.length === 9 ? 'Nine reads,' : `${memo.verdictCells.length} reads,`} <span class="ital">in one frame.</span></h2>
+      </div>
+      <div class="vgrid">
+        {memo.verdictCells.map((cell) => {
+          const dim = dimFor(cell.icon);
+          const sev = cellSeverity(cell);
+          const sv = splitValue(cell.value);
+          const hd = splitHeading(cell.heading);
+          return (
+            <div class="vcell">
+              <div class="vtop">
+                <div class="icon-row">
+                  <svg class="ico"><use href={`#${dim.sprite}`}/></svg>
+                  <span class="key">{subKey(cell.icon)}</span>
+                </div>
+                <h3>{hd.lead}{hd.tail && <> <span class="ital">{hd.tail}</span></>}</h3>
+                <div class={`big ${sev}`}>{sv.num}{sv.denom && <span class="denom">{sv.denom}</span>}</div>
+                <p class="note" set:html={sanitizeMemoHtml(cell.note)} />
+                {cell.benchmark && (
+                  <div class="bench">
+                    <span set:html={sanitizeMemoHtml(cell.benchmark)} />
+                  </div>
+                )}
+              </div>
+              {cell.checks.length > 0 && (
+                <details>
+                  <summary>+ {cell.checks.length} {cell.checks.length === 1 ? 'check' : 'checks'} <span class="marker">+</span></summary>
+                  <div class="checks">
+                    {cell.checks.map((c) => {
+                      const badge = statusBadge(c.ok, sev);
+                      return (
+                        <div class={`check ${badge.cls}`}>
+                          <span class="st">{badge.label}</span>
+                          <span class="lbl" set:html={sanitizeMemoHtml(c.text)} />
+                          <span class="val"></span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </details>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  )}
+
+  {memo && (
+    <section class="sec">
+      <div class="sec-head">
+        <span class="lbl">Top three fixes<span class="num">04</span></span>
+        <h2>Ranked by leverage. <span class="ital">Highest first.</span></h2>
+      </div>
+      <div class="fixes">
+        {memo.rankedFixes.map((fix) => (
+          <div class="fix">
+            <div class="rank"><span class="k">Rank</span>F·{String(fix.rank).padStart(2, '0')}</div>
+            <div class="what">
+              <h4 set:html={sanitizeMemoHtml(fix.what)} />
+              <span class="src">Source · <b>{memo.domain}</b> · audit</span>
+            </div>
+            <div class="why" set:html={sanitizeMemoHtml(fix.why)} />
+            <div class="meta-col">
+              <div class="meta-row"><span class="k">Effort</span><span class={`pill ${fix.effort}`}>{fix.effort === 'low' ? 'Low' : fix.effort === 'med' ? 'Medium' : 'High'}</span></div>
+              <div class="meta-row"><span class="k">Impact</span><span class={`pill ${fix.impact}`}>{fix.impact === 'low' ? 'Low' : fix.impact === 'med' ? 'Medium' : 'High'}</span></div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  )}
+
+  {memo && (
+    <section class="obs">
+      <div class="wrap">
+        <span class="lbl">Field note<span class="num">05</span></span>
+        <div>
+          <blockquote>
+            <b style="font-style: normal; font-family: var(--grotesk); font-weight: 600; color: var(--ink);">{memo.domain}</b> <span set:html={sanitizeMemoHtml(memo.personalObservation.text)} />
+          </blockquote>
+          <div class="author">· <b>Fred Style</b>, written for {memo.domain} · {headerDate} · Cape Town &amp; remote</div>
+
+          <div class="teaser">
+            <div>
+              <h4 class="lh">What the full report adds. <span class="ital">The things this browser can't reach.</span></h4>
+              <p>AI citation probe across eight category prompts. Benchmark percentile against tracked competitors in your set. Live deliverability test against a seeded inbox. Twelve-week instrumentation plan.</p>
+            </div>
+            <div class="stack">
+              <a class="btn btn--pri" href="/diagnostic">Book a call <span aria-hidden="true">→</span></a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  )}
+
+  {memo && (
+    <section class="end-cta on-ink">
+      <div>
+        <span class="lab">Want the full read</span>
+        <h2>Pick a time. Twenty minutes. <span class="ital">I'll bring what this scan could not.</span></h2>
+        <p>The ads, the live page-speed numbers against tracked competitors, the AI citation probe results, and the deliverability check this scan could not run. No deck, no sales motion. You bring questions. I bring the read.</p>
+        <div class="end-actions">
+          <a class="btn btn--inv" href="/diagnostic">Book a call <span aria-hidden="true">→</span></a>
+          <a class="btn btn--sec" href="/audit/v3" style="border-color: var(--on-ink-line-2); color: var(--on-ink);">Audit another domain</a>
+        </div>
+      </div>
+      <div class="sig">
+        <span class="lab" style="margin-bottom: 12px;">Signature</span>
+        <div style="margin-top: 8px;"><b>Fred Style</b> · rivett.tech · {headerDate}</div>
+      </div>
+    </section>
+  )}
+
+  <footer class="foot">
+    <span class="wordmark">rivett<span class="dot-mark"></span></span>
+    <span>Live in-browser scan · <b>not a formal assessment</b></span>
+    <span>rivett.tech · {headerDate}</span>
+  </footer>
 </div>
 
-<script
-  is:inline
-  define:vars={{
-    isMemo: !!memo,
-    domain: memo?.domain ?? null,
-    scoreNumeric: audit?.scoreNumeric ?? null,
-    durationMs: audit?.durationMs ?? null,
-    verdictCellCount: memo?.verdictCells.length ?? 0,
-    rankedFixCount: memo?.rankedFixes.length ?? 0,
-  }}
->
-  (function () {
-    function fire() {
-      if (typeof window.posthog === 'undefined') return;
-      if (!isMemo) {
-        window.posthog.capture('audit_v3_form_view');
-        return;
+{memo && (
+  <script
+    is:inline
+    define:vars={{
+      target: compositeScore,
+      domain: memo.domain,
+      durationMs: audit?.durationMs ?? null,
+      verdictCellCount: memo.verdictCells.length,
+      rankedFixCount: memo.rankedFixes.length,
+    }}
+  >
+    (function () {
+      var elBig = document.getElementById('scoreBig');
+      var elNum = document.getElementById('scoreNum');
+      var start = null;
+      var dur = 1100;
+      function step(t) {
+        if (!start) start = t;
+        var p = Math.min(1, (t - start) / dur);
+        var eased = 1 - Math.pow(1 - p, 3);
+        var v = Math.round(eased * target);
+        if (elBig) elBig.textContent = v;
+        if (elNum) elNum.textContent = v;
+        if (p < 1) requestAnimationFrame(step);
       }
-      window.posthog.capture('audit_v3_memo_rendered', {
-        domain: domain,
-        scoreNumeric: scoreNumeric,
-        durationMs: durationMs,
-        verdictCellCount: verdictCellCount,
-        rankedFixCount: rankedFixCount,
-      });
-      document.querySelectorAll('details.v').forEach(function (d, i) {
-        d.addEventListener('toggle', function () {
-          if (d.open) {
-            window.posthog.capture('audit_v3_verdict_expanded', { domain: domain, cell_index: i });
-          }
+      requestAnimationFrame(step);
+
+      if (typeof window.posthog !== 'undefined') {
+        window.posthog.capture('audit_v3_memo_rendered', {
+          domain: domain,
+          scoreNumeric: target,
+          durationMs: durationMs,
+          verdictCellCount: verdictCellCount,
+          rankedFixCount: rankedFixCount,
         });
-      });
-    }
-    if (document.readyState === 'complete' || document.readyState === 'interactive') {
-      setTimeout(fire, 0);
-    } else {
-      document.addEventListener('DOMContentLoaded', fire);
-    }
-  })();
-</script>
+        document.querySelectorAll('.vcell details').forEach(function (d, i) {
+          d.addEventListener('toggle', function () {
+            if (d.open) {
+              window.posthog.capture('audit_v3_verdict_expanded', { domain: domain, cell_index: i });
+            }
+          });
+        });
+      }
+    })();
+  </script>
+)}
 
 </body>
 </html>
