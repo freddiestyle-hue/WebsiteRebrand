@@ -5,10 +5,7 @@ import PostHog from '../../../components/PostHog.astro';
 import {
   MemoSchema,
   type Memo,
-  type MemoSection,
-  severityClass,
-  fmtMs,
-  fmtInt,
+  type VerdictIcon,
 } from '../../../utils/audit/memo-schema';
 import { sanitizeMemoHtml } from '../../../utils/audit/safe-html';
 import { isValidSlug } from '../../../utils/audit/slug';
@@ -66,25 +63,12 @@ const fmtDate = (iso: string): string => {
   return `${yyyy}·${mm}·${dd}`;
 };
 
-const coreSections: Array<{ id: string; defaultNum: string; section: MemoSection }> = memo
-  ? [
-      { id: 'aeo', defaultNum: '01 · How AI engines see you', section: memo.aeo },
-      { id: 'tracking', defaultNum: '03 · Measurement and tracking', section: memo.tracking },
-      { id: 'conversion', defaultNum: '04 · How visitors convert', section: memo.conversion },
-      { id: 'adActivity', defaultNum: '05 · Ads you are running', section: memo.adActivity },
-    ]
-  : [];
+// Icon sprite id mapping (kept narrow on purpose — Codex emits a known set).
+const iconHref = (icon: VerdictIcon): string => `#ic-${icon}`;
 
 const pageTitle = memo
   ? `Teardown memo · ${memo.domain} · Rivett`
   : 'Memo not found · Rivett';
-
-const perfBandClass = (band?: string): string => {
-  if (band === 'good') return 'perf-band perf-band--good';
-  if (band === 'needs-improvement') return 'perf-band perf-band--warn';
-  if (band === 'poor') return 'perf-band perf-band--bad';
-  return 'perf-band';
-};
 ---
 <!doctype html>
 <html lang="en">
@@ -98,50 +82,28 @@ const perfBandClass = (band?: string): string => {
 <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&family=Newsreader:ital,wght@0,400;0,500;1,400;1,500&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="/audit/memo.css" />
 <PostHog capturePageview={true} />
-<style>
-  /* Mode 2 additions. Lives here, not memo.css, to keep run.astro untouched. */
-  .benchmark-line{margin-top:24px;font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint);display:flex;flex-wrap:wrap;gap:20px;align-items:baseline}
-  .benchmark-line b{color:var(--ink);font-family:var(--grotesk);font-weight:700;font-size:18px;letter-spacing:-0.01em;text-transform:none;margin-left:8px}
-  .benchmark-line .delta{font-family:var(--grotesk);font-size:14px;letter-spacing:-0.005em;text-transform:none;color:var(--ink-dim)}
-  .benchmark-oneliner{margin-top:18px;font-family:var(--serif);font-style:italic;font-size:18px;line-height:1.5;color:var(--ink);max-width:680px}
-  .screenshot-frame{margin:48px 0;border:1px solid var(--line-strong);background:var(--paper-2);padding:0;overflow:hidden;display:grid;gap:0}
-  .screenshot-frame img{width:100%;height:auto;display:block;border-bottom:1px solid var(--line)}
-  .screenshot-frame .meta{padding:14px 18px;font-family:var(--mono);font-size:10.5px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint);display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
-  .screenshot-frame .meta b{color:var(--ink);font-weight:500}
-  .perf-grid{margin-top:32px;display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));border:1px solid var(--ink);background:var(--paper)}
-  .perf-cell{padding:20px;border-right:1px solid var(--ink)}
-  .perf-cell:last-child{border-right:0}
-  @media (max-width:780px){.perf-cell{border-right:0;border-bottom:1px solid var(--ink)}.perf-cell:last-child{border-bottom:0}}
-  .perf-cell .k{font-family:var(--mono);font-size:10px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:8px}
-  .perf-cell .v{font-family:var(--grotesk);font-weight:700;font-size:32px;letter-spacing:-0.03em;color:var(--ink);line-height:1}
-  .perf-band{display:inline-block;margin-top:8px;padding:3px 8px;font-family:var(--mono);font-size:9px;letter-spacing:0.18em;text-transform:uppercase;border:1px solid var(--ink-faint);color:var(--ink-faint)}
-  .perf-band--good{border-color:var(--accent-deep);color:var(--accent-deep)}
-  .perf-band--warn{border-color:var(--ink);color:var(--ink)}
-  .perf-band--bad{border-color:var(--ink);color:var(--ink);background:var(--ink);color:var(--paper)}
-  .perf-platform{font-family:var(--mono);font-size:10.5px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint);margin:24px 0 6px}
-  .lp-card{margin-top:32px;border:1px solid var(--ink);padding:24px;background:var(--paper)}
-  .lp-card + .lp-card{margin-top:18px}
-  .lp-card .lp-head{display:flex;justify-content:space-between;flex-wrap:wrap;gap:14px;align-items:baseline;margin-bottom:18px}
-  .lp-card .lp-url{font-family:var(--mono);font-size:13px;color:var(--ink);word-break:break-all}
-  .lp-card .lp-meta{font-family:var(--mono);font-size:10.5px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint)}
-  .lp-card img{width:100%;height:auto;display:block;border:1px solid var(--line);margin-bottom:16px}
-  .lp-card ul{margin:8px 0 0;padding-left:18px;font-family:var(--grotesk);font-size:14.5px;line-height:1.55;color:var(--ink-dim)}
-  .lp-card .drift{margin-top:16px;padding:14px 18px;border-left:3px solid var(--accent);background:var(--paper-2);font-family:var(--grotesk);font-size:14.5px;line-height:1.55;color:var(--ink)}
-  .keyword-table{margin-top:24px;border-top:2px solid var(--ink)}
-  .keyword-table .row{display:grid;grid-template-columns:1fr 80px 100px;gap:18px;padding:14px 0;border-bottom:1px solid var(--line);align-items:baseline}
-  .keyword-table .row .k{font-family:var(--grotesk);font-size:15px;color:var(--ink)}
-  .keyword-table .row .pos,.keyword-table .row .vol{font-family:var(--mono);font-size:12px;color:var(--ink-faint);text-align:right}
-  .keyword-table .row .pos b,.keyword-table .row .vol b{display:block;color:var(--ink);font-family:var(--grotesk);font-weight:600;font-size:15px;letter-spacing:-0.01em;margin-top:2px}
-  .citation-probe{margin-top:18px;padding:18px;border:1px solid var(--line-strong);background:var(--paper)}
-  .citation-probe .q{font-family:var(--mono);font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:6px}
-  .citation-probe .q b{color:var(--ink);font-family:var(--grotesk);font-weight:600;font-size:15px;letter-spacing:-0.005em;text-transform:none;margin-left:8px}
-  .citation-probe .result{font-family:var(--grotesk);font-size:16px;line-height:1.55;color:var(--ink-dim);margin:6px 0 0}
-  .citation-probe .result em{font-family:var(--serif);font-style:italic;color:var(--ink)}
-  .citation-probe.cited{border-left:3px solid var(--accent-deep)}
-  .citation-probe.notcited{border-left:3px solid var(--ink)}
-</style>
 </head>
 <body>
+
+<!-- Icon sprite. Inline so the page is self-contained and SVG <use> resolves without a network fetch. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="ic-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square" stroke-linejoin="miter"><circle cx="11" cy="11" r="6"/><path d="m15.5 15.5 4.5 4.5"/></symbol>
+    <symbol id="ic-bolt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square" stroke-linejoin="miter"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z"/></symbol>
+    <symbol id="ic-target" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square" stroke-linejoin="miter"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/></symbol>
+    <symbol id="ic-megaphone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square" stroke-linejoin="miter"><path d="M3 10v4l11 4V6L3 10z"/><path d="M14 8.5c2 0 3 1.5 3 3.5s-1 3.5-3 3.5"/><path d="M7 14v4l3 1v-4"/></symbol>
+    <symbol id="ic-bar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square" stroke-linejoin="miter"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></symbol>
+    <symbol id="ic-spark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square" stroke-linejoin="miter"><path d="M12 3v6M12 15v6M3 12h6M15 12h6M5.6 5.6l4.2 4.2M14.2 14.2l4.2 4.2M5.6 18.4l4.2-4.2M14.2 9.8l4.2-4.2"/></symbol>
+    <symbol id="ic-mail" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square" stroke-linejoin="miter"><rect x="3" y="5" width="18" height="14"/><path d="m3 6 9 7 9-7"/></symbol>
+    <symbol id="ic-phone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square" stroke-linejoin="miter"><rect x="7" y="2" width="10" height="20" rx="1"/><path d="M11 18h2"/></symbol>
+    <symbol id="ic-flag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square" stroke-linejoin="miter"><path d="M5 22V3"/><path d="M5 3h12l-3 4 3 4H5"/></symbol>
+    <symbol id="ic-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square" stroke-linejoin="miter"><path d="M2.5 12c2.5-4.5 6-7 9.5-7s7 2.5 9.5 7c-2.5 4.5-6 7-9.5 7s-7-2.5-9.5-7z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="ic-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square" stroke-linejoin="miter"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></symbol>
+    <symbol id="ic-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="square" stroke-linejoin="miter"><path d="m4 12 5 5 11-12"/></symbol>
+    <symbol id="ic-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="square" stroke-linejoin="miter"><path d="m5 5 14 14M19 5 5 19"/></symbol>
+    <symbol id="ic-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square" stroke-linejoin="miter"><path d="M4 12h15M13 6l6 6-6 6"/></symbol>
+  </defs>
+</svg>
 
 <div class="page">
   <nav class="top">
@@ -185,6 +147,7 @@ const perfBandClass = (band?: string): string => {
 
   {memo && (
     <>
+      {/* ============ 1. HOOK ============ */}
       <header class="cover">
         <div class="kicker">{memo.cover.kicker}</div>
         <h1 class="cv">
@@ -193,14 +156,18 @@ const perfBandClass = (band?: string): string => {
         </h1>
         {memo.cover.dek && <p class="cv-dek">{memo.cover.dek}</p>}
 
+        {/* ============ 2. BENCHMARK ============ */}
         {memo.benchmark && (
           <>
             <div class="benchmark-line">
-              <span>Score<b>{memo.benchmark.scoreNumeric}{memo.benchmark.scoreMax && `/${memo.benchmark.scoreMax}`}</b></span>
+              <span class="score-big">
+                <span class="n">{memo.benchmark.scoreNumeric}</span>
+                <span class="of">/ {memo.benchmark.scoreMax ?? 100}</span>
+              </span>
               <span>Industry median<b>{memo.benchmark.industryMedian}</b></span>
               <span>Industry<b>{memo.benchmark.industryName}</b> <span class="delta">(n={memo.benchmark.industryN})</span></span>
               {memo.benchmark.percentile != null && (
-                <span>Percentile<b>{Math.round(memo.benchmark.percentile)}</b></span>
+                <span>Percentile<b>{Math.round(memo.benchmark.percentile)}th</b></span>
               )}
             </div>
             {memo.benchmark.oneLiner && (
@@ -229,330 +196,104 @@ const perfBandClass = (band?: string): string => {
         </div>
       )}
 
-      {/* AEO section */}
-      <section id="aeo" class="sec">
+      {/* ============ 3. VERDICT GRID ============ */}
+      <section id="verdict" class="sec sec--tight">
         <div class="sec-head">
-          <div class="num">{memo.aeo.num ?? '01 · AEO surfaces'}</div>
+          <div class="num">01 · The read</div>
           <div>
             <h2>
-              {memo.aeo.heading}
-              {memo.aeo.italic && <> <span class="ital">{memo.aeo.italic}</span></>}
+              Six dimensions, one verdict each.
+              <span class="ital">Tap a cell to see what we checked.</span>
             </h2>
-            {memo.aeo.dek && <p class="dek">{memo.aeo.dek}</p>}
           </div>
         </div>
-        {memo.aeo.bodyParagraphs.map((p) => (<p class="body" set:html={sanitizeMemoHtml(p)} />))}
-        {memo.aeo.findings.length > 0 && (
-          <div class="findings">
-            {memo.aeo.findings.map((finding, i) => (
-              <div class="find">
-                <div class="idx">{finding.idx ?? `F.01.${i + 1}`}</div>
-                <div class={severityClass(finding.severity)}>{finding.severityLabel ?? finding.severity ?? ''}</div>
-                <div class="b">
-                  <h4>{finding.heading}{finding.italic && <> <em>{finding.italic}</em></>}</h4>
-                  {finding.paragraphs.map((p) => (<p set:html={sanitizeMemoHtml(p)} />))}
+        <div class="verdict" aria-label="Verdict grid">
+          {memo.verdictCells.map((cell) => (
+            <details class="v">
+              <summary>
+                <div class="k"><svg class="ic"><use href={iconHref(cell.icon)}/></svg>{cell.heading}</div>
+                <div class="g">{cell.value}</div>
+                <div class="n">{cell.note}</div>
+                {cell.benchmark && <div class="bench" set:html={sanitizeMemoHtml(cell.benchmark)} />}
+                {cell.checks.length > 0 && (
+                  <div class="expand"><span class="label">+ Checks</span><span class="chev">↑</span></div>
+                )}
+              </summary>
+              {cell.checks.length > 0 && (
+                <div class="checks">
+                  <ul>
+                    {cell.checks.map((check) => (
+                      <li>
+                        <svg class={check.ok ? 'ic ok' : 'ic no'}>
+                          <use href={check.ok ? '#ic-check' : '#ic-x'}/>
+                        </svg>
+                        <span class={check.ok ? 'ok' : 'no'} set:html={sanitizeMemoHtml(check.text)} />
+                      </li>
+                    ))}
+                  </ul>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
+              )}
+            </details>
+          ))}
+        </div>
       </section>
 
-      {/* Performance section (T2.3, optional) */}
-      {memo.performance && (memo.performance.mobile || memo.performance.desktop) && (
-        <section id="performance" class="sec">
-          <div class="sec-head">
-            <div class="num">02 · How fast the site loads</div>
-            <div>
-              <h2>Page speed. <span class="ital">Every second of delay drops ad conversion roughly seven percent.</span></h2>
-              {memo.performance.commentary && <p class="dek">{memo.performance.commentary}</p>}
-            </div>
+      {/* ============ 4. TOP 3 FIXES ============ */}
+      <section id="fixes" class="sec">
+        <div class="sec-head">
+          <div class="num">02 · Do these first</div>
+          <div>
+            <h2>
+              The three fixes that move the score most.
+              <span class="ital">Effort and impact, named.</span>
+            </h2>
           </div>
-
-          {memo.performance.mobile && (
-            <>
-              <div class="perf-platform">Mobile</div>
-              <div class="perf-grid">
-                {memo.performance.mobile.lcpMs != null && (
-                  <div class="perf-cell"><div class="k">Time to load</div><div class="v">{fmtMs(memo.performance.mobile.lcpMs)}</div></div>
-                )}
-                {memo.performance.mobile.inpMs != null && (
-                  <div class="perf-cell"><div class="k">Tap responsiveness</div><div class="v">{fmtMs(memo.performance.mobile.inpMs)}</div></div>
-                )}
-                {memo.performance.mobile.cls != null && (
-                  <div class="perf-cell"><div class="k">Layout stability</div><div class="v">{memo.performance.mobile.cls.toFixed(2)}</div></div>
-                )}
-                {memo.performance.mobile.fcpMs != null && (
-                  <div class="perf-cell"><div class="k">First visible content</div><div class="v">{fmtMs(memo.performance.mobile.fcpMs)}</div></div>
-                )}
-                {memo.performance.mobile.performanceScore != null && (
-                  <div class="perf-cell"><div class="k">Overall score</div><div class="v">{Math.round(memo.performance.mobile.performanceScore)}</div><div class={perfBandClass(memo.performance.mobile.band)}>{memo.performance.mobile.band ?? ''}</div></div>
-                )}
+        </div>
+        <div class="recs">
+          {memo.rankedFixes.map((fix) => (
+            <div class="row">
+              <div class="rank">F{String(fix.rank).padStart(2, '0')}</div>
+              <div class="what">
+                <div class="what-h" set:html={sanitizeMemoHtml(fix.what)} />
+                <p class="why" set:html={sanitizeMemoHtml(fix.why)} />
               </div>
-            </>
-          )}
-
-          {memo.performance.desktop && (
-            <>
-              <div class="perf-platform">Desktop</div>
-              <div class="perf-grid">
-                {memo.performance.desktop.lcpMs != null && (
-                  <div class="perf-cell"><div class="k">Time to load</div><div class="v">{fmtMs(memo.performance.desktop.lcpMs)}</div></div>
-                )}
-                {memo.performance.desktop.inpMs != null && (
-                  <div class="perf-cell"><div class="k">Tap responsiveness</div><div class="v">{fmtMs(memo.performance.desktop.inpMs)}</div></div>
-                )}
-                {memo.performance.desktop.cls != null && (
-                  <div class="perf-cell"><div class="k">Layout stability</div><div class="v">{memo.performance.desktop.cls.toFixed(2)}</div></div>
-                )}
-                {memo.performance.desktop.fcpMs != null && (
-                  <div class="perf-cell"><div class="k">First visible content</div><div class="v">{fmtMs(memo.performance.desktop.fcpMs)}</div></div>
-                )}
-                {memo.performance.desktop.performanceScore != null && (
-                  <div class="perf-cell"><div class="k">Overall score</div><div class="v">{Math.round(memo.performance.desktop.performanceScore)}</div><div class={perfBandClass(memo.performance.desktop.band)}>{memo.performance.desktop.band ?? ''}</div></div>
-                )}
-              </div>
-            </>
-          )}
-        </section>
-      )}
-
-      {/* Mobile rendering (T3.6, optional) */}
-      {memo.mobileRendering && (memo.mobileRendering.hasHorizontalScroll != null || memo.mobileRendering.smallestTapTargetPx != null || memo.mobileRendering.textTooSmall != null) && (
-        <section id="mobile" class="sec">
-          <div class="sec-head">
-            <div class="num">Mobile experience</div>
-            <div>
-              <h2>How the site behaves on a phone. <span class="ital">Where most of your paid traffic actually lands.</span></h2>
-              {memo.mobileRendering.viewport && <p class="dek">Tested at {memo.mobileRendering.viewport} (typical phone screen).</p>}
-            </div>
-          </div>
-          {memo.mobileRendering.screenshot && (
-            <div class="screenshot-frame" style="max-width: 420px">
-              <img src={memo.mobileRendering.screenshot} alt={`${memo.domain} on mobile`} loading="lazy" />
-              <div class="meta"><span>Phone view<b>{memo.mobileRendering.viewport ?? 'mobile'}</b></span></div>
-            </div>
-          )}
-          <div class="perf-grid">
-            {memo.mobileRendering.hasHorizontalScroll != null && (
-              <div class="perf-cell">
-                <div class="k">Page fits the screen</div>
-                <div class="v">{memo.mobileRendering.hasHorizontalScroll ? 'No' : 'Yes'}</div>
-                <div class={memo.mobileRendering.hasHorizontalScroll ? 'perf-band perf-band--bad' : 'perf-band perf-band--good'}>
-                  {memo.mobileRendering.hasHorizontalScroll ? 'Visitors swipe sideways' : 'Clean'}
-                </div>
-              </div>
-            )}
-            {memo.mobileRendering.smallestTapTargetPx != null && (
-              <div class="perf-cell">
-                <div class="k">Smallest button or link</div>
-                <div class="v">{Math.round(memo.mobileRendering.smallestTapTargetPx)}px</div>
-                <div class={memo.mobileRendering.smallestTapTargetPx < 44 ? 'perf-band perf-band--bad' : 'perf-band perf-band--good'}>
-                  {memo.mobileRendering.smallestTapTargetPx < 44 ? 'Fat-finger misses' : 'Easy to tap'}
-                </div>
-              </div>
-            )}
-            {memo.mobileRendering.textTooSmall != null && (
-              <div class="perf-cell">
-                <div class="k">Text size</div>
-                <div class="v">{memo.mobileRendering.textTooSmall ? 'Tiny' : 'OK'}</div>
-                <div class={memo.mobileRendering.textTooSmall ? 'perf-band perf-band--bad' : 'perf-band perf-band--good'}>
-                  {memo.mobileRendering.textTooSmall ? 'Hard to read' : 'Readable'}
-                </div>
-              </div>
-            )}
-          </div>
-          {memo.mobileRendering.commentary && (
-            <p class="body" style="margin-top:24px">{memo.mobileRendering.commentary}</p>
-          )}
-        </section>
-      )}
-
-      {/* Tracking, Conversion, Ad activity (renumbered if performance present) */}
-      {coreSections.slice(1).map(({ id, defaultNum, section }) => (
-        <section id={id} class="sec">
-          <div class="sec-head">
-            <div class="num">{section.num ?? defaultNum}</div>
-            <div>
-              <h2>
-                {section.heading}
-                {section.italic && <> <span class="ital">{section.italic}</span></>}
-              </h2>
-              {section.dek && <p class="dek">{section.dek}</p>}
-            </div>
-          </div>
-          {section.bodyParagraphs.map((p) => (<p class="body" set:html={sanitizeMemoHtml(p)} />))}
-          {section.findings.length > 0 && (
-            <div class="findings">
-              {section.findings.map((finding, i) => (
-                <div class="find">
-                  <div class="idx">{finding.idx ?? `F.${i + 1}`}</div>
-                  <div class={severityClass(finding.severity)}>{finding.severityLabel ?? finding.severity ?? ''}</div>
-                  <div class="b">
-                    <h4>{finding.heading}{finding.italic && <> <em>{finding.italic}</em></>}</h4>
-                    {finding.paragraphs.map((p) => (<p set:html={sanitizeMemoHtml(p)} />))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Ad LPs render inside Ad activity section (T1.1) */}
-          {id === 'adActivity' && memo.adLandingPages.length > 0 && (
-            <>
-              <h3 style="margin-top:48px;font-family:var(--grotesk);font-weight:700;font-size:24px;letter-spacing:-0.025em;color:var(--ink)">Pages your ads send people to.</h3>
-              {memo.adLandingPages.map((lp) => (
-                <div class="lp-card">
-                  <div class="lp-head">
-                    <div class="lp-url">{lp.url}</div>
-                    <div class="lp-meta">
-                      {lp.platform && <span>{lp.platform.toUpperCase()}</span>}
-                      {lp.adsActive != null && <> · <span>{lp.adsActive} active ads</span></>}
-                      {lp.firstSeen && <> · <span>first seen {lp.firstSeen}</span></>}
-                    </div>
-                  </div>
-                  {lp.screenshotDesktop && (
-                    <img src={lp.screenshotDesktop} alt={`Ad landing page: ${lp.url}`} loading="lazy" />
-                  )}
-                  {lp.commentary && <p class="body" set:html={sanitizeMemoHtml(lp.commentary)} />}
-                  {lp.trackingFindings.length > 0 && (
-                    <>
-                      <div class="lp-meta" style="margin-top:14px">Measurement on this page</div>
-                      <ul>{lp.trackingFindings.map((f) => <li set:html={sanitizeMemoHtml(f)} />)}</ul>
-                    </>
-                  )}
-                  {lp.conversionFindings.length > 0 && (
-                    <>
-                      <div class="lp-meta" style="margin-top:14px">How visitors convert here</div>
-                      <ul>{lp.conversionFindings.map((f) => <li set:html={sanitizeMemoHtml(f)} />)}</ul>
-                    </>
-                  )}
-                  {lp.aeoFindings.length > 0 && (
-                    <>
-                      <div class="lp-meta" style="margin-top:14px">How AI engines see this page</div>
-                      <ul>{lp.aeoFindings.map((f) => <li set:html={sanitizeMemoHtml(f)} />)}</ul>
-                    </>
-                  )}
-                  {lp.driftFromHomepage && (
-                    <div class="drift">{lp.driftFromHomepage}</div>
-                  )}
-                </div>
-              ))}
-            </>
-          )}
-        </section>
-      ))}
-
-      {/* Organic traffic (T2.5, optional) */}
-      {memo.organicTraffic && (memo.organicTraffic.estimatedMonthlyVisits != null || memo.organicTraffic.topKeywords.length > 0) && (
-        <section id="organic-traffic" class="sec">
-          <div class="sec-head">
-            <div class="num">06 · Free traffic from Google</div>
-            <div>
-              <h2>What Google sends you for free. <span class="ital">And what it converts to.</span></h2>
-              {memo.organicTraffic.commentary && <p class="dek">{memo.organicTraffic.commentary}</p>}
-            </div>
-          </div>
-          <div class="perf-grid">
-            {memo.organicTraffic.estimatedMonthlyVisits != null && (
-              <div class="perf-cell"><div class="k">Visits per month</div><div class="v">{fmtInt(memo.organicTraffic.estimatedMonthlyVisits)}</div></div>
-            )}
-            {memo.organicTraffic.estimatedMonthlyValueUsd != null && (
-              <div class="perf-cell"><div class="k">Worth roughly</div><div class="v">${fmtInt(Math.round(memo.organicTraffic.estimatedMonthlyValueUsd))}/mo</div></div>
-            )}
-            {memo.organicTraffic.source && (
-              <div class="perf-cell"><div class="k">Source</div><div class="v" style="font-size:18px">{memo.organicTraffic.source}</div></div>
-            )}
-          </div>
-          {memo.organicTraffic.topKeywords.length > 0 && (
-            <div class="keyword-table">
-              {memo.organicTraffic.topKeywords.map((kw) => (
-                <div class="row">
-                  <div class="k">{kw.keyword}</div>
-                  <div class="pos">Rank<b>#{kw.position}</b></div>
-                  <div class="vol">Searches/mo<b>{kw.monthlyVolume != null ? fmtInt(kw.monthlyVolume) : 'n/a'}</b></div>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-      )}
-
-      {/* Email reputation (T3.7, optional) */}
-      {memo.emailDeliverability && (memo.emailDeliverability.spfPresent != null || memo.emailDeliverability.dmarcPresent != null || memo.emailDeliverability.mxPresent != null) && (
-        <section id="deliverability" class="sec">
-          <div class="sec-head">
-            <div class="num">Email reputation</div>
-            <div>
-              <h2>Whether your emails land in the inbox. <span class="ital">Or the spam folder.</span></h2>
-              {memo.emailDeliverability.commentary && <p class="dek">{memo.emailDeliverability.commentary}</p>}
-            </div>
-          </div>
-          <div class="perf-grid">
-            {memo.emailDeliverability.spfPresent != null && (
-              <div class="perf-cell">
-                <div class="k">Sender ID setup (SPF)</div>
-                <div class="v" style="font-size:22px">{memo.emailDeliverability.spfPresent ? 'Set up' : 'Missing'}</div>
-                <div class={memo.emailDeliverability.spfPresent && memo.emailDeliverability.spfPolicy && memo.emailDeliverability.spfPolicy.includes('-all') ? 'perf-band perf-band--good' : 'perf-band perf-band--warn'}>
-                  {memo.emailDeliverability.spfPresent ? 'Helps inbox placement' : 'Mail looks suspicious'}
-                </div>
-              </div>
-            )}
-            {memo.emailDeliverability.dmarcPresent != null && (
-              <div class="perf-cell">
-                <div class="k">Spoofing protection (DMARC)</div>
-                <div class="v" style="font-size:22px">{memo.emailDeliverability.dmarcPresent ? 'Set up' : 'Missing'}</div>
-                <div class={memo.emailDeliverability.dmarcPolicy === 'reject' || memo.emailDeliverability.dmarcPolicy === 'quarantine' ? 'perf-band perf-band--good' : 'perf-band perf-band--warn'}>
-                  {memo.emailDeliverability.dmarcPolicy === 'reject' || memo.emailDeliverability.dmarcPolicy === 'quarantine' ? 'Spoofed mail blocked' : memo.emailDeliverability.dmarcPresent ? 'Published but lenient' : 'Anyone can fake you'}
-                </div>
-              </div>
-            )}
-            {memo.emailDeliverability.mxPresent != null && (
-              <div class="perf-cell">
-                <div class="k">Mail provider</div>
-                <div class="v" style="font-size:22px">{memo.emailDeliverability.mxProvider ?? (memo.emailDeliverability.mxPresent ? 'unknown' : 'none')}</div>
-                <div class="perf-band">{memo.emailDeliverability.mxPresent ? 'Receiving mail' : 'No mail setup'}</div>
-              </div>
-            )}
-          </div>
-        </section>
-      )}
-
-      {/* When AI mentions you (T3.8, optional) */}
-      {memo.aiCitation && memo.aiCitation.probes.length > 0 && (
-        <section id="ai-citation" class="sec">
-          <div class="sec-head">
-            <div class="num">07 · When AI mentions you</div>
-            <div>
-              <h2>Do ChatGPT, Claude, and Perplexity name you. <span class="ital">When their users ask for what you sell.</span></h2>
-              {memo.aiCitation.summary && <p class="dek">{memo.aiCitation.summary}</p>}
-            </div>
-          </div>
-          {memo.aiCitation.probes.map((probe) => (
-            <div class={`citation-probe ${probe.cited ? 'cited' : 'notcited'}`}>
-              <div class="q">{probe.engine.toUpperCase()}<b>{probe.query}</b></div>
-              <p class="result">
-                {probe.cited
-                  ? <>Cited. <em>{probe.citationContext ?? ''}</em></>
-                  : <>Not cited. {probe.competitorsCited.length > 0 && <em>Cited instead: {probe.competitorsCited.join(', ')}</em>}</>
-                }
-              </p>
-              {probe.responseExcerpt && <p class="result" style="margin-top:10px;font-size:14px;color:var(--ink-faint)">{probe.responseExcerpt}</p>}
+              <div class="effort">Effort<b>{fix.effort}</b></div>
+              <div class="impact">Impact<b>{fix.impact}</b></div>
             </div>
           ))}
-        </section>
-      )}
+        </div>
+      </section>
 
-      {/* Personal observation */}
+      {/* ============ 5. PERSONAL OBSERVATION ============ */}
       <section id="observation" class="sec">
         <div class="sec-head">
-          <div class="num">08 · One last thing</div>
+          <div class="num">03 · One last thing</div>
           <div>
             <h2>What I would do first.</h2>
           </div>
         </div>
-        <p class="body" set:html={sanitizeMemoHtml(memo.personalObservation.text)} />
+        <p class="body body--obs" set:html={sanitizeMemoHtml(memo.personalObservation.text)} />
       </section>
+
+      {/* ============ DARK CLOSING CTA ============ */}
+      <aside class="memo">
+        <div class="lab">Want to talk it through</div>
+        <div>
+          <h2>
+            Pick a time.
+            <span class="ital">Twenty minutes. I'll walk you through the three fixes and answer whatever else is on your mind.</span>
+          </h2>
+          <p>No deck, no sales motion. You bring questions, I bring the read.</p>
+          <div class="actions">
+            <a class="btn btn--inv" href="/diagnostic">Book a call <svg class="ic" style="width:14px;height:14px"><use href="#ic-arrow"/></svg></a>
+            <a class="btn" href={`mailto:fred@rivett.tech?subject=${encodeURIComponent(`Re ${memo.domain} teardown`)}`}>Reply by email</a>
+          </div>
+          <div class="sig">
+            <b>Fred Style</b>
+            rivett.tech · {fmtDate(memo.generatedAt)}
+          </div>
+        </div>
+      </aside>
 
       <footer class="foot">
         <span>This memo is an external read of public signals. Not a formal assessment.</span>
@@ -572,15 +313,12 @@ const perfBandClass = (band?: string): string => {
           domain: memo.domain,
           companyName: memo.companyName ?? null,
           industry: memo.industry ?? null,
-          band: memo.band ?? null,
-          scoreNumeric: memo.scoreNumeric ?? null,
-          scorePercent: memo.scorePercent ?? null,
-          adsActive: memo.adLandingPages.reduce((s, lp) => s + (lp.adsActive ?? 0), 0),
+          scoreNumeric: memo.benchmark?.scoreNumeric ?? null,
+          percentile: memo.benchmark?.percentile ?? null,
+          verdictCellCount: memo.verdictCells.length,
+          rankedFixCount: memo.rankedFixes.length,
           hasBenchmark: memo.benchmark != null,
-          hasPerformance: memo.performance != null,
-          hasOrganicTraffic: memo.organicTraffic != null,
-          hasAiCitation: memo.aiCitation != null,
-          adLandingPageCount: memo.adLandingPages.length,
+          hasScreenshots: memo.screenshots != null,
         }
       : null,
   }}
@@ -593,6 +331,17 @@ const perfBandClass = (band?: string): string => {
         return;
       }
       window.posthog.capture('memo_viewed', { slug: slug, ...memoMeta });
+
+      // Track which verdict cells the user expands. Cold-DM signal.
+      document.querySelectorAll('details.v').forEach(function (d, i) {
+        d.addEventListener('toggle', function () {
+          if (d.open) {
+            window.posthog.capture('memo_verdict_expanded', { slug: slug, cell_index: i });
+          }
+        });
+      });
+
+      // Section visibility (Top 3 Fixes is the conversion driver — track it explicitly).
       var sections = document.querySelectorAll('section.sec[id]');
       if ('IntersectionObserver' in window) {
         var seen = {};

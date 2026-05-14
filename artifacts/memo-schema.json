@@ -4,7 +4,7 @@
   "properties": {
     "version": {
       "type": "string",
-      "const": "1.0.0"
+      "const": "2.0.0"
     },
     "slug": {
       "type": "string",
@@ -100,459 +100,6 @@
       ],
       "additionalProperties": false
     },
-    "aeo": {
-      "type": "object",
-      "properties": {
-        "num": {
-          "type": "string"
-        },
-        "heading": {
-          "type": "string",
-          "minLength": 1
-        },
-        "italic": {
-          "type": "string"
-        },
-        "dek": {
-          "type": "string"
-        },
-        "bodyParagraphs": {
-          "default": [],
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
-        },
-        "findings": {
-          "default": [],
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "idx": {
-                "type": "string"
-              },
-              "severity": {
-                "type": "string",
-                "enum": [
-                  "critical",
-                  "material",
-                  "minor",
-                  "fix",
-                  "keep"
-                ]
-              },
-              "severityLabel": {
-                "type": "string"
-              },
-              "heading": {
-                "type": "string",
-                "minLength": 1
-              },
-              "italic": {
-                "type": "string"
-              },
-              "paragraphs": {
-                "default": [],
-                "type": "array",
-                "items": {
-                  "type": "string",
-                  "minLength": 1
-                }
-              }
-            },
-            "required": [
-              "heading",
-              "paragraphs"
-            ],
-            "additionalProperties": false
-          }
-        },
-        "grade": {
-          "type": "string",
-          "enum": [
-            "A",
-            "B",
-            "C",
-            "D",
-            "F",
-            "N/A"
-          ]
-        },
-        "passed": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 9007199254740991
-        },
-        "total": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 9007199254740991
-        }
-      },
-      "required": [
-        "heading",
-        "bodyParagraphs",
-        "findings"
-      ],
-      "additionalProperties": false
-    },
-    "tracking": {
-      "type": "object",
-      "properties": {
-        "num": {
-          "type": "string"
-        },
-        "heading": {
-          "type": "string",
-          "minLength": 1
-        },
-        "italic": {
-          "type": "string"
-        },
-        "dek": {
-          "type": "string"
-        },
-        "bodyParagraphs": {
-          "default": [],
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
-        },
-        "findings": {
-          "default": [],
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "idx": {
-                "type": "string"
-              },
-              "severity": {
-                "type": "string",
-                "enum": [
-                  "critical",
-                  "material",
-                  "minor",
-                  "fix",
-                  "keep"
-                ]
-              },
-              "severityLabel": {
-                "type": "string"
-              },
-              "heading": {
-                "type": "string",
-                "minLength": 1
-              },
-              "italic": {
-                "type": "string"
-              },
-              "paragraphs": {
-                "default": [],
-                "type": "array",
-                "items": {
-                  "type": "string",
-                  "minLength": 1
-                }
-              }
-            },
-            "required": [
-              "heading",
-              "paragraphs"
-            ],
-            "additionalProperties": false
-          }
-        },
-        "grade": {
-          "type": "string",
-          "enum": [
-            "A",
-            "B",
-            "C",
-            "D",
-            "F",
-            "N/A"
-          ]
-        },
-        "passed": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 9007199254740991
-        },
-        "total": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 9007199254740991
-        }
-      },
-      "required": [
-        "heading",
-        "bodyParagraphs",
-        "findings"
-      ],
-      "additionalProperties": false
-    },
-    "conversion": {
-      "type": "object",
-      "properties": {
-        "num": {
-          "type": "string"
-        },
-        "heading": {
-          "type": "string",
-          "minLength": 1
-        },
-        "italic": {
-          "type": "string"
-        },
-        "dek": {
-          "type": "string"
-        },
-        "bodyParagraphs": {
-          "default": [],
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
-        },
-        "findings": {
-          "default": [],
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "idx": {
-                "type": "string"
-              },
-              "severity": {
-                "type": "string",
-                "enum": [
-                  "critical",
-                  "material",
-                  "minor",
-                  "fix",
-                  "keep"
-                ]
-              },
-              "severityLabel": {
-                "type": "string"
-              },
-              "heading": {
-                "type": "string",
-                "minLength": 1
-              },
-              "italic": {
-                "type": "string"
-              },
-              "paragraphs": {
-                "default": [],
-                "type": "array",
-                "items": {
-                  "type": "string",
-                  "minLength": 1
-                }
-              }
-            },
-            "required": [
-              "heading",
-              "paragraphs"
-            ],
-            "additionalProperties": false
-          }
-        },
-        "grade": {
-          "type": "string",
-          "enum": [
-            "A",
-            "B",
-            "C",
-            "D",
-            "F",
-            "N/A"
-          ]
-        },
-        "passed": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 9007199254740991
-        },
-        "total": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 9007199254740991
-        }
-      },
-      "required": [
-        "heading",
-        "bodyParagraphs",
-        "findings"
-      ],
-      "additionalProperties": false
-    },
-    "adActivity": {
-      "type": "object",
-      "properties": {
-        "num": {
-          "type": "string"
-        },
-        "heading": {
-          "type": "string",
-          "minLength": 1
-        },
-        "italic": {
-          "type": "string"
-        },
-        "dek": {
-          "type": "string"
-        },
-        "bodyParagraphs": {
-          "default": [],
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
-        },
-        "findings": {
-          "default": [],
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "idx": {
-                "type": "string"
-              },
-              "severity": {
-                "type": "string",
-                "enum": [
-                  "critical",
-                  "material",
-                  "minor",
-                  "fix",
-                  "keep"
-                ]
-              },
-              "severityLabel": {
-                "type": "string"
-              },
-              "heading": {
-                "type": "string",
-                "minLength": 1
-              },
-              "italic": {
-                "type": "string"
-              },
-              "paragraphs": {
-                "default": [],
-                "type": "array",
-                "items": {
-                  "type": "string",
-                  "minLength": 1
-                }
-              }
-            },
-            "required": [
-              "heading",
-              "paragraphs"
-            ],
-            "additionalProperties": false
-          }
-        },
-        "grade": {
-          "type": "string",
-          "enum": [
-            "A",
-            "B",
-            "C",
-            "D",
-            "F",
-            "N/A"
-          ]
-        },
-        "passed": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 9007199254740991
-        },
-        "total": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 9007199254740991
-        }
-      },
-      "required": [
-        "heading",
-        "bodyParagraphs",
-        "findings"
-      ],
-      "additionalProperties": false
-    },
-    "personalObservation": {
-      "type": "object",
-      "properties": {
-        "text": {
-          "type": "string",
-          "minLength": 1
-        }
-      },
-      "required": [
-        "text"
-      ],
-      "additionalProperties": false
-    },
-    "scoreNumeric": {
-      "anyOf": [
-        {
-          "type": "number"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
-    "scoreMax": {
-      "anyOf": [
-        {
-          "type": "number"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
-    "scorePercent": {
-      "anyOf": [
-        {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 100
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
-    "band": {
-      "anyOf": [
-        {
-          "type": "string",
-          "enum": [
-            "invisible",
-            "weak",
-            "discoverable",
-            "ready"
-          ]
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
     "benchmark": {
       "type": "object",
       "properties": {
@@ -612,99 +159,6 @@
       ],
       "additionalProperties": false
     },
-    "performance": {
-      "type": "object",
-      "properties": {
-        "mobile": {
-          "type": "object",
-          "properties": {
-            "lcpMs": {
-              "type": "number"
-            },
-            "inpMs": {
-              "type": "number"
-            },
-            "cls": {
-              "type": "number"
-            },
-            "fcpMs": {
-              "type": "number"
-            },
-            "ttfbMs": {
-              "type": "number"
-            },
-            "performanceScore": {
-              "type": "number",
-              "minimum": 0,
-              "maximum": 100
-            },
-            "band": {
-              "type": "string",
-              "enum": [
-                "poor",
-                "needs-improvement",
-                "good"
-              ]
-            },
-            "source": {
-              "type": "string"
-            },
-            "measuredAt": {
-              "type": "string",
-              "format": "date-time",
-              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
-            }
-          },
-          "additionalProperties": false
-        },
-        "desktop": {
-          "type": "object",
-          "properties": {
-            "lcpMs": {
-              "type": "number"
-            },
-            "inpMs": {
-              "type": "number"
-            },
-            "cls": {
-              "type": "number"
-            },
-            "fcpMs": {
-              "type": "number"
-            },
-            "ttfbMs": {
-              "type": "number"
-            },
-            "performanceScore": {
-              "type": "number",
-              "minimum": 0,
-              "maximum": 100
-            },
-            "band": {
-              "type": "string",
-              "enum": [
-                "poor",
-                "needs-improvement",
-                "good"
-              ]
-            },
-            "source": {
-              "type": "string"
-            },
-            "measuredAt": {
-              "type": "string",
-              "format": "date-time",
-              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
-            }
-          },
-          "additionalProperties": false
-        },
-        "commentary": {
-          "type": "string"
-        }
-      },
-      "additionalProperties": false
-    },
     "screenshots": {
       "type": "object",
       "properties": {
@@ -727,349 +181,140 @@
       },
       "additionalProperties": false
     },
-    "adLandingPages": {
-      "default": [],
+    "verdictCells": {
+      "minItems": 3,
+      "maxItems": 8,
       "type": "array",
       "items": {
         "type": "object",
         "properties": {
-          "url": {
-            "type": "string",
-            "format": "uri"
-          },
-          "platform": {
+          "icon": {
             "type": "string",
             "enum": [
-              "meta",
-              "google",
-              "linkedin",
-              "tiktok",
-              "youtube",
-              "other"
+              "search",
+              "bolt",
+              "target",
+              "megaphone",
+              "bar",
+              "spark",
+              "mail",
+              "phone",
+              "flag",
+              "eye",
+              "clock"
             ]
           },
-          "adsActive": {
-            "type": "integer",
-            "minimum": 0,
-            "maximum": 9007199254740991
-          },
-          "firstSeen": {
-            "type": "string"
-          },
-          "screenshotDesktop": {
+          "heading": {
             "type": "string",
-            "format": "uri"
+            "minLength": 1
           },
-          "screenshotMobile": {
+          "value": {
             "type": "string",
-            "format": "uri"
+            "minLength": 1
           },
-          "trackingFindings": {
+          "note": {
+            "type": "string",
+            "minLength": 1
+          },
+          "benchmark": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "checks": {
             "default": [],
             "type": "array",
             "items": {
-              "type": "string"
+              "type": "object",
+              "properties": {
+                "ok": {
+                  "type": "boolean"
+                },
+                "text": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "ok",
+                "text"
+              ],
+              "additionalProperties": false
             }
-          },
-          "conversionFindings": {
-            "default": [],
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "aeoFindings": {
-            "default": [],
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "driftFromHomepage": {
-            "type": "string"
-          },
-          "commentary": {
-            "type": "string"
           }
         },
         "required": [
-          "url",
-          "trackingFindings",
-          "conversionFindings",
-          "aeoFindings"
+          "icon",
+          "heading",
+          "value",
+          "note",
+          "checks"
         ],
         "additionalProperties": false
       }
     },
-    "organicTraffic": {
-      "type": "object",
-      "properties": {
-        "estimatedMonthlyVisits": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 9007199254740991
-        },
-        "topKeywords": {
-          "default": [],
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "keyword": {
-                "type": "string",
-                "minLength": 1
-              },
-              "position": {
-                "type": "integer",
-                "minimum": 1,
-                "maximum": 9007199254740991
-              },
-              "monthlyVolume": {
-                "type": "integer",
-                "minimum": 0,
-                "maximum": 9007199254740991
-              },
-              "url": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "keyword",
-              "position"
-            ],
-            "additionalProperties": false
+    "rankedFixes": {
+      "minItems": 1,
+      "maxItems": 5,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "rank": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10
+          },
+          "what": {
+            "type": "string",
+            "minLength": 1
+          },
+          "why": {
+            "type": "string",
+            "minLength": 1
+          },
+          "effort": {
+            "type": "string",
+            "enum": [
+              "low",
+              "med",
+              "high"
+            ]
+          },
+          "impact": {
+            "type": "string",
+            "enum": [
+              "low",
+              "med",
+              "high"
+            ]
           }
         },
-        "estimatedMonthlyValueUsd": {
-          "type": "number"
-        },
-        "source": {
-          "type": "string"
-        },
-        "snapshotDate": {
-          "type": "string"
-        },
-        "commentary": {
-          "type": "string"
+        "required": [
+          "rank",
+          "what",
+          "why",
+          "effort",
+          "impact"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "personalObservation": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "minLength": 1
         }
       },
       "required": [
-        "topKeywords"
-      ],
-      "additionalProperties": false
-    },
-    "mobileRendering": {
-      "type": "object",
-      "properties": {
-        "viewport": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "screenshot": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "hasHorizontalScroll": {
-          "anyOf": [
-            {
-              "type": "boolean"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "smallestTapTargetPx": {
-          "anyOf": [
-            {
-              "type": "number"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "textTooSmall": {
-          "anyOf": [
-            {
-              "type": "boolean"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "commentary": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        }
-      },
-      "additionalProperties": false
-    },
-    "emailDeliverability": {
-      "type": "object",
-      "properties": {
-        "spfPresent": {
-          "anyOf": [
-            {
-              "type": "boolean"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "spfPolicy": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "dmarcPresent": {
-          "anyOf": [
-            {
-              "type": "boolean"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "dmarcPolicy": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "dkimPresent": {
-          "anyOf": [
-            {
-              "type": "boolean"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "mxPresent": {
-          "anyOf": [
-            {
-              "type": "boolean"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "mxProvider": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "commentary": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        }
-      },
-      "additionalProperties": false
-    },
-    "aiCitation": {
-      "type": "object",
-      "properties": {
-        "probes": {
-          "default": [],
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "engine": {
-                "type": "string",
-                "enum": [
-                  "claude",
-                  "openai",
-                  "perplexity",
-                  "gemini",
-                  "other"
-                ]
-              },
-              "query": {
-                "type": "string",
-                "minLength": 1
-              },
-              "cited": {
-                "type": "boolean"
-              },
-              "citationContext": {
-                "type": "string"
-              },
-              "competitorsCited": {
-                "default": [],
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
-              },
-              "responseExcerpt": {
-                "type": "string"
-              },
-              "probedAt": {
-                "type": "string",
-                "format": "date-time",
-                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
-              }
-            },
-            "required": [
-              "engine",
-              "query",
-              "cited",
-              "competitorsCited"
-            ],
-            "additionalProperties": false
-          }
-        },
-        "summary": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "probes"
+        "text"
       ],
       "additionalProperties": false
     }
@@ -1080,12 +325,9 @@
     "domain",
     "generatedAt",
     "cover",
-    "aeo",
-    "tracking",
-    "conversion",
-    "adActivity",
-    "personalObservation",
-    "adLandingPages"
+    "verdictCells",
+    "rankedFixes",
+    "personalObservation"
   ],
   "additionalProperties": false
 }

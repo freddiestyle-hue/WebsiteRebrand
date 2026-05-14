@@ -13,38 +13,58 @@ const validMemo = {
     italic: 'ChatGPT cannot tell what you sell.',
     dek: 'The boring foundation is in place.',
   },
-  aeo: {
-    num: '01 · AEO surfaces',
-    heading: 'AEO holds.',
-    italic: 'Schema gaps cost citations.',
-    findings: [],
-    bodyParagraphs: ['Body para 1.'],
-  },
-  tracking: {
-    heading: 'Tracking stack.',
-    findings: [
-      {
-        idx: 'F.02.1',
-        severity: 'material',
-        severityLabel: 'Material',
-        heading: 'Meta Pixel missing.',
-        paragraphs: ['The pixel is not on the page.'],
-      },
-    ],
-    bodyParagraphs: [],
-  },
-  conversion: {
-    heading: 'Conversion paths.',
-    findings: [],
-    bodyParagraphs: [],
-  },
-  adActivity: {
-    heading: 'Ad activity.',
-    findings: [],
-    bodyParagraphs: [],
-  },
+  verdictCells: [
+    {
+      icon: 'search',
+      heading: 'How Google sees you',
+      value: '3 of 4',
+      note: 'Crawlable, indexed, canonical. Schema is missing.',
+      benchmark: 'Top quartile · 4 of 4',
+      checks: [
+        { ok: true, text: 'Sitemap reachable · 87 URLs' },
+        { ok: false, text: 'JSON-LD schema · LocalBusiness missing' },
+      ],
+    },
+    {
+      icon: 'target',
+      heading: 'What you measure',
+      value: '2 of 5',
+      note: 'Meta Pixel fires. GA4 missing.',
+      checks: [{ ok: false, text: 'Google Analytics 4 · missing' }],
+    },
+    {
+      icon: 'spark',
+      heading: 'When AI mentions you',
+      value: '0 of 3',
+      note: 'Perplexity, Claude, OpenAI all answered without you.',
+      checks: [],
+    },
+  ],
+  rankedFixes: [
+    {
+      rank: 1,
+      what: 'Install GA4 via GTM and wire the lead conversion event.',
+      why: 'Google Ads optimization is blind without GA4. Twenty minutes to install.',
+      effort: 'low',
+      impact: 'high',
+    },
+    {
+      rank: 2,
+      what: 'Ship LocalBusiness JSON-LD on the homepage.',
+      why: 'Lets AI engines connect your domain to your service area and phone.',
+      effort: 'low',
+      impact: 'high',
+    },
+    {
+      rank: 3,
+      what: 'Cut the LP load time in half.',
+      why: 'A 4.2s mobile LCP is dropping ad conversions roughly thirty percent.',
+      effort: 'med',
+      impact: 'med',
+    },
+  ],
   personalObservation: {
-    text: 'One paragraph here.',
+    text: 'One paragraph of human observation goes here.',
   },
 };
 
@@ -61,7 +81,7 @@ describe('MemoSchema', () => {
   });
 
   it('rejects wrong version', () => {
-    const parsed = MemoSchema.safeParse({ ...validMemo, version: '0.9.0' });
+    const parsed = MemoSchema.safeParse({ ...validMemo, version: '1.0.0' });
     expect(parsed.success).toBe(false);
   });
 
@@ -75,16 +95,89 @@ describe('MemoSchema', () => {
     expect(parsed.success).toBe(false);
   });
 
-  it('rejects missing required sections', () => {
-    const { aeo: _aeo, ...partial } = validMemo;
-    const parsed = MemoSchema.safeParse(partial);
-    expect(parsed.success).toBe(false);
-  });
-
   it('rejects empty personalObservation text', () => {
     const parsed = MemoSchema.safeParse({
       ...validMemo,
       personalObservation: { text: '' },
+    });
+    expect(parsed.success).toBe(false);
+  });
+
+  it('rejects fewer than 3 verdict cells', () => {
+    const parsed = MemoSchema.safeParse({
+      ...validMemo,
+      verdictCells: validMemo.verdictCells.slice(0, 2),
+    });
+    expect(parsed.success).toBe(false);
+  });
+
+  it('rejects more than 8 verdict cells', () => {
+    const nine = Array.from({ length: 9 }, (_, i) => ({
+      icon: 'search',
+      heading: `Cell ${i}`,
+      value: 'x',
+      note: 'note',
+      checks: [],
+    }));
+    const parsed = MemoSchema.safeParse({ ...validMemo, verdictCells: nine });
+    expect(parsed.success).toBe(false);
+  });
+
+  it('rejects unknown verdict icon', () => {
+    const parsed = MemoSchema.safeParse({
+      ...validMemo,
+      verdictCells: [
+        { ...validMemo.verdictCells[0], icon: 'rocket' as 'search' },
+        validMemo.verdictCells[1],
+        validMemo.verdictCells[2],
+      ],
+    });
+    expect(parsed.success).toBe(false);
+  });
+
+  it('rejects empty rankedFixes', () => {
+    const parsed = MemoSchema.safeParse({ ...validMemo, rankedFixes: [] });
+    expect(parsed.success).toBe(false);
+  });
+
+  it('rejects more than 5 rankedFixes', () => {
+    const six = Array.from({ length: 6 }, (_, i) => ({
+      rank: i + 1,
+      what: `Fix ${i + 1}`,
+      why: 'Why this fix matters in concrete terms.',
+      effort: 'low',
+      impact: 'med',
+    }));
+    const parsed = MemoSchema.safeParse({ ...validMemo, rankedFixes: six });
+    expect(parsed.success).toBe(false);
+  });
+
+  it('rejects invalid effort value', () => {
+    const parsed = MemoSchema.safeParse({
+      ...validMemo,
+      rankedFixes: [
+        { ...validMemo.rankedFixes[0], effort: 'enormous' as 'high' },
+      ],
+    });
+    expect(parsed.success).toBe(false);
+  });
+
+  it('rejects invalid impact value', () => {
+    const parsed = MemoSchema.safeParse({
+      ...validMemo,
+      rankedFixes: [
+        { ...validMemo.rankedFixes[0], impact: 'monstrous' as 'high' },
+      ],
+    });
+    expect(parsed.success).toBe(false);
+  });
+
+  it('accepts a memo with no rankedFix.why missing — rejects', () => {
+    const parsed = MemoSchema.safeParse({
+      ...validMemo,
+      rankedFixes: [
+        { rank: 1, what: 'A thing', effort: 'low', impact: 'high' },
+      ],
     });
     expect(parsed.success).toBe(false);
   });
@@ -97,28 +190,25 @@ describe('memoToJsonSchema', () => {
     const props = schema.properties as Record<string, unknown>;
     expect(props).toHaveProperty('slug');
     expect(props).toHaveProperty('cover');
-    expect(props).toHaveProperty('aeo');
+    expect(props).toHaveProperty('verdictCells');
+    expect(props).toHaveProperty('rankedFixes');
     expect(props).toHaveProperty('personalObservation');
     expect(props).toHaveProperty('benchmark');
-    expect(props).toHaveProperty('performance');
-    expect(props).toHaveProperty('adLandingPages');
-    expect(props).toHaveProperty('organicTraffic');
     expect(props).toHaveProperty('screenshots');
-    expect(props).toHaveProperty('aiCitation');
   });
 });
 
-describe('optional T1/T2/T3 fields', () => {
+describe('optional fields', () => {
   it('accepts benchmark', () => {
     const parsed = MemoSchema.safeParse({
       ...validMemo,
       benchmark: {
-        industryName: 'Building materials, 26-100 employees',
-        industryN: 8,
+        industryName: 'Building materials, 16 operators',
+        industryN: 16,
         scoreNumeric: 47,
         industryMedian: 64,
-        percentile: 25,
-        oneLiner: 'Pella of Columbus scores below 6 of 8 peers.',
+        percentile: 32,
+        oneLiner: 'Ten of sixteen contractors score higher.',
       },
     });
     expect(parsed.success).toBe(true);
@@ -130,66 +220,6 @@ describe('optional T1/T2/T3 fields', () => {
       benchmark: { industryName: 'x', industryN: 1, scoreNumeric: 50, industryMedian: 60 },
     });
     expect(parsed.success).toBe(false);
-  });
-
-  it('accepts performance with mobile only', () => {
-    const parsed = MemoSchema.safeParse({
-      ...validMemo,
-      performance: {
-        mobile: { lcpMs: 4200, inpMs: 380, cls: 0.12, performanceScore: 38, band: 'poor' },
-      },
-    });
-    expect(parsed.success).toBe(true);
-  });
-
-  it('rejects performance band invalid value', () => {
-    const parsed = MemoSchema.safeParse({
-      ...validMemo,
-      performance: { mobile: { band: 'mediocre' as 'poor' } },
-    });
-    expect(parsed.success).toBe(false);
-  });
-
-  it('accepts ad landing pages', () => {
-    const parsed = MemoSchema.safeParse({
-      ...validMemo,
-      adLandingPages: [
-        {
-          url: 'https://pellaofcolumbus.com/replacement-windows-quote',
-          platform: 'meta',
-          adsActive: 4,
-          screenshotDesktop: 'https://example.com/shot.png',
-          trackingFindings: ['Meta Pixel present', 'GA4 missing'],
-          conversionFindings: ['Quote form behind 3 clicks'],
-          driftFromHomepage: 'LP has fewer trust signals than homepage.',
-        },
-      ],
-    });
-    expect(parsed.success).toBe(true);
-  });
-
-  it('rejects ad landing pages with invalid url', () => {
-    const parsed = MemoSchema.safeParse({
-      ...validMemo,
-      adLandingPages: [{ url: 'not-a-url' }],
-    });
-    expect(parsed.success).toBe(false);
-  });
-
-  it('accepts organic traffic with keywords', () => {
-    const parsed = MemoSchema.safeParse({
-      ...validMemo,
-      organicTraffic: {
-        estimatedMonthlyVisits: 320,
-        estimatedMonthlyValueUsd: 1240,
-        source: 'dataforseo',
-        topKeywords: [
-          { keyword: 'pella windows columbus', position: 3, monthlyVolume: 480 },
-          { keyword: 'replacement windows columbus oh', position: 12 },
-        ],
-      },
-    });
-    expect(parsed.success).toBe(true);
   });
 
   it('accepts screenshots', () => {
@@ -205,53 +235,25 @@ describe('optional T1/T2/T3 fields', () => {
     expect(parsed.success).toBe(true);
   });
 
-  it('accepts AI citation probes', () => {
+  it('accepts nullish companyName and industry', () => {
     const parsed = MemoSchema.safeParse({
       ...validMemo,
-      aiCitation: {
-        summary: 'Cited 0/3 engines for the operator service query.',
-        probes: [
-          {
-            engine: 'perplexity',
-            query: 'who installs Pella windows in Columbus Ohio',
-            cited: false,
-            competitorsCited: ['rba.com', 'window-world.com'],
-          },
-          {
-            engine: 'claude',
-            query: 'best window replacement Columbus Ohio',
-            cited: false,
-            competitorsCited: ['rba.com'],
-          },
-        ],
-      },
+      companyName: null,
+      industry: null,
+      state: null,
+      city: null,
     });
     expect(parsed.success).toBe(true);
   });
 
-  it('accepts mobile rendering placeholder', () => {
+  it('accepts verdict cell with nullish benchmark', () => {
     const parsed = MemoSchema.safeParse({
       ...validMemo,
-      mobileRendering: {
-        viewport: 'iPhone 15',
-        hasHorizontalScroll: true,
-        smallestTapTargetPx: 22,
-        textTooSmall: false,
-      },
-    });
-    expect(parsed.success).toBe(true);
-  });
-
-  it('accepts email deliverability placeholder', () => {
-    const parsed = MemoSchema.safeParse({
-      ...validMemo,
-      emailDeliverability: {
-        spfPresent: true,
-        spfPolicy: 'v=spf1 include:_spf.google.com ~all',
-        dmarcPresent: false,
-        mxPresent: true,
-        mxProvider: 'google',
-      },
+      verdictCells: [
+        { ...validMemo.verdictCells[0], benchmark: null },
+        validMemo.verdictCells[1],
+        validMemo.verdictCells[2],
+      ],
     });
     expect(parsed.success).toBe(true);
   });

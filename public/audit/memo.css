@@ -71,18 +71,54 @@ h1.cv .ital{font-family:var(--serif);font-style:italic;font-weight:400;letter-sp
 .tldr p strong{font-weight:700}
 .tldr p em{font-family:var(--serif);font-style:italic;font-weight:400;color:var(--ink-dim)}
 
-/* verdict */
-.verdict{margin-top:24px;display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--ink);background:var(--paper)}
-@media (max-width:780px){.verdict{grid-template-columns:repeat(2,1fr)}}
-.verdict .v{padding:24px 24px 22px;border-right:1px solid var(--ink)}
-.verdict .v:last-child{border-right:0}
-@media (max-width:780px){.verdict .v:nth-child(2){border-right:0}.verdict .v:nth-child(-n+2){border-bottom:1px solid var(--ink)}}
-.verdict .k{font-family:var(--mono);font-size:10px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:10px}
-/* T6 demote · {n} of {total} replaces letter grade at same 56px Inter Tight 800 slot */
-.verdict .g{font-family:var(--grotesk);font-weight:800;font-size:56px;line-height:1;letter-spacing:-0.04em;color:var(--ink);white-space:nowrap}
+/* verdict grid — 3×2 on desktop (6 cells typical), expandable cells via native <details>.
+   Borders use border-top + border-right so row counts of 3-8 cells all separate cleanly. */
+.verdict{margin-top:24px;display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--ink);background:var(--paper)}
+.verdict .v{padding:0;border-right:1px solid var(--ink);border-top:1px solid var(--ink)}
+.verdict .v:nth-child(3n){border-right:0}
+.verdict .v:nth-child(-n+3){border-top:0}
+@media (max-width:980px){
+  .verdict{grid-template-columns:repeat(2,1fr)}
+  .verdict .v{border-right:1px solid var(--ink);border-top:1px solid var(--ink)}
+  .verdict .v:nth-child(3n){border-right:1px solid var(--ink)}
+  .verdict .v:nth-child(2n){border-right:0}
+  .verdict .v:nth-child(-n+3){border-top:1px solid var(--ink)}
+  .verdict .v:nth-child(-n+2){border-top:0}
+}
+@media (max-width:520px){
+  .verdict{grid-template-columns:1fr}
+  .verdict .v{border-right:0;border-top:1px solid var(--ink)}
+  .verdict .v:first-child{border-top:0}
+}
+.verdict details.v{cursor:pointer}
+.verdict details.v summary{list-style:none;padding:24px 24px 22px;display:block;outline:none;transition:background 120ms}
+.verdict details.v summary::-webkit-details-marker{display:none}
+.verdict details.v summary::marker{display:none}
+.verdict details.v summary:hover{background:var(--paper-2)}
+.verdict details.v[open] summary{background:var(--paper-2);border-bottom:1px dashed var(--line)}
+.verdict .k{font-family:var(--mono);font-size:10.5px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:14px;display:flex;align-items:center;gap:10px;text-wrap:pretty}
+.verdict .k .ic{width:14px;height:14px;flex-shrink:0;color:var(--accent-deep)}
+.verdict .g{font-family:var(--grotesk);font-weight:800;font-size:52px;line-height:1;letter-spacing:-0.04em;color:var(--ink);white-space:nowrap}
 @media (max-width:980px){.verdict .g{font-size:44px}}
 @media (max-width:780px){.verdict .g{font-size:40px}}
-.verdict .n{font-family:var(--grotesk);font-size:13px;letter-spacing:0;color:var(--ink-dim);margin-top:10px;line-height:1.45;text-transform:none;max-width:240px}
+.verdict .n{font-family:var(--grotesk);font-size:13.5px;letter-spacing:0;color:var(--ink-dim);margin-top:12px;line-height:1.45;text-transform:none;max-width:300px;text-wrap:pretty}
+.verdict .bench{font-family:var(--mono);font-size:10.5px;letter-spacing:0.18em;text-transform:uppercase;color:var(--ink-faint);margin-top:14px;padding-top:12px;border-top:1px dashed var(--line)}
+.verdict .bench b{color:var(--ink);font-family:var(--grotesk);font-weight:600;font-size:14px;letter-spacing:-0.01em;text-transform:none;margin-left:6px}
+.verdict .expand{margin-top:14px;font-family:var(--mono);font-size:10.5px;letter-spacing:0.22em;text-transform:uppercase;color:var(--accent-deep);display:flex;align-items:center;justify-content:space-between;gap:8px}
+.verdict .expand .chev{display:inline-block;transition:transform 160ms;color:var(--ink-faint)}
+.verdict details.v[open] .expand .chev{transform:rotate(180deg);color:var(--accent-deep)}
+.verdict details.v[open] .expand .label::before{content:'− '}
+.verdict details.v:not([open]) .expand .label::before{content:''}
+.verdict .checks{padding:18px 24px 22px;background:var(--paper)}
+.verdict .checks ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.verdict .checks li{display:grid;grid-template-columns:18px 1fr;gap:10px;font-family:var(--grotesk);font-size:13.5px;line-height:1.45;color:var(--ink-dim);align-items:start;text-wrap:pretty}
+.verdict .checks li .ic{width:14px;height:14px;margin-top:3px}
+.verdict .checks li .ic.ok{color:var(--accent-deep)}
+.verdict .checks li .ic.no{color:var(--ink)}
+.verdict .checks li span.ok{color:var(--ink)}
+.verdict .checks li span.no{color:var(--ink-dim)}
+.verdict .checks li span.no::after{content:''}
+.verdict .checks li code{font-family:var(--mono);font-size:12px;background:var(--paper-2);padding:0 4px;color:var(--ink)}
 
 /* section frame */
 section.sec{border-top:1px solid var(--line-strong);padding:96px 0}
@@ -204,6 +240,14 @@ p.body code{font-family:var(--mono);font-size:14.5px;background:var(--paper-2);p
 .recs .effort, .recs .impact{font-family:var(--mono);font-size:10.5px;letter-spacing:0.18em;text-transform:uppercase;color:var(--ink-faint)}
 /* T4 · Effort and Impact values render in --ink only. No semantic colour. */
 .recs .effort b, .recs .impact b{display:block;color:var(--ink);font-family:var(--grotesk);font-weight:600;letter-spacing:-0.01em;text-transform:none;font-size:14px;margin-top:4px}
+/* v3 Top 3 Fixes — extends .recs with a why paragraph under the what headline */
+.recs .row{align-items:start}
+.recs .row .what .what-h{font-family:var(--grotesk);font-weight:700;font-size:19px;letter-spacing:-0.02em;color:var(--ink);line-height:1.25;text-wrap:pretty}
+.recs .row .what .what-h em{font-family:var(--serif);font-style:italic;font-weight:400;color:var(--ink-dim)}
+.recs .row .what .what-h code{font-family:var(--mono);font-size:0.86em;background:var(--paper-2);padding:1px 5px;color:var(--ink)}
+.recs .row .what .why{margin:8px 0 0;font-family:var(--grotesk);font-weight:400;font-size:14.5px;line-height:1.55;color:var(--ink-dim);max-width:640px;text-wrap:pretty}
+.recs .row .what .why strong{color:var(--ink);font-weight:600}
+.recs .row .what .why em{font-family:var(--serif);font-style:italic;color:var(--ink)}
 
 /* CTA row */
 .cta-row{margin-top:48px;display:grid;grid-template-columns:auto auto 1fr;gap:18px;align-items:center}
@@ -236,3 +280,28 @@ p.body code{font-family:var(--mono);font-size:14.5px;background:var(--paper-2);p
 
 footer.foot{padding:48px 0 64px;font-family:var(--mono);font-size:10.5px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint);display:flex;justify-content:space-between;flex-wrap:wrap;gap:14px}
 footer.foot a:hover{color:var(--accent-deep)}
+
+/* ============================================================
+   v3 Mode 2 additions — Hook, Benchmark, Screenshot frame
+   ============================================================ */
+.benchmark-line{margin-top:28px;font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint);display:flex;flex-wrap:wrap;gap:20px 28px;align-items:baseline}
+.benchmark-line b{color:var(--ink);font-family:var(--grotesk);font-weight:700;font-size:18px;letter-spacing:-0.01em;text-transform:none;margin-left:8px}
+.benchmark-line .delta{font-family:var(--grotesk);font-size:13px;letter-spacing:-0.005em;text-transform:none;color:var(--ink-dim);margin-left:6px}
+.score-big{display:inline-flex;align-items:baseline;gap:4px;margin-right:8px}
+.score-big .n{font-family:var(--grotesk);font-weight:800;font-size:64px;line-height:1;letter-spacing:-0.04em;color:var(--ink)}
+.score-big .of{font-family:var(--mono);font-size:12px;letter-spacing:0.18em;color:var(--ink-faint);text-transform:uppercase}
+@media (max-width:780px){.score-big .n{font-size:52px}}
+.benchmark-oneliner{margin-top:20px;font-family:var(--serif);font-style:italic;font-size:19px;line-height:1.5;color:var(--ink);max-width:720px;text-wrap:pretty}
+.screenshot-frame{margin:48px 0 0;border:1px solid var(--line-strong);background:var(--paper-2);padding:0;overflow:hidden;display:grid;gap:0}
+.screenshot-frame img{width:100%;height:auto;display:block;border-bottom:1px solid var(--line)}
+.screenshot-frame .meta{padding:14px 18px;font-family:var(--mono);font-size:10.5px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint);display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.screenshot-frame .meta b{color:var(--ink);font-weight:500}
+
+/* section tight modifier — used by Verdict Grid which provides its own breathing room */
+section.sec.sec--tight{padding:48px 0 16px}
+@media (max-width:780px){section.sec.sec--tight{padding:40px 0 12px}}
+
+/* body--obs · personal observation has a slightly larger, more serif-leaning body */
+.body.body--obs{font-family:var(--grotesk);font-size:18px;line-height:1.6;color:var(--ink);max-width:780px;text-wrap:pretty}
+.body.body--obs strong{font-weight:700}
+.body.body--obs em{font-family:var(--serif);font-style:italic;color:var(--ink-dim)}
