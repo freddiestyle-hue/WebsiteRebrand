@@ -267,68 +267,13 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
   .band .wordmark img { height: 22px; }
   .foot .wordmark img { height: 18px; }
 
-  /* Landing form state */
-  .hero { padding: var(--sp-16) 0 var(--sp-14); border-bottom: var(--bw-hair) solid var(--line); }
-  .hero .kicker { font-family: var(--mono); font-size: var(--t-meta); letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--accent-deep); display: inline-flex; align-items: center; }
-  .hero .kicker::before { content: ''; display: inline-block; width: 8px; height: 8px; background: var(--accent); border-radius: var(--r-pill); margin-right: 12px; animation: pulse 2.4s var(--ease) infinite; }
+  /* Form-state styles are now provided by /audit/v3-css/{kit,audit,audit-page}.css.
+     The old .hero / .form-wrap / .url-input / .dim-grid / .dim / .steps inline
+     rules were dead AND actively overriding the new mock CSS via Astro's CID
+     scoping (inline rules win the cascade against linked stylesheets when the
+     class name matches a rendered element with the data-astro-cid attribute).
+     The pulse keyframe is reused by the .score-panel kicker in result state. */
   @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
-  .hero h1 { font-family: var(--grotesk); font-weight: 800; font-size: clamp(56px, 7.4vw, 116px); line-height: 0.92; letter-spacing: var(--track-display); margin: var(--sp-6) 0 var(--sp-8); text-wrap: balance; max-width: 980px; }
-  .hero h1 .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); letter-spacing: -0.02em; }
-  .hero .dek { font-family: var(--serif); font-style: italic; font-size: clamp(20px, 1.9vw, 24px); line-height: 1.45; color: var(--ink-dim); margin: 0 0 var(--sp-10); max-width: 640px; text-wrap: pretty; }
-
-  .form-wrap { display: grid; grid-template-columns: 1.45fr 1fr; gap: 0; border-top: var(--bw-rule) solid var(--ink); border-bottom: var(--bw-rule) solid var(--ink); }
-  @media (max-width: 880px) { .form-wrap { grid-template-columns: 1fr; } }
-  .form-wrap .form-left { padding: var(--sp-8) 0 var(--sp-8) 0; }
-  .form-wrap .form-right { padding: var(--sp-8) 0 var(--sp-8) var(--sp-12); border-left: var(--bw-hair) solid var(--line); display: flex; flex-direction: column; justify-content: space-between; min-height: 220px; }
-  @media (max-width: 880px) { .form-wrap .form-right { padding: var(--sp-7) 0; border-left: 0; border-top: var(--bw-hair) solid var(--line); } }
-  .form-lbl { font-family: var(--mono); font-size: var(--t-meta); letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); margin-bottom: var(--sp-4); display: block; }
-  .form-lbl b { color: var(--ink); font-weight: 500; }
-
-  .url-input { display: grid; grid-template-columns: auto 1fr auto; align-items: stretch; gap: 0; border: var(--bw-hair) solid var(--ink); background: var(--paper); }
-  .url-input .scheme { background: var(--ink); color: var(--on-ink); font-family: var(--mono); font-size: 14px; padding: 0 var(--sp-5); display: flex; align-items: center; }
-  .url-input input[type="text"] { border: 0; font-family: var(--grotesk); font-weight: 500; font-size: clamp(22px, 2.6vw, 32px); letter-spacing: -0.02em; padding: var(--sp-5) var(--sp-6); width: 100%; background: transparent; color: var(--ink); outline: none; line-height: 1; }
-  .url-input input::placeholder { color: var(--ink-soft); }
-  .url-input .submit { background: var(--ink); color: var(--on-ink); border: 0; font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; padding: 0 var(--sp-7); display: flex; align-items: center; gap: var(--sp-3); cursor: pointer; transition: background var(--dur-1) var(--ease); }
-  .url-input .submit:hover { background: var(--accent-deep); }
-  @media (max-width: 640px) { .url-input { grid-template-columns: 1fr; } .url-input .scheme { padding: var(--sp-3) var(--sp-5); } .url-input .submit { padding: var(--sp-5); justify-content: center; } }
-
-  .form-meta { margin-top: var(--sp-4); display: flex; gap: var(--sp-7); flex-wrap: wrap; font-family: var(--mono); font-size: var(--t-meta); letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); }
-  .form-meta b { color: var(--ink); font-weight: 500; }
-  .form-error { margin-top: var(--sp-4); padding: var(--sp-3) var(--sp-4); border: 1px solid var(--signal-halt); color: var(--signal-halt); font-family: var(--mono); font-size: 12.5px; }
-
-  .sample { display: inline-flex; align-items: baseline; gap: var(--sp-3); padding-bottom: 2px; border-bottom: 1px solid var(--line-strong); color: var(--ink); font-weight: 500; width: max-content; }
-  .sample:hover { color: var(--accent-deep); border-bottom-color: var(--accent-deep); }
-
-  .dims { padding: var(--sp-14) 0 var(--sp-12); border-bottom: var(--bw-hair) solid var(--line-strong); }
-  .dims-head, .how-head { display: grid; grid-template-columns: 240px 1fr; gap: 64px; margin-bottom: var(--sp-10); }
-  @media (max-width: 880px) { .dims-head, .how-head { grid-template-columns: 1fr; gap: var(--sp-5); } }
-  .dims-head .lbl, .how-head .lbl { font-family: var(--mono); font-size: var(--t-meta); letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); }
-  .dims-head .lbl .num, .how-head .lbl .num { display: block; font-family: var(--grotesk); font-weight: 700; font-size: 56px; line-height: 1; color: var(--ink); letter-spacing: var(--track-tighter); margin-top: var(--sp-3); }
-  .dims-head h2, .how-head h2 { font-family: var(--grotesk); font-weight: 700; font-size: clamp(36px, 4.4vw, 48px); line-height: 1.05; letter-spacing: var(--track-h); margin: 0; text-wrap: balance; }
-
-  .dim-grid { display: grid; grid-template-columns: repeat(3, 1fr); border: var(--bw-hair) solid var(--line); }
-  @media (max-width: 880px) { .dim-grid { grid-template-columns: repeat(2, 1fr); } }
-  @media (max-width: 560px) { .dim-grid { grid-template-columns: 1fr; } }
-  .dim { padding: var(--sp-7); border-right: var(--bw-hair) solid var(--line); border-bottom: var(--bw-hair) solid var(--line); display: flex; flex-direction: column; gap: var(--sp-3); min-height: 180px; }
-  .dim:nth-child(3n) { border-right: 0; }
-  .dim:nth-last-child(-n+3) { border-bottom: 0; }
-  @media (max-width: 880px) { .dim:nth-child(3n) { border-right: var(--bw-hair) solid var(--line); } .dim:nth-child(2n) { border-right: 0; } .dim:nth-last-child(-n+3) { border-bottom: var(--bw-hair) solid var(--line); } .dim:nth-last-child(-n+2) { border-bottom: 0; } }
-  @media (max-width: 560px) { .dim { border-right: 0 !important; border-bottom: var(--bw-hair) solid var(--line) !important; } .dim:last-child { border-bottom: 0 !important; } }
-  .dim .top { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
-  .dim .num { font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); color: var(--ink-faint); }
-  .dim h3 { font-family: var(--grotesk); font-weight: 700; font-size: 20px; letter-spacing: var(--track-h-sm); line-height: 1.2; margin: var(--sp-2) 0 0; text-wrap: balance; }
-  .dim h3 .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); }
-  .dim p { font-size: 14px; line-height: 1.5; color: var(--ink-dim); margin: 0; }
-
-  .how { padding: var(--sp-14) 0; border-bottom: var(--bw-hair) solid var(--line-strong); }
-  .steps { display: grid; grid-template-columns: repeat(4, 1fr); border-left: var(--bw-thick) solid var(--accent-deep); background: var(--paper-2); }
-  @media (max-width: 880px) { .steps { grid-template-columns: 1fr; border-left: 0; border-top: var(--bw-thick) solid var(--accent-deep); } }
-  .step { padding: var(--sp-7); border-right: var(--bw-hair) solid var(--line); }
-  .step:last-child { border-right: 0; }
-  .step .day { font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--accent-deep); }
-  .step .num { font-family: var(--grotesk); font-weight: 800; font-size: 56px; line-height: 1; letter-spacing: var(--track-tighter); margin: var(--sp-4) 0 var(--sp-5); }
-  .step h4 { font-family: var(--grotesk); font-weight: 700; font-size: 19px; letter-spacing: var(--track-h-sm); margin: 0 0 6px; }
-  .step p { font-size: 14px; line-height: 1.55; color: var(--ink-dim); margin: 0; }
 
   /* Result shell: 2-col grid on desktop with sticky score-panel right column.
      On mobile collapses to one column, score-panel on top. */
