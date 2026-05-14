@@ -278,15 +278,13 @@ import Base from '../layouts/Base.astro';
 </Base>
 
 <style is:global>
-  /* Suppress the legacy .home-page chrome that would otherwise leak into the
-     audit-first layout. We intentionally do NOT add .home-page so most of
-     those scoped rules never apply, but a few global-cascade rules need
-     defusing for the new page wrapper. */
+  /* v2.css is the source of truth for .audit-hero, .sec-head, .sec-body,
+     .modules, .mod, .audience, .lede, .post-note, .exclusion, .bio,
+     .bio-portrait, .bio-name, .bio-tag, .bio-body, .proof, .deal-table,
+     .two-col, .pull, .end-cta, .numbox. Don't override here - just
+     position the page chrome and account for the site Nav above. */
   body { background: var(--paper, #f6f4ef); }
   body main { display: block; }
-
-  /* Page chrome geometry: the mock's .page wants horizontal padding +
-     max width similar to the rest of the site. */
   .audit-first-home {
     max-width: var(--page-max, 1240px);
     margin: 0 auto;
@@ -295,69 +293,9 @@ import Base from '../layouts/Base.astro';
   @media (max-width: 780px) {
     .audit-first-home { padding: 0 24px; }
   }
-
-  /* The mock's audit-hero has top padding that assumes no site nav. We have
-     Nav.astro above us. Tighten the top spacing so the hero doesn't sit
-     hundreds of pixels down. */
+  /* Tighten the audit-hero top padding since our site Nav already sits above
+     the page (the mock's .page has its own Nav inside). */
   .audit-first-home .audit-hero { padding-top: var(--sp-10, 48px); }
-
-  /* Bio block — track record portrait spread. */
-  .audit-first-home .bio { display: grid; grid-template-columns: 1fr 1.1fr; gap: 64px; align-items: start; }
-  @media (max-width: 860px) { .audit-first-home .bio { grid-template-columns: 1fr; gap: var(--sp-7, 32px); } }
-  .audit-first-home .bio-name { font-family: var(--grotesk); font-weight: 800; font-size: clamp(40px, 5.5vw, 64px); line-height: 1; letter-spacing: var(--track-display); margin: var(--sp-5, 20px) 0 var(--sp-3, 12px); }
-  .audit-first-home .bio-tag { font-family: var(--serif); font-style: italic; font-size: 20px; line-height: 1.4; color: var(--ink-dim); margin: 0 0 var(--sp-7, 32px); }
-  .audit-first-home .bio-body { font-family: var(--grotesk); font-size: 16px; line-height: 1.55; color: var(--ink); margin: 0 0 var(--sp-5, 20px); }
-  .audit-first-home .bio-body b { color: var(--ink); font-weight: 600; }
-  .audit-first-home .bio-portrait { margin: 0; max-width: 520px; }
-  .audit-first-home .bio-portrait .pre { display: flex; justify-content: space-between; padding: 12px 0; border-top: 3px solid var(--ink); font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); }
-  .audit-first-home .bio-portrait .pre b { color: var(--ink); font-weight: 500; }
-  .audit-first-home .bio-portrait .frame { aspect-ratio: 4 / 5; background: var(--paper-2); overflow: hidden; position: relative; }
-  .audit-first-home .bio-portrait .frame img { width: 100%; height: 100%; object-fit: cover; object-position: center 12%; filter: contrast(1.08) brightness(0.98); display: block; }
-  .audit-first-home .bio-portrait .frame::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 55%, rgba(14,26,44,0.16) 100%); pointer-events: none; }
-  .audit-first-home .bio-portrait .post { display: grid; grid-template-columns: 1fr auto; padding: 10px 0; border-bottom: 1px solid var(--line); font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); align-items: baseline; }
-  .audit-first-home .bio-portrait .post .name { font-family: var(--grotesk); font-weight: 700; font-size: 22px; letter-spacing: -0.02em; text-transform: none; color: var(--ink); }
-  .audit-first-home .bio-portrait .post .role .ital { font-family: var(--serif); font-style: italic; text-transform: none; color: var(--ink-dim); letter-spacing: 0; }
-
-  /* Proof block under the bio. */
-  .audit-first-home .proof { margin-top: var(--sp-10, 48px); padding-top: var(--sp-7, 32px); border-top: 1px solid var(--line); }
-  .audit-first-home .proof-h { font-family: var(--grotesk); font-weight: 700; font-size: clamp(24px, 3vw, 32px); line-height: 1.15; letter-spacing: var(--track-h-md); margin: var(--sp-5, 20px) 0 var(--sp-4, 16px); }
-  .audit-first-home .proof-h .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); }
-  .audit-first-home .proof-body { font-family: var(--grotesk); font-size: 16px; line-height: 1.55; color: var(--ink-dim); margin: 0 0 var(--sp-7, 32px); max-width: 720px; }
-
-  /* Deal table strikethrough rows + sage highlight row. */
-  .audit-first-home .deal-table { width: 100%; border-collapse: collapse; border: 1px solid var(--line); }
-  .audit-first-home .deal-table th { background: var(--paper-2); padding: 14px 18px; text-align: left; font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); font-weight: 400; border-bottom: 1px solid var(--line); }
-  .audit-first-home .deal-table th.r { text-align: right; }
-  .audit-first-home .deal-table td { padding: 18px; border-bottom: 1px solid var(--line); font-family: var(--grotesk); font-size: 16px; color: var(--ink); }
-  .audit-first-home .deal-table td.r { text-align: right; }
-  .audit-first-home .deal-table tbody tr:not(.hi) td { color: var(--ink-faint); text-decoration: line-through; text-decoration-thickness: 1px; }
-  .audit-first-home .deal-table tr.hi { background: var(--sage, #ecf2dc); }
-  .audit-first-home .deal-table tr.hi td { color: var(--ink); text-decoration: none; border-left: 3px solid var(--accent-deep); }
-  .audit-first-home .deal-table tr.hi td:first-child b { color: var(--accent-deep); }
-  .audit-first-home .deal-table tr.hi td.r b { color: var(--accent-deep); font-family: var(--grotesk); font-weight: 700; font-size: 22px; }
-  .audit-first-home .deal-table tr.hi .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); font-size: 16px; }
-
-  /* AI section two-col + bare lists. */
-  .audit-first-home .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; margin-top: var(--sp-8, 40px); }
-  @media (max-width: 780px) { .audit-first-home .two-col { grid-template-columns: 1fr; gap: var(--sp-7, 32px); } }
-  .audit-first-home .two-col .col-r { padding-left: var(--sp-7, 32px); border-left: 1px solid var(--line); }
-  @media (max-width: 780px) { .audit-first-home .two-col .col-r { padding-left: 0; border-left: 0; padding-top: var(--sp-7, 32px); border-top: 1px solid var(--line); } }
-  .audit-first-home .bare { list-style: none; margin: var(--sp-5, 20px) 0 0; padding: 0; }
-  .audit-first-home .bare li { padding: 12px 0; border-bottom: 1px solid var(--line); font-family: var(--grotesk); font-size: 17px; line-height: 1.5; color: var(--ink); }
-  .audit-first-home .bare li:last-child { border-bottom: 0; }
-  .audit-first-home .bare li .ital { font-family: var(--serif); font-style: italic; color: var(--ink-dim); }
-
-  /* Sage exclusion callout below audience triad. */
-  .audit-first-home .exclusion { margin-top: var(--sp-8, 40px); padding: var(--sp-6, 24px) var(--sp-7, 32px); background: var(--sage, #ecf2dc); border-left: 3px solid var(--accent-deep); }
-  .audit-first-home .exclusion .stamp { margin-bottom: var(--sp-3, 12px); display: inline-flex; }
-  .audit-first-home .exclusion p { font-family: var(--grotesk); font-size: 16px; line-height: 1.55; color: var(--ink); margin: 0; max-width: 820px; }
-  .audit-first-home .exclusion p .ital { font-family: var(--serif); font-style: italic; color: var(--ink-dim); }
-
-  /* Section body lede + post-note. */
-  .audit-first-home .sec-body .lede { font-family: var(--serif); font-style: italic; font-size: clamp(18px, 1.8vw, 22px); line-height: 1.45; color: var(--ink-dim); max-width: 820px; margin: 0 0 var(--sp-8, 40px); }
-  .audit-first-home .post-note { margin-top: var(--sp-7, 32px); font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); display: flex; gap: var(--sp-2, 8px); align-items: baseline; flex-wrap: wrap; }
-  .audit-first-home .post-note::before { content: '↳'; color: var(--accent-deep); margin-right: 6px; }
-  .audit-first-home .post-note .ital { font-family: var(--serif); font-style: italic; text-transform: none; letter-spacing: 0; color: var(--ink-dim); font-size: 14px; }
 </style>
 
 <script is:inline>
