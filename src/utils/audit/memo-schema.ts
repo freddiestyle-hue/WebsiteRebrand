@@ -90,7 +90,7 @@ export const MemoSchema = z.object({
   benchmark: BenchmarkSchema.optional(),
   screenshots: ScreenshotsSchema.optional(),
 
-  verdictCells: z.array(VerdictCellSchema).min(3).max(8),
+  verdictCells: z.array(VerdictCellSchema).min(3).max(10),
   rankedFixes: z.array(RankedFixSchema).min(1).max(5),
 
   personalObservation: z.object({

@@ -111,15 +111,15 @@ describe('MemoSchema', () => {
     expect(parsed.success).toBe(false);
   });
 
-  it('rejects more than 8 verdict cells', () => {
-    const nine = Array.from({ length: 9 }, (_, i) => ({
+  it('rejects more than 10 verdict cells', () => {
+    const eleven = Array.from({ length: 11 }, (_, i) => ({
       icon: 'search',
       heading: `Cell ${i}`,
       value: 'x',
       note: 'note',
       checks: [],
     }));
-    const parsed = MemoSchema.safeParse({ ...validMemo, verdictCells: nine });
+    const parsed = MemoSchema.safeParse({ ...validMemo, verdictCells: eleven });
     expect(parsed.success).toBe(false);
   });
 

@@ -19,6 +19,7 @@ export interface AuditResult {
   fetchedAt: string;
   durationMs: number;
   homepageHtml?: string;
+  homepageHeaders?: Record<string, string>;
   checks: CheckResult[];
   scoreNumeric: number;
   scoreMax: number;
@@ -80,7 +81,7 @@ export function normalizeAuditUrl(raw: string): { url: string; hostname: string 
 
 const MAX_REDIRECTS = 5;
 
-async function safeFetch(url: string): Promise<{ ok: true; status: number; text: string; contentType: string } | { ok: false; status: number; reason: string }> {
+async function safeFetch(url: string): Promise<{ ok: true; status: number; text: string; contentType: string; headers: Record<string, string> } | { ok: false; status: number; reason: string }> {
   // SSRF guard: if we let fetch follow redirects natively, the per-hop
   // hostname is never re-validated. An attacker submits attacker.com which
   // 302s to 169.254.169.254 (AWS IMDS) or any internal host and the audit
@@ -147,7 +148,9 @@ async function safeFetch(url: string): Promise<{ ok: true; status: number; text:
       for (const c of chunks) { buf.set(c, offset); offset += c.byteLength; }
       const text = new TextDecoder('utf-8', { fatal: false }).decode(buf);
       if (!res.ok) return { ok: false, status, reason: `HTTP ${status}` };
-      return { ok: true, status, text, contentType };
+      const headers: Record<string, string> = {};
+      res.headers.forEach((value, key) => { headers[key.toLowerCase()] = value; });
+      return { ok: true, status, text, contentType, headers };
     }
     return { ok: false, status: 0, reason: `too many redirects (>${MAX_REDIRECTS})` };
   } catch (e) {
@@ -697,6 +700,7 @@ export async function runAudit(rawUrl: string): Promise<AuditResult> {
     fetchedAt: new Date(startedAt).toISOString(),
     durationMs: endedAt - startedAt,
     homepageHtml: homeText,
+    homepageHeaders: home.ok ? home.headers : undefined,
     checks,
     scoreNumeric: passedWeight,
     scoreMax: totalWeight,
