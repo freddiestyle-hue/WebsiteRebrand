@@ -14,7 +14,10 @@ function jsonResponse(status: number, body: unknown): Response {
 }
 
 function checkAuth(req: Request): { ok: true } | { ok: false; status: number; reason: string } {
-  const rawExpected = import.meta.env.RIVETT_AUDIT_TOKEN ?? process.env.RIVETT_AUDIT_TOKEN;
+  // Read from process.env only. import.meta.env gets substituted at build time
+  // and can bake stale values into the bundle, surviving env var updates until
+  // the next code change forces a fresh build.
+  const rawExpected = process.env.RIVETT_AUDIT_TOKEN;
   if (!rawExpected) {
     return { ok: false, status: 503, reason: 'Endpoint disabled: RIVETT_AUDIT_TOKEN not set.' };
   }
