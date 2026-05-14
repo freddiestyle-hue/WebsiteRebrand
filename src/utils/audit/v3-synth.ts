@@ -19,6 +19,7 @@ import type { AdsResult } from './ads-check';
 import type { TechStackResult, DetectedTech, TechCategory } from './tech-stack-check';
 import { TECH_CATEGORY_LABELS } from './tech-stack-check';
 import type { HeadlessResult } from './headless-check';
+import type { LandingAuditResult, LandingPageResult } from './landing-check';
 
 export interface EnrichmentBundle {
   deliverability: DeliverabilityResult | null;
@@ -33,6 +34,9 @@ export interface EnrichmentBundle {
   // tech-stack re-detected against the rendered HTML, capturing GTM-
   // injected pixels that the static scan misses.
   techStackRuntime: TechStackResult | null;
+  // Landing-page sub-audit: lite-scan against each URL the operator is
+  // paying ads to send traffic to. The money pages, not the homepage.
+  landing: LandingAuditResult | null;
 }
 
 function passCount(checks: CheckResult[]): { passed: number; total: number } {
@@ -258,14 +262,50 @@ function mailCellFromResult(d: DeliverabilityResult): VerdictCell {
   };
 }
 
-function adsCellFromResult(a: AdsResult): VerdictCell {
+function shortenPath(url: string): string {
+  try {
+    const u = new URL(url);
+    const path = u.pathname === '/' ? '/' : u.pathname.replace(/\/$/, '');
+    return path.length > 36 ? path.slice(0, 33) + '...' : path;
+  } catch {
+    return url;
+  }
+}
+
+function adsCellFromResult(
+  a: AdsResult,
+  landing?: LandingAuditResult | null,
+  homepageScore?: number | null,
+): VerdictCell {
   const total = (a.metaActive ?? 0) + (a.googleActive ?? 0) + (a.linkedinActive ?? 0);
   const platformsLive = Number((a.metaActive ?? 0) > 0) + Number((a.googleActive ?? 0) > 0) + Number((a.linkedinActive ?? 0) > 0);
   const value = total === 0 ? 'None active' : `${total} active`;
-  const note =
-    total === 0
-      ? `No active paid ads detected across Meta, Google, or LinkedIn. Either paid is not part of the mix or campaigns are paused.`
-      : a.commentary;
+
+  // Money-page leak detection: if ads are running and a landing page scores
+  // measurably worse than the homepage, that's the headline.
+  const landingPages = landing?.pages ?? [];
+  const homepageRef = homepageScore ?? null;
+  const worstLanding = landingPages.reduce<LandingPageResult | null>((worst, p) => {
+    if (p.scorePercent == null) return worst;
+    if (!worst || (worst.scorePercent != null && p.scorePercent < worst.scorePercent)) return p;
+    return worst;
+  }, null);
+  const homepageVsLandingGap =
+    homepageRef != null && worstLanding?.scorePercent != null
+      ? homepageRef - worstLanding.scorePercent
+      : null;
+
+  let note: string;
+  if (total === 0) {
+    note = `No active paid ads detected across Meta, Google, or LinkedIn. Either paid is not part of the mix or campaigns are paused.`;
+  } else if (worstLanding && homepageVsLandingGap != null && homepageVsLandingGap >= 15) {
+    note = `${total} active ${total === 1 ? 'ad' : 'ads'}, landing on a page scoring ${Math.round(worstLanding.scorePercent ?? 0)} versus the homepage at ${Math.round(homepageRef ?? 0)}. Paid clicks land where conversion gaps are worst.`;
+  } else if (worstLanding && worstLanding.trackingGaps >= 2) {
+    note = `${total} active ${total === 1 ? 'ad' : 'ads'}. Landing pages missing core pixels (${worstLanding.trackingGaps} of 4 trackers absent). Meta and Google can't optimise against conversions they can't see.`;
+  } else {
+    note = a.commentary;
+  }
+
   const checks: Array<{ ok: boolean; text: string }> = [];
   if (a.metaActive != null) {
     checks.push({
@@ -294,8 +334,34 @@ function adsCellFromResult(a: AdsResult): VerdictCell {
           : `LinkedIn Ad Library: ${a.linkedinActive} active ${a.linkedinActive === 1 ? 'creative' : 'creatives'}`,
     });
   }
-  for (const lp of a.sampleLandingPages.slice(0, 2)) {
-    checks.push({ ok: false, text: `Ad landing page: ${lp}` });
+
+  // Per-landing-page findings. Replaces the old static "Ad landing page: URL"
+  // bullet with a real diagnostic per page.
+  for (const lp of landingPages) {
+    if (lp.fetchError) {
+      checks.push({
+        ok: false,
+        text: `Ad landing <b>${shortenPath(lp.url)}</b>: scan blocked (${lp.fetchError})`,
+      });
+      continue;
+    }
+    const parts: string[] = [];
+    if (lp.scorePercent != null) parts.push(`${Math.round(lp.scorePercent)} of 100`);
+    if (lp.trackingGaps > 0) parts.push(`${lp.trackingGaps} of 4 trackers missing`);
+    if (lp.conversionGaps > 0) parts.push(`${lp.conversionGaps} of 3 conversion gaps`);
+    const noIssues = parts.length === 0 || (lp.trackingGaps === 0 && lp.conversionGaps === 0);
+    const ok = noIssues && (lp.scorePercent == null || lp.scorePercent >= 50);
+    checks.push({
+      ok,
+      text: `Ad landing <b>${shortenPath(lp.url)}</b>: ${parts.length ? parts.join(' · ') : 'clean'}`,
+    });
+  }
+  // If we never ran landing audits (ads-disabled run), fall back to listing
+  // the captured URLs so the operator still sees where paid traffic goes.
+  if (landingPages.length === 0) {
+    for (const lp of a.sampleLandingPages.slice(0, 2)) {
+      checks.push({ ok: false, text: `Ad landing page: ${shortenPath(lp)} (not audited)` });
+    }
   }
   const benchLeft = total === 0 ? '0 of 3 platforms' : `${platformsLive} of 3 platforms`;
   // Format earliest as YYYY·MM if it parses, otherwise pass through verbatim.
@@ -676,7 +742,9 @@ export function buildMemoFromAudit(audit: AuditResult, enrich?: EnrichmentBundle
     buildAEOCell(aeo),
     enrich?.pageSpeed ? speedCellFromPsi(enrich.pageSpeed) : placeholderPSI(),
     buildTrackingCell(tracking, enrich),
-    enrich?.ads ? adsCellFromResult(enrich.ads) : placeholderAds(),
+    enrich?.ads
+      ? adsCellFromResult(enrich.ads, enrich?.landing ?? null, enrich?.pageSpeed?.performanceScore ?? null)
+      : placeholderAds(),
     buildConversionCell(conversion),
     enrich?.mobile
       ? mobileCellFromResult(enrich.mobile, enrich?.headless ?? null)

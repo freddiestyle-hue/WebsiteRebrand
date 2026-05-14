@@ -14,6 +14,7 @@ import { checkPageSpeed } from '../../utils/audit/pagespeed';
 import { checkAds } from '../../utils/audit/ads-check';
 import { detectTechStack } from '../../utils/audit/tech-stack-check';
 import { runHeadlessCheck } from '../../utils/audit/headless-check';
+import { auditLandingPages } from '../../utils/audit/landing-check';
 import type { Memo, VerdictCell, VerdictIcon } from '../../utils/audit/memo-schema';
 import { sanitizeMemoHtml } from '../../utils/audit/safe-html';
 import { v3SlugFromDomain } from '../../utils/audit/slug';
@@ -83,11 +84,18 @@ if (isPOST && !memo) {
         if (audit.error) {
           runtimeError = audit.error;
         } else {
-          const [deliverability, pageSpeed, ads, headless] = await Promise.all([
+          // Start the landing-page audit as soon as the ads probe returns,
+          // so it runs concurrently with headless instead of sequentially.
+          const adsPromise = checkAds(audit.hostname);
+          const landingPromise = adsPromise.then((ads) =>
+            ads ? auditLandingPages(ads.sampleLandingPages) : { pages: [], durationMs: 0 },
+          );
+          const [deliverability, pageSpeed, ads, headless, landing] = await Promise.all([
             checkDeliverability(audit.hostname),
             checkPageSpeed(audit.url, 'mobile'),
-            checkAds(audit.hostname),
+            adsPromise,
             runHeadlessCheck(audit.url),
+            landingPromise,
           ]);
           const mobile = checkMobileFromHtml(audit.homepageHtml);
           const techStack = detectTechStack(audit.homepageHtml ?? '', audit.homepageHeaders);
@@ -95,7 +103,7 @@ if (isPOST && !memo) {
             ? detectTechStack(headless.renderedHtml, audit.homepageHeaders)
             : null;
           enrichment = {
-            deliverability, mobile, pageSpeed, ads, techStack, techStackRuntime, headless,
+            deliverability, mobile, pageSpeed, ads, techStack, techStackRuntime, headless, landing,
           };
           memo = buildMemoFromAudit(audit, enrichment);
           v3Slug = v3SlugFromDomain(audit.hostname);
