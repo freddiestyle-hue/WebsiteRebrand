@@ -327,13 +327,26 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
   .step h4 { font-family: var(--grotesk); font-weight: 700; font-size: 19px; letter-spacing: var(--track-h-sm); margin: 0 0 6px; }
   .step p { font-size: 14px; line-height: 1.55; color: var(--ink-dim); margin: 0; }
 
-  /* Result hook */
-  .hook { padding: var(--sp-12) 0 var(--sp-14); border-bottom: var(--bw-rule) solid var(--ink); display: grid; grid-template-columns: 1.35fr 1fr; gap: 64px; align-items: end; }
-  @media (max-width: 980px) { .hook { grid-template-columns: 1fr; gap: var(--sp-10); } }
+  /* Result shell: 2-col grid on desktop with sticky score-panel right column.
+     On mobile collapses to one column, score-panel on top. */
+  .memo-shell { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 64px; align-items: start; padding-top: var(--sp-7); }
+  .memo-shell .memo-content { min-width: 0; }
+  .memo-shell .score-panel { position: sticky; top: var(--sp-5); max-height: calc(100vh - var(--sp-10)); overflow-y: auto; }
+  @media (max-width: 980px) {
+    .memo-shell { display: flex; flex-direction: column; gap: var(--sp-7); padding-top: var(--sp-4); }
+    .memo-shell .score-panel { position: static; max-height: none; overflow: visible; order: -1; }
+  }
+
+  /* Result hook (now full width inside memo-content) */
+  .hook { padding: var(--sp-12) 0 var(--sp-14); border-bottom: var(--bw-rule) solid var(--ink); }
   .hook .kicker { font-family: var(--mono); font-size: var(--t-meta); letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--accent-deep); display: inline-flex; align-items: center; }
   .hook .kicker::before { content: ''; display: inline-block; width: 8px; height: 8px; background: var(--accent); border-radius: var(--r-pill); margin-right: 12px; animation: pulse 2.4s var(--ease) infinite; }
   .hook h1 { font-family: var(--grotesk); font-weight: 800; font-size: clamp(48px, 6.4vw, 96px); line-height: 0.92; letter-spacing: var(--track-display); margin: var(--sp-6) 0 var(--sp-7); text-wrap: balance; }
-  .hook h1 .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); letter-spacing: -0.02em; }
+  /* Italic flourish under the score statement. Sized as a subtitle (~half
+     the hero), forced onto its own line, with the same color/serif treatment
+     as before. Without the size cap, "24 paid ads, 8 conversion gaps." rendered
+     at 96px italic serif and bullied the page. */
+  .hook h1 .ital { display: block; font-family: var(--serif); font-style: italic; font-weight: 400; font-size: 0.48em; line-height: 1.1; color: var(--ink-dim); letter-spacing: -0.01em; margin-top: var(--sp-4); text-wrap: pretty; }
   .hook .dek { font-family: var(--serif); font-style: italic; font-size: clamp(18px, 1.7vw, 22px); line-height: 1.5; color: var(--ink-dim); margin: 0 0 var(--sp-8); max-width: 600px; text-wrap: pretty; }
   .hook .meta-row { border-top: var(--bw-hair) solid var(--line); padding-top: var(--sp-4); display: flex; gap: var(--sp-8); flex-wrap: wrap; font-family: var(--mono); font-size: var(--t-meta); letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); }
   .hook .meta-row b { color: var(--ink); font-weight: 500; }
@@ -539,31 +552,27 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
     <section class="hero">
       <span class="kicker">Live · in-browser scan · ~30s</span>
       <h1>What does the open web <span class="ital">actually say about you.</span></h1>
-      <p class="dek">Paste a domain. Nine teardowns run live in the browser. Page speed against the real Lighthouse numbers, schema, mail authentication, the ads you have running today, the pixels you forgot to remove. One memo. No login.</p>
+      <p class="dek">Paste a domain. Nine live readings. One memo. No login.</p>
 
       <form class="form-wrap" method="POST" action="/audit/v3" id="auditForm">
         <div class="form-left">
-          <span class="form-lbl"><b>Domain</b> · enter the site you want read</span>
+          <span class="form-lbl"><b>Domain</b></span>
           <div class="url-input">
             <span class="scheme">https://</span>
-            <input type="text" name="url" id="auditDomainInput" placeholder="somewhere.com" autocomplete="off" spellcheck="false" value={submittedUrl} required autofocus />
+            <input type="text" name="url" id="auditDomainInput" placeholder="yoursite.com" autocomplete="off" spellcheck="false" value={submittedUrl} required autofocus />
             <button class="submit" type="submit">Run audit <span aria-hidden="true">→</span></button>
           </div>
           <div class="form-meta">
-            <span>Median run · <b>~30s</b></span>
+            <span>~30s</span>
             <span>No login</span>
-            <span>No queue</span>
             <span>9 dimensions</span>
           </div>
           {inputError && <div class="form-error">{inputError}</div>}
           {runtimeError && <div class="form-error">{runtimeError}</div>}
         </div>
         <div class="form-right">
-          <div>
-            <span class="form-lbl"><b>Or read a sample.</b> Real domain. Real numbers.</span>
-            <a class="sample" href="/audit/p/pellaofcolumbus-com-x7k2abcdefgh1234">pellaofcolumbus.com <span style="font-family: var(--serif); font-style: italic; color: var(--ink-dim); font-size: 0.92em;">read this</span> →</a>
-          </div>
-          <p style="margin: var(--sp-6) 0 0; font-family: var(--serif); font-style: italic; font-size: 17px; line-height: 1.5; color: var(--ink-dim); max-width: 360px;">The full read includes an AI citation probe and a benchmark percentile. Those need the offline pipeline. The rest is live in your browser.</p>
+          <span class="form-lbl"><b>Or read a sample</b></span>
+          <a class="sample" href="/audit/p/pellaofcolumbus-com-x7k2abcdefgh1234">pellaofcolumbus.com <span style="font-family: var(--serif); font-style: italic; color: var(--ink-dim); font-size: 0.92em;">read this</span> →</a>
         </div>
       </form>
     </section>
@@ -660,62 +669,37 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
   )}
 
   {memo && audit && (
-    <section class="hook">
-      <div>
-        <span class="kicker">{fromCache ? `Cached · ${memo.domain}` : `Live audit · ${memo.domain}`}</span>
-        <h1>
-          Your site scores <span id="scoreNum">{compositeScore}</span> of 100.
-          {verdictItalic && <> <span class="ital">{verdictItalic}</span></>}
-        </h1>
-        {memo.cover.dek && <p class="dek">{memo.cover.dek}</p>}
-        <div class="meta-row">
-          <span>Domain · <b>{memo.domain}</b></span>
-          <span>Run · <b>{headerDate}{headerTime ? ` · ${headerTime}` : ''}</b></span>
-          <span>Duration · <b>{audit.durationMs} ms</b></span>
-          <span>Scan · <b>{memo.verdictCells.length} of 9</b></span>
-        </div>
-        {v3Slug && (
-          <div class="share-link" style="margin-top: var(--sp-5); font-family: var(--mono); font-size: var(--t-meta); letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint);">
-            <span>Share · </span>
-            <a href={`/audit/v3/${v3Slug}`} style="color: var(--ink); border-bottom: 1px solid var(--line-strong);">rivett.tech/audit/v3/{v3Slug}</a>
-          </div>
-        )}
-      </div>
-
-      <aside class="score-panel">
-        <span class="lab">Composite read · v3.4</span>
-        <div class="read"><span id="scoreBig">{compositeScore}</span><span class="denom">/ 100</span></div>
-        <div class="scale">
-          {[0,1,2,3,4].map((i) => (
-            <div class={`seg ${i < scoreSegment ? 'dim-lit' : i === scoreSegment ? 'lit' : ''}`}></div>
-          ))}
-        </div>
-        <div class="markers">
-          <span>{scoreSegment === 0 ? <b>Halt</b> : 'Halt'}</span>
-          <span>{scoreSegment === 1 ? <b>Watch</b> : 'Watch'}</span>
-          <span>{scoreSegment === 2 ? <b>Read</b> : 'Read'}</span>
-          <span>{scoreSegment === 3 ? <b>Run</b> : 'Run'}</span>
-          <span>{scoreSegment === 4 ? <b>Push</b> : 'Push'}</span>
-        </div>
-        <div class="chips">
-          {memo.verdictCells.map((cell) => (
-            <div class={`chip ${cellSeverity(cell)}`}>
-              <span class="k">{chipKey(cell.icon)}</span>
-              <span class="v">{chipValue(cell)}</span>
+    <div class="memo-shell">
+      <div class="memo-content">
+        <section class="hook">
+          <div>
+            <span class="kicker">{fromCache ? `Cached · ${memo.domain}` : `Live audit · ${memo.domain}`}</span>
+            <h1>
+              Your site scores <span id="scoreNum">{compositeScore}</span> of 100.
+              {verdictItalic && <> <span class="ital">{verdictItalic}</span></>}
+            </h1>
+            {memo.cover.dek && <p class="dek">{memo.cover.dek}</p>}
+            <div class="meta-row">
+              <span>Domain · <b>{memo.domain}</b></span>
+              <span>Run · <b>{headerDate}{headerTime ? ` · ${headerTime}` : ''}</b></span>
+              <span>Duration · <b>{audit.durationMs} ms</b></span>
+              <span>Scan · <b>{memo.verdictCells.length} of 9</b></span>
             </div>
-          ))}
-        </div>
-      </aside>
-    </section>
-  )}
+            {v3Slug && (
+              <div class="share-link" style="margin-top: var(--sp-5); font-family: var(--mono); font-size: var(--t-meta); letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint);">
+                <span>Share · </span>
+                <a href={`/audit/v3/${v3Slug}`} style="color: var(--ink); border-bottom: 1px solid var(--line-strong);">rivett.tech/audit/v3/{v3Slug}</a>
+              </div>
+            )}
+          </div>
+        </section>
 
-  {memo && (
-    <section class="sec">
-      <div class="sec-head">
-        <span class="lbl">The verdict<span class="num">03</span></span>
-        <h2>{memo.verdictCells.length === 9 ? 'Nine reads,' : `${memo.verdictCells.length} reads,`} <span class="ital">in one frame.</span></h2>
-      </div>
-      <div class="vgrid">
+        <section class="sec">
+          <div class="sec-head">
+            <span class="lbl">The verdict<span class="num">03</span></span>
+            <h2>{memo.verdictCells.length === 9 ? 'Nine reads,' : `${memo.verdictCells.length} reads,`} <span class="ital">in one frame.</span></h2>
+          </div>
+          <div class="vgrid">
         {memo.verdictCells.map((cell) => {
           const dim = dimFor(cell.icon);
           const sev = cellSeverity(cell);
@@ -760,57 +744,80 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
             </div>
           );
         })}
-      </div>
-    </section>
-  )}
-
-  {memo && (
-    <section class="sec">
-      <div class="sec-head">
-        <span class="lbl">Top three fixes<span class="num">04</span></span>
-        <h2>Ranked by leverage. <span class="ital">Highest first.</span></h2>
-      </div>
-      <div class="fixes">
-        {memo.rankedFixes.map((fix) => (
-          <div class="fix">
-            <div class="rank"><span class="k">Rank</span>F·{String(fix.rank).padStart(2, '0')}</div>
-            <div class="what">
-              <h4 set:html={sanitizeMemoHtml(fix.what)} />
-              <span class="src">Source · <b>{memo.domain}</b> · audit</span>
-            </div>
-            <div class="why" set:html={sanitizeMemoHtml(fix.why)} />
-            <div class="meta-col">
-              <div class="meta-row"><span class="k">Effort</span><span class={`pill ${fix.effort}`}>{fix.effort === 'low' ? 'Low' : fix.effort === 'med' ? 'Medium' : 'High'}</span></div>
-              <div class="meta-row"><span class="k">Impact</span><span class={`pill ${fix.impact}`}>{fix.impact === 'low' ? 'Low' : fix.impact === 'med' ? 'Medium' : 'High'}</span></div>
-            </div>
           </div>
-        ))}
-      </div>
-    </section>
-  )}
+        </section>
 
-  {memo && (
-    <section class="obs">
-      <div class="wrap">
-        <span class="lbl">Field note<span class="num">05</span></span>
-        <div>
-          <blockquote>
-            <b style="font-style: normal; font-family: var(--grotesk); font-weight: 600; color: var(--ink);">{memo.domain}</b> <span set:html={sanitizeMemoHtml(memo.personalObservation.text)} />
-          </blockquote>
-          <div class="author">· <b>Fred Style</b>, written for {memo.domain} · {headerDate} · Cape Town &amp; remote</div>
+        <section class="sec">
+          <div class="sec-head">
+            <span class="lbl">Top three fixes<span class="num">04</span></span>
+            <h2>Ranked by leverage. <span class="ital">Highest first.</span></h2>
+          </div>
+          <div class="fixes">
+            {memo.rankedFixes.map((fix) => (
+              <div class="fix">
+                <div class="rank"><span class="k">Rank</span>F·{String(fix.rank).padStart(2, '0')}</div>
+                <div class="what">
+                  <h4 set:html={sanitizeMemoHtml(fix.what)} />
+                  <span class="src">Source · <b>{memo.domain}</b> · audit</span>
+                </div>
+                <div class="why" set:html={sanitizeMemoHtml(fix.why)} />
+                <div class="meta-col">
+                  <div class="meta-row"><span class="k">Effort</span><span class={`pill ${fix.effort}`}>{fix.effort === 'low' ? 'Low' : fix.effort === 'med' ? 'Medium' : 'High'}</span></div>
+                  <div class="meta-row"><span class="k">Impact</span><span class={`pill ${fix.impact}`}>{fix.impact === 'low' ? 'Low' : fix.impact === 'med' ? 'Medium' : 'High'}</span></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
 
-          <div class="teaser">
+        <section class="obs">
+          <div class="wrap">
+            <span class="lbl">Field note<span class="num">05</span></span>
             <div>
-              <h4 class="lh">What the full report adds. <span class="ital">The things this browser can't reach.</span></h4>
-              <p>AI citation probe across eight category prompts. Benchmark percentile against tracked competitors in your set. Live deliverability test against a seeded inbox. Twelve-week instrumentation plan.</p>
-            </div>
-            <div class="stack">
-              <a class="btn btn--pri" href="/diagnostic">Book a call <span aria-hidden="true">→</span></a>
+              <blockquote>
+                <b style="font-style: normal; font-family: var(--grotesk); font-weight: 600; color: var(--ink);">{memo.domain}</b> <span set:html={sanitizeMemoHtml(memo.personalObservation.text)} />
+              </blockquote>
+              <div class="author">· <b>Fred Style</b>, written for {memo.domain} · {headerDate} · Cape Town &amp; remote</div>
+
+              <div class="teaser">
+                <div>
+                  <h4 class="lh">What the full report adds. <span class="ital">The things this browser can't reach.</span></h4>
+                  <p>AI citation probe across eight category prompts. Benchmark percentile against tracked competitors in your set. Live deliverability test against a seeded inbox. Twelve-week instrumentation plan.</p>
+                </div>
+                <div class="stack">
+                  <a class="btn btn--pri" href="/diagnostic">Book a call <span aria-hidden="true">→</span></a>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
+        </section>
       </div>
-    </section>
+
+      <aside class="score-panel">
+        <span class="lab">Composite read · v3.4</span>
+        <div class="read"><span id="scoreBig">{compositeScore}</span><span class="denom">/ 100</span></div>
+        <div class="scale">
+          {[0,1,2,3,4].map((i) => (
+            <div class={`seg ${i < scoreSegment ? 'dim-lit' : i === scoreSegment ? 'lit' : ''}`}></div>
+          ))}
+        </div>
+        <div class="markers">
+          <span>{scoreSegment === 0 ? <b>Halt</b> : 'Halt'}</span>
+          <span>{scoreSegment === 1 ? <b>Watch</b> : 'Watch'}</span>
+          <span>{scoreSegment === 2 ? <b>Read</b> : 'Read'}</span>
+          <span>{scoreSegment === 3 ? <b>Run</b> : 'Run'}</span>
+          <span>{scoreSegment === 4 ? <b>Push</b> : 'Push'}</span>
+        </div>
+        <div class="chips">
+          {memo.verdictCells.map((cell) => (
+            <div class={`chip ${cellSeverity(cell)}`}>
+              <span class="k">{chipKey(cell.icon)}</span>
+              <span class="v">{chipValue(cell)}</span>
+            </div>
+          ))}
+        </div>
+      </aside>
+    </div>
   )}
 
   {memo && (
