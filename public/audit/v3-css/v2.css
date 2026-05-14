@@ -1,0 +1,318 @@
+/* ============================================================
+   Homepage v2 additions — content blocks not in the kit:
+   - lede paragraph under section heads
+   - exclusion (sage callout under audience triad)
+   - bio (track-record split) + numbox right-hand
+   - proof block (90-day self-test)
+   - deal table
+   - two-col automate/human list
+   ============================================================ */
+
+.lede {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: clamp(20px, 2vw, 26px);
+  line-height: 1.42;
+  color: var(--ink-dim);
+  margin: 0 0 var(--sp-10);
+  max-width: 820px;
+  text-wrap: pretty;
+}
+.post-note {
+  margin-top: var(--sp-7);
+  font-family: var(--grotesk);
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--ink-dim);
+}
+.post-note .ital {
+  font-family: var(--serif);
+  font-style: italic;
+  color: var(--ink-dim);
+}
+
+/* ---------- Exclusion callout (sage) ---------- */
+.exclusion {
+  margin-top: var(--sp-8);
+  background: var(--sage);
+  border-left: var(--bw-thick) solid var(--accent-deep);
+  padding: var(--sp-7) var(--sp-8);
+  display: grid;
+  gap: var(--sp-3);
+}
+.exclusion p {
+  margin: 0;
+  font-family: var(--grotesk);
+  font-size: 17px;
+  line-height: 1.5;
+  color: var(--ink);
+  max-width: 800px;
+}
+.exclusion .ital {
+  font-family: var(--serif);
+  font-style: italic;
+  color: var(--ink-dim);
+}
+
+/* ---------- Bio (track record) ---------- */
+.bio {
+  display: grid;
+  grid-template-columns: 1fr 1.1fr;
+  gap: var(--sp-12);
+  align-items: start;
+}
+@media (max-width: 860px) {
+  .bio { grid-template-columns: 1fr; gap: var(--sp-10); }
+}
+
+/* Portrait — editorial magazine treatment.
+   - High-contrast B&W (no forced filter — let the photo's own tones do the work)
+   - Hairline-framed pre + post mono strips, like a contributor caption stack
+   - A single accent dot in the corner (the brand's only ornament)
+   - Subtle sage wash in multiply for brand cohesion (10%, barely there)
+   - Subtle inner shadow on the frame's edges via a paper inset (no real shadow) */
+.bio-portrait {
+  margin: 0;
+  position: relative;
+  width: 100%;
+  max-width: 520px;
+}
+.bio-portrait .pre {
+  border-top: var(--bw-rule) solid var(--ink);
+  padding-top: var(--sp-3);
+  margin-bottom: var(--sp-4);
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: var(--track-mono);
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.bio-portrait .pre b { color: var(--ink); font-weight: 500; }
+.bio-portrait .frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  background: var(--paper-2);
+  overflow: hidden;
+}
+.bio-portrait img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 12%;
+  filter: contrast(1.08) brightness(0.98);
+}
+.bio-portrait .frame::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 55%, rgba(14,26,44,0.16) 100%);
+  pointer-events: none;
+  mix-blend-mode: multiply;
+}
+.bio-portrait .frame::before {
+  content: '';
+  position: absolute;
+  top: var(--sp-5);
+  right: var(--sp-5);
+  width: 12px; height: 12px;
+  background: var(--accent);
+  border-radius: var(--r-pill);
+  z-index: 2;
+  box-shadow: 0 0 0 4px var(--paper);
+}
+.bio-portrait .post {
+  border-bottom: var(--bw-hair) solid var(--ink);
+  padding: var(--sp-4) 0 var(--sp-3);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--sp-4);
+  align-items: baseline;
+}
+.bio-portrait .post .name {
+  font-family: var(--grotesk);
+  font-weight: 700;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  line-height: 1;
+}
+.bio-portrait .post .role {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: var(--track-mono);
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  text-align: right;
+}
+.bio-portrait .post .role .ital {
+  font-family: var(--serif);
+  font-style: italic;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--ink-dim);
+}
+.bio-portrait .quote {
+  margin: var(--sp-4) 0 0;
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 16px;
+  line-height: 1.4;
+  color: var(--ink-dim);
+  max-width: 480px;
+}
+
+.bio-l > .stamp { display: inline-flex; }
+.bio-name {
+  font-family: var(--grotesk);
+  font-weight: 800;
+  font-size: clamp(40px, 5vw, 64px);
+  line-height: 1;
+  letter-spacing: var(--track-display);
+  margin: var(--sp-5) 0 var(--sp-3);
+}
+.bio-tag {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 22px;
+  line-height: 1.4;
+  color: var(--ink-dim);
+  margin: 0 0 var(--sp-7);
+  max-width: 560px;
+}
+.bio-body {
+  font-family: var(--grotesk);
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--ink-dim);
+  margin: 0 0 var(--sp-5);
+  max-width: 560px;
+}
+.bio-body b {
+  color: var(--ink);
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+.bio-body .ital {
+  font-family: var(--serif);
+  font-style: italic;
+  color: var(--ink-dim);
+}
+
+/* ---------- Proof block ---------- */
+.proof {
+  margin-top: var(--sp-12);
+  padding-top: var(--sp-10);
+  border-top: var(--bw-hair) solid var(--ink);
+}
+.proof .stamp { margin-bottom: var(--sp-5); }
+.proof-h {
+  font-family: var(--grotesk);
+  font-weight: 700;
+  font-size: clamp(28px, 3.4vw, 40px);
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  margin: 0 0 var(--sp-4);
+  text-wrap: balance;
+  max-width: 980px;
+}
+.proof-h .ital {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 400;
+  color: var(--ink-dim);
+}
+.proof-body {
+  font-family: var(--grotesk);
+  font-size: 17px;
+  line-height: 1.5;
+  color: var(--ink-dim);
+  margin: 0 0 var(--sp-8);
+  max-width: 720px;
+}
+
+/* ---------- Deal table ---------- */
+.deal-table {
+  width: 100%;
+  border-collapse: collapse;
+  border: var(--bw-hair) solid var(--line);
+  margin-top: var(--sp-4);
+}
+.deal-table thead th {
+  text-align: left;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: var(--track-mono);
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  padding: var(--sp-5) var(--sp-7);
+  border-bottom: var(--bw-hair) solid var(--ink);
+  background: var(--paper-2);
+}
+.deal-table thead th.r { text-align: right; }
+.deal-table tbody td {
+  padding: var(--sp-6) var(--sp-7);
+  font-family: var(--grotesk);
+  font-size: 17px;
+  color: var(--ink);
+  border-bottom: var(--bw-hair) solid var(--line);
+}
+.deal-table tbody td.r {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+.deal-table tbody tr:last-child td { border-bottom: 0; }
+.deal-table tbody tr.hi td {
+  background: var(--sage);
+  font-weight: 600;
+}
+.deal-table tbody tr.hi td b { color: var(--ink); font-weight: 700; }
+.deal-table tbody tr.hi .ital {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 400;
+  color: var(--ink-dim);
+}
+
+/* ---------- Two-col list (AI section) ---------- */
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border: var(--bw-hair) solid var(--line);
+}
+@media (max-width: 780px) { .two-col { grid-template-columns: 1fr; } }
+.two-col .col {
+  padding: var(--sp-8);
+  border-right: var(--bw-hair) solid var(--line);
+}
+.two-col .col-r { border-right: 0; }
+@media (max-width: 780px) {
+  .two-col .col { border-right: 0; border-bottom: var(--bw-hair) solid var(--line); }
+  .two-col .col-r { border-bottom: 0; }
+}
+.two-col .stamp { margin-bottom: var(--sp-6); }
+.two-col ul.bare {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.two-col ul.bare li {
+  padding: var(--sp-3) 0;
+  border-bottom: var(--bw-hair) solid var(--line);
+  font-family: var(--grotesk);
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--ink);
+}
+.two-col ul.bare li:last-child { border-bottom: 0; }
+.two-col ul.bare li .ital {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 400;
+  color: var(--ink-dim);
+}

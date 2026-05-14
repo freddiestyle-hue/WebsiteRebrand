@@ -1,0 +1,453 @@
+/* ============================================================
+   AUDIT — homepage primary action.
+   Adds: nav tweaks, audit hero (form, scan progress), dim grid.
+   Tokens come from tokens.css. Everything else from kit.css.
+   ============================================================ */
+
+/* ---------- Audit hero ---------- */
+.audit-hero {
+  padding: var(--sp-16) 0 var(--sp-12);
+  border-bottom: var(--bw-hair) solid var(--line-strong);
+}
+.audit-hero h1 {
+  font-family: var(--grotesk);
+  font-weight: 800;
+  font-size: clamp(48px, 7.2vw, 108px);
+  line-height: 0.94;
+  letter-spacing: var(--track-display);
+  margin: var(--sp-6) 0 0;
+  text-wrap: balance;
+  max-width: 1180px;
+}
+.audit-hero h1 .ital {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 400;
+  color: var(--ink-dim);
+  letter-spacing: -0.02em;
+}
+.audit-hero .dek {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: clamp(20px, 2vw, 26px);
+  line-height: 1.42;
+  color: var(--ink-dim);
+  margin: var(--sp-7) 0 var(--sp-10);
+  max-width: 820px;
+  text-wrap: pretty;
+}
+
+/* ---------- The form: prefix · domain input · run ---------- */
+.audit-form {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: stretch;
+  border: var(--bw-hair) solid var(--ink);
+  background: var(--paper);
+  max-width: 880px;
+  transition: border-color var(--dur-1) var(--ease);
+}
+.audit-form:focus-within {
+  border-color: var(--accent-deep);
+  box-shadow: inset 0 -2px 0 var(--accent-deep);
+}
+.audit-form .prefix {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--sp-5);
+  background: var(--paper-2);
+  border-right: var(--bw-hair) solid var(--line);
+  font-family: var(--mono);
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  color: var(--ink-faint);
+}
+.audit-form .domain {
+  border: 0;
+  outline: 0;
+  background: transparent;
+  padding: 22px var(--sp-5);
+  font-family: var(--grotesk);
+  font-size: clamp(18px, 2.2vw, 24px);
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  color: var(--ink);
+  min-width: 0;
+}
+.audit-form .domain::placeholder {
+  color: var(--ink-faint);
+  font-weight: 400;
+  font-style: italic;
+  font-family: var(--serif);
+}
+.audit-form .btn--solid {
+  border: 0;
+  border-left: var(--bw-hair) solid var(--ink);
+  padding: 0 var(--sp-7);
+  font-size: 11.5px;
+}
+@media (max-width: 680px) {
+  .audit-form { grid-template-columns: auto 1fr; }
+  .audit-form .btn--solid {
+    grid-column: 1 / -1;
+    border-left: 0;
+    border-top: var(--bw-hair) solid var(--ink);
+    padding: 16px var(--sp-7);
+    justify-content: center;
+  }
+}
+
+.audit-hero .sub-dek {
+  margin: var(--sp-5) 0 0;
+  max-width: 720px;
+  font-family: var(--grotesk);
+  font-size: 15.5px;
+  line-height: 1.55;
+  color: var(--ink-dim);
+}
+.audit-hero .sub-dek .ital {
+  font-family: var(--serif);
+  font-style: italic;
+  color: var(--ink-dim);
+}
+
+/* ---------- Meta strip under the form ---------- */
+.audit-meta {
+  margin-top: var(--sp-5);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: var(--track-mono);
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.audit-meta b { color: var(--ink); font-weight: 500; }
+.audit-meta .sep { color: var(--ink-faint); opacity: 0.6; }
+
+/* ---------- Hero variants ---------- */
+.audit-hero--compact { padding: var(--sp-10) 0 var(--sp-8); border-bottom: 0; }
+.audit-hero--compact h1 { font-size: clamp(36px, 4.5vw, 64px); }
+.audit-hero--compact .dek { font-size: clamp(16px, 1.5vw, 20px); margin-bottom: var(--sp-7); }
+
+/* ---------- Memo result variant ---------- */
+.scan-cta--memo p.memo-line {
+  font-family: var(--grotesk);
+  font-size: 20px;
+  line-height: 1.4;
+  color: var(--on-ink);
+  margin: var(--sp-4) 0;
+  text-wrap: balance;
+}
+.scan-cta--memo p.memo-line .ital {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 400;
+  color: var(--on-ink-italic);
+}
+.scan-cta--memo p.memo-sig {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 16px;
+  color: var(--on-ink-dim);
+  margin: var(--sp-4) 0 0;
+}
+.scan-cta--memo p.memo-sig b {
+  font-family: var(--grotesk);
+  font-style: normal;
+  color: var(--on-ink);
+  font-weight: 600;
+}
+.scan-cta--memo p.memo-sig .ital { color: var(--on-ink-italic); }
+
+/* ---------- Sample link ---------- */
+.audit-sample {
+  margin-top: var(--sp-10);
+  padding-top: var(--sp-6);
+  border-top: var(--bw-hair) solid var(--line);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-6);
+  flex-wrap: wrap;
+}
+.sample-link {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--sp-3);
+  text-decoration: none;
+  color: var(--ink);
+  font-family: var(--grotesk);
+  font-weight: 600;
+  font-size: 18px;
+  letter-spacing: -0.015em;
+  border-bottom: var(--bw-hair) solid var(--ink);
+  padding-bottom: 2px;
+  transition: color var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease);
+}
+.sample-link:hover { color: var(--accent-deep); border-color: var(--accent-deep); }
+.sample-link .sample-arrow {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: var(--track-mono);
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.sample-note {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 15px;
+  color: var(--ink-dim);
+}
+
+/* ---------- Scan panel (replaces form once running) ---------- */
+.scan {
+  border: var(--bw-hair) solid var(--ink);
+  max-width: 1040px;
+  background: var(--paper);
+}
+.scan-head {
+  padding: var(--sp-6) var(--sp-7);
+  border-bottom: var(--bw-hair) solid var(--line);
+}
+.scan-target {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+}
+.scan-target .elapsed {
+  font-family: var(--grotesk);
+  font-weight: 700;
+  font-size: 32px;
+  letter-spacing: var(--track-tighter);
+  line-height: 1;
+  color: var(--ink);
+}
+.scan-target .elapsed .ital {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 400;
+  color: var(--ink-dim);
+  font-size: 22px;
+}
+.scan-bar {
+  margin-top: var(--sp-5);
+  height: 4px;
+  background: var(--paper-2);
+  position: relative;
+  overflow: hidden;
+}
+.scan-bar-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--accent);
+  transition: width var(--dur-2) var(--ease);
+}
+.scan-meta {
+  margin-top: var(--sp-4);
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: var(--track-mono);
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.scan-meta .ital {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--ink-dim);
+}
+
+/* ---------- Scan list (the 9 dimensions ticking) ---------- */
+.scan-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.scan-list li {
+  display: grid;
+  grid-template-columns: 80px 1fr auto;
+  gap: var(--sp-5);
+  align-items: center;
+  padding: 14px var(--sp-7);
+  border-bottom: var(--bw-hair) solid var(--line);
+  font-family: var(--grotesk);
+  font-size: 15px;
+  color: var(--ink-faint);
+  transition: color var(--dur-1) var(--ease), background var(--dur-1) var(--ease);
+}
+.scan-list li:last-child { border-bottom: 0; }
+.scan-list li .d-code {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: var(--track-mono);
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.scan-list li .d-state {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: var(--track-mono);
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+/* queued = muted */
+.scan-list li[data-state="queued"] { color: var(--ink-faint); }
+/* running = full ink + accent state */
+.scan-list li[data-state="running"] {
+  color: var(--ink);
+  background: var(--sage-2, var(--paper-2));
+}
+.scan-list li[data-state="running"] .d-code { color: var(--accent-deep); }
+.scan-list li[data-state="running"] .d-state {
+  color: var(--accent-deep);
+  animation: scan-blink 0.9s var(--ease) infinite;
+}
+@keyframes scan-blink { 50% { opacity: 0.35; } }
+@media (prefers-reduced-motion: reduce) {
+  .scan-list li[data-state="running"] .d-state { animation: none; }
+  .scan-bar-fill { transition: none; }
+}
+/* done = ink, code in accent-deep */
+.scan-list li[data-state="done"] { color: var(--ink); }
+.scan-list li[data-state="done"] .d-code { color: var(--accent-deep); }
+.scan-list li[data-state="done"] .d-state { color: var(--ink); }
+.scan-list li[data-state="done"] .d-state::before {
+  content: '';
+  display: inline-block;
+  width: 8px; height: 8px;
+  background: var(--accent);
+  border-radius: var(--r-pill);
+  margin-right: 10px;
+  vertical-align: 1px;
+}
+
+/* ---------- Scan complete CTA ---------- */
+.scan-cta {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: var(--sp-7);
+  padding: var(--sp-7);
+  background: var(--ink);
+  color: var(--on-ink);
+  align-items: center;
+}
+@media (max-width: 780px) {
+  .scan-cta { grid-template-columns: 1fr; }
+}
+.scan-cta p {
+  font-family: var(--grotesk);
+  font-size: 20px;
+  line-height: 1.35;
+  margin: var(--sp-3) 0 0;
+  color: var(--on-ink);
+  text-wrap: balance;
+}
+.scan-cta p .ital {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 400;
+  color: var(--on-ink-italic);
+}
+.scan-cta-actions {
+  display: flex;
+  gap: var(--sp-3);
+  align-items: center;
+  flex-wrap: wrap;
+}
+.scan-cta-actions .btn--solid {
+  background: var(--paper);
+  color: var(--ink);
+  border-color: var(--paper);
+}
+.scan-cta-actions .btn--solid:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.scan-cta-actions .btn {
+  color: var(--on-ink);
+  border-color: var(--on-ink-line);
+}
+.scan-cta-actions .btn:hover {
+  background: var(--paper);
+  color: var(--ink);
+  border-color: var(--paper);
+}
+.scan-cta-actions .rerun {
+  background: transparent;
+  border: 0;
+  color: var(--on-ink-faint);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: var(--track-mono);
+  text-transform: uppercase;
+  cursor: pointer;
+  padding: 8px 4px;
+  transition: color var(--dur-1) var(--ease);
+}
+.scan-cta-actions .rerun:hover { color: var(--accent); }
+
+/* ---------- Nine-dimensions grid ---------- */
+.dim-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border: var(--bw-hair) solid var(--line);
+}
+@media (max-width: 880px) { .dim-grid { grid-template-columns: 1fr; } }
+.dim {
+  padding: var(--sp-7);
+  border-right: var(--bw-hair) solid var(--line);
+  border-bottom: var(--bw-hair) solid var(--line);
+}
+.dim:nth-child(3n) { border-right: 0; }
+.dim:nth-last-child(-n+3) { border-bottom: 0; }
+@media (max-width: 880px) {
+  .dim { border-right: 0; }
+  .dim:nth-last-child(-n+3) { border-bottom: var(--bw-hair) solid var(--line); }
+  .dim:last-child { border-bottom: 0; }
+}
+.dim-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-5);
+}
+.dim-head svg { color: var(--ink); }
+.dim-code {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: var(--track-mono);
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.dim h4 {
+  font-family: var(--grotesk);
+  font-weight: 700;
+  font-size: 20px;
+  letter-spacing: var(--track-h-sm);
+  margin: 0 0 var(--sp-3);
+  line-height: 1.18;
+  text-wrap: balance;
+}
+.dim p {
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--ink-dim);
+  margin: 0;
+}
+
+/* ---------- Diminish the work-modules section slightly so the audit leads ---------- */
+.work-stamp {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: var(--track-mono);
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}

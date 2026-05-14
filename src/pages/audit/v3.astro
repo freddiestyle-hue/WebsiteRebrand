@@ -257,6 +257,9 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
 <link rel="icon" href="/audit/rivet-b1.svg" type="image/svg+xml" />
 <link rel="stylesheet" href="/audit/tokens.css" />
 <link rel="stylesheet" href="/audit/audit-v3.css" />
+<link rel="stylesheet" href="/audit/v3-css/kit.css" />
+<link rel="stylesheet" href="/audit/v3-css/audit.css" />
+<link rel="stylesheet" href="/audit/v3-css/audit-page.css" />
 <PostHog capturePageview={true} />
 <style>
   /* Wordmark image (matches site header/footer behavior) */
@@ -549,85 +552,132 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
   </div>
 
   {!memo && (
-    <section class="hero">
-      <span class="kicker">Live · in-browser scan · ~30s</span>
-      <h1>What does the open web actually <span class="ital">say about you.</span></h1>
-      <p class="dek">Paste a domain. 09 live readings. One memo. No login.</p>
+    <header class="audit-hero">
+      <span class="stamp">Live audit · in-browser scan · v3.4</span>
+      <h1>What does the open web <br/>actually <span class="ital">say about you.</span></h1>
+      <p class="dek">Paste a domain. 09 teardowns run live in your browser. Page speed against the real Lighthouse numbers, schema, mail authentication, the ads you have running today, the pixels you forgot to remove. One memo. No login.</p>
 
-      <form class="form-wrap" method="POST" action="/audit/v3" id="auditForm">
-        <div class="form-left">
-          <span class="form-lbl"><b>Domain</b></span>
-          <div class="url-input">
-            <span class="scheme">https://</span>
-            <input type="text" name="url" id="auditDomainInput" placeholder="yoursite.com" autocomplete="off" spellcheck="false" value={submittedUrl} required autofocus />
-            <button class="submit" type="submit">Run audit <span aria-hidden="true">→</span></button>
-          </div>
-          <div class="form-meta">
-            <span>~30s</span>
-            <span>No login</span>
-            <span>09 dimensions</span>
-          </div>
-          {inputError && <div class="form-error">{inputError}</div>}
-          {runtimeError && <div class="form-error">{runtimeError}</div>}
-        </div>
-        <div class="form-right">
-          <span class="form-lbl"><b>Or read a sample</b></span>
-          <a class="sample" href="/audit/p/pellaofcolumbus-com-x7k2abcdefgh1234">pellaofcolumbus.com <span style="font-family: var(--serif); font-style: italic; color: var(--ink-dim); font-size: 0.92em;">read this</span> →</a>
-        </div>
+      <form class="audit-form" method="POST" action="/audit/v3" id="auditForm">
+        <span class="prefix">https://</span>
+        <input class="domain" type="text" name="url" id="auditDomainInput" inputmode="url" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="enter the site you want read" value={submittedUrl} required autofocus aria-label="Domain" />
+        <button class="btn btn--solid" type="submit">Run audit <span aria-hidden="true">→</span></button>
       </form>
-    </section>
+      {inputError && <div class="form-error" style="margin-top: var(--sp-4); padding: var(--sp-3) var(--sp-4); border: 1px solid var(--signal-halt); color: var(--signal-halt); font-family: var(--mono); font-size: 12.5px;">{inputError}</div>}
+      {runtimeError && <div class="form-error" style="margin-top: var(--sp-4); padding: var(--sp-3) var(--sp-4); border: 1px solid var(--signal-halt); color: var(--signal-halt); font-family: var(--mono); font-size: 12.5px;">{runtimeError}</div>}
+
+      <div class="audit-meta">
+        <span><b>~30s</b> median run</span>
+        <span class="sep">/</span>
+        <span>public APIs only</span>
+        <span class="sep">/</span>
+        <span>no login</span>
+        <span class="sep">/</span>
+        <span><b>09</b> dimensions</span>
+      </div>
+
+      <div class="audit-sample">
+        <span class="stamp stamp--neutral">Or read a sample</span>
+        <a class="sample-link" href="/audit/p/pellaofcolumbus-com-x7k2abcdefgh1234">
+          <span class="sample-domain">pellaofcolumbus.com</span>
+          <span class="sample-arrow">read this →</span>
+        </a>
+        <span class="sample-note">Real domain. Real numbers.</span>
+      </div>
+    </header>
   )}
 
   {!memo && (
-    <section class="dims">
-      <div class="dims-head">
+    <>
+      <div class="sec-head">
         <span class="lbl">What it reads<span class="num">01</span></span>
-        <h2>09 dimensions. <span class="ital">Read live. Read together.</span></h2>
+        <h2>09 dimensions. <span class="ital">Read live, read together.</span></h2>
       </div>
-      <div class="dim-grid">
-        <div class="dim"><div class="top"><svg class="ico"><use href="#ic-01-diagnostic"/></svg><span class="num">D · 01</span></div><h3>How Google <span class="ital">sees you.</span></h3><p>Sitemap, robots, canonical, schema, og:type. The crawler's view.</p></div>
-        <div class="dim"><div class="top"><svg class="ico"><use href="#ic-03-signal"/></svg><span class="num">D · 02</span></div><h3>How AI engines <span class="ital">cite you.</span></h3><p>/llms.txt, /llms-full.txt, structured data parseable by LLM crawlers.</p></div>
-        <div class="dim"><div class="top"><svg class="ico"><use href="#ic-23-vital"/></svg><span class="num">D · 03</span></div><h3>How fast <span class="ital">it loads.</span></h3><p>Real Lighthouse: LCP, FCP, CLS, INP against Google's "good" thresholds.</p></div>
-        <div class="dim"><div class="top"><svg class="ico"><use href="#ic-19-numbers"/></svg><span class="num">D · 04</span></div><h3>What you <span class="ital">measure.</span></h3><p>Meta, GA4, GTM, LinkedIn, X, TikTok, Reddit. Including pixels only loaded after JS.</p></div>
-        <div class="dim"><div class="top"><svg class="ico"><use href="#ic-20-share"/></svg><span class="num">D · 05</span></div><h3>Ads <span class="ital">running today.</span></h3><p>Meta, Google, LinkedIn ad libraries. Creative count, platforms, earliest run.</p></div>
-        <div class="dim"><div class="top"><svg class="ico"><use href="#ic-12-confirm"/></svg><span class="num">D · 06</span></div><h3>How visitors <span class="ital">convert.</span></h3><p>Top-1024 CTA, tappable contact, form fields, pricing visibility, social proof.</p></div>
-        <div class="dim"><div class="top"><svg class="ico"><use href="#ic-06-operator"/></svg><span class="num">D · 07</span></div><h3>How it behaves <span class="ital">on mobile.</span></h3><p>Headless render at 390×844. Real scrollWidth, real tap targets, real text size.</p></div>
-        <div class="dim"><div class="top"><svg class="ico"><use href="#ic-14-outreach"/></svg><span class="num">D · 08</span></div><h3>Email <span class="ital">reputation.</span></h3><p>SPF, DMARC, MX. DoH lookups against Cloudflare. Reject, quarantine, missing.</p></div>
-        <div class="dim"><div class="top"><svg class="ico"><use href="#ic-05-stack"/></svg><span class="num">D · 09</span></div><h3>The stack <span class="ital">you actually run.</span></h3><p>Static + runtime fingerprint. Analytics, CMS, CDN, A/B, consent, support.</p></div>
+      <div class="sec-body">
+        <div class="dim-grid">
+          <div class="dim"><div class="dim-head"><svg class="ic" viewBox="0 0 24 24" width="20" height="20"><use href="#ic-01-diagnostic"/></svg><span class="dim-code">D · 01</span></div><h4>How Google sees you.</h4><p>Sitemap, robots, canonical, schema, og:type. The crawler's view.</p></div>
+          <div class="dim"><div class="dim-head"><svg class="ic" viewBox="0 0 24 24" width="20" height="20"><use href="#ic-03-signal"/></svg><span class="dim-code">D · 02</span></div><h4>How AI engines cite you.</h4><p>/llms.txt, /llms-full.txt, structured data parseable by LLM crawlers.</p></div>
+          <div class="dim"><div class="dim-head"><svg class="ic" viewBox="0 0 24 24" width="20" height="20"><use href="#ic-23-vital"/></svg><span class="dim-code">D · 03</span></div><h4>How fast it loads.</h4><p>Real Lighthouse: LCP, FCP, CLS, INP against Google's good thresholds.</p></div>
+          <div class="dim"><div class="dim-head"><svg class="ic" viewBox="0 0 24 24" width="20" height="20"><use href="#ic-19-numbers"/></svg><span class="dim-code">D · 04</span></div><h4>What you measure.</h4><p>Meta, GA4, GTM, LinkedIn, X, TikTok, Reddit. Including pixels only loaded after JS.</p></div>
+          <div class="dim"><div class="dim-head"><svg class="ic" viewBox="0 0 24 24" width="20" height="20"><use href="#ic-20-share"/></svg><span class="dim-code">D · 05</span></div><h4>Ads running today.</h4><p>Meta, Google, LinkedIn ad libraries. Creative count, platforms, earliest run.</p></div>
+          <div class="dim"><div class="dim-head"><svg class="ic" viewBox="0 0 24 24" width="20" height="20"><use href="#ic-12-confirm"/></svg><span class="dim-code">D · 06</span></div><h4>How visitors convert.</h4><p>Top-1024 CTA, tappable contact, form fields, pricing visibility, social proof.</p></div>
+          <div class="dim"><div class="dim-head"><svg class="ic" viewBox="0 0 24 24" width="20" height="20"><use href="#ic-06-operator"/></svg><span class="dim-code">D · 07</span></div><h4>How it behaves on mobile.</h4><p>Headless render at 390×844. Real scrollWidth, real tap targets, real text size.</p></div>
+          <div class="dim"><div class="dim-head"><svg class="ic" viewBox="0 0 24 24" width="20" height="20"><use href="#ic-14-outreach"/></svg><span class="dim-code">D · 08</span></div><h4>Email reputation.</h4><p>SPF, DMARC, MX. DoH lookups against Cloudflare. Reject, quarantine, missing.</p></div>
+          <div class="dim"><div class="dim-head"><svg class="ic" viewBox="0 0 24 24" width="20" height="20"><use href="#ic-05-stack"/></svg><span class="dim-code">D · 09</span></div><h4>The stack you actually run.</h4><p>Static + runtime fingerprint. Analytics, CMS, CDN, A/B, consent, support.</p></div>
+        </div>
       </div>
-    </section>
+    </>
   )}
 
   {!memo && (
-    <section class="how">
-      <div class="how-head">
+    <>
+      <div class="sec-head">
         <span class="lbl">How it runs<span class="num">02</span></span>
         <h2>One paste. <span class="ital">Thirty seconds. One memo.</span></h2>
       </div>
-      <div class="steps">
-        <div class="step"><span class="day">Step · 01</span><div class="num">01</div><h4>Paste a domain.</h4><p>No login. No queue. The scan starts in your browser the moment you press run.</p></div>
-        <div class="step"><span class="day">Step · 02</span><div class="num">02</div><h4>Scan runs live.</h4><p>09 readers fire in parallel. PSI for speed, DoH for mail, Ad Library for spend.</p></div>
-        <div class="step"><span class="day">Step · 03</span><div class="num">03</div><h4>Read the memo.</h4><p>Score of 100. 09 cells with the raw numbers. Top three fixes ranked by leverage.</p></div>
-        <div class="step"><span class="day">Step · 04</span><div class="num">04</div><h4>Decide.</h4><p>Pick the fix and ship. Or book a call. The full pipeline picks up the gaps this one cannot.</p></div>
-      </div>
-    </section>
-  )}
+      <div class="sec-body">
+        <div class="automate">
+          <div class="auto-row">
+            <svg class="ic" viewBox="0 0 24 24" width="24" height="24"><use href="#ic-01-diagnostic"/></svg>
+            <div>
+              <h4>Step · 01 · Paste a domain.</h4>
+              <p>No login. No queue. The scan starts in your browser the moment you press run.</p>
+            </div>
+          </div>
+          <div class="auto-row">
+            <svg class="ic" viewBox="0 0 24 24" width="24" height="24"><use href="#ic-23-vital"/></svg>
+            <div>
+              <h4>Step · 02 · Scan runs live.</h4>
+              <p>09 readers fire in parallel. PSI for speed, DoH for mail, Ad Library for spend.</p>
+            </div>
+          </div>
+          <div class="auto-row">
+            <svg class="ic" viewBox="0 0 24 24" width="24" height="24"><use href="#ic-14-outreach"/></svg>
+            <div>
+              <h4>Step · 03 · Read the memo.</h4>
+              <p>Score of 100. 09 cells with the raw numbers. Top three fixes ranked by leverage.</p>
+            </div>
+          </div>
+          <div class="auto-row">
+            <svg class="ic" viewBox="0 0 24 24" width="24" height="24"><use href="#ic-12-confirm"/></svg>
+            <div>
+              <h4>Step · 04 · Decide.</h4>
+              <p>Pick the fix and ship. Or book a call. The full pipeline picks up the gaps this one cannot.</p>
+            </div>
+          </div>
+        </div>
 
-  {!memo && (
-    <section class="end-cta">
-      <div>
-        <span class="lab">For when the scan isn't enough</span>
-        <h2>Pick a time. Twenty minutes. <span class="ital">I'll bring the rest of the read.</span></h2>
-        <p>The browser scan is the cheap version. The AI citation probe, the benchmark percentile, the deliverability test against a live mailbox. Those need the offline pipeline. Book a call, I'll bring those numbers.</p>
-        <div class="end-actions">
+        <div style="margin-top: var(--sp-10);">
+          <div class="numbox">
+            <div><span class="k">Median run</span><span class="v">~30 <span class="ital">s</span></span></div>
+            <div><span class="k">Dimensions</span><span class="v">09 <span class="ital">read</span></span></div>
+            <div><span class="k">Login</span><span class="v">0 <span class="ital">required</span></span></div>
+            <div><span class="k">Memo</span><span class="v">01 <span class="ital">document</span></span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pull">
+        <blockquote>"The browser scan is the cheap version. The AI citation probe, the benchmark percentile, the deliverability test against a live mailbox. Those need the offline pipeline."</blockquote>
+        <cite>— field note · what the audit can't see</cite>
+      </div>
+
+      <div class="end-cta on-ink">
+        <div>
+          <span class="stamp stamp--on-ink">20 min · no deck</span>
+          <h2 style="font-family: var(--grotesk); font-weight: 800; font-size: clamp(36px, 5vw, 64px); line-height: 1; letter-spacing: var(--track-display); margin: var(--sp-6) 0 var(--sp-6); color: var(--on-ink);">Pick a time. Twenty minutes. <span class="ital" style="font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--on-ink-italic);">I'll bring the rest of the read.</span></h2>
+          <p style="font-family: var(--serif); font-style: italic; font-size: clamp(18px, 1.6vw, 22px); line-height: 1.5; color: var(--on-ink-italic); max-width: 720px; margin: 0 0 var(--sp-8);">AI citation probe, benchmark percentile, deliverability against a live mailbox. The numbers the in-browser scan can't reach.</p>
           <a class="btn btn--inv" href="/diagnostic">Book a call <span aria-hidden="true">→</span></a>
         </div>
       </div>
-      <div class="sig">
-        <span class="lab" style="margin-bottom: 12px;">Signature</span>
-        <div style="margin-top: 8px;"><b>Fred Style</b> · rivett.tech · {headerDate}</div>
+
+      <div class="signature">
+        <div class="sig-row">
+          <span class="stamp stamp--neutral">Signature</span>
+          <span class="sig-by">By <b>Fred Style</b> · rivett.tech · {headerDate}</span>
+        </div>
+        <p class="sig-disclaimer"><span class="ital">Live in-browser scan. Not a formal assessment.</span> The audit reads the public surface of a domain in your browser. It does not access authenticated dashboards, customer data, or anything behind a login.</p>
       </div>
-    </section>
+    </>
   )}
 
   {!memo && (
