@@ -14,6 +14,7 @@ import { checkDeliverability } from '../../utils/audit/dns-check';
 import { checkMobileFromHtml } from '../../utils/audit/mobile-check';
 import { checkPageSpeed } from '../../utils/audit/pagespeed';
 import { checkAds } from '../../utils/audit/ads-check';
+import { detectTechStack } from '../../utils/audit/tech-stack-check';
 import type { Memo, VerdictIcon } from '../../utils/audit/memo-schema';
 import { sanitizeMemoHtml } from '../../utils/audit/safe-html';
 
@@ -51,7 +52,8 @@ if (isPOST) {
             checkAds(audit.hostname),
           ]);
           const mobile = checkMobileFromHtml(audit.homepageHtml);
-          enrichment = { deliverability, mobile, pageSpeed, ads };
+          const techStack = detectTechStack(audit.homepageHtml ?? '', audit.homepageHeaders);
+          enrichment = { deliverability, mobile, pageSpeed, ads, techStack };
           memo = buildMemoFromAudit(audit, enrichment);
         }
       }

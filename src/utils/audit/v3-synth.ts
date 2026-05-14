@@ -16,12 +16,15 @@ import type { DeliverabilityResult } from './dns-check';
 import type { MobileRenderingResult } from './mobile-check';
 import type { PageSpeedResult } from './pagespeed';
 import type { AdsResult } from './ads-check';
+import type { TechStackResult, DetectedTech, TechCategory } from './tech-stack-check';
+import { TECH_CATEGORY_LABELS } from './tech-stack-check';
 
 export interface EnrichmentBundle {
   deliverability: DeliverabilityResult | null;
   mobile: MobileRenderingResult | null;
   pageSpeed: PageSpeedResult | null;
   ads: AdsResult | null;
+  techStack: TechStackResult | null;
 }
 
 function passCount(checks: CheckResult[]): { passed: number; total: number } {
@@ -225,6 +228,86 @@ function adsCellFromResult(a: AdsResult): VerdictCell {
   };
 }
 
+function techStackCellFromResult(t: TechStackResult): VerdictCell {
+  // Categories sorted by what an operator cares about most.
+  const CATEGORY_ORDER: TechCategory[] = [
+    'analytics',
+    'advertising',
+    'tag-manager',
+    'forms-crm',
+    'support',
+    'consent',
+    'ab-testing',
+    'ecommerce',
+    'cms',
+    'framework',
+    'hosting',
+    'cdn',
+    'scheduling',
+    'video',
+    'reviews',
+    'email-marketing',
+    'fonts',
+    'misc',
+  ];
+
+  const value = t.total === 0 ? 'n/a' : String(t.total);
+  const note =
+    t.total === 0
+      ? 'No technologies detected from the static HTML scan. Either the page is very minimal, or everything is being loaded via runtime JS (Tier 2 headless will catch that).'
+      : `${t.total} technologies detected across ${Object.keys(t.byCategory).length} categories.`;
+
+  const checks: Array<{ ok: boolean; text: string }> = [];
+  for (const cat of CATEGORY_ORDER) {
+    const techs = t.byCategory[cat];
+    if (!techs || techs.length === 0) continue;
+    const names = techs.map((tt) => tt.name).join(', ');
+    checks.push({ ok: true, text: `${TECH_CATEGORY_LABELS[cat]}: ${names}` });
+  }
+
+  return {
+    icon: 'flag' as VerdictIcon,
+    heading: 'Tech stack you are running',
+    value,
+    note,
+    benchmark: t.total > 0 ? `${Object.keys(t.byCategory).length} categories detected` : null,
+    checks,
+  };
+}
+
+function augmentTrackingChecks(
+  engineChecks: CheckResult[],
+  tech: TechStackResult | null,
+): Array<{ ok: boolean; text: string }> {
+  // Start with what engine.ts caught
+  const out: Array<{ ok: boolean; text: string }> = engineChecks.map((c) => ({
+    ok: c.passed,
+    text: c.label,
+  }));
+
+  if (!tech) return out;
+
+  // Add detected advertising pixels + analytics that engine.ts didn't surface.
+  // These come from the fingerprint DB so we cover much more than the narrow
+  // hand-rolled patterns in engine.ts/tracking.ts.
+  const adAndAnalytics = (tech.byCategory.advertising ?? []).concat(tech.byCategory.analytics ?? []);
+  const seenNames = new Set<string>();
+  // Crude de-dupe: don't double-count "Google Analytics 4" if engine.ts already
+  // checked GA via its own pattern.
+  for (const c of out) seenNames.add(c.text.toLowerCase());
+
+  for (const tech of adAndAnalytics) {
+    const text = `${tech.name}: detected`;
+    const key = text.toLowerCase();
+    if (!seenNames.has(key)) {
+      out.push({ ok: true, text });
+      seenNames.add(key);
+    }
+  }
+
+  return out;
+}
+
 export function buildMemoFromAudit(audit: AuditResult, enrich?: EnrichmentBundle): Memo {
   const slug = generateSlug(audit.hostname);
 
@@ -259,13 +342,21 @@ export function buildMemoFromAudit(audit: AuditResult, enrich?: EnrichmentBundle
   }
 
   if (tracking.length > 0) {
+    const augmentedChecks = augmentTrackingChecks(tracking, enrich?.techStack ?? null);
+    // Recompute passed count to include fingerprint-detected pixels (always
+    // "passed" = "detected" since they're proof of presence, not absence).
+    const passedCount = augmentedChecks.filter((c) => c.ok).length;
+    const totalCount = augmentedChecks.length;
     verdictCells.push({
       icon: 'target' as VerdictIcon,
       heading: 'What you measure',
-      value: valueStr(passCount(tracking)),
-      note: noteFor('tracking', passCount(tracking), 'Full conversion stack firing.'),
+      value: `${passedCount} of ${totalCount}`,
+      note:
+        totalCount === passedCount
+          ? 'Every tracker we look for is firing.'
+          : `${totalCount - passedCount} of ${totalCount} measurement gaps.`,
       benchmark: null,
-      checks: checksFromCategory(tracking),
+      checks: augmentedChecks,
     });
   }
 
@@ -292,6 +383,10 @@ export function buildMemoFromAudit(audit: AuditResult, enrich?: EnrichmentBundle
     verdictCells.push(mailCellFromResult(enrich.deliverability));
   }
 
+  if (enrich?.techStack && enrich.techStack.total > 0) {
+    verdictCells.push(techStackCellFromResult(enrich.techStack));
+  }
+
   // Pad if under the 3-cell minimum (only happens on heavy fetch failure)
   while (verdictCells.length < 3) {
     verdictCells.push({
@@ -304,8 +399,8 @@ export function buildMemoFromAudit(audit: AuditResult, enrich?: EnrichmentBundle
     });
   }
 
-  // Trim if over the 8-cell maximum (shouldn't happen with current cells, but safe)
-  const trimmedCells = verdictCells.slice(0, 8);
+  // Trim if over the 10-cell maximum (shouldn't happen with current cells, but safe)
+  const trimmedCells = verdictCells.slice(0, 10);
 
   // Ranked fixes: enrichment-driven priorities first (page speed, DMARC, viewport
   // are the highest-leverage wins when broken), then top failing audit checks.
