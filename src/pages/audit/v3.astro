@@ -375,6 +375,44 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
   .teaser .lh .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); }
   .teaser p { margin: 0; color: var(--ink-dim); font-size: 14.5px; line-height: 1.5; max-width: 560px; }
   .teaser .stack { display: flex; gap: var(--sp-3); flex-wrap: wrap; }
+
+  /* -------- live scan overlay -------- */
+  .scan { position: fixed; inset: 0; background: var(--ink); color: var(--on-ink); z-index: 9999; display: none; flex-direction: column; padding: var(--sp-10) var(--sp-12); overflow: hidden; font-family: var(--mono); }
+  .scan.live { display: flex; }
+  .scan .scan-top { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--on-ink-line); padding-bottom: var(--sp-5); margin-bottom: var(--sp-8); font-size: var(--t-meta); letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--on-ink-faint); }
+  .scan .scan-top b { color: var(--on-ink); font-weight: 500; }
+  .scan .scan-top .wordmark { color: var(--on-ink); font-size: 22px; }
+  .scan .dot-live { display: inline-block; width: 8px; height: 8px; border-radius: var(--r-pill); background: var(--accent); animation: pulse 1.2s var(--ease) infinite; margin-right: 12px; vertical-align: middle; }
+  .scan-body { display: grid; grid-template-columns: 1.2fr 1fr; gap: var(--sp-12); height: 100%; overflow: hidden; }
+  @media (max-width: 980px) { .scan-body { grid-template-columns: 1fr; } }
+  .scan-log { border: 1px solid var(--on-ink-line); padding: var(--sp-6); height: 100%; overflow: hidden; position: relative; }
+  .scan-log .log-head { font-size: 10.5px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--on-ink-faint); border-bottom: 1px solid var(--on-ink-line); padding-bottom: var(--sp-3); margin-bottom: var(--sp-4); }
+  .scan-log .log-list { font-size: 12.5px; line-height: 1.7; color: var(--on-ink-dim); max-height: 60vh; overflow: hidden; }
+  .scan-log .log-list .line { display: block; }
+  .scan-log .log-list .ts { color: var(--on-ink-faint); margin-right: var(--sp-3); }
+  .scan-log .log-list .tag { display: inline-block; min-width: 50px; }
+  .scan-log .log-list .tag.ok { color: var(--accent); }
+  .scan-log .log-list .tag.warn { color: var(--signal-warn); }
+  .scan-log .log-list .tag.fail { color: var(--signal-halt); }
+  .scan-log .log-list .tag.run { color: var(--on-ink); }
+  .scan-log .log-list .arrow { color: var(--on-ink-faint); margin: 0 6px; }
+  .scan-log .log-list .em { color: var(--on-ink); }
+  .scan-side h3 { font-family: var(--grotesk); font-weight: 700; font-size: clamp(36px, 4.4vw, 56px); line-height: 1.02; letter-spacing: var(--track-h); margin: 0 0 var(--sp-6); color: var(--on-ink); text-wrap: balance; }
+  .scan-side h3 .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--on-ink-italic); }
+  .scan-side .progress { border-top: 1px solid var(--on-ink-line); border-bottom: 1px solid var(--on-ink-line); padding: var(--sp-5) 0; margin: var(--sp-7) 0; display: grid; grid-template-columns: 1fr auto; gap: var(--sp-3); align-items: baseline; }
+  .scan-side .progress .pct { font-family: var(--grotesk); font-weight: 800; font-size: 96px; line-height: 0.9; letter-spacing: var(--track-display); color: var(--on-ink); }
+  .scan-side .progress .pct sup { font-size: 0.32em; vertical-align: 38px; color: var(--on-ink-faint); margin-left: 4px; }
+  .scan-side .progress .label { font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--on-ink-faint); }
+  .scan-side .bar { height: 6px; background: var(--on-ink-line); margin-top: var(--sp-3); position: relative; overflow: hidden; }
+  .scan-side .bar .fill { position: absolute; inset: 0 100% 0 0; background: var(--accent); transition: right 0.4s linear; }
+  .scan-side .lane { display: grid; grid-template-columns: 22px 1fr auto; gap: var(--sp-3); padding: 10px 0; border-bottom: 1px solid var(--on-ink-line); align-items: center; }
+  .scan-side .lane:last-child { border-bottom: 0; }
+  .scan-side .lane .ix { font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); color: var(--on-ink-faint); }
+  .scan-side .lane .nm { font-family: var(--grotesk); font-size: 15px; color: var(--on-ink-dim); }
+  .scan-side .lane.done .nm { color: var(--on-ink); }
+  .scan-side .lane .st { font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--on-ink-faint); }
+  .scan-side .lane.done .st { color: var(--accent); }
+  .scan-side .lane.run .st { color: var(--on-ink); }
 </style>
 </head>
 <body>
@@ -424,12 +462,12 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
       <h1>What does the open web <span class="ital">actually say about you.</span></h1>
       <p class="dek">Paste a domain. Nine teardowns run live in the browser. Page speed against the real Lighthouse numbers, schema, mail authentication, the ads you have running today, the pixels you forgot to remove. One memo. No login.</p>
 
-      <form class="form-wrap" method="POST" action="/audit/v3">
+      <form class="form-wrap" method="POST" action="/audit/v3" id="auditForm">
         <div class="form-left">
           <span class="form-lbl"><b>Domain</b> · enter the site you want read</span>
           <div class="url-input">
             <span class="scheme">https://</span>
-            <input type="text" name="url" placeholder="somewhere.com" autocomplete="off" spellcheck="false" value={submittedUrl} required autofocus />
+            <input type="text" name="url" id="auditDomainInput" placeholder="somewhere.com" autocomplete="off" spellcheck="false" value={submittedUrl} required autofocus />
             <button class="submit" type="submit">Run audit <span aria-hidden="true">→</span></button>
           </div>
           <div class="form-meta">
@@ -502,6 +540,44 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
         <div style="margin-top: 8px;"><b>Fred Style</b> · rivett.tech · {headerDate}</div>
       </div>
     </section>
+  )}
+
+  {!memo && (
+    <div class="scan on-ink" id="scanOverlay" role="status" aria-live="polite">
+      <div class="scan-top">
+        <span><span class="dot-live"></span>Live scan · <b id="scanDomain">somewhere.com</b></span>
+        <a class="wordmark">rivett<span class="dot-mark" style="background: var(--accent);"></span></a>
+        <span><b>v3.4</b> · in-browser only</span>
+      </div>
+      <div class="scan-body">
+        <div class="scan-log">
+          <div class="log-head">stdout · run · audit.v3</div>
+          <div class="log-list" id="logList"></div>
+        </div>
+        <aside class="scan-side">
+          <h3>Reading the curve. <span class="ital">No deck. Just the numbers.</span></h3>
+          <div class="progress">
+            <div>
+              <span class="label">Scan progress</span>
+              <div class="pct"><span id="pctVal">0</span><sup>/100</sup></div>
+            </div>
+            <span class="label" id="elapsed">00.0s</span>
+          </div>
+          <div class="bar"><div class="fill" id="barFill"></div></div>
+          <div style="margin-top: var(--sp-7);">
+            <div class="lane" data-lane="0"><span class="ix">D · 01</span><span class="nm">Google index</span><span class="st">queued</span></div>
+            <div class="lane" data-lane="1"><span class="ix">D · 02</span><span class="nm">AI engines</span><span class="st">queued</span></div>
+            <div class="lane" data-lane="2"><span class="ix">D · 03</span><span class="nm">Page speed</span><span class="st">queued</span></div>
+            <div class="lane" data-lane="3"><span class="ix">D · 04</span><span class="nm">Measurement</span><span class="st">queued</span></div>
+            <div class="lane" data-lane="4"><span class="ix">D · 05</span><span class="nm">Ad libraries</span><span class="st">queued</span></div>
+            <div class="lane" data-lane="5"><span class="ix">D · 06</span><span class="nm">Conversion</span><span class="st">queued</span></div>
+            <div class="lane" data-lane="6"><span class="ix">D · 07</span><span class="nm">Mobile render</span><span class="st">queued</span></div>
+            <div class="lane" data-lane="7"><span class="ix">D · 08</span><span class="nm">Email auth (DoH)</span><span class="st">queued</span></div>
+            <div class="lane" data-lane="8"><span class="ix">D · 09</span><span class="nm">Tech fingerprint</span><span class="st">queued</span></div>
+          </div>
+        </aside>
+      </div>
+    </div>
   )}
 
   {memo && audit && (
@@ -673,6 +749,151 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
     <span>rivett.tech · {headerDate}</span>
   </footer>
 </div>
+
+{!memo && (
+  <script is:inline>
+    (function () {
+      var form = document.getElementById('auditForm');
+      var input = document.getElementById('auditDomainInput');
+      var overlay = document.getElementById('scanOverlay');
+      if (!form || !input || !overlay) return;
+
+      var logList = document.getElementById('logList');
+      var pctVal = document.getElementById('pctVal');
+      var barFill = document.getElementById('barFill');
+      var elapsed = document.getElementById('elapsed');
+      var scanDomain = document.getElementById('scanDomain');
+      var lanes = overlay.querySelectorAll('.scan-side .lane');
+
+      function makeScript(domain) {
+        return [
+          ['run',  'resolve dns ' + domain,                    'A record'],
+          ['ok',   'fetch / robots.txt',                       'parsing'],
+          ['ok',   'fetch / sitemap.xml',                      'parsing'],
+          ['ok',   'fetch /index.html (cold)',                 'live HTML'],
+          ['ok',   'parse <head>',                             'meta, canonical, og:type'],
+          ['ok',   'parse JSON-LD',                            'Organization + WebSite'],
+          ['run',  'PSI · mobile lighthouse',                  'started'],
+          ['ok',   'PSI · core web vitals',                    'LCP / FCP / CLS / INP'],
+          ['ok',   'fingerprint · static',                     'tech detection'],
+          ['run',  'headless · 390x844',                       'Chromium booting'],
+          ['ok',   'headless · scrollWidth + tap targets',     'real DOM'],
+          ['ok',   'fingerprint · runtime',                    'GTM-injected pixels'],
+          ['ok',   'DoH · SPF lookup',                         'Cloudflare 1.1.1.1'],
+          ['ok',   'DoH · DMARC lookup',                       'policy + MX'],
+          ['ok',   'fetch /llms.txt',                          'AEO probe'],
+          ['ok',   'Meta Ad Library',                          'active creatives'],
+          ['ok',   'LinkedIn Ad Library',                      'active creatives'],
+          ['ok',   'Google Ad Library',                        'active creatives'],
+          ['ok',   'score · composite',                        'weighted band'],
+          ['ok',   'memo · render',                            'verdict + fixes'],
+        ];
+      }
+
+      function pad(n) { return n < 10 ? '0' + n : '' + n; }
+      function tsAt(seconds) {
+        var s = Math.floor(seconds);
+        var ms = Math.floor((seconds - s) * 1000);
+        return pad(s) + '.' + pad(Math.floor(ms / 10));
+      }
+
+      // Lane order modeled on real enrichment timing - everything fires in
+      // parallel, mobile + tech-runtime are the long-tail because they wait
+      // on the headless pass. Triggers indexed into the log script above.
+      var laneTriggers = {
+        0: { start: 1,  end: 5  },   // Google index (crawl/meta/schema)
+        1: { start: 14, end: 15 },   // AI engines (llms.txt)
+        2: { start: 6,  end: 8  },   // Page speed (PSI)
+        3: { start: 8,  end: 12 },   // Measurement (tracking + runtime)
+        4: { start: 15, end: 18 },   // Ad libraries
+        5: { start: 4,  end: 6  },   // Conversion (form/CTA scan)
+        6: { start: 9,  end: 11 },   // Mobile render (headless)
+        7: { start: 12, end: 14 },   // Email (DoH)
+        8: { start: 11, end: 12 },   // Tech fingerprint
+      };
+
+      function setLane(i, state) {
+        var l = lanes[i]; if (!l) return;
+        var st = l.querySelector('.st');
+        l.classList.remove('run', 'done');
+        if (state === 'run')  { l.classList.add('run');  if (st) st.textContent = 'running'; }
+        else if (state === 'done') { l.classList.add('done'); if (st) st.textContent = 'ok'; }
+        else if (st) st.textContent = 'queued';
+      }
+
+      function startScan(domain) {
+        if (scanDomain) scanDomain.textContent = domain;
+        overlay.classList.add('live');
+        if (logList) logList.innerHTML = '';
+        lanes.forEach(function (_, i) { setLane(i, 'queued'); });
+        if (pctVal) pctVal.textContent = '0';
+        if (barFill) barFill.style.right = '100%';
+        if (elapsed) elapsed.textContent = '00.0s';
+
+        var script = makeScript(domain);
+        // Real scan duration is ~30s. Drive lane + log animation over 26s
+        // so the user sees activity, then asymptote progress to 99% and
+        // hold until the actual response arrives and the browser swaps the page.
+        var totalMs = 26000;
+        var perLine = totalMs / script.length;
+        var startTime = performance.now();
+
+        script.forEach(function (item, i) {
+          setTimeout(function () {
+            var t = (performance.now() - startTime) / 1000;
+            var doneRatio = (i + 1) / script.length;
+            if (pctVal) pctVal.textContent = Math.round(doneRatio * 92);
+            if (barFill) barFill.style.right = (100 - doneRatio * 92) + '%';
+            if (elapsed) elapsed.textContent = tsAt(t) + 's';
+
+            Object.keys(laneTriggers).forEach(function (li) {
+              var trig = laneTriggers[li];
+              if (i >= trig.start && i < trig.end) setLane(parseInt(li, 10), 'run');
+              if (i >= trig.end) setLane(parseInt(li, 10), 'done');
+            });
+
+            if (logList) {
+              var div = document.createElement('span');
+              div.className = 'line';
+              var tag = item[0].toUpperCase();
+              div.innerHTML =
+                '<span class="ts">' + tsAt(t) + 's</span>' +
+                '<span class="tag ' + item[0] + '">[' + tag + ']</span> ' +
+                item[1] +
+                ' <span class="arrow">→</span> <span class="em">' + item[2] + '</span>';
+              logList.appendChild(div);
+              while (logList.children.length > 14) logList.removeChild(logList.firstChild);
+            }
+          }, i * perLine);
+        });
+
+        // After the scripted log finishes, hold at ~95% and slowly creep to 99%
+        // while we wait for the actual server response. The browser swaps the
+        // page when the POST resolves; this overlay dies with it.
+        setTimeout(function () {
+          lanes.forEach(function (_, i) { setLane(i, 'done'); });
+          var stall = 95;
+          var stallTimer = setInterval(function () {
+            if (stall >= 99) { clearInterval(stallTimer); return; }
+            stall += 0.4;
+            if (pctVal) pctVal.textContent = Math.round(stall);
+            if (barFill) barFill.style.right = (100 - stall) + '%';
+            var t = (performance.now() - startTime) / 1000;
+            if (elapsed) elapsed.textContent = tsAt(t) + 's';
+          }, 1500);
+        }, totalMs + 200);
+      }
+
+      form.addEventListener('submit', function () {
+        // Don't preventDefault - let the form POST naturally. The browser
+        // waits for the response (~30s) while this overlay animates. When
+        // /audit/v3 returns, the new HTML replaces the page, overlay gone.
+        var raw = (input.value || '').trim().replace(/^https?:\/\//, '');
+        startScan(raw || 'somewhere.com');
+      });
+    })();
+  </script>
+)}
 
 {memo && (
   <script
