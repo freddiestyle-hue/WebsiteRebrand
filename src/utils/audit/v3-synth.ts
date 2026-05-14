@@ -104,12 +104,15 @@ function speedCellFromPsi(ps: PageSpeedResult): VerdictCell {
       text: `Tap responsiveness: ${fmtMs(ps.inpMs)} (Google "good" threshold: 200ms)`,
     },
   ];
+  const fails = checks.filter((c) => !c.ok).length;
+  const bandWord = ps.band === 'good' ? 'hot' : ps.band === 'needs-improvement' ? 'warm' : 'cold';
   return {
     icon: 'bolt' as VerdictIcon,
     heading: 'How fast it loads',
     value,
     note,
-    benchmark: ps.band === 'good' ? 'Top quartile · ≤ 1.9s LCP' : null,
+    benchmark: `Mobile · ${bandWord}`,
+    benchmarkRight: fails === 0 ? 'Core Vitals OK' : `${fails} of ${checks.length} fail`,
     checks,
   };
 }
@@ -198,15 +201,17 @@ function mobileCellFromResult(
     heading: 'How it behaves on mobile',
     value,
     note,
-    benchmark: useHeadless ? '390×844 viewport · headless verified' : 'Inferred from HTML',
+    benchmark: useHeadless ? '390×844 · verified' : '390×844 · inferred',
+    benchmarkRight: useHeadless ? 'Tier 2 active' : 'Static only',
     checks,
   };
 }
 
 function mailCellFromResult(d: DeliverabilityResult): VerdictCell {
+  const dmarcOk = d.dmarcPresent === true && (d.dmarcPolicy === 'reject' || d.dmarcPolicy === 'quarantine');
   const okCount =
     Number(d.spfPresent === true) +
-    Number(d.dmarcPresent === true && (d.dmarcPolicy === 'reject' || d.dmarcPolicy === 'quarantine')) +
+    Number(dmarcOk) +
     Number(d.mxPresent === true);
   const value = `${okCount} of 3`;
   const note =
@@ -235,12 +240,20 @@ function mailCellFromResult(d: DeliverabilityResult): VerdictCell {
       text: `MX records: ${d.mxPresent ? `present (${d.mxProvider ?? 'unknown provider'})` : 'missing'}`,
     },
   ];
+  // bench-right surfaces the first authoritative gap as a status keyword.
+  let benchRight: string;
+  if (okCount === 3) benchRight = 'All three pass';
+  else if (!dmarcOk) benchRight = 'DMARC missing';
+  else if (d.spfPresent !== true) benchRight = 'SPF missing';
+  else if (d.mxPresent !== true) benchRight = 'MX missing';
+  else benchRight = `${3 - okCount} gap${3 - okCount === 1 ? '' : 's'}`;
   return {
     icon: 'mail' as VerdictIcon,
     heading: 'Email reputation',
     value,
     note,
-    benchmark: null,
+    benchmark: 'DoH · Cloudflare',
+    benchmarkRight: benchRight,
     checks,
   };
 }
@@ -284,16 +297,26 @@ function adsCellFromResult(a: AdsResult): VerdictCell {
   for (const lp of a.sampleLandingPages.slice(0, 2)) {
     checks.push({ ok: false, text: `Ad landing page: ${lp}` });
   }
-  const benchmarkParts: string[] = [];
-  if (platformsLive > 0) benchmarkParts.push(`${platformsLive} of 3 platforms`);
-  if (a.earliestSeen) benchmarkParts.push(`earliest creative ${a.earliestSeen}`);
-  const benchmark = benchmarkParts.length > 0 ? benchmarkParts.join(' · ') : null;
+  const benchLeft = total === 0 ? '0 of 3 platforms' : `${platformsLive} of 3 platforms`;
+  // Format earliest as YYYY·MM if it parses, otherwise pass through verbatim.
+  let benchRight: string | null = null;
+  if (a.earliestSeen) {
+    const d = new Date(a.earliestSeen);
+    if (!Number.isNaN(d.getTime())) {
+      benchRight = `Earliest ${d.getUTCFullYear()}·${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+    } else {
+      benchRight = `Earliest ${a.earliestSeen}`;
+    }
+  } else if (total === 0) {
+    benchRight = 'None active';
+  }
   return {
     icon: 'megaphone' as VerdictIcon,
-    heading: 'Ads you are running',
+    heading: 'Ads running today',
     value,
     note,
-    benchmark,
+    benchmark: benchLeft,
+    benchmarkRight: benchRight,
     checks,
   };
 }
@@ -378,17 +401,26 @@ function techStackCellFromResult(
     checks.push({ ok: true, text: `${TECH_CATEGORY_LABELS[cat]}: ${names}` });
   }
 
+  const catCount = Object.keys(t.byCategory).length;
   return {
     icon: 'flag' as VerdictIcon,
-    heading: 'Tech stack you are running',
+    heading: 'The stack you actually run',
     value,
     note,
     benchmark:
       t.total > 0
         ? hasRuntime
-          ? `${Object.keys(t.byCategory).length} categories · headless verified`
-          : `${Object.keys(t.byCategory).length} categories · static only`
+          ? `${catCount} categories · verified`
+          : `${catCount} categories · static`
         : null,
+    benchmarkRight:
+      t.total === 0
+        ? 'Nothing detected'
+        : hasRuntime && runtimeOnly.size > 0
+          ? `+${runtimeOnly.size} runtime`
+          : hasRuntime
+            ? 'Static only'
+            : 'No headless pass',
     checks,
   };
 }
@@ -426,6 +458,200 @@ function augmentTrackingChecks(
   return out;
 }
 
+// ============================================================
+// Per-dimension cell builders. Each returns a real reading when data is
+// available or a placeholder so the 9-cell grid always fills.
+// Canonical headings come from the dim list on the form: D-01..D-09.
+// ============================================================
+
+function buildSearchCell(searchBasics: CheckResult[]): VerdictCell {
+  if (searchBasics.length === 0) {
+    return {
+      icon: 'search' as VerdictIcon,
+      heading: 'How Google sees you',
+      value: 'n/a',
+      note: 'Crawl checks did not run. The homepage fetch likely failed before search-hygiene signals could be measured.',
+      benchmark: 'Index · unknown',
+      benchmarkRight: 'Retry pending',
+      checks: [],
+    };
+  }
+  const sb = passCount(searchBasics);
+  const gaps = sb.total - sb.passed;
+  const robotsBlocked = searchBasics.some(
+    (c) => c.id === 'robots' && !c.passed && /block/i.test(c.evidence),
+  );
+  return {
+    icon: 'search' as VerdictIcon,
+    heading: 'How Google sees you',
+    value: valueStr(sb),
+    note: noteFor('crawl-and-schema', sb, 'Crawlable, indexed, canonical, schema present.'),
+    benchmark: `Index · ${robotsBlocked ? 'blocked' : 'crawlable'}`,
+    benchmarkRight: gaps === 0 ? 'Clean' : `${gaps} gap${gaps === 1 ? '' : 's'}`,
+    checks: checksFromCategory(searchBasics),
+  };
+}
+
+function buildAEOCell(aeo: CheckResult[]): VerdictCell {
+  if (aeo.length === 0) {
+    return {
+      icon: 'spark' as VerdictIcon,
+      heading: 'How AI engines cite you',
+      value: 'n/a',
+      note: 'AEO checks did not run for this scan.',
+      benchmark: 'AEO · readiness',
+      benchmarkRight: 'Unknown',
+      checks: [],
+    };
+  }
+  const aeoPass = passCount(aeo);
+  const aeoGap = aeoPass.total - aeoPass.passed;
+  return {
+    icon: 'spark' as VerdictIcon,
+    heading: 'How AI engines cite you',
+    value: valueStr(aeoPass),
+    note:
+      aeoPass.passed === aeoPass.total
+        ? 'Every AEO signal we look for is in place. ChatGPT, Claude, Perplexity can read this site.'
+        : aeoPass.passed === 0
+          ? 'No AEO signals detected. AI engines cannot connect this domain to its services or entity.'
+          : `${aeoGap} of ${aeoPass.total} AEO signals missing. Cited competitors fill the gap when prospects ask.`,
+    benchmark: 'AEO · readiness',
+    benchmarkRight:
+      aeoPass.passed === aeoPass.total
+        ? 'Ready'
+        : aeoPass.passed === 0
+          ? 'Not ready'
+          : `${aeoGap} of ${aeoPass.total} missing`,
+    checks: checksFromCategory(aeo),
+  };
+}
+
+function placeholderPSI(): VerdictCell {
+  return {
+    icon: 'bolt' as VerdictIcon,
+    heading: 'How fast it loads',
+    value: 'n/a',
+    note: "PageSpeed didn't return for this scan. Either Google's anonymous quota was exhausted, the site blocked the Lighthouse bot, or the page took longer than 28 seconds. Try again in a few minutes.",
+    benchmark: 'PSI · unavailable',
+    benchmarkRight: 'Retry pending',
+    checks: [],
+  };
+}
+
+function buildTrackingCell(
+  tracking: CheckResult[],
+  enrich?: EnrichmentBundle,
+): VerdictCell {
+  if (tracking.length === 0) {
+    return {
+      icon: 'target' as VerdictIcon,
+      heading: 'What you measure',
+      value: 'n/a',
+      note: 'Tracking-pixel checks did not run for this scan.',
+      benchmark: 'Pixels · unavailable',
+      benchmarkRight: 'Retry pending',
+      checks: [],
+    };
+  }
+  const mergedTech = enrich?.techStack
+    ? mergeTechResults(enrich.techStack, enrich.techStackRuntime ?? null).merged
+    : null;
+  const augmentedChecks = augmentTrackingChecks(tracking, mergedTech);
+  const passedCount = augmentedChecks.filter((c) => c.ok).length;
+  const totalCount = augmentedChecks.length;
+  const gap = totalCount - passedCount;
+  const hasRuntime = !!enrich?.techStackRuntime;
+  return {
+    icon: 'target' as VerdictIcon,
+    heading: 'What you measure',
+    value: `${passedCount} of ${totalCount}`,
+    note:
+      totalCount === passedCount
+        ? 'Every tracker we look for is firing.'
+        : `${gap} of ${totalCount} measurement gaps.`,
+    benchmark: hasRuntime ? 'Pixels · runtime + static' : 'Pixels · static',
+    benchmarkRight: gap === 0 ? 'All firing' : `${gap} gap${gap === 1 ? '' : 's'}`,
+    checks: augmentedChecks,
+  };
+}
+
+function placeholderAds(): VerdictCell {
+  return {
+    icon: 'megaphone' as VerdictIcon,
+    heading: 'Ads running today',
+    value: 'n/a',
+    note:
+      'Ad-library probe did not return for this scan. Either SCRAPECREATORS_API_KEY is unset, the rate limit was hit, or none of Meta / Google / LinkedIn knew this domain.',
+    benchmark: 'Ad libraries · unavailable',
+    benchmarkRight: 'Retry pending',
+    checks: [],
+  };
+}
+
+function buildConversionCell(conversion: CheckResult[]): VerdictCell {
+  if (conversion.length === 0) {
+    return {
+      icon: 'eye' as VerdictIcon,
+      heading: 'How visitors convert',
+      value: 'n/a',
+      note: 'Conversion-path checks did not run for this scan.',
+      benchmark: 'Path · unknown',
+      benchmarkRight: 'Retry pending',
+      checks: [],
+    };
+  }
+  const cp = passCount(conversion);
+  const cgap = cp.total - cp.passed;
+  return {
+    icon: 'eye' as VerdictIcon,
+    heading: 'How visitors convert',
+    value: valueStr(cp),
+    note: noteFor('conversion', cp, 'Clear path, strong CTAs, tappable contact.'),
+    benchmark: `Path · ${cgap === 0 ? 'clear' : cgap >= cp.total ? 'blocked' : 'partial'}`,
+    benchmarkRight: cgap === 0 ? 'Clear' : `${cgap} gap${cgap === 1 ? '' : 's'}`,
+    checks: checksFromCategory(conversion),
+  };
+}
+
+function placeholderMobile(): VerdictCell {
+  return {
+    icon: 'phone' as VerdictIcon,
+    heading: 'How it behaves on mobile',
+    value: 'n/a',
+    note: 'Mobile-render checks did not run for this scan.',
+    benchmark: '390x844 · unavailable',
+    benchmarkRight: 'Retry pending',
+    checks: [],
+  };
+}
+
+function placeholderMail(): VerdictCell {
+  return {
+    icon: 'mail' as VerdictIcon,
+    heading: 'Email reputation',
+    value: 'n/a',
+    note: 'DoH lookups did not return for this scan. Either Cloudflare 1.1.1.1 was unreachable or the domain has no published mail records.',
+    benchmark: 'DoH · unavailable',
+    benchmarkRight: 'Retry pending',
+    checks: [],
+  };
+}
+
+function placeholderStack(staticRan: boolean): VerdictCell {
+  return {
+    icon: 'flag' as VerdictIcon,
+    heading: 'The stack you actually run',
+    value: 'n/a',
+    note: staticRan
+      ? 'No technologies detected even after a full pass.'
+      : 'Tech-stack fingerprint did not run for this scan.',
+    benchmark: staticRan ? '0 categories · verified' : 'Fingerprint · unavailable',
+    benchmarkRight: staticRan ? 'Nothing detected' : 'Retry pending',
+    checks: [],
+  };
+}
+
 export function buildMemoFromAudit(audit: AuditResult, enrich?: EnrichmentBundle): Memo {
   const slug = generateSlug(audit.hostname);
 
@@ -440,112 +666,54 @@ export function buildMemoFromAudit(audit: AuditResult, enrich?: EnrichmentBundle
   const tracking = audit.checks.filter((c) => c.category === 'tracking');
   const conversion = audit.checks.filter((c) => c.category === 'conversion');
 
-  const verdictCells: VerdictCell[] = [];
+  // The result grid ALWAYS renders 9 cells in canonical D-01..D-09 order.
+  // Each builder returns a real reading when data exists or a placeholder
+  // cell so the 3x3 grid never collapses to 8.
+  const verdictCells: VerdictCell[] = [
+    buildSearchCell(searchBasics),
+    buildAEOCell(aeo),
+    enrich?.pageSpeed ? speedCellFromPsi(enrich.pageSpeed) : placeholderPSI(),
+    buildTrackingCell(tracking, enrich),
+    enrich?.ads ? adsCellFromResult(enrich.ads) : placeholderAds(),
+    buildConversionCell(conversion),
+    enrich?.mobile
+      ? mobileCellFromResult(enrich.mobile, enrich?.headless ?? null)
+      : placeholderMobile(),
+    enrich?.deliverability ? mailCellFromResult(enrich.deliverability) : placeholderMail(),
+    enrich?.techStack && enrich.techStack.total > 0
+      ? techStackCellFromResult(enrich.techStack, enrich.techStackRuntime)
+      : placeholderStack(!!enrich?.techStack),
+  ];
 
-  if (searchBasics.length > 0) {
-    verdictCells.push({
-      icon: 'search' as VerdictIcon,
-      heading: 'How Google sees you',
-      value: valueStr(passCount(searchBasics)),
-      note: noteFor(
-        'crawl-and-schema',
-        passCount(searchBasics),
-        'Crawlable, indexed, canonical, schema present.',
-      ),
-      benchmark: null,
-      checks: checksFromCategory(searchBasics),
-    });
-  }
-
-  if (aeo.length > 0) {
-    const aeoPass = passCount(aeo);
-    verdictCells.push({
-      icon: 'spark' as VerdictIcon,
-      heading: 'How AI engines see you',
-      value: valueStr(aeoPass),
-      note:
-        aeoPass.passed === aeoPass.total
-          ? 'Every AEO signal we look for is in place. ChatGPT, Claude, Perplexity can read this site.'
-          : aeoPass.passed === 0
-            ? 'No AEO signals detected. AI engines cannot connect this domain to its services or entity.'
-            : `${aeoPass.total - aeoPass.passed} of ${aeoPass.total} AEO signals missing. Cited competitors fill the gap when prospects ask.`,
-      benchmark: aeoPass.passed === aeoPass.total ? 'AEO-ready' : null,
-      checks: checksFromCategory(aeo),
-    });
-  }
-
-  if (enrich?.pageSpeed) {
-    verdictCells.push(speedCellFromPsi(enrich.pageSpeed));
-  }
-
-  if (tracking.length > 0) {
-    // Use merged static+runtime tech stack so GTM-injected pixels show up.
-    const mergedTech = enrich?.techStack
-      ? mergeTechResults(enrich.techStack, enrich.techStackRuntime ?? null).merged
-      : null;
-    const augmentedChecks = augmentTrackingChecks(tracking, mergedTech);
-    // Recompute passed count to include fingerprint-detected pixels (always
-    // "passed" = "detected" since they're proof of presence, not absence).
-    const passedCount = augmentedChecks.filter((c) => c.ok).length;
-    const totalCount = augmentedChecks.length;
-    verdictCells.push({
-      icon: 'target' as VerdictIcon,
-      heading: 'What you measure',
-      value: `${passedCount} of ${totalCount}`,
-      note:
-        totalCount === passedCount
-          ? 'Every tracker we look for is firing.'
-          : `${totalCount - passedCount} of ${totalCount} measurement gaps.`,
-      benchmark: null,
-      checks: augmentedChecks,
-    });
-  }
-
-  if (enrich?.ads) {
-    verdictCells.push(adsCellFromResult(enrich.ads));
-  }
-
-  if (conversion.length > 0) {
-    verdictCells.push({
-      icon: 'eye' as VerdictIcon,
-      heading: 'How visitors convert',
-      value: valueStr(passCount(conversion)),
-      note: noteFor('conversion', passCount(conversion), 'Clear path, strong CTAs, tappable contact.'),
-      benchmark: null,
-      checks: checksFromCategory(conversion),
-    });
-  }
-
-  if (enrich?.mobile) {
-    verdictCells.push(mobileCellFromResult(enrich.mobile, enrich?.headless ?? null));
-  }
-
-  if (enrich?.deliverability) {
-    verdictCells.push(mailCellFromResult(enrich.deliverability));
-  }
-
-  if (enrich?.techStack && enrich.techStack.total > 0) {
-    verdictCells.push(techStackCellFromResult(enrich.techStack, enrich.techStackRuntime));
-  }
-
-  // Pad if under the 3-cell minimum (only happens on heavy fetch failure)
-  while (verdictCells.length < 3) {
-    verdictCells.push({
-      icon: 'flag' as VerdictIcon,
-      heading: 'Not measured',
-      value: 'n/a',
-      note: 'This dimension is not part of the in-browser audit.',
-      benchmark: null,
-      checks: [],
-    });
-  }
-
-  // Trim if over the 10-cell maximum (shouldn't happen with current cells, but safe)
-  const trimmedCells = verdictCells.slice(0, 10);
+  const trimmedCells = verdictCells;
 
   // Ranked fixes: enrichment-driven priorities first (page speed, DMARC, viewport
   // are the highest-leverage wins when broken), then top failing audit checks.
-  const failed = audit.checks.filter((c) => !c.passed).sort((a, b) => b.weight - a.weight);
+  //
+  // Ad-spending operators are different. When the operator is actively running
+  // paid ads, conversion gaps and pixel gaps cost real money per click - they
+  // outweigh /llms.txt or schema fixes that only matter for organic traffic.
+  // Boost conversion + tracking categories above everything else in that case
+  // so the Top 3 Fixes reflect the operator's actual exposure.
+  const adsRunning =
+    !!(enrich?.ads &&
+      ((enrich.ads.metaActive ?? 0) +
+        (enrich.ads.googleActive ?? 0) +
+        (enrich.ads.linkedinActive ?? 0)) > 0);
+  const AD_OPERATOR_PRIORITY: ReadonlySet<CheckResult['category']> = new Set([
+    'conversion',
+    'tracking',
+  ]);
+  const failed = audit.checks
+    .filter((c) => !c.passed)
+    .sort((a, b) => {
+      if (adsRunning) {
+        const aBoost = AD_OPERATOR_PRIORITY.has(a.category) ? 100 : 0;
+        const bBoost = AD_OPERATOR_PRIORITY.has(b.category) ? 100 : 0;
+        if (aBoost !== bBoost) return bBoost - aBoost;
+      }
+      return b.weight - a.weight;
+    });
   const enrichmentFixes: RankedFix[] = [];
 
   if (enrich?.pageSpeed && enrich.pageSpeed.band === 'poor') {
@@ -603,15 +771,28 @@ export function buildMemoFromAudit(audit: AuditResult, enrich?: EnrichmentBundle
     rankedFixes = combined.slice(0, 3).map((f, i) => ({ ...f, rank: i + 1 }));
   }
 
-  // Cover italic clause: lead with the most prospect-relevant signal we have.
-  let coverItalic = `${audit.bandLabel}. ${audit.bandKicker}`;
+  // Cover italic clause: short and punchy. This text drops into the H1 at
+  // ~96px italic serif, so multi-sentence prose wraps into a wall. Keep it
+  // to one tight clause - the dek and observation carry the longer story.
+  // For ad-spending operators, conversion + tracking gaps land harder than
+  // generic "X ads running" - those gaps are where paid clicks bleed.
+  const adConvGapCount = adsRunning
+    ? audit.checks.filter(
+        (c) => !c.passed && AD_OPERATOR_PRIORITY.has(c.category),
+      ).length
+    : 0;
+  // Default: just the band label as a one-word verdict.
+  let coverItalic = `${audit.bandLabel}.`;
   if (enrich?.pageSpeed?.band === 'poor') {
-    coverItalic = `${audit.bandLabel}. Mobile load ${fmtMs(enrich.pageSpeed.lcpMs)} is bleeding paid clicks.`;
+    coverItalic = `Mobile load ${fmtMs(enrich.pageSpeed.lcpMs)}: bleeding paid clicks.`;
+  } else if (adsRunning && adConvGapCount > 0) {
+    const total = (enrich!.ads!.metaActive ?? 0) + (enrich!.ads!.googleActive ?? 0) + (enrich!.ads!.linkedinActive ?? 0);
+    coverItalic = `${total} paid ${total === 1 ? 'ad' : 'ads'}, ${adConvGapCount} conversion ${adConvGapCount === 1 ? 'gap' : 'gaps'}.`;
   } else if (enrich?.deliverability?.dmarcPresent === false) {
-    coverItalic = `${audit.bandLabel}. No DMARC published: outbound mail risks the spam folder.`;
+    coverItalic = `No DMARC: outbound risks the spam folder.`;
   } else if (enrich?.ads && (enrich.ads.metaActive ?? 0) + (enrich.ads.googleActive ?? 0) > 0) {
     const total = (enrich.ads.metaActive ?? 0) + (enrich.ads.googleActive ?? 0);
-    coverItalic = `${audit.bandLabel}. ${total} paid ${total === 1 ? 'ad' : 'ads'} currently running.`;
+    coverItalic = `${total} paid ${total === 1 ? 'ad' : 'ads'} running today.`;
   }
 
   const dekParts: string[] = [];
@@ -631,6 +812,9 @@ export function buildMemoFromAudit(audit: AuditResult, enrich?: EnrichmentBundle
     observation = `Every check this audit can run is passing, which is rare. The next layer is the part we did not measure here: are your AI engine citations on the right side of the brand, does your peer cohort score above or below you. Those are the questions worth answering next.`;
   } else if (enrich?.pageSpeed?.band === 'poor') {
     observation = `${audit.hostname} loads slowly on mobile (LCP ${fmtMs(enrich.pageSpeed.lcpMs)}). <strong>If you are spending on paid ads, this is the highest-leverage fix in the audit.</strong> Every second over 2.5s drops conversion roughly seven percent. The other checks matter, but page speed touches every dollar of paid traffic.`;
+  } else if (adsRunning && adConvGapCount > 0) {
+    const totalAds = (enrich!.ads!.metaActive ?? 0) + (enrich!.ads!.googleActive ?? 0) + (enrich!.ads!.linkedinActive ?? 0);
+    observation = `${audit.hostname} is spending on ${totalAds} active paid ${totalAds === 1 ? 'ad' : 'ads'}, but the conversion and pixel side of the funnel has ${adConvGapCount} measurable ${adConvGapCount === 1 ? 'gap' : 'gaps'}. <strong>That is paid traffic landing on a leaky page.</strong> The fixes above close it. Schema and llms.txt matter for the organic side; paid clicks need the conversion path tight first.`;
   } else if (failed.length >= 3) {
     observation = `${audit.hostname} has ${failed.length} measurable gaps in the in-browser scan. The top three are above. <strong>What this scan does not see often matters more</strong>: AI engines naming a competitor instead of you, peer-cohort percentile against your industry. Those questions are worth answering next.`;
   } else {

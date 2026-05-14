@@ -1,0 +1,82 @@
+---
+// Shareable cached audit. Reads /audit-v3:{slug} from Upstash KV (deterministic
+// slug per domain, written by v3.astro POST handler) and rewrites to v3.astro
+// with the cached audit on Astro.locals so we render the full result UI
+// without re-running the 30-second scan.
+//
+// Cache miss: render a small 404 inline. v3SlugToDomain isn't reversible for
+// domains containing dashes, so on miss we ask the operator to re-run rather
+// than guess.
+export const prerender = false;
+
+import { Redis } from '@upstash/redis';
+import type { Memo } from '../../../utils/audit/memo-schema';
+import { isValidV3Slug } from '../../../utils/audit/slug';
+
+interface CachedV3 {
+  memo: Memo;
+  durationMs: number;
+  scoreNumeric: number;
+  scoreMax: number;
+  hostname: string;
+  url: string;
+  fetchedAt: string;
+}
+
+const slug = Astro.params.slug ?? '';
+
+if (!isValidV3Slug(slug)) {
+  Astro.response.status = 404;
+} else {
+  try {
+    const redis = Redis.fromEnv();
+    const raw = await redis.get<unknown>(`audit-v3:${slug}`);
+    if (raw != null) {
+      const payload = typeof raw === 'string' ? JSON.parse(raw) : (raw as CachedV3);
+      (Astro.locals as { cachedV3?: CachedV3 }).cachedV3 = payload as CachedV3;
+      return Astro.rewrite('/audit/v3');
+    }
+    Astro.response.status = 404;
+  } catch (e) {
+    console.error('[audit/v3/slug] KV read failed', e);
+    Astro.response.status = 500;
+  }
+}
+
+const now = new Date();
+const headerDate = `${now.getUTCFullYear()}·${String(now.getUTCMonth() + 1).padStart(2, '0')}·${String(now.getUTCDate()).padStart(2, '0')}`;
+---
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Audit not found · rivett</title>
+<meta name="robots" content="noindex,nofollow" />
+<link rel="icon" href="/audit/rivet-b1.svg" type="image/svg+xml" />
+<link rel="stylesheet" href="/audit/tokens.css" />
+<link rel="stylesheet" href="/audit/audit-v3.css" />
+<style>
+  body { font-family: var(--grotesk); background: var(--paper); color: var(--ink); margin: 0; }
+  .wrap { max-width: 720px; margin: 0 auto; padding: var(--sp-14) var(--sp-8); }
+  .kicker { font-family: var(--mono); font-size: var(--t-meta); letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--accent-deep); }
+  h1 { font-family: var(--grotesk); font-weight: 800; font-size: clamp(40px, 5.4vw, 64px); line-height: 1; letter-spacing: var(--track-display); margin: var(--sp-6) 0 var(--sp-6); }
+  h1 .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); }
+  p { font-family: var(--serif); font-style: italic; font-size: 20px; line-height: 1.5; color: var(--ink-dim); margin: 0 0 var(--sp-8); }
+  .slug { font-family: var(--mono); font-size: 14px; color: var(--ink); background: var(--paper-2); padding: 4px 8px; border: 1px solid var(--line); }
+  .ctas { display: flex; gap: var(--sp-3); flex-wrap: wrap; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <span class="kicker">Cached audit · not found</span>
+  <h1>No cached run for <span class="ital">that slug.</span></h1>
+  <p>The cache holds audits for 14 days. After that, or if no audit has ever been run for this domain on this build, the URL returns 404. Paste the domain into the live audit form to generate a fresh one.</p>
+  <p style="font-style: normal; font-family: var(--mono); font-size: 13px; color: var(--ink-faint);">Slug attempted: <span class="slug">{slug}</span></p>
+  <div class="ctas">
+    <a class="btn btn--pri" href="/audit/v3">Run a fresh audit <span aria-hidden="true">→</span></a>
+    <a class="btn btn--sec" href="/diagnostic">Book a call</a>
+  </div>
+</div>
+</body>
+</html>
