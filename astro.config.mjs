@@ -122,7 +122,9 @@ function isPublicIndexablePath(page) {
 export default defineConfig({
   site: 'https://rivett.tech',
   trailingSlash: 'never',
-  adapter: vercel(),
+  // PageSpeed Insights API in /audit/v3 takes 20-30s on slow targets.
+  // Hobby tier ceiling is 60s; bump from the 10s default.
+  adapter: vercel({ maxDuration: 60 }),
   integrations: [
     react(),
     sitemap({
