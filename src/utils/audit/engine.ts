@@ -38,7 +38,10 @@ export interface AuditResult {
 
 const FETCH_TIMEOUT_MS = 12000;
 const MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
-const USER_AGENT = 'RivettAEO/0.1 (+https://rivett.tech/audit)';
+// Real Chrome string. WAFs (Cloudflare, AWS WAF, Imperva) routinely block the
+// previous custom 'RivettAEO/0.1' UA outright (herculesindustries.com returned 403).
+const USER_AGENT =
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
 const BLOCKED_IPV4 = [
   /^10\./,
