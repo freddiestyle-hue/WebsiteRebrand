@@ -283,18 +283,17 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
      The pulse keyframe is reused by the .score-panel kicker in result state. */
   @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
 
-  /* Result shell: 2-col grid on desktop with sticky score-panel right column.
-     On mobile collapses to one column, score-panel on top. */
-  .memo-shell { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 64px; align-items: start; padding-top: var(--sp-7); }
-  .memo-shell .memo-content { min-width: 0; }
-  .memo-shell .score-panel { position: sticky; top: var(--sp-5); max-height: calc(100vh - var(--sp-10)); overflow-y: auto; }
+  /* Result hook: 2-col grid on desktop. Score panel sticks to the top of
+     the viewport WHILE the hero is visible, then scrolls off naturally with
+     the hook section. Everything below the hook (verdict, fixes, obs) is
+     full-width on its own. */
+  .hook { padding: var(--sp-12) 0 var(--sp-14); border-bottom: var(--bw-rule) solid var(--ink); display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 64px; align-items: start; }
+  .hook > div { min-width: 0; }
+  .hook .score-panel { position: sticky; top: var(--sp-5); align-self: start; }
   @media (max-width: 980px) {
-    .memo-shell { display: flex; flex-direction: column; gap: var(--sp-7); padding-top: var(--sp-4); }
-    .memo-shell .score-panel { position: static; max-height: none; overflow: visible; order: -1; }
+    .hook { display: flex; flex-direction: column; gap: var(--sp-7); }
+    .hook .score-panel { position: static; order: -1; }
   }
-
-  /* Result hook (now full width inside memo-content) */
-  .hook { padding: var(--sp-12) 0 var(--sp-14); border-bottom: var(--bw-rule) solid var(--ink); }
   .hook .kicker { font-family: var(--mono); font-size: var(--t-meta); letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--accent-deep); display: inline-flex; align-items: center; }
   .hook .kicker::before { content: ''; display: inline-block; width: 8px; height: 8px; background: var(--accent); border-radius: var(--r-pill); margin-right: 12px; animation: pulse 2.4s var(--ease) infinite; }
   .hook h1 { font-family: var(--grotesk); font-weight: 800; font-size: clamp(48px, 6.4vw, 96px); line-height: 0.92; letter-spacing: var(--track-display); margin: var(--sp-6) 0 var(--sp-7); text-wrap: balance; }
@@ -678,30 +677,54 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
   )}
 
   {memo && audit && (
-    <div class="memo-shell">
-      <div class="memo-content">
-        <section class="hook">
-          <div>
-            <span class="kicker">{fromCache ? `Cached · ${memo.domain}` : `Live audit · ${memo.domain}`}</span>
-            <h1>
-              Your site scores <span id="scoreNum">{compositeScore}</span> of 100.
-              {verdictItalic && <> <span class="ital">{verdictItalic}</span></>}
-            </h1>
-            {memo.cover.dek && <p class="dek">{memo.cover.dek}</p>}
-            <div class="meta-row">
-              <span>Domain · <b>{memo.domain}</b></span>
-              <span>Run · <b>{headerDate}{headerTime ? ` · ${headerTime}` : ''}</b></span>
-              <span>Duration · <b>{audit.durationMs} ms</b></span>
-              <span>Scan · <b>{memo.verdictCells.length} of 9</b></span>
-            </div>
-            {v3Slug && (
-              <div class="share-link" style="margin-top: var(--sp-5); font-family: var(--mono); font-size: var(--t-meta); letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint);">
-                <span>Share · </span>
-                <a href={`/audit/v3/${v3Slug}`} style="color: var(--ink); border-bottom: 1px solid var(--line-strong);">rivett.tech/audit/v3/{v3Slug}</a>
-              </div>
-            )}
+    <>
+      <section class="hook">
+        <div>
+          <span class="kicker">{fromCache ? `Cached · ${memo.domain}` : `Live audit · ${memo.domain}`}</span>
+          <h1>
+            Your site scores <span id="scoreNum">{compositeScore}</span> of 100.
+            {verdictItalic && <> <span class="ital">{verdictItalic}</span></>}
+          </h1>
+          {memo.cover.dek && <p class="dek">{memo.cover.dek}</p>}
+          <div class="meta-row">
+            <span>Domain · <b>{memo.domain}</b></span>
+            <span>Run · <b>{headerDate}{headerTime ? ` · ${headerTime}` : ''}</b></span>
+            <span>Duration · <b>{audit.durationMs} ms</b></span>
+            <span>Scan · <b>{memo.verdictCells.length} of 9</b></span>
           </div>
-        </section>
+          {v3Slug && (
+            <div class="share-link" style="margin-top: var(--sp-5); font-family: var(--mono); font-size: var(--t-meta); letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint);">
+              <span>Share · </span>
+              <a href={`/audit/v3/${v3Slug}`} style="color: var(--ink); border-bottom: 1px solid var(--line-strong);">rivett.tech/audit/v3/{v3Slug}</a>
+            </div>
+          )}
+        </div>
+
+        <aside class="score-panel">
+          <span class="lab">Composite read · v3.4</span>
+          <div class="read"><span id="scoreBig">{compositeScore}</span><span class="denom">/ 100</span></div>
+          <div class="scale">
+            {[0,1,2,3,4].map((i) => (
+              <div class={`seg ${i < scoreSegment ? 'dim-lit' : i === scoreSegment ? 'lit' : ''}`}></div>
+            ))}
+          </div>
+          <div class="markers">
+            <span>{scoreSegment === 0 ? <b>Halt</b> : 'Halt'}</span>
+            <span>{scoreSegment === 1 ? <b>Watch</b> : 'Watch'}</span>
+            <span>{scoreSegment === 2 ? <b>Read</b> : 'Read'}</span>
+            <span>{scoreSegment === 3 ? <b>Run</b> : 'Run'}</span>
+            <span>{scoreSegment === 4 ? <b>Push</b> : 'Push'}</span>
+          </div>
+          <div class="chips">
+            {memo.verdictCells.map((cell) => (
+              <div class={`chip ${cellSeverity(cell)}`}>
+                <span class="k">{chipKey(cell.icon)}</span>
+                <span class="v">{chipValue(cell)}</span>
+              </div>
+            ))}
+          </div>
+        </aside>
+      </section>
 
         <section class="sec">
           <div class="sec-head">
@@ -800,33 +823,7 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
             </div>
           </div>
         </section>
-      </div>
-
-      <aside class="score-panel">
-        <span class="lab">Composite read · v3.4</span>
-        <div class="read"><span id="scoreBig">{compositeScore}</span><span class="denom">/ 100</span></div>
-        <div class="scale">
-          {[0,1,2,3,4].map((i) => (
-            <div class={`seg ${i < scoreSegment ? 'dim-lit' : i === scoreSegment ? 'lit' : ''}`}></div>
-          ))}
-        </div>
-        <div class="markers">
-          <span>{scoreSegment === 0 ? <b>Halt</b> : 'Halt'}</span>
-          <span>{scoreSegment === 1 ? <b>Watch</b> : 'Watch'}</span>
-          <span>{scoreSegment === 2 ? <b>Read</b> : 'Read'}</span>
-          <span>{scoreSegment === 3 ? <b>Run</b> : 'Run'}</span>
-          <span>{scoreSegment === 4 ? <b>Push</b> : 'Push'}</span>
-        </div>
-        <div class="chips">
-          {memo.verdictCells.map((cell) => (
-            <div class={`chip ${cellSeverity(cell)}`}>
-              <span class="k">{chipKey(cell.icon)}</span>
-              <span class="v">{chipValue(cell)}</span>
-            </div>
-          ))}
-        </div>
-      </aside>
-    </div>
+    </>
   )}
 
   {memo && (
