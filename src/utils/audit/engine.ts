@@ -17,6 +17,16 @@ import {
 } from './crawl';
 import type { ConversionPathResult } from './conversion-path';
 
+// Upgrade 7 - how far a finding can be trusted, especially a negative one.
+//   verified     - confirmed present, or a real measurement, or an
+//                  authoritative absence (a 404, a missing DNS record).
+//                  Assertable as fact.
+//   soft-absence - reports something absent, but the method false-negatives
+//                  (HTML parse, regex, allowlist). Never assert the absence.
+//   inferred     - a perception or model read, not a measurement. Frame as
+//                  perception, never as fact.
+export type ReliabilityTag = 'verified' | 'soft-absence' | 'inferred';
+
 export interface CheckResult {
   id: string;
   category: 'crawl' | 'schema' | 'meta' | 'aeo' | 'tracking' | 'conversion';
@@ -28,7 +38,14 @@ export interface CheckResult {
   // Upgrade 3 - for tracking checks, the structured measurement behind the
   // pass/fail (state + observed events). Absent on non-tracking checks.
   measurement?: PixelMeasurement;
+  // Upgrade 7 - calibration tag the synthesis layer and LLM hero read so a
+  // soft negative is never asserted as a hard fact.
+  reliability: ReliabilityTag;
 }
+
+// A check before the reliability pass runs. runAudit builds these, then
+// finalizes each into a CheckResult by computing its reliability tag.
+export type DraftCheck = Omit<CheckResult, 'reliability'>;
 
 export interface AuditResult {
   url: string;
@@ -280,6 +297,36 @@ function canonicalHref(html: string): string | null {
   return m2 ? m2[1] : null;
 }
 
+// Upgrade 7 - the reliability tag for one finished check. Rule of thumb: a
+// positive result (something found, a number measured) is assertable; a
+// negative result is only assertable when the method sees absence
+// authoritatively (a real network fetch - a 404 is a 404). HTML parsing,
+// regex, and allowlists false-negative, so their absences are soft.
+export function reliabilityFor(c: DraftCheck): ReliabilityTag {
+  // Tracking checks carry a measured state.
+  if (c.measurement) {
+    const s = c.measurement.state;
+    // We saw the tag's code on the page or its beacon fire - presence is fact.
+    if (s === 'present' || s === 'firing' || s === 'events-observed') return 'verified';
+    // A real render not seeing the beacon is decent evidence, but a tag can
+    // load late or sit behind a consent gate. Never assert the absence.
+    return 'soft-absence';
+  }
+  switch (c.id) {
+    // Real network fetches: a 200 and a 404 are both authoritative.
+    case 'llms-txt':
+    case 'llms-full':
+    case 'robots':
+    case 'robots-sitemap':
+      return 'verified';
+    default:
+      // Everything else - sitemap discovery, HTML-parsed schema/meta, regex
+      // conversion signals, the click-trace - reads a positive result
+      // reliably and false-negatives on absence.
+      return c.passed ? 'verified' : 'soft-absence';
+  }
+}
+
 // ============================================================
 // Run audit
 // ============================================================
@@ -364,13 +411,13 @@ export async function runAudit(rawUrl: string, opts?: RunAuditOptions): Promise<
     crawledPages = (await crawlPages(discovered)).pages;
   }
 
-  // The checks
-  const checks: CheckResult[] = [];
+  // The checks. Built as drafts, then finalized with a reliability tag.
+  const draft: DraftCheck[] = [];
 
   // CRAWL
   {
     const ok = sitemapResolved.ok || (sitemapAlt?.ok ?? false);
-    checks.push({
+    draft.push({
       id: 'sitemap',
       category: 'crawl',
       label: 'Sitemap reachable',
@@ -386,7 +433,7 @@ export async function runAudit(rawUrl: string, opts?: RunAuditOptions): Promise<
     const text = sitemapResolved.ok ? sitemapResolved.text : '';
     const urlCount = (text.match(/<loc>/g) || []).length;
     const ok = urlCount >= 5;
-    checks.push({
+    draft.push({
       id: 'sitemap-size',
       category: 'crawl',
       label: 'Sitemap has 5+ URLs',
@@ -406,7 +453,7 @@ export async function runAudit(rawUrl: string, opts?: RunAuditOptions): Promise<
     // Check if AI bots are blocked
     const blocksAi = ok && /user-agent:\s*(gptbot|google-extended|perplexitybot|claudebot|chatgpt-user)/i.test(text) && /disallow:\s*\//i.test(text);
     const passed = ok && !blocksAi;
-    checks.push({
+    draft.push({
       id: 'robots',
       category: 'crawl',
       label: 'robots.txt present, AI bots not blocked',
@@ -423,7 +470,7 @@ export async function runAudit(rawUrl: string, opts?: RunAuditOptions): Promise<
   {
     const text = robots.ok ? robots.text : '';
     const ok = /sitemap:\s*https?:/i.test(text);
-    checks.push({
+    draft.push({
       id: 'robots-sitemap',
       category: 'crawl',
       label: 'robots.txt references the sitemap',
@@ -439,7 +486,7 @@ export async function runAudit(rawUrl: string, opts?: RunAuditOptions): Promise<
   // SCHEMA
   {
     const ok = hasJsonLdType(flat, 'Organization');
-    checks.push({
+    draft.push({
       id: 'org-schema',
       category: 'schema',
       label: 'Organization JSON-LD on homepage',
@@ -453,7 +500,7 @@ export async function runAudit(rawUrl: string, opts?: RunAuditOptions): Promise<
   }
   {
     const ok = hasJsonLdType(flat, 'WebSite');
-    checks.push({
+    draft.push({
       id: 'website-schema',
       category: 'schema',
       label: 'WebSite JSON-LD on homepage',
@@ -470,7 +517,7 @@ export async function runAudit(rawUrl: string, opts?: RunAuditOptions): Promise<
   {
     const author = metaContent(checkHtml, 'name', 'author');
     const ok = !!author && author.trim().length > 0;
-    checks.push({
+    draft.push({
       id: 'meta-author',
       category: 'meta',
       label: '<meta name="author"> present',
@@ -486,7 +533,7 @@ export async function runAudit(rawUrl: string, opts?: RunAuditOptions): Promise<
     const canon = canonicalHref(checkHtml);
     const ok = !!canon;
     let evidence = ok ? `canonical: ${canon}` : `no <link rel="canonical">`;
-    checks.push({
+    draft.push({
       id: 'canonical',
       category: 'meta',
       label: 'Canonical link on homepage',
@@ -501,7 +548,7 @@ export async function runAudit(rawUrl: string, opts?: RunAuditOptions): Promise<
   {
     const ogType = metaContent(checkHtml, 'property', 'og:type');
     const ok = !!ogType;
-    checks.push({
+    draft.push({
       id: 'og-type',
       category: 'meta',
       label: 'og:type set on homepage',
@@ -517,7 +564,7 @@ export async function runAudit(rawUrl: string, opts?: RunAuditOptions): Promise<
   // AEO
   {
     const ok = llms.ok && llms.text.trim().length > 0;
-    checks.push({
+    draft.push({
       id: 'llms-txt',
       category: 'aeo',
       label: '/llms.txt reachable',
@@ -531,7 +578,7 @@ export async function runAudit(rawUrl: string, opts?: RunAuditOptions): Promise<
   }
   {
     const ok = llmsFull.ok && llmsFull.text.trim().length > 0;
-    checks.push({
+    draft.push({
       id: 'llms-full',
       category: 'aeo',
       label: '/llms-full.txt reachable (bonus)',
@@ -550,7 +597,7 @@ export async function runAudit(rawUrl: string, opts?: RunAuditOptions): Promise<
     const above = bodyText.slice(0, 1500);
     const phonePresent = /(tel:|\+?\d[\d\s().-]{8,}\d)/.test(checkHtml) || /(\bcalendly|cal\.com|savvycal|acuityscheduling)/i.test(checkHtml);
     const ok = phonePresent;
-    checks.push({
+    draft.push({
       id: 'contact-cta',
       category: 'aeo',
       label: 'Reachable contact / scheduling on homepage',
@@ -566,7 +613,7 @@ export async function runAudit(rawUrl: string, opts?: RunAuditOptions): Promise<
     const trustImg = /<img[^>]*alt=["'][^"']*(logo|y combinator|ycombinator|techcrunch|forbes|fortune|wsj|bloomberg|trustpilot|capterra|g2)[^"']*["']/i;
     const trustText = /(featured in|as seen in|trusted by|backed by)/i;
     const hasTrust = trustImg.test(checkHtml) || trustText.test(checkHtml);
-    checks.push({
+    draft.push({
       id: 'trust-signal',
       category: 'aeo',
       label: 'Trust signals visible on homepage',
@@ -597,7 +644,7 @@ export async function runAudit(rawUrl: string, opts?: RunAuditOptions): Promise<
     weight: number,
     m: PixelMeasurement,
     copy: { absent: string; present: string; firing: string },
-  ): CheckResult => {
+  ): DraftCheck => {
     const evidence =
       m.state === 'events-observed'
         ? `events observed: ${m.events.join(', ')}`
@@ -617,7 +664,7 @@ export async function runAudit(rawUrl: string, opts?: RunAuditOptions): Promise<
     return { id, category: 'tracking', label, passed: m.state !== 'absent', weight, evidence, finding, measurement: m };
   };
 
-  checks.push(
+  draft.push(
     trackingCheck('tracking-meta-pixel', 'Meta Pixel', 1, measured.metaPixel, {
       absent:
         'No Meta Pixel detected. If you are spending on Meta ads, the algorithm cannot learn from conversions on this page. Install the pixel and configure the lead event.',
@@ -626,7 +673,7 @@ export async function runAudit(rawUrl: string, opts?: RunAuditOptions): Promise<
       firing: 'Meta Pixel is firing. Meta is receiving page data it can optimize ad bidding against.',
     }),
   );
-  checks.push(
+  draft.push(
     trackingCheck('tracking-gtm', 'Google Tag Manager container', 1, measured.gtm, {
       absent:
         'No GTM container. Every new tracking tag requires a developer. Add GTM once and you can wire pixels and conversion events without redeploying.',
@@ -635,7 +682,7 @@ export async function runAudit(rawUrl: string, opts?: RunAuditOptions): Promise<
       firing: 'A GTM container is live and running. New tags can be wired without code changes.',
     }),
   );
-  checks.push(
+  draft.push(
     trackingCheck('tracking-ga4', 'GA4 (Google Analytics 4)', 1, measured.ga4, {
       absent:
         'No GA4 detected. Google Ads cannot optimize for conversions and any SEO work is unmeasurable. Install GA4, most easily via Google Tag Manager.',
@@ -647,7 +694,7 @@ export async function runAudit(rawUrl: string, opts?: RunAuditOptions): Promise<
   );
   // LinkedIn / TikTok / PostHog are weight 0 — channel-specific, recorded so
   // the teardown can surface them but not score-impacting.
-  checks.push(
+  draft.push(
     trackingCheck('tracking-linkedin-insight', 'LinkedIn Insight tag', 0, measured.linkedinInsight, {
       absent: 'No LinkedIn Insight tag. Only relevant if you advertise on LinkedIn.',
       present: 'LinkedIn Insight code is on the page, but not observed firing in this scan.',
@@ -655,14 +702,14 @@ export async function runAudit(rawUrl: string, opts?: RunAuditOptions): Promise<
         'LinkedIn Insight is firing. If you run LinkedIn Ads, retargeting and conversion attribution will work.',
     }),
   );
-  checks.push(
+  draft.push(
     trackingCheck('tracking-tiktok-pixel', 'TikTok Pixel', 0, measured.tiktokPixel, {
       absent: 'No TikTok Pixel. Only relevant if your buyers are on TikTok.',
       present: 'TikTok Pixel code is on the page, but not observed firing in this scan.',
       firing: 'TikTok Pixel is firing.',
     }),
   );
-  checks.push(
+  draft.push(
     trackingCheck('tracking-posthog', 'PostHog product analytics', 0, measured.postHog, {
       absent:
         'No PostHog. Not strictly required, but if you want feature flags, session replay, or product analytics later, it is the cheapest entry point.',
@@ -683,7 +730,7 @@ export async function runAudit(rawUrl: string, opts?: RunAuditOptions): Promise<
     weight: number,
     signal: keyof ConversionSignals,
     copy: { homepage: string; elsewhere: (role: PageRole) => string; absent: string },
-  ): CheckResult => {
+  ): DraftCheck => {
     const onHomepage = homeSignals[signal];
     const onOther = onHomepage ? undefined : crawledPages.find((p) => p.ok && p[signal]);
     const others = crawledPages.filter((p) => p.ok).length;
@@ -710,7 +757,7 @@ export async function runAudit(rawUrl: string, opts?: RunAuditOptions): Promise<
     };
   };
 
-  checks.push(
+  draft.push(
     conversionCheck('conversion-form-on-page', 'Form available on the site', 1, 'hasForm', {
       homepage: 'The homepage carries a form. A cold visitor can convert without an extra click.',
       elsewhere: (role) =>
@@ -719,7 +766,7 @@ export async function runAudit(rawUrl: string, opts?: RunAuditOptions): Promise<
         'No form for a cold visitor to convert through. Put a short form on the homepage - two extra clicks to find one costs roughly half the completions.',
     }),
   );
-  checks.push(
+  draft.push(
     conversionCheck('conversion-tel-link', 'Tappable phone number', 1, 'hasTelLink', {
       homepage: 'A tappable phone link is on the homepage. Mobile visitors can call without typing.',
       elsewhere: (role) =>
@@ -728,7 +775,7 @@ export async function runAudit(rawUrl: string, opts?: RunAuditOptions): Promise<
         'No tappable phone link. Mobile visitors who want to call have to memorise the number, switch apps, and dial. For service businesses that is a real conversion drop.',
     }),
   );
-  checks.push(
+  draft.push(
     conversionCheck('conversion-scheduling-link', 'Self-serve scheduling link', 1, 'hasScheduling', {
       homepage:
         'A self-serve scheduling link is on the homepage. Cold prospects can book without sending an email.',
@@ -738,7 +785,7 @@ export async function runAudit(rawUrl: string, opts?: RunAuditOptions): Promise<
         'No self-serve scheduling. Every meeting needs email back-and-forth. Add Calendly or Cal.com to the contact area.',
     }),
   );
-  checks.push(
+  draft.push(
     conversionCheck('conversion-chat-widget', 'Live or async chat widget', 0.5, 'hasChatWidget', {
       homepage:
         'A chat widget is installed. Visitors with quick questions can ask without filling a form.',
@@ -747,7 +794,7 @@ export async function runAudit(rawUrl: string, opts?: RunAuditOptions): Promise<
         'No chat widget. Skippable if you handle inbound by phone or email; useful if your buyers expect async chat.',
     }),
   );
-  checks.push(
+  draft.push(
     conversionCheck('conversion-prominent-cta', 'Prominent CTA above the fold', 1, 'hasPromptCta', {
       homepage:
         'A high-intent CTA sits above the fold on the homepage. Cold visitors know how to act in the first viewport.',
@@ -790,7 +837,7 @@ export async function runAudit(rawUrl: string, opts?: RunAuditOptions): Promise<
         cpFinding = 'The conversion path could not be traced automatically in this scan.';
         break;
     }
-    checks.push({
+    draft.push({
       id: 'conversion-path',
       category: 'conversion',
       label: 'Path from CTA to a form',
@@ -803,6 +850,14 @@ export async function runAudit(rawUrl: string, opts?: RunAuditOptions): Promise<
   }
 
   const endedAt = Date.now();
+
+  // Upgrade 7 - finalize every draft check with its reliability tag, so a
+  // soft negative is never read downstream as a hard fact.
+  const checks: CheckResult[] = draft.map((c) => ({
+    ...c,
+    reliability: reliabilityFor(c),
+  }));
+
   const passedWeight = checks.reduce((s, c) => s + (c.passed ? c.weight : 0), 0);
   const totalWeight = checks.reduce((s, c) => s + c.weight, 0);
   const scorePercent = totalWeight === 0 ? 0 : Math.round((passedWeight / totalWeight) * 100);

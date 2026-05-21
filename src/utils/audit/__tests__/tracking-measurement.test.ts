@@ -173,6 +173,7 @@ function trackingChecks(states: TrackingState[]): CheckResult[] {
     evidence: '',
     finding: '',
     measurement: { state, events: state === 'events-observed' ? ['Lead'] : [] },
+    reliability: state === 'absent' ? 'soft-absence' : 'verified',
   }));
 }
 
