@@ -1,17 +1,21 @@
-// JSON endpoint that returns the hero finding computed from a cached v3 audit.
-// Used by scripts/bulk-audit.mjs to populate hero_dimension / hero_strength /
-// hero_diagnosis columns in the bulk-output CSV without duplicating
-// pick-hero.ts logic into JavaScript.
+// JSON endpoint that serves the per-prospect teardown hero.
 //
-// The underlying Memo is already publicly accessible at /audit/v3/{slug}
-// (rendered as HTML), so this JSON endpoint adds no new data surface - it
-// just exposes the structured hero summary so callers don't have to scrape.
+// Phase 1 rewrite. On request it returns the cached LLM hero
+// (audit-v3-hero:{slug}). On a cache miss it loads the cached audit memo
+// (audit-v3:{slug}), generates the hero with Claude Sonnet, caches it, and
+// returns it. If generation fails or comes back ungrounded, generateHero
+// returns null and the endpoint falls back to the rule-based pickHeroFinding,
+// returning that WITHOUT caching so a later request retries the LLM.
+//
+// Rollback: flush audit-v3-hero:* in KV and every prospect instantly reverts
+// to the rule-based hero - no deploy.
 
 import type { APIRoute } from 'astro';
 import { Redis } from '@upstash/redis';
 import type { Memo } from '../../../../../utils/audit/memo-schema';
 import { isValidV3Slug } from '../../../../../utils/audit/slug';
 import { pickHeroFinding } from '../../../../../utils/audit/pick-hero';
+import { generateHero, type HeroResult } from '../../../../../utils/audit/hero-llm';
 
 export const prerender = false;
 
@@ -25,6 +29,14 @@ interface CachedV3 {
   fetchedAt: string;
 }
 
+interface CachedHero {
+  slug: string;
+  domain: string;
+  hero: HeroResult;
+  source: 'llm' | 'fallback';
+  generatedAt: string;
+}
+
 function json(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -32,16 +44,47 @@ function json(status: number, body: unknown): Response {
   });
 }
 
+// pickHeroFinding produces the rule-based HeroFinding; map it onto the hero
+// shape the page and DM consume. The rule-based path has no "one thing they
+// do well" line, so strength is left empty.
+function fallbackHero(memo: Memo): { hero: HeroResult; dimension: string } {
+  const hf = pickHeroFinding(memo);
+  return {
+    hero: { pageHero: hf.diagnosis, dmOneLiner: hf.oneLiner, strength: '' },
+    dimension: hf.dimension,
+  };
+}
+
 export const GET: APIRoute = async ({ params }) => {
   const slug = params.slug ?? '';
   if (!isValidV3Slug(slug)) return json(400, { error: 'invalid slug' });
 
+  let redis: Redis;
+  try {
+    redis = Redis.fromEnv();
+  } catch (e) {
+    console.error('[api/audit/v3/hero] KV unavailable', e);
+    return json(500, { error: 'kv_unavailable' });
+  }
+
+  // 1. Serve the cached LLM hero if one exists.
+  try {
+    const cached = await redis.get(`audit-v3-hero:${slug}`);
+    if (cached != null) {
+      const hero: CachedHero =
+        typeof cached === 'string' ? JSON.parse(cached) : (cached as CachedHero);
+      return json(200, { ...hero, cached: true });
+    }
+  } catch (e) {
+    console.error('[api/audit/v3/hero] hero cache read failed; regenerating', e);
+  }
+
+  // 2. Load the cached audit memo.
   let raw: unknown;
   try {
-    const redis = Redis.fromEnv();
     raw = await redis.get(`audit-v3:${slug}`);
   } catch (e) {
-    console.error('[api/audit/v3/hero] KV read failed', e);
+    console.error('[api/audit/v3/hero] memo read failed', e);
     return json(500, { error: 'kv_read_failed' });
   }
   if (raw == null) return json(404, { error: 'not_found' });
@@ -49,26 +92,38 @@ export const GET: APIRoute = async ({ params }) => {
   let payload: CachedV3;
   try {
     payload = typeof raw === 'string' ? JSON.parse(raw) : (raw as CachedV3);
-  } catch (e) {
+  } catch {
     return json(500, { error: 'kv_parse_failed' });
   }
   if (!payload?.memo) return json(500, { error: 'kv_missing_memo' });
 
-  const hero = pickHeroFinding(payload.memo);
+  // 3. Generate the LLM hero; cache it on success.
+  const llm = await generateHero({ memo: payload.memo });
+  if (llm) {
+    const record: CachedHero = {
+      slug,
+      domain: payload.hostname,
+      hero: llm,
+      source: 'llm',
+      generatedAt: new Date().toISOString(),
+    };
+    try {
+      await redis.set(`audit-v3-hero:${slug}`, JSON.stringify(record));
+    } catch (e) {
+      console.error('[api/audit/v3/hero] hero cache write failed', e);
+    }
+    return json(200, { ...record, cached: false });
+  }
 
+  // 4. Fall back to the rule-based hero. NOT cached, so a later request
+  //    retries the LLM. Flagged source:fallback for manual review before send.
+  const fb = fallbackHero(payload.memo);
   return json(200, {
     slug,
     domain: payload.hostname,
-    score: payload.scoreNumeric,
-    scoreMax: payload.scoreMax,
-    fetchedAt: payload.fetchedAt,
-    hero: {
-      dimension: hero.dimension,
-      strength: hero.strength,
-      cellHeading: hero.cellHeading,
-      diagnosis: hero.diagnosis,
-      oneLiner: hero.oneLiner,
-      revenueMath: hero.revenueMath ?? null,
-    },
+    hero: fb.hero,
+    fallbackDimension: fb.dimension,
+    source: 'fallback',
+    cached: false,
   });
 };
