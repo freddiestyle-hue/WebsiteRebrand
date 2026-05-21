@@ -136,3 +136,40 @@ describe('runAudit — tracking measurement (Upgrade 3)', () => {
     expect(check(r.checks, 'tracking-ga4').passed).toBe(false);
   });
 });
+
+describe('runAudit — multi-page crawl (Upgrade 1)', () => {
+  // Homepage with a nav link to /contact but no form of its own.
+  const HOME_WITH_NAV = `<!doctype html><html><head><title>Acme</title></head>
+<body><nav><a href="/contact">Contact</a></nav><div id="root"></div></body></html>`;
+  // The contact page is where the form lives.
+  const CONTACT_PAGE = `<!doctype html><html><body>
+<form action="/submit"><input name="email" /><button>Send</button></form></body></html>`;
+
+  function crawlMockFetch() {
+    return vi.fn(async (input: unknown) => {
+      const u = String(input);
+      if (/\/contact$/.test(u)) {
+        return new Response(CONTACT_PAGE, { status: 200, headers: { 'content-type': 'text/html' } });
+      }
+      if (ANCILLARY_RE.test(u)) return new Response('not found', { status: 404 });
+      return new Response(HOME_WITH_NAV, { status: 200, headers: { 'content-type': 'text/html' } });
+    });
+  }
+
+  it('judges conversion across the crawled pages: a form on /contact counts', async () => {
+    vi.stubGlobal('fetch', crawlMockFetch());
+    const r = await runAudit('https://acme.example', { crawl: true });
+    const form = check(r.checks, 'conversion-form-on-page');
+    expect(form.passed).toBe(true);
+    expect(form.evidence).toContain('contact');
+    expect(r.crawledPages?.some((p) => p.role === 'contact' && p.hasForm)).toBe(true);
+  });
+
+  it('without the crawl opt, conversion stays homepage-only', async () => {
+    vi.stubGlobal('fetch', crawlMockFetch());
+    const r = await runAudit('https://acme.example');
+    // The homepage has no form and the crawl did not run, so it fails.
+    expect(check(r.checks, 'conversion-form-on-page').passed).toBe(false);
+    expect(r.crawledPages).toEqual([]);
+  });
+});

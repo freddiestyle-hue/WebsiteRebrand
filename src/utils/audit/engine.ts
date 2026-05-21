@@ -7,6 +7,14 @@ import {
   type HeadlessTrackingCapture,
   type PixelMeasurement,
 } from './tracking';
+import {
+  discoverKeyPages,
+  crawlPages,
+  detectConversionSignals,
+  type CrawledPage,
+  type ConversionSignals,
+  type PageRole,
+} from './crawl';
 
 export interface CheckResult {
   id: string;
@@ -41,6 +49,9 @@ export interface AuditResult {
     aeo: { grade: string; passed: number; total: number };
     sendReady: { grade: string; passed: number; total: number };
   };
+  // Upgrade 1 - the key pages crawled beyond the homepage (contact / money /
+  // about) and what each carried. Empty when the crawl did not run.
+  crawledPages?: CrawledPage[];
   error?: string;
 }
 
@@ -281,6 +292,10 @@ export interface RunAuditOptions {
   // the tracking checks report runtime truth - present / firing /
   // events-observed - instead of static presence only. See Upgrade 3.
   headlessTracking?: HeadlessTrackingCapture;
+  // Upgrade 1 - when true, runAudit also discovers and crawls the prospect's
+  // key pages (contact / money / about) so conversion is judged across the
+  // real site, not just the homepage. v3.astro sets it; legacy callers do not.
+  crawl?: boolean;
 }
 
 export async function runAudit(rawUrl: string, opts?: RunAuditOptions): Promise<AuditResult> {
@@ -334,6 +349,16 @@ export async function runAudit(rawUrl: string, opts?: RunAuditOptions): Promise<
   const checkHtml = rendered ?? staticHtml;
   const jsonLdBlocks = extractJsonLd(checkHtml);
   const flat = flattenJsonLd(jsonLdBlocks);
+
+  // Upgrade 1 — crawl the prospect's key pages (contact / money / about) so
+  // conversion is judged across the real site, not just the homepage. Gated
+  // behind opts.crawl: v3.astro opts in; legacy callers stay fast.
+  let crawledPages: CrawledPage[] = [];
+  if (opts?.crawl) {
+    const sitemapText = sitemapResolved.ok ? sitemapResolved.text : '';
+    const discovered = discoverKeyPages(checkHtml, sitemapText, origin);
+    crawledPages = (await crawlPages(discovered)).pages;
+  }
 
   // The checks
   const checks: CheckResult[] = [];
@@ -643,78 +668,91 @@ export async function runAudit(rawUrl: string, opts?: RunAuditOptions): Promise<
   );
 
   // === conversion paths ===
-  {
-    const hasForm = /<form\b[^>]*>/i.test(checkHtml);
-    checks.push({
-      id: 'conversion-form-on-page',
+  // Upgrade 1 — conversion is judged across the homepage AND the crawled key
+  // pages. A form on /contact or a CTA on /pricing now counts; the evidence
+  // names where it was found, and a signal that exists only off the homepage
+  // is reported honestly as present-but-not-on-the-front-door.
+  const homeSignals = detectConversionSignals(checkHtml);
+  const conversionCheck = (
+    id: string,
+    label: string,
+    weight: number,
+    signal: keyof ConversionSignals,
+    copy: { homepage: string; elsewhere: (role: PageRole) => string; absent: string },
+  ): CheckResult => {
+    const onHomepage = homeSignals[signal];
+    const onOther = onHomepage ? undefined : crawledPages.find((p) => p.ok && p[signal]);
+    const others = crawledPages.filter((p) => p.ok).length;
+    const evidence = onHomepage
+      ? 'found on the homepage'
+      : onOther
+        ? `found on the ${onOther.role} page, not the homepage`
+        : others > 0
+          ? `not found on the homepage or ${others} other key page${others === 1 ? '' : 's'}`
+          : 'not found on the homepage';
+    const finding = onHomepage
+      ? copy.homepage
+      : onOther
+        ? copy.elsewhere(onOther.role)
+        : copy.absent;
+    return {
+      id,
       category: 'conversion',
-      label: 'Form available on homepage',
-      passed: hasForm,
-      weight: 1,
-      evidence: hasForm ? '<form> tag present in homepage HTML' : 'no <form> tag found',
-      finding: hasForm
-        ? 'The homepage carries a form. A cold visitor can convert without an extra click.'
-        : 'No form on the homepage. A cold visitor has to navigate to convert. Two extra clicks costs roughly half the form completions.',
-    });
-  }
-  {
-    const tel = /\bhref=["']tel:/i.test(checkHtml);
-    checks.push({
-      id: 'conversion-tel-link',
-      category: 'conversion',
-      label: 'Tappable phone number',
-      passed: tel,
-      weight: 1,
-      evidence: tel ? 'tel: link present' : 'no tel: link',
-      finding: tel
-        ? 'A tel: link is present. Mobile visitors can call without typing.'
-        : 'No tappable phone link. Mobile visitors who want to call have to memorize the number, switch apps, type it, and dial. For service businesses this is a real conversion drop.',
-    });
-  }
-  {
-    const schedule = /(calendly\.com|cal\.com\/[a-z]|calendar\.app\.google|hubspot\.com\/meetings|chilipiper\.com|savvycal\.com|tidycal\.com)/i.test(checkHtml);
-    checks.push({
-      id: 'conversion-scheduling-link',
-      category: 'conversion',
-      label: 'Self-serve scheduling link',
-      passed: schedule,
-      weight: 1,
-      evidence: schedule ? 'scheduling service link present' : 'no scheduling link',
-      finding: schedule
-        ? 'A self-serve scheduling link is present. Cold prospects can book without sending an email.'
-        : 'No self-serve scheduling. Every meeting requires email back-and-forth. Add Calendly or Cal.com to the contact area — even five extra meetings a month justifies it.',
-    });
-  }
-  {
-    const chat = /(intercom\.io\/messenger|widget\.intercom\.io|drift\.com|js\.driftt\.com|tawk\.to|crisp\.chat|chatwidget|hubspot\.com\/conversation)/i.test(checkHtml);
-    checks.push({
-      id: 'conversion-chat-widget',
-      category: 'conversion',
-      label: 'Live or async chat widget',
-      passed: chat,
-      weight: 0.5,
-      evidence: chat ? 'chat widget detected' : 'no chat widget',
-      finding: chat
-        ? 'A chat widget is installed. Visitors with quick questions can ask without filling a form.'
-        : 'No chat widget. Skippable if you handle inbound via phone or email; useful if your buyer profile expects async chat.',
-    });
-  }
-  {
-    const heroText = checkHtml.slice(0, 4000);
-    const hasCtaButton = /<(a|button)[^>]*\b(class|id)=["'][^"']*(cta|btn-primary|primary-cta|hero-cta|book|start|get-started|trial)/i.test(heroText)
-      || /<(a|button)[^>]*>([^<]*\b(get started|start free|book a (call|demo)|request (a )?(quote|demo)|schedule (a )?(call|demo)|talk to|contact us)\b)/i.test(heroText);
-    checks.push({
-      id: 'conversion-prominent-cta',
-      category: 'conversion',
-      label: 'Prominent CTA above the fold',
-      passed: hasCtaButton,
-      weight: 1,
-      evidence: hasCtaButton ? 'high-intent CTA pattern found in first 4KB' : 'no obvious high-intent CTA in the hero',
-      finding: hasCtaButton
-        ? 'A high-intent CTA sits above the fold. Cold visitors know how to act in the first viewport.'
-        : 'No obvious high-intent CTA above the fold. Cold visitors land and have to figure out what you want them to do. Add one button with one verb and one outcome.',
-    });
-  }
+      label,
+      passed: onHomepage || !!onOther,
+      weight,
+      evidence,
+      finding,
+    };
+  };
+
+  checks.push(
+    conversionCheck('conversion-form-on-page', 'Form available on the site', 1, 'hasForm', {
+      homepage: 'The homepage carries a form. A cold visitor can convert without an extra click.',
+      elsewhere: (role) =>
+        `A form sits on the ${role} page, but not the homepage. A cold visitor landing on the front door has to navigate to convert - that extra step costs roughly half the completions.`,
+      absent:
+        'No form for a cold visitor to convert through. Put a short form on the homepage - two extra clicks to find one costs roughly half the completions.',
+    }),
+  );
+  checks.push(
+    conversionCheck('conversion-tel-link', 'Tappable phone number', 1, 'hasTelLink', {
+      homepage: 'A tappable phone link is on the homepage. Mobile visitors can call without typing.',
+      elsewhere: (role) =>
+        `A tappable phone link is on the ${role} page, but not the homepage. Mobile visitors on the front door cannot call in one tap.`,
+      absent:
+        'No tappable phone link. Mobile visitors who want to call have to memorise the number, switch apps, and dial. For service businesses that is a real conversion drop.',
+    }),
+  );
+  checks.push(
+    conversionCheck('conversion-scheduling-link', 'Self-serve scheduling link', 1, 'hasScheduling', {
+      homepage:
+        'A self-serve scheduling link is on the homepage. Cold prospects can book without sending an email.',
+      elsewhere: (role) =>
+        `A self-serve scheduling link is on the ${role} page, but not the homepage. Prospects on the front door cannot book in one click.`,
+      absent:
+        'No self-serve scheduling. Every meeting needs email back-and-forth. Add Calendly or Cal.com to the contact area.',
+    }),
+  );
+  checks.push(
+    conversionCheck('conversion-chat-widget', 'Live or async chat widget', 0.5, 'hasChatWidget', {
+      homepage:
+        'A chat widget is installed. Visitors with quick questions can ask without filling a form.',
+      elsewhere: (role) => `A chat widget is on the ${role} page but not the homepage.`,
+      absent:
+        'No chat widget. Skippable if you handle inbound by phone or email; useful if your buyers expect async chat.',
+    }),
+  );
+  checks.push(
+    conversionCheck('conversion-prominent-cta', 'Prominent CTA above the fold', 1, 'hasPromptCta', {
+      homepage:
+        'A high-intent CTA sits above the fold on the homepage. Cold visitors know how to act in the first viewport.',
+      elsewhere: (role) =>
+        `A high-intent CTA is on the ${role} page, but the homepage hero has none. Cold visitors land on the front door and have to figure out what to do.`,
+      absent:
+        'No obvious high-intent CTA above the fold. Cold visitors land and have to figure out what you want them to do. Add one button, one verb, one outcome.',
+    }),
+  );
 
   const endedAt = Date.now();
   const passedWeight = checks.reduce((s, c) => s + (c.passed ? c.weight : 0), 0);
@@ -742,6 +780,7 @@ export async function runAudit(rawUrl: string, opts?: RunAuditOptions): Promise<
     homepageHtml: home.ok ? staticHtml : (rendered ?? undefined),
     homepageHeaders: home.ok ? home.headers : undefined,
     checks,
+    crawledPages,
     scoreNumeric: passedWeight,
     scoreMax: totalWeight,
     scorePercent,
