@@ -4,8 +4,12 @@ import {
   parseBeacon,
   measureTracking,
   type TrackingDetection,
+  type TrackingState,
   type HeadlessTrackingCapture,
 } from '../tracking';
+import { trackingRowText, buildTrackingCell, type EnrichmentBundle } from '../v3-synth';
+import type { CheckResult } from '../engine';
+import type { HeadlessResult } from '../headless-check';
 
 /**
  * Upgrade 3 - measurement truth. Tests for the pure parsing + state logic:
@@ -156,5 +160,72 @@ describe('measureTracking', () => {
   it('empty capture with no static presence: every vendor absent', () => {
     const m = measureTracking(staticDetection(), capture());
     for (const v of Object.values(m)) expect(v.state).toBe('absent');
+  });
+});
+
+function trackingChecks(states: TrackingState[]): CheckResult[] {
+  return states.map((state, i) => ({
+    id: `tracking-${i}`,
+    category: 'tracking' as const,
+    label: `Pixel ${i}`,
+    passed: state !== 'absent',
+    weight: 1,
+    evidence: '',
+    finding: '',
+    measurement: { state, events: state === 'events-observed' ? ['Lead'] : [] },
+  }));
+}
+
+function enrichment(over: Partial<EnrichmentBundle> = {}): EnrichmentBundle {
+  return {
+    deliverability: null,
+    mobile: null,
+    pageSpeed: null,
+    ads: null,
+    techStack: null,
+    headless: null,
+    techStackRuntime: null,
+    landing: null,
+    ...over,
+  };
+}
+
+describe('trackingRowText', () => {
+  it('events-observed lists the observed event names', () => {
+    expect(
+      trackingRowText('Meta Pixel', { state: 'events-observed', events: ['PageView', 'Lead'] }),
+    ).toBe('Meta Pixel: firing (events: PageView, Lead)');
+  });
+  it('firing without extracted events', () => {
+    expect(trackingRowText('GA4', { state: 'firing', events: [] })).toBe('GA4: firing');
+  });
+  it('present is honest that firing was not confirmed', () => {
+    expect(trackingRowText('Meta Pixel', { state: 'present', events: [] })).toBe(
+      'Meta Pixel: installed, not observed firing',
+    );
+  });
+  it('absent', () => {
+    expect(trackingRowText('TikTok Pixel', { state: 'absent', events: [] })).toBe(
+      'TikTok Pixel: not detected',
+    );
+  });
+});
+
+describe('buildTrackingCell', () => {
+  it('with a headless pass, summarises trackers confirmed firing', () => {
+    const cell = buildTrackingCell(
+      trackingChecks(['events-observed', 'firing', 'present', 'absent']),
+      enrichment({ headless: {} as HeadlessResult }),
+    );
+    expect(cell.value).toBe('2 of 4');
+    expect(cell.note).toContain('2 of 4 trackers confirmed firing');
+    expect(cell.benchmark).toBe('Pixels · measured live');
+  });
+
+  it('without a headless pass, reports page-source presence and flags firing as not measured', () => {
+    const cell = buildTrackingCell(trackingChecks(['present', 'present', 'absent']), enrichment());
+    expect(cell.value).toBe('2 of 3');
+    expect(cell.note).toContain('not measured');
+    expect(cell.benchmark).toBe('Pixels · static scan');
   });
 });

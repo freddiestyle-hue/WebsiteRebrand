@@ -16,6 +16,9 @@ export interface CheckResult {
   weight: number;
   evidence: string;
   finding: string;
+  // Upgrade 3 - for tracking checks, the structured measurement behind the
+  // pass/fail (state + observed events). Absent on non-tracking checks.
+  measurement?: PixelMeasurement;
 }
 
 export interface AuditResult {
@@ -582,7 +585,7 @@ export async function runAudit(rawUrl: string, opts?: RunAuditOptions): Promise<
           : m.state === 'present'
             ? copy.present
             : copy.absent;
-    return { id, category: 'tracking', label, passed: m.state !== 'absent', weight, evidence, finding };
+    return { id, category: 'tracking', label, passed: m.state !== 'absent', weight, evidence, finding, measurement: m };
   };
 
   checks.push(

@@ -20,6 +20,7 @@ import type { TechStackResult, DetectedTech, TechCategory } from './tech-stack-c
 import { TECH_CATEGORY_LABELS } from './tech-stack-check';
 import type { HeadlessResult } from './headless-check';
 import type { LandingAuditResult, LandingPageResult } from './landing-check';
+import type { PixelMeasurement } from './tracking';
 
 export interface EnrichmentBundle {
   deliverability: DeliverabilityResult | null;
@@ -493,14 +494,24 @@ function techStackCellFromResult(
   };
 }
 
+// Upgrade 3 - the one-line label for a tracking row, stating the honest
+// measured state rather than a bare pixel name.
+export function trackingRowText(label: string, m: PixelMeasurement): string {
+  if (m.state === 'events-observed') return `${label}: firing (events: ${m.events.join(', ')})`;
+  if (m.state === 'firing') return `${label}: firing`;
+  if (m.state === 'present') return `${label}: installed, not observed firing`;
+  return `${label}: not detected`;
+}
+
 function augmentTrackingChecks(
   engineChecks: CheckResult[],
   tech: TechStackResult | null,
 ): Array<{ ok: boolean; text: string }> {
-  // Start with what engine.ts caught
+  // Start with what engine.ts caught. Upgrade 3 - tracking checks carry a
+  // structured measurement; surface its state in the row text.
   const out: Array<{ ok: boolean; text: string }> = engineChecks.map((c) => ({
     ok: c.passed,
-    text: c.label,
+    text: c.measurement ? trackingRowText(c.label, c.measurement) : c.label,
   }));
 
   if (!tech) return out;
@@ -607,7 +618,7 @@ function placeholderPSI(): VerdictCell {
   };
 }
 
-function buildTrackingCell(
+export function buildTrackingCell(
   tracking: CheckResult[],
   enrich?: EnrichmentBundle,
 ): VerdictCell {
@@ -626,20 +637,54 @@ function buildTrackingCell(
     ? mergeTechResults(enrich.techStack, enrich.techStackRuntime ?? null).merged
     : null;
   const augmentedChecks = augmentTrackingChecks(tracking, mergedTech);
-  const passedCount = augmentedChecks.filter((c) => c.ok).length;
-  const totalCount = augmentedChecks.length;
-  const gap = totalCount - passedCount;
-  const hasRuntime = !!enrich?.techStackRuntime;
+
+  // Upgrade 3 - summarise from the measured engine checks, honestly. The
+  // headless pass is what confirms a pixel actually fired; without it we can
+  // only report what the page source shows.
+  const measurements = tracking
+    .map((c) => c.measurement)
+    .filter((m): m is PixelMeasurement => !!m);
+  const total = measurements.length;
+  const firing = measurements.filter(
+    (m) => m.state === 'firing' || m.state === 'events-observed',
+  ).length;
+  const withEvents = measurements.filter((m) => m.state === 'events-observed').length;
+  const installed = measurements.filter((m) => m.state !== 'absent').length;
+
+  if (!enrich?.headless) {
+    // No live measurement this scan; report what the page source shows.
+    const missing = total - installed;
+    return {
+      icon: 'target' as VerdictIcon,
+      heading: 'What you measure',
+      value: `${installed} of ${total}`,
+      note:
+        installed === 0
+          ? 'No tracking tags found in the page source. Live firing was not measured in this scan.'
+          : `${installed} of ${total} tracking tags found in the page source. Live firing was not measured in this scan.`,
+      benchmark: 'Pixels · static scan',
+      benchmarkRight: missing === 0 ? 'All present' : `${missing} missing`,
+      checks: augmentedChecks,
+    };
+  }
+
+  const idle = installed - firing;
+  const absent = total - installed;
   return {
     icon: 'target' as VerdictIcon,
     heading: 'What you measure',
-    value: `${passedCount} of ${totalCount}`,
+    value: `${firing} of ${total}`,
     note:
-      totalCount === passedCount
-        ? 'Every tracker we look for is firing.'
-        : `${gap} of ${totalCount} measurement gaps.`,
-    benchmark: hasRuntime ? 'Pixels · runtime + static' : 'Pixels · static',
-    benchmarkRight: gap === 0 ? 'All firing' : `${gap} gap${gap === 1 ? '' : 's'}`,
+      firing === total
+        ? withEvents > 0
+          ? `Every tracker is firing; named events captured on ${withEvents}.`
+          : 'Every tracker is firing.'
+        : `${firing} of ${total} trackers confirmed firing` +
+          (idle > 0 ? `, ${idle} installed but not observed firing` : '') +
+          (absent > 0 ? `, ${absent} absent` : '') +
+          '.',
+    benchmark: 'Pixels · measured live',
+    benchmarkRight: firing === total ? 'All firing' : `${total - firing} not firing`,
     checks: augmentedChecks,
   };
 }
