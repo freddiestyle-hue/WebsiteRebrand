@@ -111,3 +111,28 @@ describe('runAudit — rendered-DOM backbone (Upgrade 2)', () => {
     expect(renderedRun.homepageHtml).toBe(STATIC_SHELL);
   });
 });
+
+describe('runAudit — tracking measurement (Upgrade 3)', () => {
+  it('reports a Meta event observed via the headless capture, even when the static HTML has no pixel', async () => {
+    vi.stubGlobal('fetch', mockFetch(STATIC_SHELL));
+    const r = await runAudit('https://acme.example', {
+      headlessTracking: {
+        beaconUrls: ['https://www.facebook.com/tr/?id=1&ev=Lead'],
+        dataLayerEvents: [],
+        gtmContainerIds: [],
+        ga4MeasurementIds: [],
+      },
+    });
+    const meta = check(r.checks, 'tracking-meta-pixel');
+    expect(meta.passed).toBe(true);
+    expect(meta.finding).toContain('Lead');
+  });
+
+  it('without a headless capture, tracking falls back to static presence', async () => {
+    vi.stubGlobal('fetch', mockFetch(STATIC_SHELL));
+    const r = await runAudit('https://acme.example');
+    // STATIC_SHELL carries no tracking code, so every tracking check fails.
+    expect(check(r.checks, 'tracking-meta-pixel').passed).toBe(false);
+    expect(check(r.checks, 'tracking-ga4').passed).toBe(false);
+  });
+});

@@ -24,6 +24,7 @@
 
 import chromium from '@sparticuz/chromium';
 import { chromium as playwright } from 'playwright-core';
+import { isTrackingHost, type HeadlessTrackingCapture } from './tracking';
 
 export interface HeadlessResult {
   // Rendered HTML after JS hydration (use to re-run tech-stack fingerprints)
@@ -39,6 +40,9 @@ export interface HeadlessResult {
     textSamplesUnder12px: number;
     viewport: '390x844';
   };
+  // Upgrade 3 — measurement truth. What the tracking stack actually did at
+  // runtime, not just what code is on the page. Shape defined in ./tracking.
+  tracking: HeadlessTrackingCapture;
   durationMs: number;
 }
 
@@ -74,12 +78,16 @@ export async function runHeadlessCheck(url: string): Promise<HeadlessResult | nu
 
       const networkHosts = new Set<string>();
       const scriptSrcs = new Set<string>();
+      const beaconUrls = new Set<string>();
 
       context.on('request', (req) => {
         try {
           const u = new URL(req.url());
           networkHosts.add(u.hostname);
           if (req.resourceType() === 'script') scriptSrcs.add(req.url());
+          // Upgrade 3 — keep the full URL of every analytics/ads beacon so the
+          // event names in the query params survive for parsing.
+          if (isTrackingHost(u.hostname)) beaconUrls.add(req.url());
         } catch {
           // ignore unparseable URLs
         }
@@ -143,6 +151,42 @@ export async function runHeadlessCheck(url: string): Promise<HeadlessResult | nu
         return { hasHorizontalScroll, smallestTapTargetPx, textSamplesUnder12px: smallCount };
       });
 
+      // Upgrade 3 — read what the tracking stack registered on window:
+      // dataLayer event names, the GTM container IDs, and the GA4 measurement
+      // IDs. Defensive: dataLayer entries are arbitrary objects, so only
+      // string event names and well-formed IDs are lifted out, never cloned.
+      const trackingRuntime = await page
+        .evaluate(() => {
+          const events: string[] = [];
+          const gtmIds: string[] = [];
+          const ga4Ids: string[] = [];
+          try {
+            const dl = (window as unknown as { dataLayer?: unknown }).dataLayer;
+            if (Array.isArray(dl)) {
+              for (const entry of dl) {
+                const ev = (entry as { event?: unknown })?.event;
+                if (typeof ev === 'string') events.push(ev);
+              }
+            }
+          } catch {
+            // dataLayer absent or hostile — ignore
+          }
+          try {
+            const gtm = (window as unknown as { google_tag_manager?: Record<string, unknown> })
+              .google_tag_manager;
+            if (gtm && typeof gtm === 'object') {
+              for (const key of Object.keys(gtm)) {
+                if (/^GTM-[A-Z0-9]+$/.test(key)) gtmIds.push(key);
+                else if (/^G-[A-Z0-9]+$/.test(key)) ga4Ids.push(key);
+              }
+            }
+          } catch {
+            // google_tag_manager absent — ignore
+          }
+          return { dataLayerEvents: events, gtmContainerIds: gtmIds, ga4MeasurementIds: ga4Ids };
+        })
+        .catch(() => ({ dataLayerEvents: [], gtmContainerIds: [], ga4MeasurementIds: [] }));
+
       return {
         renderedHtml,
         networkHosts: [...networkHosts].sort(),
@@ -152,6 +196,12 @@ export async function runHeadlessCheck(url: string): Promise<HeadlessResult | nu
           smallestTapTargetPx: mobileSignals.smallestTapTargetPx,
           textSamplesUnder12px: mobileSignals.textSamplesUnder12px,
           viewport: '390x844' as const,
+        },
+        tracking: {
+          beaconUrls: [...beaconUrls].sort(),
+          dataLayerEvents: [...new Set(trackingRuntime.dataLayerEvents)].sort(),
+          gtmContainerIds: [...new Set(trackingRuntime.gtmContainerIds)].sort(),
+          ga4MeasurementIds: [...new Set(trackingRuntime.ga4MeasurementIds)].sort(),
         },
         durationMs: Date.now() - started,
       };

@@ -1,7 +1,12 @@
 // AEO audit engine. Fetches a target URL, runs checks, returns structured findings.
 // Designed to run inside a Vercel Function within ~10s budget.
 
-import { detectTracking } from './tracking';
+import {
+  detectTracking,
+  measureTracking,
+  type HeadlessTrackingCapture,
+  type PixelMeasurement,
+} from './tracking';
 
 export interface CheckResult {
   id: string;
@@ -269,6 +274,10 @@ export interface RunAuditOptions {
   // homepage-derived check parses this instead of the static fetch. The
   // static fetch stays as the fallback. See Upgrade 2 (rendered-DOM backbone).
   renderedHtml?: string;
+  // The headless tracking capture (HeadlessResult['tracking']). When supplied,
+  // the tracking checks report runtime truth - present / firing /
+  // events-observed - instead of static presence only. See Upgrade 3.
+  headlessTracking?: HeadlessTrackingCapture;
 }
 
 export async function runAudit(rawUrl: string, opts?: RunAuditOptions): Promise<AuditResult> {
@@ -542,85 +551,93 @@ export async function runAudit(rawUrl: string, opts?: RunAuditOptions): Promise<
   // Detection logic lives in ./tracking so it is unit-testable against
   // real-shape fixtures without going through the runAudit fetch path
   // (which has an SSRF guard that blocks localhost test servers).
+  //
+  // Upgrade 3 — the static scan answers "is the tag's code on the page"; the
+  // headless capture (opts.headlessTracking) answers "did it actually fire,
+  // and with what events". measureTracking merges them into one honest state
+  // per vendor: absent / present / firing / events-observed.
   const tracking = detectTracking(checkHtml);
-  checks.push({
-    id: 'tracking-meta-pixel',
-    category: 'tracking',
-    label: 'Meta Pixel',
-    passed: tracking.metaPixel,
-    weight: 1,
-    evidence: tracking.metaPixel ? 'fbq() or fbevents.js detected' : 'no Meta Pixel found',
-    finding: tracking.metaPixel
-      ? 'Meta Pixel is firing. Meta has the conversion data it needs to optimize bidding.'
-      : 'No Meta Pixel detected. If you are spending on Meta ads, the algorithm cannot learn from conversions on this page. Install the pixel and configure the lead event.',
-  });
-  checks.push({
-    id: 'tracking-gtm',
-    category: 'tracking',
-    label: 'Google Tag Manager container',
-    passed: tracking.gtm.detected,
-    weight: 1,
-    evidence: tracking.gtm.detected
-      ? `GTM detected${tracking.gtm.gtmId ? ` (${tracking.gtm.gtmId})` : ' (via googletagmanager.com host)'}`
-      : 'no GTM container found',
-    finding: tracking.gtm.detected
-      ? 'A GTM container is present. New tags can be added without code changes.'
-      : 'No GTM container. Every new tracking tag requires a developer. Add GTM once and you can wire pixels and conversion events without redeploying.',
-  });
-  checks.push({
-    id: 'tracking-ga4',
-    category: 'tracking',
-    label: 'GA4 (Google Analytics 4)',
-    passed: tracking.ga4.detected,
-    weight: 1,
-    evidence: tracking.ga4.direct
-      ? 'direct GA4 config detected'
-      : tracking.ga4.detected
-        ? 'GTM container present — GA4 likely loaded inside it'
-        : 'no GA4 config found',
-    finding: tracking.ga4.direct
-      ? 'GA4 is installed directly. Google Ads bidding and SEO measurement both have the data they need.'
-      : tracking.ga4.detected
-        ? 'GTM container is present. GA4 is most likely loaded inside it. We could not confirm from the static HTML alone — verify in GTM that a GA4 configuration tag is firing on all pages.'
-        : 'No GA4 tag detected. Google Ads cannot optimize for conversions, and any SEO work is unmeasurable. Install via Google Tag Manager — twenty minutes.',
-  });
-  checks.push({
-    id: 'tracking-linkedin-insight',
-    category: 'tracking',
-    label: 'LinkedIn Insight tag',
-    passed: tracking.linkedinInsight,
-    // Weight 0: LinkedIn Insight is only meaningful for B2B LinkedIn Ads.
-    // Recorded so the LP audit can surface it, but not score-impacting.
-    weight: 0,
-    evidence: tracking.linkedinInsight ? 'lintrk() or LinkedIn partner ID detected' : 'no LinkedIn Insight tag found',
-    finding: tracking.linkedinInsight
-      ? 'LinkedIn Insight is firing. If you run LinkedIn Ads, retargeting and conversion attribution will work.'
-      : 'No LinkedIn Insight tag. Only relevant if you advertise on LinkedIn.',
-  });
-  checks.push({
-    id: 'tracking-tiktok-pixel',
-    category: 'tracking',
-    label: 'TikTok Pixel',
-    passed: tracking.tiktokPixel,
-    weight: 0,
-    evidence: tracking.tiktokPixel ? 'ttq pixel detected' : 'no TikTok Pixel found',
-    finding: tracking.tiktokPixel
-      ? 'TikTok Pixel is firing.'
-      : 'No TikTok Pixel. Only relevant if your buyers are on TikTok.',
-  });
-  checks.push({
-    id: 'tracking-posthog',
-    category: 'tracking',
-    label: 'PostHog product analytics',
-    passed: tracking.postHog,
-    // Weight 0: PostHog is a substitute for GA4 for many operators. Recorded
-    // for completeness; the GA4 check is what counts toward the score.
-    weight: 0,
-    evidence: tracking.postHog ? 'posthog.init() or posthog host detected' : 'no PostHog detected',
-    finding: tracking.postHog
-      ? 'PostHog is installed. Product analytics and feature-flag infrastructure are in place.'
-      : 'No PostHog. Not strictly required, but if you want feature flags, session replay, or product analytics later, it is the cheapest entry point.',
-  });
+  const measured = measureTracking(tracking, opts?.headlessTracking ?? null);
+
+  const trackingCheck = (
+    id: string,
+    label: string,
+    weight: number,
+    m: PixelMeasurement,
+    copy: { absent: string; present: string; firing: string },
+  ): CheckResult => {
+    const evidence =
+      m.state === 'events-observed'
+        ? `events observed: ${m.events.join(', ')}`
+        : m.state === 'firing'
+          ? 'beacon observed firing during the scan'
+          : m.state === 'present'
+            ? 'tag code on the page; not observed firing'
+            : 'not detected';
+    const finding =
+      m.state === 'events-observed'
+        ? `${copy.firing} Events observed during the scan: ${m.events.join(', ')}.`
+        : m.state === 'firing'
+          ? copy.firing
+          : m.state === 'present'
+            ? copy.present
+            : copy.absent;
+    return { id, category: 'tracking', label, passed: m.state !== 'absent', weight, evidence, finding };
+  };
+
+  checks.push(
+    trackingCheck('tracking-meta-pixel', 'Meta Pixel', 1, measured.metaPixel, {
+      absent:
+        'No Meta Pixel detected. If you are spending on Meta ads, the algorithm cannot learn from conversions on this page. Install the pixel and configure the lead event.',
+      present:
+        'Meta Pixel code is on the page, but we did not see it send data during the scan. Confirm it fires a PageView and a lead or purchase event.',
+      firing: 'Meta Pixel is firing. Meta is receiving page data it can optimize ad bidding against.',
+    }),
+  );
+  checks.push(
+    trackingCheck('tracking-gtm', 'Google Tag Manager container', 1, measured.gtm, {
+      absent:
+        'No GTM container. Every new tracking tag requires a developer. Add GTM once and you can wire pixels and conversion events without redeploying.',
+      present:
+        'A GTM container is on the page, but we did not see it execute during the scan. Confirm the container is published and loading.',
+      firing: 'A GTM container is live and running. New tags can be wired without code changes.',
+    }),
+  );
+  checks.push(
+    trackingCheck('tracking-ga4', 'GA4 (Google Analytics 4)', 1, measured.ga4, {
+      absent:
+        'No GA4 detected. Google Ads cannot optimize for conversions and any SEO work is unmeasurable. Install GA4, most easily via Google Tag Manager.',
+      present:
+        'GA4 appears to be configured, but we did not confirm it sending data during the scan. Verify a GA4 configuration tag fires on every page.',
+      firing:
+        'GA4 is installed and sending data. Google Ads bidding and SEO measurement both have what they need.',
+    }),
+  );
+  // LinkedIn / TikTok / PostHog are weight 0 — channel-specific, recorded so
+  // the teardown can surface them but not score-impacting.
+  checks.push(
+    trackingCheck('tracking-linkedin-insight', 'LinkedIn Insight tag', 0, measured.linkedinInsight, {
+      absent: 'No LinkedIn Insight tag. Only relevant if you advertise on LinkedIn.',
+      present: 'LinkedIn Insight code is on the page, but not observed firing in this scan.',
+      firing:
+        'LinkedIn Insight is firing. If you run LinkedIn Ads, retargeting and conversion attribution will work.',
+    }),
+  );
+  checks.push(
+    trackingCheck('tracking-tiktok-pixel', 'TikTok Pixel', 0, measured.tiktokPixel, {
+      absent: 'No TikTok Pixel. Only relevant if your buyers are on TikTok.',
+      present: 'TikTok Pixel code is on the page, but not observed firing in this scan.',
+      firing: 'TikTok Pixel is firing.',
+    }),
+  );
+  checks.push(
+    trackingCheck('tracking-posthog', 'PostHog product analytics', 0, measured.postHog, {
+      absent:
+        'No PostHog. Not strictly required, but if you want feature flags, session replay, or product analytics later, it is the cheapest entry point.',
+      present: 'PostHog code is on the page, but not observed firing in this scan.',
+      firing: 'PostHog is installed and sending data. Product analytics infrastructure is in place.',
+    }),
+  );
 
   // === conversion paths ===
   {

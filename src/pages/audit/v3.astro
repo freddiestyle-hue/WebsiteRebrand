@@ -96,7 +96,10 @@ if (isPOST && !memo) {
           runHeadlessCheck(norm.url),
           landingPromise,
         ]);
-        audit = await runAudit(norm.url, { renderedHtml: headless?.renderedHtml });
+        audit = await runAudit(norm.url, {
+          renderedHtml: headless?.renderedHtml,
+          headlessTracking: headless?.tracking,
+        });
         if (audit.error) {
           runtimeError = audit.error;
         } else {
