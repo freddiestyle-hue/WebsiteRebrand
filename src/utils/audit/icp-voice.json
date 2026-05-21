@@ -1,0 +1,382 @@
+{
+  "01-real-estate": {
+    "label": "Real Estate \u00b7 Property Management",
+    "voice_line": "The owner sent me a screenshot from CoStar that showed the submarket at 94.1, and just wrote \"explain.\" That's it.",
+    "hooks": [
+      {
+        "headline": "Your 5-second site is burning $400 a month per property",
+        "body": "A multifamily site that loads in 5 seconds bounces 40 percent of visitors versus 9 percent for sites under 2 seconds. At a $1,000/month ad budget per property, that's $400 wasted before anyone toured. For a 15-property region, that's $72k-$100k/year out the window",
+        "source": "Multifamily Insiders",
+        "url": "https://www.multifamilyinsiders.com/multifamily-blogs/multifamily-we-re-wasting-thousands-of-digital-ad-dollars"
+      },
+      {
+        "headline": "Each second of load time costs you 4.4 percent of leads",
+        "body": "Independent multifamily research puts the conversion penalty at 4.42 percent per added second. If your homepage takes 4 seconds to render hero, you're already 18 percent down before a renter sees a floor plan",
+        "source": "Showdigs",
+        "url": "https://www.showdigs.com/property-managers/property-management-website-conversion-rates"
+      },
+      {
+        "headline": "You are paying Zillow $200 for the same lead they sold to three competitors",
+        "body": "Zillow lead costs run $130-$250+ per inquiry, but the lead is shared and the true cost-per-lease can run $1,700-$3,400 depending on your conversion bottleneck",
+        "source": "Showdigs",
+        "url": "https://www.showdigs.com/property-managers/cost-for-zillow-leads"
+      }
+    ],
+    "quotes": [
+      {
+        "title": "Passive leasing is what most brokers actually do, and inbound off signs is 75 percent noise",
+        "quote": "AI-generated prospecting emails perform worse than my personal ones. People can tell when it's generic. I know there's a way to make it sound personal, I haven't cracked it yet.",
+        "attribution": "u/tayloravakian_LA on r/CommercialRealEstate, 133 upvotes",
+        "source_url": "https://reddit.com/r/CommercialRealEstate/comments/1n14cs8/what_ive_learned_using_ai_as_a_multifamily_broker/"
+      },
+      {
+        "title": "Broker on AI-generated outreach feeling fake. People can tell.",
+        "quote": "Cold outreach: AI-generated prospecting emails perform worse than my personal ones. People can tell when it's generic.( I know there is a way to make it sound personal, I haven't cracked it yet.)",
+        "attribution": "u/tayloravakian_LA on r/CommercialRealEstate, August 2025, 133 upvotes",
+        "source_url": "https://reddit.com/r/CommercialRealEstate/comments/1n14cs8/what_ive_learned_using_ai_as_a_multifamily_broker/"
+      }
+    ]
+  },
+  "02-staffing": {
+    "label": "Staffing & Recruiting",
+    "voice_line": "I have a glass of bourbon and the Bullhorn dashboard open on the second monitor and I am scrolling submissions to fills like the number is going to change if I refresh it.",
+    "hooks": [
+      {
+        "headline": "Your career site loses 53 percent of mobile applicants in the first three seconds",
+        "body": "Google research shows 53 percent of mobile users abandon a page that takes longer than 3 seconds to load. Most Bullhorn-integrated career sites pull jobs through API calls that block render. Your LinkedIn job ad CPC is fine. Your apply rate is the leak",
+        "source": "Marketing Dive on Google data",
+        "url": "https://www.marketingdive.com/news/google-53-of-mobile-users-abandon-sites-that-take-over-3-seconds-to-load/426070/"
+      },
+      {
+        "headline": "Mobile is now 67 percent of applications, but mobile completes at 1.5 percent versus desktop at 8 percent",
+        "body": "If your career site is desktop-first, you are converting roughly one in five qualified clicks. The fix is not more ad spend. The fix is a mobile-first apply flow under 90 seconds",
+        "source": "Pin recruitment funnel benchmarks",
+        "url": "https://www.pin.com/blog/recruitment-funnel-benchmarks/"
+      },
+      {
+        "headline": "Top-performing staffing firms are four times more likely to use AI and twice as likely to grow revenue",
+        "body": "Bullhorn GRID 2025, surveying 2,300 industry professionals, found AI-using firms place candidates inside 20 days 90 percent more often. If your competitor is screening with AI and you are still running 1.5 BD touches per prospect, you are losing on speed and pipeline",
+        "source": "Bullhorn GRID 2025",
+        "url": "https://www.bullhorn.com/grid/2025-industry-trends/"
+      }
+    ],
+    "quotes": [
+      {
+        "title": "40-year agency owner says the floor has fallen out and it is not cyclical",
+        "quote": "I owned a staffing agency for over 40 years. We've been through recessions, hiring booms, market shifts \u2014 all of it. But since COVID, we've been hitting record lows in revenue year after year.",
+        "attribution": "u/PuzzleheadedAd3138 on r/recruiting, 2026-03-03, 144 upvotes",
+        "source_url": "https://www.reddit.com/r/recruiting/comments/1rk3jnf/is_the_staffing_industry_dying/"
+      },
+      {
+        "title": "Internal TA teams are being slashed and that is the opening",
+        "quote": "Always has been, always will.",
+        "attribution": "u/mauibeerguy on r/recruiting, 2026-03-03, 18 upvotes",
+        "source_url": "https://www.reddit.com/r/recruiting/comments/1rk3jnf/is_the_staffing_industry_dying/"
+      }
+    ]
+  },
+  "03-construction": {
+    "label": "Construction \u00b7 Trades \u00b7 Industrial",
+    "voice_line": "The kitchen smells like the leftover meatloaf I should have eaten but did not.",
+    "hooks": [
+      {
+        "headline": "You can run $4,000 of Local Service Ads and have no idea which leads were real",
+        "body": "LSA cost-per-lead in roofing averages $162 and reaches $25-$120 across most contractor categories. 15-25% of leads are typically disputable. Most contractors leave $750-$1,250/month on the table because they do not review and dispute weekly",
+        "source": "bgcollective.com",
+        "url": "https://www.bgcollective.com/solutions-lab/dispute-bad-leads-local-services-ads"
+      },
+      {
+        "headline": "The FTC fined HomeAdvisor $7.2 million for selling leads that never matched what contractors paid for",
+        "body": "Hundreds of contractors joined a class action alleging fake leads and ignored budgets. If your pipeline still depends on Angi, you are paying retail for what the FTC already labeled deceptive",
+        "source": "ftc.gov",
+        "url": "https://www.ftc.gov/news-events/news/press-releases/2023/01/ftc-order-requires-homeadvisor-pay-72-million-stop-deceptively-marketing-its-leads-home-improvement"
+      },
+      {
+        "headline": "A two-second page load gap turns 10 leads a month into 3 from the same traffic",
+        "body": "53% of mobile visitors leave a site that takes longer than 3 seconds. Each second of delay drops conversions about 4.42%",
+        "source": "thinkwithgoogle.com",
+        "url": "https://www.thinkwithgoogle.com/marketing-strategies/app-and-mobile/mobile-page-speed-conversion-data/"
+      }
+    ],
+    "quotes": [
+      {
+        "title": "$11k burned on two lead-gen companies, same scam twice",
+        "quote": "I've been burned by two different lead gen companies. I'm into this for over $11,000. I'm writing this so someone else doesn't make the same mistake.",
+        "attribution": "contractor burned by lead-gen vendors, $11K out",
+        "source_url": "https://reddit.com/r/RoofingSales/comments/1sur11j/thinking_of_using_a_roofing_lead_gen_company_read/"
+      },
+      {
+        "title": "$4,800 per closed deal from a shared lead vendor",
+        "quote": "company 2: shared lead vendor spend: $4,800/month leads bought: 32 inspections booked: 11 deals closed: 1 cost per closed deal: $4,800... shared leads are the worst deal in roofing.",
+        "attribution": "anonymous operator on Reddit",
+        "source_url": "https://reddit.com/r/RoofingSales/comments/1ru613z/i_tracked_every_dollar_spent_on_marketing_for_6/"
+      }
+    ]
+  },
+  "04-building-materials": {
+    "label": "Building Materials \u00b7 Wholesale",
+    "voice_line": "VP of Sales at a $120M lumber and millwork distributor in the upper Midwest.",
+    "hooks": [
+      {
+        "headline": "Amazon Business grew 17% CAGR for five years. Merchant wholesalers grew 4%",
+        "body": "That gap is what your CEO's lender, your private equity suitor, and your top three competitors are all looking at",
+        "source": "Distribution Strategy Group",
+        "url": "https://distributionstrategy.com/2025/08/riding-the-distributor-sales-culture-into-commodity-hell/"
+      },
+      {
+        "headline": "80% of your buyer's journey happens before they call your rep",
+        "body": "Gartner 2024 puts direct vendor contact time at 17% of total buying time. If your website is bad, you lost the order before the phone rang",
+        "source": "Brixon Group summary of Gartner",
+        "url": "https://brixongroup.com/en/the-modern-b2b-buying-journey-why-buyers-complete-80-of-their-journey-alone-and-how-you-can-still-remain-visible"
+      },
+      {
+        "headline": "Home Depot just bought $24 billion of your competitors",
+        "body": "SRS ($18.25B) and GMS ($5.5B) in 18 months. Lowe's countered with FBM at $8.8B. The next quarterly conversation with your board is whether you are the buyer or the seller",
+        "source": "CNBC",
+        "url": "https://www.cnbc.com/2024/11/15/why-home-depot-acquired-srs-distribution.html"
+      }
+    ],
+    "quotes": [
+      {
+        "title": "The dealer who has no pull because they are just reselling through a distributor",
+        "quote": "turns out half these \"authorized dealers\" are just ordering through distributors and have zero pull when something goes sideways during install",
+        "attribution": "u/No-Feature-4176 on r/HomeImprovement, 2026-05-19, 2 upvotes",
+        "source_url": "https://reddit.com/r/HomeImprovement/comments/1thtbge/spent_3_months_researching_impact_windows/"
+      },
+      {
+        "title": "The contractor researching impact windows learned the distributor relationship is the entire ballgame",
+        "quote": "The installer's actual relationship with the factory. This was the biggest \"wish I'd known sooner\" thing.",
+        "attribution": "u/Effective_Dance_3810 on r/HomeImprovement, 2026-05-19, 2 upvotes",
+        "source_url": "https://reddit.com/r/HomeImprovement/comments/1thtbge/spent_3_months_researching_impact_windows/"
+      }
+    ]
+  },
+  "05-financial-services": {
+    "label": "Financial Services \u00b7 RIAs \u00b7 Accounting",
+    "voice_line": "The lights are still on at Mercer's office across town, or at least the marketing engine is.",
+    "hooks": [
+      {
+        "headline": "The referral cliff is here. 47% of firms still rely on referrals, but only 29% of consumers need one to hire an advisor",
+        "body": "Half your incoming pipeline is now decided by a Google search and a 30-second site scan, and the firms that haven't invested in digital are about to feel it",
+        "source": "Wealth Solutions Report",
+        "url": "https://www.wealthsolutionsreport.com/ficomm-digital-marketing-to-be-more-important-to-advisors-than-referrals/"
+      },
+      {
+        "headline": "Organic growth at RIAs has dropped from 9% in 2017 to ~3% today",
+        "body": "Markets are doing the work. The minute the S&P stops carrying your AUM line, the lack of marketing infrastructure becomes a five-alarm fire",
+        "source": "Kitces",
+        "url": "https://www.kitces.com/blog/marketing-scale-growth-advisory-firm-cost-capacity-crossroads-strategies/"
+      },
+      {
+        "headline": "25% of affluent households are already using ChatGPT and Gemini to find an advisor",
+        "body": "AI gives the prospect one direct answer with two or three firms named. There is no page two of search results in this world",
+        "source": "Wealthtender",
+        "url": "https://wealthtender.com/advisors/marketing/how-financial-advisors-appear-in-chatgpt-ai-search/"
+      }
+    ],
+    "quotes": [
+      {
+        "title": "$8K burned on Meta before the funnel actually worked",
+        "quote": "After spending $8K this year on Meta ads with nothing to show for it, I feel like I've finally 'cracked the code' in the last couple of months.",
+        "attribution": "RIA founder on r/CFP, 8-month Meta ads burn",
+        "source_url": "https://www.reddit.com/r/CFP/comments/1p3scdd/facebook_ads/"
+      },
+      {
+        "title": "\"I haven't found any marketing tactic that really works well\"",
+        "quote": "Thx. Keep us updated! I haven't found any marketing tactic that really works well. Just been sticking to over servicing and asking for referrals when they thank me.\"",
+        "attribution": "anonymous operator on Reddit",
+        "source_url": "https://www.reddit.com/r/CFP/comments/1p3scdd/facebook_ads/"
+      }
+    ]
+  },
+  "06-legal": {
+    "label": "Legal Practice",
+    "voice_line": "So my \"cost per signed case\" is $1,237, except half of those signed cases came from referrals and I'm not paying Google for referrals, so the real CPA on the paid side is probably closer to $3,800.",
+    "hooks": [
+      {
+        "headline": "You are paying $181 per click for \"personal injury lawyer.\" Your form has 11 fields",
+        "body": "Average PI keyword runs $181/click and elite metros hit $300+. Each form abandonment is a four-figure bill paid to Google for nothing",
+        "source": "taqtics.com",
+        "url": "https://taqtics.com/blog/law-firm-ppc-real-cost-per-signed-case/"
+      },
+      {
+        "headline": "You miss 36% of inbound calls. Most callers never try again",
+        "body": "Clio's research found 36% of incoming calls to law firms go unanswered and 34% of those callers never reach out a second time. At a $25K average case and 25% close rate that's $338K/yr per four-missed-calls-per-week",
+        "source": "attorneyassistant.com",
+        "url": "https://attorneyassistant.com/blog/why-law-firms-miss-calls-root-causes-solutions/"
+      },
+      {
+        "headline": "The average law firm responds to a web lead in 42 hours",
+        "body": "Firms that respond in 5 minutes convert 300-400% better. Only 28% of firms hit the 5-minute mark. Your competitor down the street is one of them",
+        "source": "intake.link",
+        "url": "https://www.intake.link/blog/intake/speed-to-lead-law-firm-response-time"
+      }
+    ],
+    "quotes": [
+      {
+        "title": "Clio's real cost is two tiers up from the sticker price",
+        "quote": "We're paying $181 per click for personal injury keywords. Half of our brand traffic might be fraud clicks. Nobody at the agency can tell me cost per signed case.",
+        "attribution": "personal injury partner, mid-size firm",
+        "source_url": "https://reddit.com/r/Lawyertalk/comments/1t5ijg5/updated_my_tools_i_actually_use_list_for_2026/"
+      },
+      {
+        "title": "The AI tools are interchangeable, the codification is the point",
+        "quote": "The biggest thing I learned rebuilding the stack is that the AI tools aren't the value. The value is the documentation discipline they force you into.",
+        "attribution": "anonymous operator on Reddit",
+        "source_url": "https://reddit.com/r/Lawyertalk/comments/1t5ijg5/updated_my_tools_i_actually_use_list_for_2026/"
+      }
+    ]
+  },
+  "07-b2b-saas": {
+    "label": "B2B SaaS \u00b7 IT Services \u00b7 Tech",
+    "voice_line": "I am pretending the spreadsheet will give a different answer if I scroll down one more time.",
+    "hooks": [
+      {
+        "headline": "Every form field above five collapses your demo conversion by about 10-15%",
+        "body": "A 12-field demo form converts 40-60% fewer visitors than a 5-field one. Conversion drops from 23.1% at 3 fields to 17.0% at 5 to 11.4% at 7 to 6.9% at 10+",
+        "source": "pixelswithin.com",
+        "url": "https://pixelswithin.com/b2b-saas-conversion-benchmarks-2026/"
+      },
+      {
+        "headline": "51% of B2B buyers now start software research with an AI chatbot, more often than Google",
+        "body": "69% chose a different vendor than they originally planned because of what an AI assistant said. If you don't show up in ChatGPT, you are out of the deal before sales ever sees it",
+        "source": "prnewswire.com",
+        "url": "https://www.prnewswire.com/news-releases/new-g2-research-half-of-b2b-software-buyers-now-start-their-research-with-ai-chatbots-302742807.html"
+      },
+      {
+        "headline": "Every additional second of load time costs you 4.42% in conversions",
+        "body": "One B2B SaaS dropped landing page load from 4.5s to under 2s and saw a 40% lift in conversions. If your homepage scores 38 on PageSpeed, your CAC is paying for the slowness",
+        "source": "pixelswithin.com",
+        "url": "https://pixelswithin.com/b2b-saas-conversion-benchmarks-2026/"
+      }
+    ],
+    "quotes": [
+      {
+        "title": "Three years stuck, the leak was the product, not the marketing",
+        "quote": "Three years stuck at the same number. A new explanation for it every quarter.",
+        "attribution": "u/Capable_Document3744 on r/SaaS, 2026-05-04, 168 upvotes",
+        "source_url": "https://reddit.com/r/SaaS/comments/1t3o5ud/6_habits_that_took_my_saas_from_40k_to_72k_mrr_in/"
+      },
+      {
+        "title": "Two years of outbound, no ICP, no stack, no metrics",
+        "quote": "When I started my agency, I thought that outbound is about numbers and didn't notice that I was doing it completely wrong.",
+        "attribution": "u/ThighHighlander on r/SaaS, 2026-02-02, 132 upvotes",
+        "source_url": "https://reddit.com/r/SaaS/comments/1qu354d/two_years_of_doing_outbound_completely_wrong_and/"
+      }
+    ]
+  },
+  "08-healthcare": {
+    "label": "Healthcare \u00b7 Medical Practice",
+    "voice_line": "I am Karen, practice administrator at a six-provider dermatology and cosmetic dermatology group in suburban Phoenix.",
+    "hooks": [
+      {
+        "headline": "Pixel-tracking violations cost US healthcare over $100 million in fines from 2023 to 2025",
+        "body": "Advocate Aurora paid $12.25 million. Mass General Brigham $18.4 million. New York-Presbyterian $300,000 in 2024. If your website still has a Meta or Google retargeting pixel on a page that mentions any condition, your practice has a six-figure exposure that no one is auditing for",
+        "source": "feroot.com",
+        "url": "https://www.feroot.com/blog/pixel-tracking-violations-us-healthcare-100m/"
+      },
+      {
+        "headline": "Over one-third of health sites still ran Meta Pixel code in 2024 after OCR's bulletin",
+        "body": "Marketers know the rule. Nobody told the website vendor",
+        "source": "elevarelaw.com",
+        "url": "https://www.elevarelaw.com/blog-articles/meta-pixel-healthcare-marketing-compliance"
+      },
+      {
+        "headline": "The average missed appointment costs roughly $200 in lost revenue, and 37% of medical groups reported worsening no-shows in 2024 despite automated reminders",
+        "body": "No-show is a marketing problem disguised as an operations problem. The reminder cadence, the confirmation flow, and the deposit policy live on your website and in your booking funnel",
+        "source": "mgma.com",
+        "url": "https://www.mgma.com/mgma-stat/patient-no-shows-in-2025"
+      }
+    ],
+    "quotes": [
+      {
+        "title": "The no-show math is real and reminders are not solving it",
+        "quote": "My no-show rate is atrocious. Easily 60\u201370%. I have never been angry at patients until today.",
+        "attribution": "early-career pediatric subspecialist on r/medicine",
+        "source_url": "https://reddit.com/r/medicine/comments/1o5mzaq/angry_at_no_shows/"
+      },
+      {
+        "title": "60-70% no-show rate in an academic peds subspecialty, refractory to overbooking",
+        "quote": "I am early career peds subspecialty in an underserved area. I have never been angry at patients until today. [...] My no show rate is atrocious - easily 60-70%.",
+        "attribution": "anonymous operator on Reddit",
+        "source_url": "https://reddit.com/r/medicine/comments/1o5mzaq/angry_at_no_shows/"
+      }
+    ]
+  },
+  "09-professional-services": {
+    "label": "Professional Services \u00b7 Consulting",
+    "voice_line": "I have my second whiskey and the laptop open to the pipeline tracker, which is the same Notion database we have been using for three years and which still tells me what I already know.",
+    "hooks": [
+      {
+        "headline": "89% of B2B buyers now use generative AI to research vendors",
+        "body": "ChatGPT, Perplexity, and Gemini have become the new referral. If your firm doesn't show up in the answer, the referral never gets to the call",
+        "source": "warmly.ai",
+        "url": "https://www.warmly.ai/p/blog/b2b-buyers-chatgpt-geo-guide"
+      },
+      {
+        "headline": "B2B buyers spend only 17% of buying time talking to vendors",
+        "body": "The remaining 83% is self-directed research, mostly on your website and in AI search. Your site is doing 5x the selling your partners think it is",
+        "source": "gartner.com",
+        "url": "https://www.gartner.com/en/sales/insights/b2b-buying-journey"
+      },
+      {
+        "headline": "71% of professional services buyers ask a friend before they buy. 11% search online",
+        "body": "Then they all vet you online before the first call. The referred prospect who finds a 2021 website with stock photos rules you out before you know they exist",
+        "source": "hingemarketing.com",
+        "url": "https://hingemarketing.com/blog/story/how_to_reach_professional_services_buyers1"
+      }
+    ],
+    "quotes": [
+      {
+        "title": "The \"AI shop or AI antidote\" positioning paralysis",
+        "quote": "I've got a subcontractor helping me with sales, but I can only afford 5 hours a week. Every quarter the pipeline looks the same and I can't tell if it's the offer or the channel.",
+        "attribution": "boutique services founder on r/consulting",
+        "source_url": "https://reddit.com/r/consulting/comments/1rlukge/help_needed_how_are_you_positioning_your_business/"
+      },
+      {
+        "title": "Sales is a 5-hours-a-week subcontractor problem",
+        "quote": "I've got a subcontractor helping me with sales, but I can only afford about 5 hours a week with them currently ...",
+        "attribution": "u/lil_tink_tink on r/consulting, 2026-01-09, 47 upvotes",
+        "source_url": "https://reddit.com/r/consulting/comments/1q7vri0/letting_a_client_go_because_you_outgrew_them_how/"
+      }
+    ]
+  },
+  "10-nonprofit": {
+    "label": "Nonprofit \u00b7 Mission Orgs",
+    "voice_line": "It is November 12th, 11:34pm, and I am at the kitchen table because if I open the laptop in the bedroom Marcus wakes up and asks me if I am okay.",
+    "hooks": [
+      {
+        "headline": "The average Google Ad Grants account uses $300 of the $10,000 available each month",
+        "body": "That is 3% utilization of the largest free marketing channel ever given to nonprofits. Managed accounts hit $8,650/mo. The gap is not strategy, it is conversion tracking and keyword hygiene",
+        "source": "gettingattention.org",
+        "url": "https://gettingattention.org/google-ad-grants/"
+      },
+      {
+        "headline": "Mobile is 52% of nonprofit traffic but only 28% of revenue",
+        "body": "Desktop donors give $145 average. Mobile donors give $76. The gap is not generosity, it is a donation page that fails on a phone",
+        "source": "idonate.com",
+        "url": "https://www.idonate.com/blog/2025-mr-benchmarks-what-nonprofits-must-know-about-online-giving-and-donation-pages"
+      },
+      {
+        "headline": "8% mobile donation page conversion vs 11% desktop. For small nonprofits, mobile drops to 4%",
+        "body": "Mobile users land, look, and bounce. The year-end appeal that pushes them to mobile is the appeal where the leak compounds",
+        "source": "idonate.com",
+        "url": "https://www.idonate.com/blog/2025-mr-benchmarks-what-nonprofits-must-know-about-online-giving-and-donation-pages"
+      }
+    ],
+    "quotes": [
+      {
+        "title": "The career trap - more work, more strategy, no more money",
+        "quote": "We have Google's $10,000/month Ad Grant sitting unused. I have no idea how to run it.",
+        "attribution": "small-org ED on r/nonprofit",
+        "source_url": "https://reddit.com/r/nonprofit/comments/1pp41sr/looking_for_tips_advice_and_stories_about/"
+      },
+      {
+        "title": "The $10k/mo Ad Grants account that nobody can run",
+        "quote": "I have not done digital advertising before yet we do have Googles $10k / month advertising grant that is ready to go.",
+        "attribution": "anonymous operator on Reddit",
+        "source_url": "https://reddit.com/r/nonprofit/comments/1pp41sr/looking_for_tips_advice_and_stories_about/"
+      }
+    ]
+  }
+}

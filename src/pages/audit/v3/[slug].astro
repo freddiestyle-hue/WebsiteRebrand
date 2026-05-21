@@ -1,17 +1,46 @@
 ---
-// Shareable cached audit. Reads /audit-v3:{slug} from Upstash KV (deterministic
-// slug per domain, written by v3.astro POST handler) and rewrites to v3.astro
-// with the cached audit on Astro.locals so we render the full result UI
-// without re-running the 30-second scan.
+// Hero-finding render for cached v3 audits. Reads /audit-v3:{slug} from
+// Upstash KV, runs pickHeroFinding against the cached Memo, and renders a
+// gated single-finding layout: hero finding above fold + Cal.com CTA +
+// locked teaser cards below.
 //
-// Cache miss: render a small 404 inline. v3SlugToDomain isn't reversible for
-// domains containing dashes, so on miss we ask the operator to re-run rather
-// than guess.
+// This replaces the older "rewrite to /audit/v3" pattern. The form-submit
+// path at /audit/v3 still renders the full 9-cell layout for self-serve
+// scans; the slug path serves outbound prospects via a gated hero render
+// per the May 14 design doc.
+
 export const prerender = false;
 
 import { Redis } from '@upstash/redis';
-import type { Memo } from '../../../utils/audit/memo-schema';
+import PostHog from '../../../components/PostHog.astro';
+import type { Memo, VerdictCell, VerdictIcon } from '../../../utils/audit/memo-schema';
 import { isValidV3Slug } from '../../../utils/audit/slug';
+import { pickHeroFinding } from '../../../utils/audit/pick-hero';
+import slugToIcp from '../../../utils/audit/slug-to-icp.json';
+import icpVoice from '../../../utils/audit/icp-voice.json';
+import { buildLockedObservation, whyThisFirst, lockedMeta, deriveTone } from '../../../utils/audit/locked-observation';
+
+// Verdict-dimension icons — verbatim from the V4 Hybrid teardown sprite
+// (Prospect Teardown standalone). Inner SVG markup per VerdictIcon; .dot
+// fills accent, .fill fills currentColor (see .v3-lock-ic svg CSS).
+const LOCK_ICON: Record<string, string> = {
+  search: '<path d="M3 18 L9 12 L13 16 L21 6"/><circle class="dot" cx="21" cy="6" r="1.6"/>',
+  spark: '<circle cx="12" cy="12" r="9"/><path d="M12 12 L12 3 M12 12 L21 12"/><circle class="dot" cx="12" cy="12" r="1.2"/>',
+  bolt: '<circle cx="12" cy="12" r="9"/><path d="M12 6 V12 L17 14"/>',
+  target: '<path d="M3 21 V11 H7 V21 Z M10 21 V5 H14 V21 Z M17 21 V15 H21 V21 Z"/>',
+  megaphone: '<path d="M4 20 L12 4 L20 20 Z"/><path d="M12 11 V15"/><circle class="fill" cx="12" cy="17.5" r="0.8"/>',
+  eye: '<path d="M3 12 H8 L10 6 L14 18 L16 12 H21"/><circle class="dot" cx="14" cy="18" r="1.4"/>',
+  phone: '<path d="M3 12 H8 L10 6 L14 18 L16 12 H21"/><circle class="dot" cx="14" cy="18" r="1.4"/>',
+  mail: '<rect x="3" y="6" width="18" height="13"/><path d="M3 6 L12 14 L21 6"/>',
+  flag: '<path d="M3 7 L12 3 L21 7 L12 11 Z"/><path d="M3 12 L12 16 L21 12"/><path d="M3 17 L12 21 L21 17"/>',
+  bar: '<path d="M3 21 V11 H7 V21 Z M10 21 V5 H14 V21 Z M17 21 V15 H21 V21 Z"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 6 V12 L17 14"/>',
+};
+
+interface IcpQuote { title: string; quote: string; attribution: string; source_url: string | null }
+interface IcpVoiceEntry { label: string; voice_line: string | null; quotes: IcpQuote[]; hooks: unknown[] }
+type SlugToIcpMap = Record<string, string | null>;
+type IcpVoiceMap = Record<string, IcpVoiceEntry>;
 
 interface CachedV3 {
   memo: Memo;
@@ -23,35 +52,131 @@ interface CachedV3 {
   fetchedAt: string;
 }
 
+const CAL_URL = 'https://cal.com/fred-style/discovery?overlayCalendar=true';
 const slug = Astro.params.slug ?? '';
 
+let cached: CachedV3 | null = null;
+let kvError: 'invalid' | 'not_found' | 'kv_failed' | null = null;
+
 if (!isValidV3Slug(slug)) {
+  kvError = 'invalid';
   Astro.response.status = 404;
 } else {
   try {
     const redis = Redis.fromEnv();
     const raw = await redis.get<unknown>(`audit-v3:${slug}`);
-    if (raw != null) {
-      const payload = typeof raw === 'string' ? JSON.parse(raw) : (raw as CachedV3);
-      (Astro.locals as { cachedV3?: CachedV3 }).cachedV3 = payload as CachedV3;
-      return Astro.rewrite('/audit/v3');
+    if (raw == null) {
+      kvError = 'not_found';
+      Astro.response.status = 404;
+    } else {
+      cached = typeof raw === 'string' ? JSON.parse(raw) : (raw as CachedV3);
     }
-    Astro.response.status = 404;
   } catch (e) {
     console.error('[audit/v3/slug] KV read failed', e);
+    kvError = 'kv_failed';
     Astro.response.status = 500;
   }
 }
 
+// Resolve hero + non-hero cells when we have a Memo.
+const memo = cached?.memo ?? null;
+const hero = memo ? pickHeroFinding(memo) : null;
+const scorePercent = cached
+  ? Math.round((cached.scoreNumeric / Math.max(cached.scoreMax, 1)) * 100)
+  : 0;
+const companyName = memo?.companyName ?? memo?.domain ?? cached?.hostname ?? '';
+
+// Each verdict cell in the Memo represents a dimension. Skip the cell that
+// matches the hero so the locked-card grid never duplicates the headline.
+const heroIcon: VerdictIcon | null = (() => {
+  if (!memo || !hero || hero.dimension === 'clean') return null;
+  const ICON_FOR: Partial<Record<string, VerdictIcon>> = {
+    conversion: 'eye',
+    mobile: 'phone',
+    email: 'mail',
+    pagespeed: 'bolt',
+    seo: 'search',
+    aeo: 'spark',
+    tracking: 'target',
+    ads: 'megaphone',
+    ads_landing: 'megaphone',
+    stack: 'flag',
+  };
+  return ICON_FOR[hero.dimension] ?? null;
+})();
+
+const lockedCells: VerdictCell[] = (memo?.verdictCells ?? []).filter(
+  (c) => c.icon !== heroIcon,
+);
+
+// Resolve the prospect's ICP voice (one verbatim Reddit quote per industry).
+// Renders ONLY if the slug maps to one of our 10 ICPs AND the ICP has a quote.
+// Off-ICP slugs simply skip the callout.
+const icpSlug: string | null = (slugToIcp as SlugToIcpMap)[slug] ?? null;
+const icpEntry: IcpVoiceEntry | null = icpSlug
+  ? ((icpVoice as IcpVoiceMap)[icpSlug] ?? null)
+  : null;
+const heroQuote: IcpQuote | null = icpEntry?.quotes?.[0] ?? null;
+
+// Display-name mapping for the hero card kicker.
+const DIMENSION_LABEL: Record<string, string> = {
+  ads_landing: 'Quality Score penalty',
+  ads: 'Paid ads',
+  conversion: 'Conversion path',
+  mobile: 'Mobile experience',
+  email: 'Email deliverability',
+  pagespeed: 'Page speed',
+  seo: 'Google visibility',
+  aeo: 'AI search visibility',
+  tracking: 'Measurement',
+  stack: 'Tech stack',
+  clean: 'Clean read',
+};
+
+// Numbered dimension codes mirror the v3.astro 9-cell legend so prospects
+// see consistent numbering across the public form path and the gated path.
+const DIM_CODE: Record<VerdictIcon, string> = {
+  search:    '01',
+  spark:     '02',
+  bolt:      '03',
+  target:    '04',
+  megaphone: '05',
+  eye:       '06',
+  phone:     '07',
+  mail:      '08',
+  flag:      '09',
+  bar:       '10',
+  clock:     '11',
+};
+
 const now = new Date();
 const headerDate = `${now.getUTCFullYear()}·${String(now.getUTCMonth() + 1).padStart(2, '0')}·${String(now.getUTCDate()).padStart(2, '0')}`;
+const fetchedAtDisplay = cached?.fetchedAt
+  ? new Date(cached.fetchedAt).toISOString().replace('T', ' · ').slice(0, 19).replace(/-/g, '·')
+  : headerDate;
+
+// Score scale segments. Computed in the frontmatter to avoid Astro's JSX
+// parser choking on inline `<=` comparators (Issue: < gets read as tag open).
+const scoreSegs: string[] = Array.from({ length: 5 }).map((_, i) => {
+  const segPercent = (i + 1) * 20;
+  if (segPercent <= scorePercent) return 'lit';
+  if (segPercent <= scorePercent + 20) return 'dim-lit';
+  return '';
+});
+
+function bandLabel(pct: number): string {
+  if (pct < 30) return 'Halt';
+  if (pct < 50) return 'Watch';
+  if (pct < 75) return 'Read';
+  return 'Ready';
+}
 ---
 <!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Audit not found · rivett</title>
+<title>{cached ? `${cached.hostname} · Teardown · rivett` : 'Audit not found · rivett'}</title>
 <meta name="robots" content="noindex,nofollow" />
 <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon/favicon-32.png" />
@@ -61,27 +186,495 @@ const headerDate = `${now.getUTCFullYear()}·${String(now.getUTCMonth() + 1).pad
 <meta name="theme-color" content="#8FBF3F" />
 <link rel="stylesheet" href="/audit/tokens.css" />
 <link rel="stylesheet" href="/audit/audit-v3.css" />
+<PostHog />
 <style>
   body { font-family: var(--grotesk); background: var(--paper); color: var(--ink); margin: 0; }
-  .wrap { max-width: 720px; margin: 0 auto; padding: var(--sp-14) var(--sp-8); }
-  .kicker { font-family: var(--mono); font-size: var(--t-meta); letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--accent-deep); }
-  h1 { font-family: var(--grotesk); font-weight: 800; font-size: clamp(40px, 5.4vw, 64px); line-height: 1; letter-spacing: var(--track-display); margin: var(--sp-6) 0 var(--sp-6); }
-  h1 .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); }
-  p { font-family: var(--serif); font-style: italic; font-size: 20px; line-height: 1.5; color: var(--ink-dim); margin: 0 0 var(--sp-8); }
-  .slug { font-family: var(--mono); font-size: 14px; color: var(--ink); background: var(--paper-2); padding: 4px 8px; border: 1px solid var(--line); }
-  .ctas { display: flex; gap: var(--sp-3); flex-wrap: wrap; }
+  .page { max-width: 1200px; margin: 0 auto; padding: var(--sp-10) var(--sp-8); }
+  @media (max-width: 880px) { .page { padding: var(--sp-7) var(--sp-5); } }
+
+  /* Top strip: wordmark + meta */
+  .top {
+    display: flex; align-items: center; justify-content: space-between;
+    font-family: var(--mono); font-size: var(--t-meta);
+    letter-spacing: var(--track-mono); text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: var(--sp-10);
+  }
+  .top .left { display: flex; align-items: center; gap: var(--sp-4); }
+  .top a.wordmark { color: var(--ink); text-decoration: none; font-weight: 800; font-size: 18px; text-transform: none; letter-spacing: -0.01em; }
+  .top a.wordmark .dot-mark { color: var(--accent-deep); }
+
+  /* Hero block above fold */
+  .hero {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr;
+    gap: var(--sp-10);
+    align-items: start;
+    padding-bottom: var(--sp-10);
+    border-bottom: 1px solid var(--line);
+  }
+  @media (max-width: 880px) {
+    .hero { grid-template-columns: 1fr; gap: var(--sp-7); }
+  }
+  .hero .kicker {
+    font-family: var(--mono);
+    font-size: var(--t-meta);
+    letter-spacing: var(--track-mono);
+    text-transform: uppercase;
+    color: var(--accent-deep);
+    margin-bottom: var(--sp-5);
+  }
+  .hero h1 {
+    font-family: var(--grotesk);
+    font-weight: 800;
+    font-size: clamp(36px, 4.6vw, 56px);
+    line-height: 1.04;
+    letter-spacing: var(--track-display);
+    margin: 0 0 var(--sp-5);
+    color: var(--ink);
+  }
+  .hero h1 .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); }
+  .hero .diagnosis {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: clamp(18px, 1.5vw, 22px);
+    line-height: 1.55;
+    color: var(--ink-dim);
+    margin: 0 0 var(--sp-7);
+    max-width: 640px;
+  }
+  .hero .cta-block {
+    display: flex; flex-direction: column; gap: var(--sp-3);
+  }
+  .hero .cta-trust {
+    font-family: var(--grotesk);
+    font-size: 14px;
+    color: var(--ink-faint);
+    margin: 0;
+    max-width: 540px;
+    line-height: 1.5;
+  }
+  .hero .why-first {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 16px;
+    line-height: 1.5;
+    color: var(--ink-dim);
+    margin: var(--sp-5) 0 0;
+    max-width: 540px;
+    padding-top: var(--sp-4);
+    border-top: var(--bw-hair) solid var(--line);
+  }
+  .hero-meta-row {
+    display: flex; flex-wrap: wrap; gap: var(--sp-5);
+    font-family: var(--mono); font-size: var(--t-meta);
+    letter-spacing: var(--track-mono); text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: var(--sp-7);
+  }
+  .hero-meta-row b { color: var(--ink); font-weight: 500; }
+
+  /* Score panel (right column) */
+  .score-card {
+    background: var(--ink);
+    color: var(--on-ink);
+    padding: var(--sp-8);
+    display: flex; flex-direction: column; gap: var(--sp-4);
+  }
+  .score-card .lab {
+    font-family: var(--mono); font-size: var(--t-meta);
+    letter-spacing: var(--track-mono); text-transform: uppercase;
+    color: var(--on-ink-italic);
+  }
+  .score-card .read {
+    font-family: var(--grotesk); font-weight: 800;
+    font-size: clamp(64px, 8vw, 96px);
+    line-height: 1; letter-spacing: var(--track-display);
+  }
+  .score-card .denom { color: var(--on-ink-italic); font-weight: 500; font-size: 0.6em; }
+  .score-card .band {
+    font-family: var(--serif); font-style: italic;
+    color: var(--on-ink-italic); font-size: 16px;
+  }
+  .score-card .scale { display: flex; gap: 4px; margin-top: var(--sp-3); }
+  .score-card .seg { flex: 1; height: 6px; background: var(--on-ink-line); }
+  .score-card .seg.lit { background: var(--accent); }
+  .score-card .seg.dim-lit { background: var(--accent-deep); }
+
+  /* Locked cards section */
+  .locked-section {
+    padding-top: var(--sp-10);
+  }
+  .locked-section h2 {
+    font-family: var(--grotesk);
+    font-weight: 800;
+    font-size: clamp(26px, 2.4vw, 36px);
+    line-height: 1.15;
+    margin: 0 0 var(--sp-3);
+    letter-spacing: var(--track-display);
+  }
+  .locked-section h2 .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); }
+  .locked-section .lab {
+    font-family: var(--mono); font-size: var(--t-meta);
+    letter-spacing: var(--track-mono); text-transform: uppercase;
+    color: var(--accent-deep); margin-bottom: var(--sp-5);
+  }
+  /* ---- Locks · dossier grid — verbatim from the V4 Hybrid teardown ---- */
+  .v3-locks-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    border: 1px solid var(--ink);
+    margin-top: var(--sp-7);
+  }
+  .v3-lock {
+    padding: 24px 24px 22px;
+    border-right: 1px solid var(--ink);
+    border-bottom: 1px solid var(--ink);
+    background: var(--paper);
+    position: relative;
+    cursor: pointer;
+    transition: background 120ms cubic-bezier(0.2, 0.6, 0.2, 1);
+    min-height: 232px;
+    display: flex;
+    flex-direction: column;
+  }
+  .v3-lock:nth-child(4n) { border-right: 0; }
+  .v3-lock:nth-last-child(-n+4) { border-bottom: 0; }
+  .v3-lock:hover { background: var(--paper-2); }
+  .v3-lock .lhead {
+    display: flex; justify-content: space-between; align-items: center;
+    font-family: var(--mono); font-size: 10.5px;
+    letter-spacing: var(--track-mono); text-transform: uppercase;
+    color: var(--ink-faint); gap: 12px;
+  }
+  .v3-lock .lhead .dcode {
+    margin-left: auto; font-family: var(--mono); font-size: 11px;
+    letter-spacing: var(--track-mono); text-transform: uppercase;
+    color: var(--ink-faint); background: transparent; padding: 0;
+  }
+  .v3-lock .lhead .dcode b { color: var(--ink); font-weight: 500; }
+  .v3-lock-ic {
+    display: inline-flex; align-items: center; justify-content: center;
+    color: var(--ink);
+    transition: color 120ms cubic-bezier(0.2, 0.6, 0.2, 1), transform 200ms cubic-bezier(0.2, 0.6, 0.2, 1);
+  }
+  .v3-lock-ic svg {
+    fill: none; stroke: currentColor; stroke-width: 1.6;
+    stroke-linecap: square; stroke-linejoin: miter;
+  }
+  .v3-lock-ic svg :global(.dot) { fill: var(--accent); stroke: none; }
+  .v3-lock-ic svg :global(.fill) { fill: currentColor; stroke: none; }
+  .v3-lock:hover .v3-lock-ic { color: var(--accent-deep); }
+  .v3-lock h3 {
+    margin: 18px 0 4px; font-family: var(--grotesk); font-weight: 700;
+    font-size: 22px; line-height: 1.1; letter-spacing: -0.02em;
+    color: var(--ink); text-wrap: balance;
+  }
+  .v3-lock .reading {
+    margin-top: 14px; font-family: var(--grotesk); font-weight: 700;
+    font-size: var(--t-h-lg); line-height: 1; letter-spacing: -0.03em;
+    color: var(--ink);
+  }
+  .v3-lock .reading.warn { color: var(--signal-warn); }
+  .v3-lock .reading.halt { color: var(--signal-halt); }
+  .v3-lock .reading-k {
+    margin-top: 4px; font-family: var(--mono); font-size: 10.5px;
+    letter-spacing: var(--track-mono); text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .v3-lock .reading-unmeasured {
+    margin-top: 14px; font-family: var(--serif); font-style: italic;
+    font-size: 14px; line-height: 1.5; color: var(--ink-dim);
+  }
+  .v3-lock .obs {
+    margin-top: auto; padding-top: 16px;
+    border-top: 1px solid var(--line);
+    font-family: var(--mono); font-style: normal; font-size: 12px;
+    letter-spacing: 0; text-transform: none; line-height: 1.5;
+    color: var(--ink-dim); position: relative;
+  }
+  .v3-lock .obs .blot {
+    display: inline-block; background: var(--ink); color: transparent;
+    user-select: none; position: relative; padding: 2px 8px; margin: 0 3px;
+    font-family: var(--mono); letter-spacing: 0;
+    transition: background 120ms cubic-bezier(0.2, 0.6, 0.2, 1);
+    vertical-align: baseline;
+  }
+  .v3-lock .obs .blot::after {
+    content: 'REDACTED'; position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono); font-size: 9px; letter-spacing: var(--track-mono);
+    color: var(--on-ink); text-transform: uppercase; font-style: normal;
+  }
+  .v3-lock:hover .obs .blot { background: var(--accent-deep); }
+  .v3-lock .lfoot {
+    margin-top: 16px; padding-top: 14px;
+    border-top: 1px solid var(--line);
+    font-family: var(--mono); font-size: 10.5px;
+    letter-spacing: var(--track-mono); text-transform: uppercase;
+    color: var(--ink-faint); display: flex; align-items: center; gap: 10px;
+    transition: color 120ms cubic-bezier(0.2, 0.6, 0.2, 1);
+  }
+  .v3-lock .lfoot::before {
+    content: ''; width: 6px; height: 6px; background: #B6BCC6;
+    border-radius: 999px; transition: background 120ms cubic-bezier(0.2, 0.6, 0.2, 1);
+  }
+  .v3-lock:hover .lfoot { color: var(--ink); }
+  .v3-lock:hover .lfoot::before { background: var(--accent); }
+  @media (max-width: 1100px) {
+    .v3-locks-grid { grid-template-columns: repeat(2, 1fr); }
+    .v3-lock:nth-child(4n) { border-right: 1px solid var(--ink); }
+    .v3-lock:nth-child(2n) { border-right: 0; }
+    .v3-lock:nth-last-child(-n+4) { border-bottom: 1px solid var(--ink); }
+    .v3-lock:nth-last-child(-n+2) { border-bottom: 0; }
+  }
+  @media (max-width: 600px) {
+    .v3-locks-grid { grid-template-columns: 1fr; }
+    .v3-lock { border-right: 0; }
+    .v3-lock:nth-last-child(-n+2) { border-bottom: 1px solid var(--ink); }
+    .v3-lock:last-child { border-bottom: 0; }
+  }
+
+  /* Footer CTA + bio */
+  .closer {
+    margin-top: var(--sp-12);
+    background: var(--ink); color: var(--on-ink);
+    padding: var(--sp-12) var(--sp-10);
+    display: grid; grid-template-columns: 1.5fr 1fr;
+    gap: var(--sp-10); align-items: end;
+  }
+  @media (max-width: 880px) {
+    .closer { grid-template-columns: 1fr; padding: var(--sp-8) var(--sp-6); }
+  }
+  .closer h2 {
+    font-family: var(--grotesk); font-weight: 800;
+    font-size: clamp(28px, 3vw, 44px);
+    line-height: 1.05; letter-spacing: var(--track-display);
+    margin: 0 0 var(--sp-5);
+  }
+  .closer h2 .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--on-ink-italic); }
+  .closer p { font-family: var(--grotesk); font-size: 15px; color: var(--on-ink-italic); line-height: 1.55; margin: 0 0 var(--sp-5); max-width: 480px; }
+  .closer .actions { display: flex; gap: var(--sp-3); flex-wrap: wrap; }
+  .closer .sig {
+    font-family: var(--mono); font-size: var(--t-meta);
+    letter-spacing: var(--track-mono); text-transform: uppercase;
+    color: var(--on-ink-italic);
+  }
+  .closer .sig b { color: var(--on-ink); font-weight: 500; }
+
+  /* Subtle defamation/legal footer */
+  .legal-foot {
+    margin-top: var(--sp-7);
+    font-family: var(--mono); font-size: 11px;
+    letter-spacing: var(--track-mono); text-transform: uppercase;
+    color: var(--ink-faint);
+    text-align: center;
+  }
+
+  /* 404 layout when slug not found */
+  .nf-wrap { max-width: 720px; margin: 0 auto; padding: var(--sp-14) var(--sp-8); }
+  .nf-wrap h1 { font-family: var(--grotesk); font-weight: 800; font-size: clamp(40px, 5.4vw, 64px); line-height: 1; letter-spacing: var(--track-display); margin: var(--sp-6) 0; }
+  .nf-wrap h1 .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); }
+  .nf-wrap p { font-family: var(--serif); font-style: italic; font-size: 20px; line-height: 1.5; color: var(--ink-dim); margin: 0 0 var(--sp-8); }
+
+  /* Industry voice band — one verbatim Reddit quote pulled from the ICP research file. */
+  .industry-voice {
+    margin: var(--sp-10) 0 var(--sp-12);
+    padding: var(--sp-8) var(--sp-10);
+    background: var(--sage);
+    border: 1px solid var(--ink);
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-5);
+  }
+  @media (max-width: 780px) {
+    .industry-voice { padding: var(--sp-7) var(--sp-6); margin: var(--sp-8) 0 var(--sp-10); }
+  }
+  .industry-voice .iv-lab {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: var(--track-mono);
+    text-transform: uppercase;
+    color: var(--accent-deep);
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+  }
+  .industry-voice .iv-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    background: var(--accent);
+    border-radius: 999px;
+  }
+  .industry-voice .iv-ital {
+    font-family: var(--serif);
+    font-style: italic;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--ink-dim);
+    font-size: 13px;
+  }
+  .industry-voice .iv-quote {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: clamp(20px, 2.4vw, 26px);
+    line-height: 1.4;
+    color: var(--ink);
+    margin: 0;
+    text-wrap: pretty;
+    max-width: 820px;
+  }
+  .industry-voice .iv-attr {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: var(--track-mono);
+    color: var(--ink-faint);
+    text-transform: uppercase;
+  }
+  .industry-voice .iv-attr a {
+    color: var(--accent-deep);
+    text-decoration: none;
+  }
+  .industry-voice .iv-attr a:hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <span class="kicker">Cached audit · not found</span>
-  <h1>No cached run for <span class="ital">that slug.</span></h1>
-  <p>The cache holds audits for 14 days. After that, or if no audit has ever been run for this domain on this build, the URL returns 404. Paste the domain into the live audit form to generate a fresh one.</p>
-  <p style="font-style: normal; font-family: var(--mono); font-size: 13px; color: var(--ink-faint);">Slug attempted: <span class="slug">{slug}</span></p>
-  <div class="ctas">
-    <a class="btn btn--pri" href="/audit/v3">Run a fresh audit <span aria-hidden="true">→</span></a>
-    <a class="btn btn--sec" href="/diagnostic">Book a call</a>
+{cached && hero && memo ? (
+  <main class="page">
+    <header class="top">
+      <div class="left">
+        <a class="wordmark" href="/">rivett<span class="dot-mark">.</span></a>
+        <span>· Teardown · {cached.hostname}</span>
+      </div>
+      <span>{fetchedAtDisplay}</span>
+    </header>
+
+    <section class="hero">
+      <div class="hero-text">
+        <div class="hero-meta-row">
+          <span>Domain · <b>{cached.hostname}</b></span>
+          {companyName && companyName !== cached.hostname ? <span>Company · <b>{companyName}</b></span> : null}
+          <span>Scan · <b>9 of 9</b></span>
+        </div>
+
+        <div class="kicker">D · {hero.sourceCell ? DIM_CODE[hero.sourceCell.icon] : '·'} · {DIMENSION_LABEL[hero.dimension] ?? 'Finding'}</div>
+        <h1>
+          {hero.cellHeading}.<br/>
+          <span class="ital">The hero finding.</span>
+        </h1>
+        <p class="diagnosis">{hero.diagnosis}</p>
+        {hero.revenueMath ? <p class="diagnosis" style="color: var(--accent-deep); font-style: normal; font-family: var(--mono); text-transform: uppercase; font-size: 14px; letter-spacing: var(--track-mono);">{hero.revenueMath}</p> : null}
+
+        <div class="cta-block">
+          <a class="btn btn--pri" href={CAL_URL}>Book 30 min with Fred <span aria-hidden="true">→</span></a>
+          <p class="cta-trust">{hero.ctaSubtext}</p>
+        </div>
+        <p class="why-first">{whyThisFirst(hero.dimension)}</p>
+      </div>
+
+      <aside class="score-card">
+        <span class="lab">Composite read · v3.4</span>
+        <div class="read">{cached.scoreNumeric}<span class="denom"> / {cached.scoreMax}</span></div>
+        <div class="band">{bandLabel(scorePercent)}</div>
+        <div class="scale">
+          {scoreSegs.map((cls) => <div class={`seg ${cls}`.trim()}></div>)}
+        </div>
+      </aside>
+    </section>
+
+    {heroQuote ? (
+      <section class="industry-voice" aria-label="What operators in your industry are saying">
+        <div class="iv-lab">
+          <span class="iv-dot"></span>
+          Operators in {icpEntry?.label ?? 'your industry'} <span class="iv-ital">are saying this.</span>
+        </div>
+        <blockquote class="iv-quote">{heroQuote.quote}</blockquote>
+        <div class="iv-attr">
+          {heroQuote.source_url ? (
+            <a href={heroQuote.source_url} target="_blank" rel="noopener noreferrer">{heroQuote.attribution} <span aria-hidden="true">→</span></a>
+          ) : (
+            <span>{heroQuote.attribution}</span>
+          )}
+        </div>
+      </section>
+    ) : null}
+
+    <section class="locked-section">
+      <div class="lab">The other 8 findings · ranked by revenue impact on the call</div>
+      <h2>What the full teardown <span class="ital">covers.</span></h2>
+      <div class="v3-locks-grid">
+        {lockedCells.map((cell) => {
+          const value = (cell.value ?? '').trim();
+          const isUnmeasured = value === '' || value.toLowerCase() === 'n/a';
+          const obs = buildLockedObservation(cell);
+          const meta = lockedMeta(cell.icon);
+          const tone = deriveTone(cell);
+          return (
+            <article class="v3-lock" tabindex="0">
+              <div class="lhead">
+                <span class="v3-lock-ic" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="24" height="24" set:html={LOCK_ICON[cell.icon] ?? LOCK_ICON.search} />
+                </span>
+                <span class="dcode">D · <b>{DIM_CODE[cell.icon] ?? '·'}</b></span>
+              </div>
+              <h3>{meta.shortLabel}</h3>
+              {isUnmeasured ? (
+                <div class="reading-unmeasured">Some sites block the public scan. We'll measure it together on the call.</div>
+              ) : (
+                <Fragment>
+                  <div class={`reading ${tone === 'none' ? '' : tone}`.trim()}>{cell.value}</div>
+                  <div class="reading-k">{meta.valueLabel}</div>
+                  <div class="obs">
+                    {obs.pre}
+                    <span class="blot" aria-label="redacted, revealed on the call">REDACTED</span>
+                    {obs.post}
+                  </div>
+                </Fragment>
+              )}
+              <div class="lfoot">Revealed on the call</div>
+            </article>
+          );
+        })}
+      </div>
+    </section>
+
+    <section class="closer">
+      <div>
+        <div style="font-family: var(--mono); font-size: var(--t-meta); letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--accent); margin-bottom: var(--sp-3);">● 30 min · no deck</div>
+        <h2>
+          Pick a time.<br/>
+          <span class="ital">I'll walk you through the rest of the read.</span>
+        </h2>
+        <p>The other 8 dimensions, ranked by revenue impact. The fix order. The numbers your in-browser scan can't reach.</p>
+        <div class="actions">
+          <a class="btn btn--inv" href={CAL_URL}>Book a call <span aria-hidden="true">→</span></a>
+          <a class="btn btn--sec" href="/audit/v3" style="border-color: var(--on-ink-line-2); color: var(--on-ink);">Audit another domain</a>
+        </div>
+      </div>
+      <div class="sig">
+        <span style="display:block; color: var(--accent); margin-bottom: var(--sp-2);">● Signature</span>
+        <b>Fred Style</b> · rivett.tech · {fetchedAtDisplay.split(' ')[0]}
+        <p style="font-family: var(--serif); font-style: italic; font-size: 14px; line-height: 1.5; margin-top: var(--sp-5); color: var(--on-ink-italic); max-width: 360px;">Live in-browser scan. Not a formal assessment. The audit reads the public surface of a domain in your browser. It does not access authenticated dashboards, customer data, or anything behind a login.</p>
+      </div>
+    </section>
+
+    <p class="legal-foot">rivett.tech · {fetchedAtDisplay.split(' ')[0]}</p>
+  </main>
+) : (
+  <div class="nf-wrap">
+    <span class="kicker" style="font-family: var(--mono); font-size: var(--t-meta); letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--accent-deep);">Cached audit · {kvError === 'invalid' ? 'invalid slug' : kvError === 'kv_failed' ? 'kv error' : 'not found'}</span>
+    <h1>No cached run for <span class="ital">that slug.</span></h1>
+    <p>The cache holds audits for 14 days. After that, or if no audit has ever been run for this domain on this build, the URL returns 404. Paste the domain into the live audit form to generate a fresh one.</p>
+    <p style="font-style: normal; font-family: var(--mono); font-size: 13px; color: var(--ink-faint);">Slug attempted: <span style="background: var(--paper-2); padding: 4px 8px; border: 1px solid var(--line);">{slug}</span></p>
+    <div style="display: flex; gap: var(--sp-3); flex-wrap: wrap;">
+      <a class="btn btn--pri" href="/audit/v3">Run a fresh audit <span aria-hidden="true">→</span></a>
+      <a class="btn btn--sec" href={CAL_URL}>Book a call</a>
+    </div>
   </div>
-</div>
+)}
 </body>
 </html>
