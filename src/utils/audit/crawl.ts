@@ -170,3 +170,156 @@ export function discoverKeyPages(
   }
   return picked;
 }
+
+// --- Crawl: read the discovered pages -------------------------------------
+
+const FETCH_TIMEOUT_MS = 10000;
+const MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
+const CRAWL_USER_AGENT =
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+
+// Private / loopback ranges - never crawl these (SSRF guard).
+const BLOCKED_IPV4 = [
+  /^10\./,
+  /^127\./,
+  /^169\.254\./,
+  /^172\.(1[6-9]|2[0-9]|3[01])\./,
+  /^192\.168\./,
+  /^0\./,
+];
+function isSafeHost(hostname: string): boolean {
+  const h = hostname.toLowerCase();
+  if (h === 'localhost') return false;
+  return !BLOCKED_IPV4.some((re) => re.test(h));
+}
+
+export interface ConversionSignals {
+  hasForm: boolean;
+  hasTelLink: boolean;
+  hasScheduling: boolean;
+  hasChatWidget: boolean;
+  hasPromptCta: boolean;
+}
+
+// The conversion-path regexes, in one place. engine.ts checks these on the
+// homepage; the crawl checks them on the other key pages so a form on
+// /contact or a CTA on /pricing is no longer invisible to the audit.
+export function detectConversionSignals(html: string): ConversionSignals {
+  const heroText = html.slice(0, 4000);
+  return {
+    hasForm: /<form\b[^>]*>/i.test(html),
+    hasTelLink: /\bhref=["']tel:/i.test(html),
+    hasScheduling:
+      /(calendly\.com|cal\.com\/[a-z]|calendar\.app\.google|hubspot\.com\/meetings|chilipiper\.com|savvycal\.com|tidycal\.com)/i.test(
+        html,
+      ),
+    hasChatWidget:
+      /(intercom\.io\/messenger|widget\.intercom\.io|drift\.com|js\.driftt\.com|tawk\.to|crisp\.chat|chatwidget|hubspot\.com\/conversation)/i.test(
+        html,
+      ),
+    hasPromptCta:
+      /<(a|button)[^>]*\b(class|id)=["'][^"']*(cta|btn-primary|primary-cta|hero-cta|book|start|get-started|trial)/i.test(
+        heroText,
+      ) ||
+      /<(a|button)[^>]*>([^<]*\b(get started|start free|book a (call|demo)|request (a )?(quote|demo)|schedule (a )?(call|demo)|talk to|contact us)\b)/i.test(
+        heroText,
+      ),
+  };
+}
+
+export interface CrawledPage extends ConversionSignals {
+  url: string;
+  role: PageRole;
+  ok: boolean;
+  fetchError?: string;
+}
+
+export interface CrawlResult {
+  pages: CrawledPage[];
+  durationMs: number;
+}
+
+const NO_SIGNALS: ConversionSignals = {
+  hasForm: false,
+  hasTelLink: false,
+  hasScheduling: false,
+  hasChatWidget: false,
+  hasPromptCta: false,
+};
+
+async function fetchPageHtml(
+  url: string,
+): Promise<{ ok: true; html: string } | { ok: false; reason: string }> {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return { ok: false, reason: 'unparseable URL' };
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    return { ok: false, reason: 'unsupported protocol' };
+  }
+  if (!isSafeHost(parsed.hostname)) {
+    return { ok: false, reason: 'blocked host' };
+  }
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
+  try {
+    const res = await fetch(parsed.toString(), {
+      method: 'GET',
+      headers: { 'User-Agent': CRAWL_USER_AGENT, Accept: 'text/html,application/xhtml+xml,*/*' },
+      signal: ctrl.signal,
+      redirect: 'follow',
+    });
+    if (!res.ok) return { ok: false, reason: `HTTP ${res.status}` };
+    const reader = res.body?.getReader();
+    if (!reader) return { ok: false, reason: 'no body' };
+    let bytes = 0;
+    const chunks: Uint8Array[] = [];
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      if (value) {
+        bytes += value.byteLength;
+        if (bytes > MAX_RESPONSE_BYTES) {
+          await reader.cancel();
+          return { ok: false, reason: 'response too large' };
+        }
+        chunks.push(value);
+      }
+    }
+    const buf = new Uint8Array(bytes);
+    let off = 0;
+    for (const c of chunks) {
+      buf.set(c, off);
+      off += c.byteLength;
+    }
+    return { ok: true, html: new TextDecoder('utf-8', { fatal: false }).decode(buf) };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return { ok: false, reason: msg.includes('abort') ? 'timeout' : msg };
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+async function crawlOne(page: DiscoveredPage): Promise<CrawledPage> {
+  const res = await fetchPageHtml(page.url);
+  if (!res.ok) {
+    return { url: page.url, role: page.role, ok: false, fetchError: res.reason, ...NO_SIGNALS };
+  }
+  return { url: page.url, role: page.role, ok: true, ...detectConversionSignals(res.html) };
+}
+
+/**
+ * Crawl the discovered key pages and read their conversion signals. One
+ * static fetch per page, run in parallel, each guarded by its own timeout
+ * and SSRF check. A page that fails to fetch still appears in the result,
+ * flagged, so the audit can say it tried rather than silently dropping it.
+ */
+export async function crawlPages(pages: DiscoveredPage[]): Promise<CrawlResult> {
+  const started = Date.now();
+  if (pages.length === 0) return { pages: [], durationMs: 0 };
+  const crawled = await Promise.all(pages.map(crawlOne));
+  return { pages: crawled, durationMs: Date.now() - started };
+}

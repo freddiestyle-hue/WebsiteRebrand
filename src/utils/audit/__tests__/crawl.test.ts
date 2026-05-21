@@ -1,5 +1,11 @@
-import { describe, it, expect } from 'vitest';
-import { discoverKeyPages, type DiscoveredPage, type PageRole } from '../crawl';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import {
+  discoverKeyPages,
+  detectConversionSignals,
+  crawlPages,
+  type DiscoveredPage,
+  type PageRole,
+} from '../crawl';
 
 /**
  * Upgrade 1 - multi-page crawl. Tests for discoverKeyPages: the pure
@@ -79,5 +85,90 @@ describe('discoverKeyPages', () => {
   it('returns nothing for empty input or an unparseable origin', () => {
     expect(discoverKeyPages('', '', ORIGIN)).toEqual([]);
     expect(discoverKeyPages(NAV_HTML, '', 'not-a-url')).toEqual([]);
+  });
+});
+
+describe('detectConversionSignals', () => {
+  it('detects a form', () => {
+    expect(detectConversionSignals('<form action="/x"><input /></form>').hasForm).toBe(true);
+  });
+  it('detects a tel link and a scheduling link', () => {
+    const s = detectConversionSignals(
+      '<a href="tel:+1234567890">Call</a> <a href="https://calendly.com/acme">Book</a>',
+    );
+    expect(s.hasTelLink).toBe(true);
+    expect(s.hasScheduling).toBe(true);
+  });
+  it('detects a chat widget', () => {
+    expect(
+      detectConversionSignals('<script src="https://widget.intercom.io/x.js"></script>')
+        .hasChatWidget,
+    ).toBe(true);
+  });
+  it('detects a prominent CTA in the hero', () => {
+    expect(detectConversionSignals('<a class="hero-cta" href="/x">Book a call</a>').hasPromptCta).toBe(
+      true,
+    );
+  });
+  it('a bare page has no conversion signals', () => {
+    const s = detectConversionSignals('<html><body><p>hello there</p></body></html>');
+    expect(s.hasForm || s.hasTelLink || s.hasScheduling || s.hasChatWidget || s.hasPromptCta).toBe(
+      false,
+    );
+  });
+});
+
+function mockFetch(routes: Record<string, { status?: number; body?: string }>) {
+  return vi.fn(async (input: unknown) => {
+    const r = routes[String(input)];
+    if (!r) return new Response('not found', { status: 404 });
+    return new Response(r.body ?? '', {
+      status: r.status ?? 200,
+      headers: { 'content-type': 'text/html' },
+    });
+  });
+}
+
+describe('crawlPages', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('reads conversion signals from each crawled page', async () => {
+    vi.stubGlobal(
+      'fetch',
+      mockFetch({
+        'https://acme.com/contact': {
+          body: '<html><body><form action="/x"><input /></form></body></html>',
+        },
+        'https://acme.com/pricing': {
+          body: '<html><body><a class="cta-button" href="/y">Get started</a></body></html>',
+        },
+      }),
+    );
+    const result = await crawlPages([
+      { url: 'https://acme.com/contact', role: 'contact' },
+      { url: 'https://acme.com/pricing', role: 'money' },
+    ]);
+    const contact = result.pages.find((p) => p.role === 'contact');
+    const money = result.pages.find((p) => p.role === 'money');
+    expect(contact?.ok).toBe(true);
+    expect(contact?.hasForm).toBe(true);
+    expect(money?.hasPromptCta).toBe(true);
+    expect(money?.hasForm).toBe(false);
+  });
+
+  it('flags a page that fails to fetch instead of dropping it', async () => {
+    vi.stubGlobal('fetch', mockFetch({}));
+    const result = await crawlPages([{ url: 'https://acme.com/contact', role: 'contact' }]);
+    expect(result.pages).toHaveLength(1);
+    expect(result.pages[0].ok).toBe(false);
+    expect(result.pages[0].fetchError).toBeTruthy();
+    expect(result.pages[0].hasForm).toBe(false);
+  });
+
+  it('returns an empty result for no pages', async () => {
+    const result = await crawlPages([]);
+    expect(result.pages).toEqual([]);
   });
 });
