@@ -1,0 +1,85 @@
+// Conversion-path trace (Upgrade 4). The conversion checks answer "is there a
+// form somewhere on the site". This answers the operation question: a visitor
+// lands on the homepage, finds the main call-to-action, clicks it - how many
+// clicks until they reach a form they can actually submit?
+//
+// pickPrimaryCta is pure (no DOM, no browser) so it is unit-testable. The
+// headless pass enumerates the page's clickable elements into CtaCandidates,
+// this ranks them, and headless-check.ts clicks the winner.
+
+// One clickable element observed on the page.
+export interface CtaCandidate {
+  index: number; // stable handle back to the enumerated DOM element
+  text: string;
+  tag: 'a' | 'button';
+  classId: string; // class + id, lowercased
+  href: string | null;
+  area: number; // rendered width * height, in px^2
+  aboveFold: boolean;
+}
+
+export interface PrimaryCta {
+  index: number;
+  text: string;
+}
+
+// Where the trace ended up, and how far the nearest form is.
+export type ConversionPathOutcome =
+  | 'form-on-homepage' // a submittable form was already on the page at load
+  | 'form-after-click' // clicking the primary CTA reached a form
+  | 'no-form-reached' // the CTA was clicked but no form appeared within one click
+  | 'no-cta' // no clear primary CTA to follow
+  | 'trace-failed'; // the click / trace errored out
+
+export interface ConversionPathResult {
+  primaryCtaText: string | null;
+  outcome: ConversionPathOutcome;
+  // 0 = form already on the homepage, 1 = one click from the CTA, null = further or unknown.
+  clicksToForm: number | null;
+}
+
+// High-intent CTA wording - the verbs a primary conversion button uses.
+const HIGH_INTENT =
+  /\b(get started|start (free|now)|free trial|try (it )?free|book (a |your )?(call|demo|consult\w*|appointment)|request (a |your )?(quote|demo|call|consult\w*)|get (a |your )?(quote|estimate|demo)|schedule (a |your )?(call|demo|consult\w*|appointment)|talk to (us|sales|an expert)|contact us|get in touch|book now|enquire|claim your|sign up)\b/i;
+
+// Class / id fragments that mark an element as a primary call-to-action.
+const CTA_CLASS = /\b(cta|btn-primary|primary-cta|hero-cta|btn-cta|action-btn|primary-button)\b/i;
+
+// Hrefs that are terminal actions, not steps toward a form.
+const SKIP_HREF = /^\s*(mailto:|tel:)/i;
+
+/**
+ * Rank the page's clickable elements and return the primary call-to-action -
+ * the button or link a visitor is most likely meant to click first. An
+ * element must self-identify as a CTA (by its wording or its class) to be
+ * considered; prominence then breaks ties. Returns null when nothing on the
+ * page reads as a real CTA. Pure.
+ */
+export function pickPrimaryCta(candidates: CtaCandidate[]): PrimaryCta | null {
+  let best: { cand: CtaCandidate; score: number } | null = null;
+  for (const c of candidates) {
+    const text = c.text.trim();
+    if (!text || text.length > 48) continue;
+    if (c.href !== null && SKIP_HREF.test(c.href)) continue;
+
+    const hiText = HIGH_INTENT.test(text);
+    const ctaClass = CTA_CLASS.test(c.classId);
+    // Must read as a CTA by its wording or its class - otherwise it is just a
+    // link, and clicking a random nav link is not a conversion-path trace.
+    if (!hiText && !ctaClass) continue;
+
+    let score = 0;
+    if (hiText) score += 4;
+    if (ctaClass) score += 2;
+    if (c.aboveFold) score += 2;
+    if (c.tag === 'button') score += 1;
+    if (c.area >= 800) score += 1;
+
+    // Strict > keeps the earlier element on a tie - the primary CTA usually
+    // appears first, in the hero.
+    if (best === null || score > best.score) {
+      best = { cand: c, score };
+    }
+  }
+  return best ? { index: best.cand.index, text: best.cand.text.trim() } : null;
+}
