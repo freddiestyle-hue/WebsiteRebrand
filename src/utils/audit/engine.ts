@@ -15,6 +15,7 @@ import {
   type ConversionSignals,
   type PageRole,
 } from './crawl';
+import type { ConversionPathResult } from './conversion-path';
 
 export interface CheckResult {
   id: string;
@@ -296,6 +297,9 @@ export interface RunAuditOptions {
   // key pages (contact / money / about) so conversion is judged across the
   // real site, not just the homepage. v3.astro sets it; legacy callers do not.
   crawl?: boolean;
+  // Upgrade 4 - the headless conversion-path trace (HeadlessResult.conversionPath).
+  // When supplied, runAudit reports it as a conversion-path check.
+  conversionPath?: ConversionPathResult;
 }
 
 export async function runAudit(rawUrl: string, opts?: RunAuditOptions): Promise<AuditResult> {
@@ -753,6 +757,50 @@ export async function runAudit(rawUrl: string, opts?: RunAuditOptions): Promise<
         'No obvious high-intent CTA above the fold. Cold visitors land and have to figure out what you want them to do. Add one button, one verb, one outcome.',
     }),
   );
+
+  // Upgrade 4 — the conversion-path trace, when the headless pass ran it.
+  // Turns "is there a form" into "how many clicks from the CTA to a form".
+  const cp = opts?.conversionPath;
+  if (cp) {
+    const reached = cp.outcome === 'form-on-homepage' || cp.outcome === 'form-after-click';
+    const cta = cp.primaryCtaText ? `"${cp.primaryCtaText}"` : 'the primary CTA';
+    let cpEvidence: string;
+    let cpFinding: string;
+    switch (cp.outcome) {
+      case 'form-on-homepage':
+        cpEvidence = 'form reachable on the homepage, 0 clicks';
+        cpFinding =
+          'A visitor can convert on the homepage itself - the form is right there, zero clicks from landing.';
+        break;
+      case 'form-after-click':
+        cpEvidence = `${cta} leads to a form in 1 click`;
+        cpFinding = `The primary CTA (${cta}) leads to a submittable form in one click. A cold visitor has a clear, short path to convert.`;
+        break;
+      case 'no-form-reached':
+        cpEvidence = `${cta} clicked, no form within 1 click`;
+        cpFinding = `The primary CTA (${cta}) was clicked, but it did not lead to a submittable form within one click. A cold visitor following the obvious next step does not reach a way to convert.`;
+        break;
+      case 'no-cta':
+        cpEvidence = 'no clear primary CTA on the homepage';
+        cpFinding =
+          'No clear primary call-to-action on the homepage. A cold visitor lands with no obvious next step toward converting.';
+        break;
+      default: // trace-failed
+        cpEvidence = 'conversion-path trace did not complete';
+        cpFinding = 'The conversion path could not be traced automatically in this scan.';
+        break;
+    }
+    checks.push({
+      id: 'conversion-path',
+      category: 'conversion',
+      label: 'Path from CTA to a form',
+      passed: cp.outcome === 'trace-failed' ? true : reached,
+      // trace-failed is unmeasured, not a real gap - weight 0 so it does not score.
+      weight: cp.outcome === 'trace-failed' ? 0 : 1,
+      evidence: cpEvidence,
+      finding: cpFinding,
+    });
+  }
 
   const endedAt = Date.now();
   const passedWeight = checks.reduce((s, c) => s + (c.passed ? c.weight : 0), 0);

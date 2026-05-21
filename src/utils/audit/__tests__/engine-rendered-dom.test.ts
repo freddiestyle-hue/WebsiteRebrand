@@ -173,3 +173,33 @@ describe('runAudit — multi-page crawl (Upgrade 1)', () => {
     expect(r.crawledPages).toEqual([]);
   });
 });
+
+describe('runAudit — conversion-path trace (Upgrade 4)', () => {
+  it('reports a one-click path when the headless trace reached a form', async () => {
+    vi.stubGlobal('fetch', mockFetch(STATIC_SHELL));
+    const r = await runAudit('https://acme.example', {
+      conversionPath: {
+        primaryCtaText: 'Book a call',
+        outcome: 'form-after-click',
+        clicksToForm: 1,
+      },
+    });
+    const cpCheck = check(r.checks, 'conversion-path');
+    expect(cpCheck.passed).toBe(true);
+    expect(cpCheck.finding).toContain('Book a call');
+  });
+
+  it('fails the conversion-path check when no CTA was found', async () => {
+    vi.stubGlobal('fetch', mockFetch(STATIC_SHELL));
+    const r = await runAudit('https://acme.example', {
+      conversionPath: { primaryCtaText: null, outcome: 'no-cta', clicksToForm: null },
+    });
+    expect(check(r.checks, 'conversion-path').passed).toBe(false);
+  });
+
+  it('omits the conversion-path check when no trace was supplied', async () => {
+    vi.stubGlobal('fetch', mockFetch(STATIC_SHELL));
+    const r = await runAudit('https://acme.example');
+    expect(r.checks.find((c) => c.id === 'conversion-path')).toBeUndefined();
+  });
+});

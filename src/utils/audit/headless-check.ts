@@ -23,8 +23,9 @@
 // instead of bundled binary (skips function cold-start, slightly faster).
 
 import chromium from '@sparticuz/chromium';
-import { chromium as playwright } from 'playwright-core';
+import { chromium as playwright, type Page } from 'playwright-core';
 import { isTrackingHost, type HeadlessTrackingCapture } from './tracking';
+import { pickPrimaryCta, type CtaCandidate, type ConversionPathResult } from './conversion-path';
 
 export interface HeadlessResult {
   // Rendered HTML after JS hydration (use to re-run tech-stack fingerprints)
@@ -43,11 +44,139 @@ export interface HeadlessResult {
   // Upgrade 3 — measurement truth. What the tracking stack actually did at
   // runtime, not just what code is on the page. Shape defined in ./tracking.
   tracking: HeadlessTrackingCapture;
+  // Upgrade 4 — conversion-path trace. The primary CTA was clicked in the real
+  // browser to see how many clicks reach a submittable form. Shape in ./conversion-path.
+  conversionPath: ConversionPathResult;
   durationMs: number;
 }
 
-const HEADLESS_TIMEOUT_MS = 28000;
+const HEADLESS_TIMEOUT_MS = 34000;
 const NAV_TIMEOUT_MS = 15000;
+const TRACE_TIMEOUT_MS = 8000;
+
+// --- Upgrade 4: conversion-path trace -------------------------------------
+
+// A submittable form is in reach if a visible <form> with a real input sits in
+// the page, or a known form-embed iframe is present (HubSpot, Typeform, etc.).
+async function hasSubmittableForm(page: Page): Promise<boolean> {
+  const inDom = await page
+    .evaluate(() => {
+      const forms = Array.from(document.querySelectorAll('form'));
+      return forms.some((f) => {
+        const r = f.getBoundingClientRect();
+        if (r.width < 40 || r.height < 20) return false;
+        return !!f.querySelector('input:not([type=hidden]), textarea');
+      });
+    })
+    .catch(() => false);
+  if (inDom) return true;
+  return page
+    .frames()
+    .some((f) =>
+      /hsforms\.|typeform\.com|jotform\.|tally\.so|forms\.google|formstack|wufoo/i.test(f.url()),
+    );
+}
+
+// Enumerate the page's clickable elements, tagging each with a data attribute
+// so the chosen one can be re-located for the click.
+async function enumerateCtas(page: Page): Promise<CtaCandidate[]> {
+  return page
+    .evaluate(() => {
+      const els = Array.from(document.querySelectorAll('a, button'));
+      const vh = window.innerHeight;
+      const out: Array<{
+        index: number;
+        text: string;
+        tag: 'a' | 'button';
+        classId: string;
+        href: string | null;
+        area: number;
+        aboveFold: boolean;
+      }> = [];
+      let idx = 0;
+      for (const el of els) {
+        const rect = el.getBoundingClientRect();
+        if (rect.width < 1 || rect.height < 1) continue;
+        el.setAttribute('data-rivett-cta', String(idx));
+        out.push({
+          index: idx,
+          text: (el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 120),
+          tag: el.tagName === 'BUTTON' ? 'button' : 'a',
+          classId: (
+            (el.getAttribute('class') || '') +
+            ' ' +
+            (el.getAttribute('id') || '')
+          ).toLowerCase(),
+          href: el.getAttribute('href'),
+          area: Math.round(rect.width * rect.height),
+          aboveFold: rect.top >= 0 && rect.top < vh,
+        });
+        idx++;
+        if (idx >= 150) break;
+      }
+      return out;
+    })
+    .catch(() => [] as CtaCandidate[]);
+}
+
+// Best-effort cookie-consent dismissal so the banner does not intercept the
+// CTA click. Clicks an in-page accept button via the page's own handler.
+async function dismissCookieBanner(page: Page): Promise<void> {
+  try {
+    await page.evaluate(() => {
+      const buttons = Array.from(document.querySelectorAll('button, a, [role="button"]'));
+      for (const b of buttons) {
+        const t = (b.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase();
+        if (/^(accept|accept all|accept cookies|agree|i agree|got it|allow all|ok|continue)$/.test(t)) {
+          (b as HTMLElement).click();
+          return;
+        }
+      }
+    });
+    await page.waitForTimeout(400);
+  } catch {
+    // best effort - a banner we cannot dismiss just risks a trace-failed
+  }
+}
+
+// Trace the conversion path: find the primary CTA, click it, and see how many
+// clicks it takes to reach a submittable form. Heavily guarded - interactive
+// automation on arbitrary sites fails in many ways, and an honest
+// "trace-failed" beats a wrong answer.
+async function traceConversionPath(page: Page): Promise<ConversionPathResult> {
+  try {
+    const candidates = await enumerateCtas(page);
+    const primary = pickPrimaryCta(candidates);
+
+    if (await hasSubmittableForm(page)) {
+      return { primaryCtaText: primary?.text ?? null, outcome: 'form-on-homepage', clicksToForm: 0 };
+    }
+    if (!primary) {
+      return { primaryCtaText: null, outcome: 'no-cta', clicksToForm: null };
+    }
+
+    await dismissCookieBanner(page);
+    const clicked = await page
+      .click(`[data-rivett-cta="${primary.index}"]`, { timeout: 3500 })
+      .then(() => true)
+      .catch(() => false);
+    if (!clicked) {
+      return { primaryCtaText: primary.text, outcome: 'trace-failed', clicksToForm: null };
+    }
+
+    // Let the click settle - it may navigate, open a modal, or reveal a form.
+    await page.waitForLoadState('domcontentloaded', { timeout: 2500 }).catch(() => {});
+    await page.waitForTimeout(1000);
+    const reached = await hasSubmittableForm(page);
+    return {
+      primaryCtaText: primary.text,
+      outcome: reached ? 'form-after-click' : 'no-form-reached',
+      clicksToForm: reached ? 1 : null,
+    };
+  } catch {
+    return { primaryCtaText: null, outcome: 'trace-failed', clicksToForm: null };
+  }
+}
 
 export async function runHeadlessCheck(url: string): Promise<HeadlessResult | null> {
   const started = Date.now();
@@ -194,6 +323,19 @@ export async function runHeadlessCheck(url: string): Promise<HeadlessResult | nu
         })
         .catch(() => ({ dataLayerEvents: [], gtmContainerIds: [], ga4MeasurementIds: [] }));
 
+      // Upgrade 4 — conversion-path trace. Runs LAST: it clicks the CTA, which
+      // can navigate away, so every other capture must already be done. Bounded
+      // by its own timeout so a slow trace cannot sink the whole headless pass.
+      const conversionPath = await Promise.race<ConversionPathResult>([
+        traceConversionPath(page),
+        new Promise<ConversionPathResult>((resolve) =>
+          setTimeout(
+            () => resolve({ primaryCtaText: null, outcome: 'trace-failed', clicksToForm: null }),
+            TRACE_TIMEOUT_MS,
+          ),
+        ),
+      ]);
+
       return {
         renderedHtml,
         networkHosts: [...networkHosts].sort(),
@@ -210,6 +352,7 @@ export async function runHeadlessCheck(url: string): Promise<HeadlessResult | nu
           gtmContainerIds: [...new Set(trackingRuntime.gtmContainerIds)].sort(),
           ga4MeasurementIds: [...new Set(trackingRuntime.ga4MeasurementIds)].sort(),
         },
+        conversionPath,
         durationMs: Date.now() - started,
       };
     } catch (e) {

@@ -99,6 +99,7 @@ if (isPOST && !memo) {
         audit = await runAudit(norm.url, {
           renderedHtml: headless?.renderedHtml,
           headlessTracking: headless?.tracking,
+          conversionPath: headless?.conversionPath,
           crawl: true,
         });
         if (audit.error) {
