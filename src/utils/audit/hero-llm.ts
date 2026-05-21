@@ -171,45 +171,114 @@ export function parseHeroJson(text: string): HeroResult | null {
   };
 }
 
+// Why a generation did not ship an LLM hero. 'success' is the only outcome
+// that returns a hero; every other value means the caller falls back to
+// pickHeroFinding.
+type HeroGenOutcome =
+  | 'success'
+  | 'no_api_key'
+  | 'empty_response'
+  | 'parse_failed'
+  | 'ungrounded'
+  | 'timeout'
+  | 'api_error';
+
+// One structured observability line per generation. The llm-vs-fallback ratio
+// across a batch is the health metric: source:llm means the LLM hero shipped,
+// source:fallback means pickHeroFinding will be used instead. Greppable in the
+// Vercel function logs by the [hero-obs] tag.
+function logHeroGeneration(obs: {
+  slug: string;
+  outcome: HeroGenOutcome;
+  latencyMs: number;
+  grounded: boolean | null;
+  inputTokens: number | null;
+  outputTokens: number | null;
+}): void {
+  console.log(
+    `[hero-obs] ${JSON.stringify({
+      slug: obs.slug,
+      source: obs.outcome === 'success' ? 'llm' : 'fallback',
+      outcome: obs.outcome,
+      latencyMs: obs.latencyMs,
+      grounded: obs.grounded,
+      inputTokens: obs.inputTokens,
+      outputTokens: obs.outputTokens,
+    })}`,
+  );
+}
+
 // Generate the hero for one prospect. Fails open: any error (no API key,
 // timeout, malformed output, refusal) returns null so the caller can fall
-// back to the rule-based pickHeroFinding.
+// back to the rule-based pickHeroFinding. Every call emits exactly one
+// [hero-obs] log line covering source, outcome, latency, grounding, and cost.
 export async function generateHero(input: HeroPromptInput): Promise<HeroResult | null> {
-  if (!isApiKeyAvailable()) return null;
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-  try {
-    const userPrompt = buildHeroUserPrompt(input);
-    const res = await client.messages.create(
-      {
-        model: MODEL,
-        max_tokens: MAX_TOKENS,
-        system: HERO_SYSTEM_PROMPT,
-        messages: [{ role: 'user', content: userPrompt }],
-      },
-      { signal: controller.signal },
-    );
-    const block = res.content.find((b) => b.type === 'text');
-    const raw = block && block.type === 'text' ? block.text : '';
-    if (!raw) return null;
-    const hero = parseHeroJson(raw);
-    if (!hero) return null;
-    // Fail closed: a hero that states a number absent from the audit is
-    // hallucinating, or echoing an injection from the scraped site. Reject it.
-    const grounding = checkHeroGrounding(hero, userPrompt);
-    if (!grounding.grounded) {
-      console.warn(
-        `[hero-llm] ungrounded output rejected; numbers not in the audit: ${grounding.ungroundedNumbers.join(', ')}`,
+  const startedAt = Date.now();
+  let outcome: HeroGenOutcome = 'api_error';
+  let grounded: boolean | null = null;
+  let inputTokens: number | null = null;
+  let outputTokens: number | null = null;
+  let hero: HeroResult | null = null;
+
+  if (!isApiKeyAvailable()) {
+    outcome = 'no_api_key';
+  } else {
+    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+    try {
+      const userPrompt = buildHeroUserPrompt(input);
+      const res = await client.messages.create(
+        {
+          model: MODEL,
+          max_tokens: MAX_TOKENS,
+          system: HERO_SYSTEM_PROMPT,
+          messages: [{ role: 'user', content: userPrompt }],
+        },
+        { signal: controller.signal },
       );
-      return null;
+      inputTokens = res.usage?.input_tokens ?? null;
+      outputTokens = res.usage?.output_tokens ?? null;
+      const block = res.content.find((b) => b.type === 'text');
+      const raw = block && block.type === 'text' ? block.text : '';
+      if (!raw) {
+        outcome = 'empty_response';
+      } else {
+        const parsed = parseHeroJson(raw);
+        if (!parsed) {
+          outcome = 'parse_failed';
+        } else {
+          // Fail closed: a hero that states a number absent from the audit is
+          // hallucinating, or echoing an injection from the scraped site.
+          const grounding = checkHeroGrounding(parsed, userPrompt);
+          grounded = grounding.grounded;
+          if (!grounding.grounded) {
+            outcome = 'ungrounded';
+            console.warn(
+              `[hero-llm] ungrounded output rejected; numbers not in the audit: ${grounding.ungroundedNumbers.join(', ')}`,
+            );
+          } else {
+            outcome = 'success';
+            hero = parsed;
+          }
+        }
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      outcome = controller.signal.aborted ? 'timeout' : 'api_error';
+      console.warn(`[hero-llm] generation failed: ${msg}`);
+    } finally {
+      clearTimeout(timer);
     }
-    return hero;
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.warn(`[hero-llm] generation failed: ${msg}`);
-    return null;
-  } finally {
-    clearTimeout(timer);
   }
+
+  logHeroGeneration({
+    slug: input.memo.slug,
+    outcome,
+    latencyMs: Date.now() - startedAt,
+    grounded,
+    inputTokens,
+    outputTokens,
+  });
+  return hero;
 }
