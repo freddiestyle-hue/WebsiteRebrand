@@ -19,6 +19,7 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 import type { Memo } from './memo-schema';
+import { checkHeroGrounding } from './hero-grounding';
 
 const MODEL = 'claude-sonnet-4-6';
 const MAX_TOKENS = 1024;
@@ -179,19 +180,31 @@ export async function generateHero(input: HeroPromptInput): Promise<HeroResult |
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
+    const userPrompt = buildHeroUserPrompt(input);
     const res = await client.messages.create(
       {
         model: MODEL,
         max_tokens: MAX_TOKENS,
         system: HERO_SYSTEM_PROMPT,
-        messages: [{ role: 'user', content: buildHeroUserPrompt(input) }],
+        messages: [{ role: 'user', content: userPrompt }],
       },
       { signal: controller.signal },
     );
     const block = res.content.find((b) => b.type === 'text');
     const raw = block && block.type === 'text' ? block.text : '';
     if (!raw) return null;
-    return parseHeroJson(raw);
+    const hero = parseHeroJson(raw);
+    if (!hero) return null;
+    // Fail closed: a hero that states a number absent from the audit is
+    // hallucinating, or echoing an injection from the scraped site. Reject it.
+    const grounding = checkHeroGrounding(hero, userPrompt);
+    if (!grounding.grounded) {
+      console.warn(
+        `[hero-llm] ungrounded output rejected; numbers not in the audit: ${grounding.ungroundedNumbers.join(', ')}`,
+      );
+      return null;
+    }
+    return hero;
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.warn(`[hero-llm] generation failed: ${msg}`);
