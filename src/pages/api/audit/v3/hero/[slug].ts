@@ -16,6 +16,7 @@ import type { Memo } from '../../../../../utils/audit/memo-schema';
 import { isValidV3Slug } from '../../../../../utils/audit/slug';
 import { pickHeroFinding } from '../../../../../utils/audit/pick-hero';
 import { generateHero, type HeroResult } from '../../../../../utils/audit/hero-llm';
+import { buildRevenueEstimate } from '../../../../../utils/audit/revenue-estimate';
 
 export const prerender = false;
 
@@ -35,6 +36,9 @@ interface CachedHero {
   hero: HeroResult;
   source: 'llm' | 'fallback';
   generatedAt: string;
+  // Composite audit score, surfaced so the bulk-audit CSV (and the Airtable
+  // sync downstream) has it without a second round trip to the memo.
+  score: number;
 }
 
 function json(status: number, body: unknown): Response {
@@ -97,8 +101,13 @@ export const GET: APIRoute = async ({ params }) => {
   }
   if (!payload?.memo) return json(500, { error: 'kv_missing_memo' });
 
-  // 3. Generate the LLM hero; cache it on success.
-  const llm = await generateHero({ memo: payload.memo });
+  // 3. Generate the LLM hero; cache it on success. The revenue estimate is
+  //    computed deterministically here and handed to the prompt - the LLM may
+  //    cite those figures but never does its own arithmetic.
+  const llm = await generateHero({
+    memo: payload.memo,
+    revenueEstimate: buildRevenueEstimate(payload.memo),
+  });
   if (llm) {
     const record: CachedHero = {
       slug,
@@ -106,6 +115,7 @@ export const GET: APIRoute = async ({ params }) => {
       hero: llm,
       source: 'llm',
       generatedAt: new Date().toISOString(),
+      score: payload.scoreNumeric,
     };
     try {
       await redis.set(`audit-v3-hero:${slug}`, JSON.stringify(record));
@@ -124,6 +134,7 @@ export const GET: APIRoute = async ({ params }) => {
     hero: fb.hero,
     fallbackDimension: fb.dimension,
     source: 'fallback',
+    score: payload.scoreNumeric,
     cached: false,
   });
 };
