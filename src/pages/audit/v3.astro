@@ -80,23 +80,26 @@ if (isPOST && !memo) {
       if ('error' in norm) {
         inputError = norm.error;
       } else {
-        audit = await runAudit(norm.url);
+        // Upgrade 2 — render the page before auditing it. The headless pass
+        // and the hostname-only enrichments run together first; runAudit then
+        // audits the fully-rendered DOM. Headless failure falls back to the
+        // static fetch inside runAudit. The landing-page audit starts as soon
+        // as the ads probe returns, so it overlaps the headless pass.
+        const adsPromise = checkAds(norm.hostname);
+        const landingPromise = adsPromise.then((ads) =>
+          ads ? auditLandingPages(ads.sampleLandingPages) : { pages: [], durationMs: 0 },
+        );
+        const [deliverability, pageSpeed, ads, headless, landing] = await Promise.all([
+          checkDeliverability(norm.hostname),
+          checkPageSpeed(norm.url, 'mobile'),
+          adsPromise,
+          runHeadlessCheck(norm.url),
+          landingPromise,
+        ]);
+        audit = await runAudit(norm.url, { renderedHtml: headless?.renderedHtml });
         if (audit.error) {
           runtimeError = audit.error;
         } else {
-          // Start the landing-page audit as soon as the ads probe returns,
-          // so it runs concurrently with headless instead of sequentially.
-          const adsPromise = checkAds(audit.hostname);
-          const landingPromise = adsPromise.then((ads) =>
-            ads ? auditLandingPages(ads.sampleLandingPages) : { pages: [], durationMs: 0 },
-          );
-          const [deliverability, pageSpeed, ads, headless, landing] = await Promise.all([
-            checkDeliverability(audit.hostname),
-            checkPageSpeed(audit.url, 'mobile'),
-            adsPromise,
-            runHeadlessCheck(audit.url),
-            landingPromise,
-          ]);
           const mobile = checkMobileFromHtml(audit.homepageHtml);
           const techStack = detectTechStack(audit.homepageHtml ?? '', audit.homepageHeaders);
           const techStackRuntime = headless
@@ -632,7 +635,7 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
           <span class="stamp stamp--on-ink">20 min · no deck</span>
           <h2 style="font-family: var(--grotesk); font-weight: 800; font-size: clamp(36px, 5vw, 64px); line-height: 1; letter-spacing: var(--track-display); margin: var(--sp-6) 0 var(--sp-6); color: var(--on-ink);">Pick a time. Twenty minutes. <span class="ital" style="font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--on-ink-italic);">I'll bring the rest of the read.</span></h2>
           <p style="font-family: var(--serif); font-style: italic; font-size: clamp(18px, 1.6vw, 22px); line-height: 1.5; color: var(--on-ink-italic); max-width: 720px; margin: 0 0 var(--sp-8);">AI citation probe, benchmark percentile, deliverability against a live mailbox. The numbers the in-browser scan can't reach.</p>
-          <a class="btn btn--inv" href="/diagnostic">Book a call <span aria-hidden="true">→</span></a>
+          <a class="btn btn--inv" href="https://cal.com/fred-style/discovery?overlayCalendar=true">Book a call <span aria-hidden="true">→</span></a>
         </div>
       </div>
 
@@ -825,7 +828,7 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
                   <p>AI citation probe across eight category prompts. Benchmark percentile against tracked competitors in your set. Live deliverability test against a seeded inbox. Twelve-week instrumentation plan.</p>
                 </div>
                 <div class="stack">
-                  <a class="btn btn--pri" href="/diagnostic">Book a call <span aria-hidden="true">→</span></a>
+                  <a class="btn btn--pri" href="https://cal.com/fred-style/discovery?overlayCalendar=true">Book a call <span aria-hidden="true">→</span></a>
                 </div>
               </div>
             </div>
@@ -841,7 +844,7 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
         <h2>Pick a time. Twenty minutes. <span class="ital">I'll bring the rest of the read.</span></h2>
         <p>AI citation probe, benchmark percentile, deliverability against a live mailbox. The numbers the in-browser scan can't reach.</p>
         <div class="end-actions">
-          <a class="btn btn--inv" href="/diagnostic">Book a call <span aria-hidden="true">→</span></a>
+          <a class="btn btn--inv" href="https://cal.com/fred-style/discovery?overlayCalendar=true">Book a call <span aria-hidden="true">→</span></a>
           <a class="btn btn--sec" href="/audit/v3" style="border-color: var(--on-ink-line-2); color: var(--on-ink);">Audit another domain</a>
         </div>
       </div>

@@ -264,7 +264,14 @@ function canonicalHref(html: string): string | null {
 // Run audit
 // ============================================================
 
-export async function runAudit(rawUrl: string): Promise<AuditResult> {
+export interface RunAuditOptions {
+  // The headless-rendered DOM (post-JS hydration). When supplied, every
+  // homepage-derived check parses this instead of the static fetch. The
+  // static fetch stays as the fallback. See Upgrade 2 (rendered-DOM backbone).
+  renderedHtml?: string;
+}
+
+export async function runAudit(rawUrl: string, opts?: RunAuditOptions): Promise<AuditResult> {
   const startedAt = Date.now();
   const norm = normalizeAuditUrl(rawUrl);
   if ('error' in norm) {
@@ -298,13 +305,23 @@ export async function runAudit(rawUrl: string): Promise<AuditResult> {
     }
   }
 
-  const homeText = home.ok ? home.text : '';
-  const jsonLdBlocks = home.ok ? extractJsonLd(homeText) : [];
-  const flat = flattenJsonLd(jsonLdBlocks);
+  const staticHtml = home.ok ? home.text : '';
+  // Upgrade 2 — the rendered DOM is the backbone. When v3.astro supplies the
+  // headless-rendered page, every homepage-derived check parses that instead
+  // of the static fetch, killing the false-negative class (JS-injected forms,
+  // framework-rendered schema, canonical tags). Static fetch is the fallback.
+  const rendered =
+    opts?.renderedHtml && opts.renderedHtml.trim().length > 0 ? opts.renderedHtml : null;
 
-  if (!home.ok) {
+  // Fail only when there is no homepage HTML at all. A WAF that blocks the
+  // static fetch but not real Chromium still yields a rendered DOM — audit it.
+  if (!home.ok && !rendered) {
     return errorResult(url, `Could not fetch ${url}. Reason: ${home.reason}.`, startedAt);
   }
+
+  const checkHtml = rendered ?? staticHtml;
+  const jsonLdBlocks = extractJsonLd(checkHtml);
+  const flat = flattenJsonLd(jsonLdBlocks);
 
   // The checks
   const checks: CheckResult[] = [];
@@ -410,7 +427,7 @@ export async function runAudit(rawUrl: string): Promise<AuditResult> {
 
   // META
   {
-    const author = metaContent(homeText, 'name', 'author');
+    const author = metaContent(checkHtml, 'name', 'author');
     const ok = !!author && author.trim().length > 0;
     checks.push({
       id: 'meta-author',
@@ -425,7 +442,7 @@ export async function runAudit(rawUrl: string): Promise<AuditResult> {
     });
   }
   {
-    const canon = canonicalHref(homeText);
+    const canon = canonicalHref(checkHtml);
     const ok = !!canon;
     let evidence = ok ? `canonical: ${canon}` : `no <link rel="canonical">`;
     checks.push({
@@ -441,7 +458,7 @@ export async function runAudit(rawUrl: string): Promise<AuditResult> {
     });
   }
   {
-    const ogType = metaContent(homeText, 'property', 'og:type');
+    const ogType = metaContent(checkHtml, 'property', 'og:type');
     const ok = !!ogType;
     checks.push({
       id: 'og-type',
@@ -488,9 +505,9 @@ export async function runAudit(rawUrl: string): Promise<AuditResult> {
 
   // SEND-READINESS
   {
-    const bodyText = homeText.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    const bodyText = checkHtml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
     const above = bodyText.slice(0, 1500);
-    const phonePresent = /(tel:|\+?\d[\d\s().-]{8,}\d)/.test(homeText) || /(\bcalendly|cal\.com|savvycal|acuityscheduling)/i.test(homeText);
+    const phonePresent = /(tel:|\+?\d[\d\s().-]{8,}\d)/.test(checkHtml) || /(\bcalendly|cal\.com|savvycal|acuityscheduling)/i.test(checkHtml);
     const ok = phonePresent;
     checks.push({
       id: 'contact-cta',
@@ -507,7 +524,7 @@ export async function runAudit(rawUrl: string): Promise<AuditResult> {
   {
     const trustImg = /<img[^>]*alt=["'][^"']*(logo|y combinator|ycombinator|techcrunch|forbes|fortune|wsj|bloomberg|trustpilot|capterra|g2)[^"']*["']/i;
     const trustText = /(featured in|as seen in|trusted by|backed by)/i;
-    const hasTrust = trustImg.test(homeText) || trustText.test(homeText);
+    const hasTrust = trustImg.test(checkHtml) || trustText.test(checkHtml);
     checks.push({
       id: 'trust-signal',
       category: 'aeo',
@@ -525,7 +542,7 @@ export async function runAudit(rawUrl: string): Promise<AuditResult> {
   // Detection logic lives in ./tracking so it is unit-testable against
   // real-shape fixtures without going through the runAudit fetch path
   // (which has an SSRF guard that blocks localhost test servers).
-  const tracking = detectTracking(homeText);
+  const tracking = detectTracking(checkHtml);
   checks.push({
     id: 'tracking-meta-pixel',
     category: 'tracking',
@@ -607,7 +624,7 @@ export async function runAudit(rawUrl: string): Promise<AuditResult> {
 
   // === conversion paths ===
   {
-    const hasForm = /<form\b[^>]*>/i.test(homeText);
+    const hasForm = /<form\b[^>]*>/i.test(checkHtml);
     checks.push({
       id: 'conversion-form-on-page',
       category: 'conversion',
@@ -621,7 +638,7 @@ export async function runAudit(rawUrl: string): Promise<AuditResult> {
     });
   }
   {
-    const tel = /\bhref=["']tel:/i.test(homeText);
+    const tel = /\bhref=["']tel:/i.test(checkHtml);
     checks.push({
       id: 'conversion-tel-link',
       category: 'conversion',
@@ -635,7 +652,7 @@ export async function runAudit(rawUrl: string): Promise<AuditResult> {
     });
   }
   {
-    const schedule = /(calendly\.com|cal\.com\/[a-z]|calendar\.app\.google|hubspot\.com\/meetings|chilipiper\.com|savvycal\.com|tidycal\.com)/i.test(homeText);
+    const schedule = /(calendly\.com|cal\.com\/[a-z]|calendar\.app\.google|hubspot\.com\/meetings|chilipiper\.com|savvycal\.com|tidycal\.com)/i.test(checkHtml);
     checks.push({
       id: 'conversion-scheduling-link',
       category: 'conversion',
@@ -649,7 +666,7 @@ export async function runAudit(rawUrl: string): Promise<AuditResult> {
     });
   }
   {
-    const chat = /(intercom\.io\/messenger|widget\.intercom\.io|drift\.com|js\.driftt\.com|tawk\.to|crisp\.chat|chatwidget|hubspot\.com\/conversation)/i.test(homeText);
+    const chat = /(intercom\.io\/messenger|widget\.intercom\.io|drift\.com|js\.driftt\.com|tawk\.to|crisp\.chat|chatwidget|hubspot\.com\/conversation)/i.test(checkHtml);
     checks.push({
       id: 'conversion-chat-widget',
       category: 'conversion',
@@ -663,7 +680,7 @@ export async function runAudit(rawUrl: string): Promise<AuditResult> {
     });
   }
   {
-    const heroText = homeText.slice(0, 4000);
+    const heroText = checkHtml.slice(0, 4000);
     const hasCtaButton = /<(a|button)[^>]*\b(class|id)=["'][^"']*(cta|btn-primary|primary-cta|hero-cta|book|start|get-started|trial)/i.test(heroText)
       || /<(a|button)[^>]*>([^<]*\b(get started|start free|book a (call|demo)|request (a )?(quote|demo)|schedule (a )?(call|demo)|talk to|contact us)\b)/i.test(heroText);
     checks.push({
@@ -702,7 +719,7 @@ export async function runAudit(rawUrl: string): Promise<AuditResult> {
     hostname,
     fetchedAt: new Date(startedAt).toISOString(),
     durationMs: endedAt - startedAt,
-    homepageHtml: homeText,
+    homepageHtml: home.ok ? staticHtml : (rendered ?? undefined),
     homepageHeaders: home.ok ? home.headers : undefined,
     checks,
     scoreNumeric: passedWeight,
