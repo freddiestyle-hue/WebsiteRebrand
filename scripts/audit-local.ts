@@ -8,6 +8,7 @@
 
 import { chromium } from 'playwright-core';
 import { runAudit, type AuditResult } from '../src/utils/audit/engine';
+import { buildMemoFromAudit } from '../src/utils/audit/v3-synth';
 import { isTrackingHost, type HeadlessTrackingCapture } from '../src/utils/audit/tracking';
 
 const url = process.argv[2];
@@ -99,12 +100,48 @@ function report(label: string, r: AuditResult): void {
   }
   console.log(`  ${r.hostname}  score ${r.scorePercent}% (${r.bandLabel})  ${r.durationMs}ms`);
   for (const c of r.checks) {
-    console.log(`  [${c.passed ? 'PASS' : 'FAIL'}] ${c.id.padEnd(26)} ${c.evidence}`);
+    console.log(
+      `  [${c.passed ? 'PASS' : 'FAIL'}] [${c.reliability.padEnd(12)}] ${c.id.padEnd(26)} ${c.evidence}`,
+    );
+  }
+}
+
+// Upgrade 7 - run the static audit through the synthesis layer and print the
+// calibrated cross-dimension diagnosis the LLM hero will read.
+function reportSynthesis(r: AuditResult): void {
+  console.log('\n## SYNTHESIS + CALIBRATION (Upgrade 7)');
+  if (r.error) {
+    console.log('  (audit errored - no memo)');
+    return;
+  }
+  const memo = buildMemoFromAudit(r);
+  const syn = memo.synthesis;
+  if (!syn) {
+    console.log('  (no synthesis produced)');
+  } else {
+    if (syn.primaryIssue) {
+      console.log(`  Primary issue: ${syn.primaryIssue.dimension}  [${syn.primaryIssue.reliability}]`);
+      console.log(`    ${syn.primaryIssue.summary}`);
+    } else {
+      console.log('  Primary issue: none - nothing measurable is failing');
+    }
+    console.log(`  Cross-signals: ${syn.crossSignals.length}`);
+    for (const cs of syn.crossSignals) {
+      console.log(`    - [${cs.reliability}] ${cs.detail}`);
+    }
+    console.log(`  Calibration: ${syn.verifiedCount} verified findings, ${syn.softCount} soft`);
+  }
+  console.log('\n  Per-dimension cell reliability:');
+  for (const cell of memo.verdictCells) {
+    console.log(
+      `    ${cell.heading.padEnd(30)} ${cell.value.padEnd(14)} ${cell.reliability ?? 'n/a (not measured)'}`,
+    );
   }
 }
 
 const staticResult = await runAudit(url);
 report('STATIC ONLY', staticResult);
+let best: AuditResult = staticResult;
 
 const cap = await capture(url);
 if (cap) {
@@ -118,6 +155,7 @@ if (cap) {
     renderedHtml: cap.renderedHtml,
     headlessTracking: cap.tracking,
   });
+  best = fullResult;
   report('FULL (rendered DOM + live tracking)', fullResult);
 
   console.log('\n## DELTA (static -> full)');
@@ -133,3 +171,5 @@ if (cap) {
 } else {
   console.log('\n  Full rendered/tracking run skipped - no local browser.');
 }
+
+reportSynthesis(best);
