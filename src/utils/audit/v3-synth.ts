@@ -9,7 +9,16 @@
 // appear if SCRAPECREATORS_API_KEY is set, etc. The schema allows 3-8 cells.
 
 import type { AuditResult, CheckResult } from './engine';
-import type { Memo, VerdictCell, RankedFix, VerdictIcon } from './memo-schema';
+import type {
+  Memo,
+  VerdictCell,
+  VerdictCheck,
+  RankedFix,
+  VerdictIcon,
+  Reliability,
+  Synthesis,
+  CrossSignal,
+} from './memo-schema';
 import { MEMO_SCHEMA_VERSION } from './memo-schema';
 import { generateSlug } from './slug';
 import type { DeliverabilityResult } from './dns-check';
@@ -62,8 +71,8 @@ function noteFor(
   return `${gap} of ${total} ${label} ${gap === 1 ? 'gap' : 'gaps'}.`;
 }
 
-function checksFromCategory(checks: CheckResult[]): Array<{ ok: boolean; text: string }> {
-  return checks.map((c) => ({ ok: c.passed, text: c.label }));
+function checksFromCategory(checks: CheckResult[]): VerdictCheck[] {
+  return checks.map((c) => ({ ok: c.passed, text: c.label, reliability: c.reliability }));
 }
 
 function effortFor(check: CheckResult): 'low' | 'med' | 'high' {
@@ -506,12 +515,13 @@ export function trackingRowText(label: string, m: PixelMeasurement): string {
 function augmentTrackingChecks(
   engineChecks: CheckResult[],
   tech: TechStackResult | null,
-): Array<{ ok: boolean; text: string }> {
+): VerdictCheck[] {
   // Start with what engine.ts caught. Upgrade 3 - tracking checks carry a
   // structured measurement; surface its state in the row text.
-  const out: Array<{ ok: boolean; text: string }> = engineChecks.map((c) => ({
+  const out: VerdictCheck[] = engineChecks.map((c) => ({
     ok: c.passed,
     text: c.measurement ? trackingRowText(c.label, c.measurement) : c.label,
+    reliability: c.reliability,
   }));
 
   if (!tech) return out;
@@ -529,7 +539,9 @@ function augmentTrackingChecks(
     const text = `${tech.name}: detected`;
     const key = text.toLowerCase();
     if (!seenNames.has(key)) {
-      out.push({ ok: true, text });
+      // A fingerprinted advertising/analytics tag is a real detection - the
+      // tag's code is on the page. Presence is assertable.
+      out.push({ ok: true, text, reliability: 'verified' });
       seenNames.add(key);
     }
   }
@@ -765,6 +777,173 @@ function placeholderStack(staticRan: boolean): VerdictCell {
   };
 }
 
+// ============================================================
+// Upgrade 7 - reliability calibration + cross-dimension synthesis
+// ============================================================
+
+// A cell is only as assertable as its softest finding.
+function rollupReliability(checks: VerdictCheck[]): Reliability {
+  let hasInferred = false;
+  for (const c of checks) {
+    if (c.reliability === 'soft-absence') return 'soft-absence';
+    if (c.reliability === 'inferred') hasInferred = true;
+  }
+  return hasInferred ? 'inferred' : 'verified';
+}
+
+// Reliability for an enrichment-cell row that did not come from a tagged
+// CheckResult. Speed, mail, ads, and stack are real measurements, real DNS,
+// real ad-library hits, and real fingerprint detection - assertable. Mobile
+// is verified when a real 390x844 render ran; its static fallback
+// false-negatives, so a failing static row is soft.
+function defaultRowReliability(icon: VerdictIcon, c: VerdictCheck, headlessRan: boolean): Reliability {
+  if (icon === 'phone') return headlessRan || c.ok ? 'verified' : 'soft-absence';
+  return 'verified';
+}
+
+// Fill reliability on every cell check - category cells already carry it from
+// their CheckResults; enrichment cells get the icon-based default - and roll
+// each cell up to one calibration tag.
+function calibrateCells(cells: VerdictCell[], headlessRan: boolean): VerdictCell[] {
+  return cells.map((cell) => {
+    if (cell.checks.length === 0) return cell; // placeholder / not-measured cell
+    const checks: VerdictCheck[] = cell.checks.map((c) =>
+      c.reliability ? c : { ...c, reliability: defaultRowReliability(cell.icon, c, headlessRan) },
+    );
+    return { ...cell, checks, reliability: rollupReliability(checks) };
+  });
+}
+
+function iconForCategory(category: CheckResult['category']): VerdictIcon {
+  switch (category) {
+    case 'aeo':
+      return 'spark';
+    case 'tracking':
+      return 'target';
+    case 'conversion':
+      return 'eye';
+    default:
+      return 'search'; // crawl, schema, meta
+  }
+}
+
+// The cross-dimension synthesis the LLM hero reads as its brief. Deterministic
+// and rule-based: it correlates the dimensions and picks the systemic headline
+// so the hero writes prose from an honest, already-connected read instead of
+// guessing the diagnosis itself.
+export function synthesizeDiagnosis(
+  audit: AuditResult,
+  enrich: EnrichmentBundle | undefined,
+  cells: VerdictCell[],
+): Synthesis {
+  const ads = enrich?.ads;
+  const adsTotal = ads ? (ads.metaActive ?? 0) + (ads.googleActive ?? 0) + (ads.linkedinActive ?? 0) : 0;
+  const adsRunning = adsTotal > 0;
+  const adWord = adsTotal === 1 ? 'ad' : 'ads';
+  const ps = enrich?.pageSpeed;
+  const speedPoor = ps?.band === 'poor';
+  const noDmarc = enrich?.deliverability?.dmarcPresent === false;
+
+  // Conversion + tracking gaps - the failures that cost paid traffic money.
+  const adGaps = audit.checks.filter(
+    (c) => !c.passed && (c.category === 'conversion' || c.category === 'tracking'),
+  );
+  const adGapsHardFact = adGaps.length > 0 && adGaps.every((c) => c.reliability === 'verified');
+  const adGapWord = adGaps.length === 1 ? 'gap' : 'gaps';
+
+  const crossSignals: CrossSignal[] = [];
+  if (adsRunning && speedPoor) {
+    crossSignals.push({
+      key: 'ads-running-slow-page',
+      detail: `Running ${adsTotal} paid ${adWord} into a homepage that loads slowly on mobile (LCP ${fmtMs(ps!.lcpMs)}). Paid clicks bounce before the offer renders.`,
+      reliability: 'verified',
+    });
+  }
+  if (adsRunning && adGaps.length > 0) {
+    crossSignals.push({
+      key: 'ads-running-conversion-gaps',
+      detail: `Running ${adsTotal} paid ${adWord}, but the page paid traffic lands on has ${adGaps.length} conversion or tracking ${adGapWord}.`,
+      reliability: adGapsHardFact ? 'verified' : 'soft-absence',
+    });
+  }
+  if (speedPoor && !adsRunning) {
+    crossSignals.push({
+      key: 'slow-page',
+      detail: `The homepage loads slowly on mobile (LCP ${fmtMs(ps!.lcpMs)}), the point most visitors decide to stay or leave.`,
+      reliability: 'verified',
+    });
+  }
+  if (noDmarc) {
+    crossSignals.push({
+      key: 'no-dmarc',
+      detail: 'The sending domain has no DMARC record, so outbound mail risks the spam folder.',
+      reliability: 'verified',
+    });
+  }
+
+  // primaryIssue - the systemic headline, in priority order.
+  let primaryIssue: Synthesis['primaryIssue'] = null;
+  if (adsRunning && speedPoor) {
+    primaryIssue = {
+      icon: 'bolt',
+      dimension: 'Page speed',
+      summary: `Paid traffic is landing on a homepage that takes too long to render on mobile (LCP ${fmtMs(ps!.lcpMs)}).`,
+      reliability: 'verified',
+    };
+  } else if (adsRunning && adGaps.length > 0) {
+    primaryIssue = {
+      icon: 'eye',
+      dimension: 'Conversion path',
+      summary: `Paid traffic is landing on a page with ${adGaps.length} measurable conversion or tracking ${adGapWord}.`,
+      reliability: adGapsHardFact ? 'verified' : 'soft-absence',
+    };
+  } else if (noDmarc) {
+    primaryIssue = {
+      icon: 'mail',
+      dimension: 'Email reputation',
+      summary: 'The sending domain is missing DMARC; outbound mail is at deliverability risk.',
+      reliability: 'verified',
+    };
+  } else if (speedPoor) {
+    primaryIssue = {
+      icon: 'bolt',
+      dimension: 'Page speed',
+      summary: `The homepage loads slowly on mobile (LCP ${fmtMs(ps!.lcpMs)}).`,
+      reliability: 'verified',
+    };
+  } else {
+    // Fall back to the worst failing audit check, verified failures first.
+    const worst = audit.checks
+      .filter((c) => !c.passed)
+      .sort((a, b) => {
+        const ra = a.reliability === 'verified' ? 1 : 0;
+        const rb = b.reliability === 'verified' ? 1 : 0;
+        if (ra !== rb) return rb - ra;
+        return b.weight - a.weight;
+      })[0];
+    if (worst) {
+      primaryIssue = {
+        icon: iconForCategory(worst.category),
+        dimension: worst.label,
+        summary: worst.finding,
+        reliability: worst.reliability,
+      };
+    }
+  }
+
+  // Calibration totals across every calibrated cell check.
+  let verifiedCount = 0;
+  let softCount = 0;
+  for (const cell of cells) {
+    for (const c of cell.checks) {
+      if (c.reliability === 'verified') verifiedCount++;
+      else if (c.reliability) softCount++;
+    }
+  }
+
+  return { primaryIssue, crossSignals, verifiedCount, softCount };
+}
+
 export function buildMemoFromAudit(audit: AuditResult, enrich?: EnrichmentBundle): Memo {
   const slug = generateSlug(audit.hostname);
 
@@ -800,7 +979,10 @@ export function buildMemoFromAudit(audit: AuditResult, enrich?: EnrichmentBundle
       : placeholderStack(!!enrich?.techStack),
   ];
 
-  const trimmedCells = verdictCells;
+  // Upgrade 7 - calibrate every cell with a reliability tag, then synthesize
+  // the cross-dimension diagnosis the LLM hero reads as its brief.
+  const trimmedCells = calibrateCells(verdictCells, !!enrich?.headless);
+  const synthesis = synthesizeDiagnosis(audit, enrich, trimmedCells);
 
   // Ranked fixes: enrichment-driven priorities first (page speed, DMARC, viewport
   // are the highest-leverage wins when broken), then top failing audit checks.
@@ -954,6 +1136,7 @@ export function buildMemoFromAudit(audit: AuditResult, enrich?: EnrichmentBundle
     },
     benchmark: undefined,
     screenshots: undefined,
+    synthesis,
     verdictCells: trimmedCells,
     rankedFixes,
     personalObservation: { text: observation },
