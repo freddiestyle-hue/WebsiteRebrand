@@ -60,12 +60,19 @@ export async function runHeadlessCheck(url: string): Promise<HeadlessResult | nu
   const work = (async (): Promise<HeadlessResult | null> => {
     let browser: Awaited<ReturnType<typeof playwright.launch>> | null = null;
     try {
-      const executablePath = await chromium.executablePath();
-      browser = await playwright.launch({
-        args: chromium.args,
-        executablePath,
-        headless: true,
-      });
+      // Production (Vercel/Linux) uses the bundled serverless Chromium. That
+      // binary cannot exec on local macOS dev, so fall back to the system-
+      // installed Chrome there - lets the audit run end-to-end in local dev.
+      try {
+        const executablePath = await chromium.executablePath();
+        browser = await playwright.launch({
+          args: chromium.args,
+          executablePath,
+          headless: true,
+        });
+      } catch {
+        browser = await playwright.launch({ channel: 'chrome', headless: true });
+      }
 
       const context = await browser.newContext({
         viewport: { width: 390, height: 844 },
