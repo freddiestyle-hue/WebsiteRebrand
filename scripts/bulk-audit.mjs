@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Bulk-runs /audit/v3 against a list of domains and writes a summary CSV
-// with the cached audit URL per row. Hero-finding extraction is a follow-up
-// pass that reads the resulting Memos from Upstash KV.
+// with the cached audit URL per row. The hero (page lede, DM one-liner,
+// strength, source) is fetched per row from the hero endpoint.
 //
 // Usage:
 //   node scripts/bulk-audit.mjs <input.csv> [output.csv]
@@ -11,8 +11,9 @@
 // are passed through verbatim if present (company, score, etc).
 //
 // Output CSV columns:
-//   domain, company, http_status, success, audit_url, slug, attempts,
-//   duration_ms, error
+//   domain, company, http_status, success, audit_url, slug, score,
+//   hero_source, hero_dimension, hero_one_liner, hero_strength, hero_page,
+//   attempts, duration_ms, error
 //
 // Behavior:
 // - Concurrency 3 by default (matches the design doc / Vercel function limits).
@@ -217,9 +218,11 @@ async function auditOne(base, domain, company) {
       duration_ms: String(Date.now() - startedAt),
       error: `slug: ${e.message}`,
       score: '',
+      hero_source: '',
       hero_dimension: '',
+      hero_one_liner: '',
       hero_strength: '',
-      hero_diagnosis: '',
+      hero_page: '',
     };
   }
 
@@ -245,9 +248,11 @@ async function auditOne(base, domain, company) {
             duration_ms: String(Date.now() - startedAt),
             error: '',
             score: hero?.score != null ? String(hero.score) : '',
-            hero_dimension: hero?.hero?.dimension ?? '',
+            hero_source: hero?.source ?? '',
+            hero_dimension: hero?.fallbackDimension ?? '',
+            hero_one_liner: hero?.hero?.dmOneLiner ?? '',
             hero_strength: hero?.hero?.strength ?? '',
-            hero_diagnosis: hero?.hero?.diagnosis ?? '',
+            hero_page: hero?.hero?.pageHero ?? '',
           };
         }
         lastError = 'kv_silent_failure';
@@ -271,9 +276,11 @@ async function auditOne(base, domain, company) {
     duration_ms: String(Date.now() - startedAt),
     error: lastError,
     score: '',
+    hero_source: '',
     hero_dimension: '',
+    hero_one_liner: '',
     hero_strength: '',
-    hero_diagnosis: '',
+    hero_page: '',
   };
 }
 
@@ -338,8 +345,8 @@ async function main() {
 
   const outHeader = [
     'domain', 'company', 'http_status', 'success', 'audit_url',
-    'slug', 'score', 'hero_dimension', 'hero_strength', 'hero_diagnosis',
-    'attempts', 'duration_ms', 'error',
+    'slug', 'score', 'hero_source', 'hero_dimension', 'hero_one_liner',
+    'hero_strength', 'hero_page', 'attempts', 'duration_ms', 'error',
   ];
   await writeFile(opts.output, writeCsv(outHeader, results), 'utf8');
   console.error(`Wrote ${opts.output}`);

@@ -8,7 +8,7 @@ Reads:
 - /tmp/rivett_advertisers_1104_real.csv
   (advertiser scan results: meta/google/linkedin ad counts)
 - /tmp/rivett_audit_56_advertisers.csv
-  (already-audited subset: score, slug, hero_dimension, hero_strength, hero_diagnosis)
+  (audit CSV: score, slug, audit_url, hero_source, hero_dimension, hero_one_liner)
 - /tmp/rivett_audit_409.csv (when ready)
   (newly-audited 409: same shape as the 56)
 
@@ -17,7 +17,7 @@ Writes:
 
 For each advertiser:
 - Resolves contact (best from `best_contacts_json`)
-- Computes hero_one_liner from dimension + diagnosis
+- Reads hero_one_liner from the audit CSV (produced by the hero endpoint)
 - Templates Introduction DM (LinkedIn connect note, <=200 chars)
 - Templates Follow-up DM (post-accept, V1.1 template with audit URL + Cal.com)
 
@@ -55,75 +55,6 @@ If you're spending on paid right now, this is costing you. Full audit here: {aud
 Happy to walk through it - cal.com/fred-style/discovery (30 min, no deck. Same kind of teardown I used to run for Nick's operators when I was at Somewhere.)
 
 Fred"""
-
-# --- One-liner mapping (mirrors pick-hero.ts ONE_LINER) ------------------
-
-ONE_LINER = {
-    "conversion": (
-        "You're paying for paid traffic that lands on a page where the "
-        "form is buried and the phone number isn't tappable."
-    ),
-    "mobile": (
-        "On mobile your phone number isn't tappable and the primary CTA "
-        "falls below the first screen."
-    ),
-    "email": (
-        "Domain's missing SPF or DMARC - half your outbound is hitting "
-        "spam before anyone reads it."
-    ),
-    "pagespeed": (
-        "Homepage takes over 4 seconds to render its main content on "
-        "mobile - most paid clicks bounce before they see the offer."
-    ),
-    "seo": (
-        "Title tag, H1, or meta description is empty - Google's guessing "
-        "what you sell."
-    ),
-    "aeo": (
-        "ChatGPT and Perplexity can't structure your services to cite. "
-        "The competitors who did show up in AI answers."
-    ),
-    "tracking": (
-        "Site fires 30+ pixels but doesn't track the events that actually "
-        "predict revenue - you're spending blind."
-    ),
-    "ads": (
-        "Ads are running but landing on the homepage instead of a page "
-        "built to convert - you're paying full-funnel CAC into a dead end."
-    ),
-    "stack": (
-        "Site runs on an aging builder platform with no in-house person "
-        "to maintain it."
-    ),
-}
-CLEAN_ONE_LINER = (
-    "Site reads clean on the surface - worth a 15 min comparison of what "
-    "your competitors aren't doing well off-page."
-)
-
-
-def build_ads_landing_one_liner(diagnosis: str) -> str:
-    """Extract the actual PSI score from the diagnosis text for ads_landing."""
-    m = re.search(r"scoring (\d+)/100", diagnosis)
-    if m:
-        score = int(m.group(1))
-        return (
-            f"Paid clicks land on a page scoring {score}/100 - Google's "
-            f"penalising the spend with higher CPC and throttled delivery."
-        )
-    return (
-        "Paid clicks land on a page Google considers penalty-band - "
-        "Quality Score drops, CPC inflates, delivery throttles."
-    )
-
-
-def get_one_liner(dimension: str, diagnosis: str) -> str:
-    if dimension == "ads_landing":
-        return build_ads_landing_one_liner(diagnosis)
-    if dimension == "clean":
-        return CLEAN_ONE_LINER
-    return ONE_LINER.get(dimension, CLEAN_ONE_LINER)
-
 
 # --- Contact extraction --------------------------------------------------
 
@@ -282,26 +213,22 @@ def main():
         linkedin_ads = int(adv.get("linkedin_ads") or 0) if adv.get("linkedin_ads", "").isdigit() else 0
         total_ads = int(adv.get("total_ads") or (meta_ads + google_ads + linkedin_ads))
 
-        # Audit data (may be missing if 409 hasn't completed yet).
+        # Audit data (may be missing if 409 hasn't completed yet). The hero
+        # one-liner is produced by the hero endpoint and carried in the audit
+        # CSV - no longer recomputed here.
         audit = audits.get(domain)
         if audit:
             audit_url = audit.get("audit_url", "")
             score = float(audit.get("score")) if audit.get("score", "").replace(".", "").isdigit() else None
             hero_dimension = audit.get("hero_dimension", "")
-            hero_diagnosis = audit.get("hero_diagnosis", "")
+            one_liner = audit.get("hero_one_liner", "")
             audit_date = date.today().isoformat()
         else:
             audit_url = ""
             score = None
             hero_dimension = ""
-            hero_diagnosis = ""
-            audit_date = ""
-
-        # One-liner: only meaningful when we have audit data.
-        if hero_dimension:
-            one_liner = get_one_liner(hero_dimension, hero_diagnosis)
-        else:
             one_liner = ""
+            audit_date = ""
 
         # DM templates.
         intro_first = first_name if first_name else "there"
