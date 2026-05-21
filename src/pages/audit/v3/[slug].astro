@@ -1,13 +1,12 @@
 ---
-// Hero-finding render for cached v3 audits. Reads /audit-v3:{slug} from
-// Upstash KV, runs pickHeroFinding against the cached Memo, and renders a
-// gated single-finding layout: hero finding above fold + Cal.com CTA +
-// locked teaser cards below.
+// Teardown render for cached v3 audits. Reads audit-v3:{slug} from Upstash KV
+// for the memo, fetches the per-prospect hero from /api/audit/v3/hero/{slug},
+// and renders the ungated teardown: the LLM hero as a lede, all 9 findings
+// with calm reliability tags, and a 3-step prioritized-plan preview.
 //
-// This replaces the older "rewrite to /audit/v3" pattern. The form-submit
-// path at /audit/v3 still renders the full 9-cell layout for self-serve
-// scans; the slug path serves outbound prospects via a gated hero render
-// per the May 14 design doc.
+// Phase 1 rebuild. The page used to gate 8 of 9 findings behind a redaction;
+// the rebuild shows every finding honestly and moves the call's reason to the
+// fix order and the revenue math.
 
 export const prerender = false;
 
@@ -18,7 +17,7 @@ import { isValidV3Slug } from '../../../utils/audit/slug';
 import { pickHeroFinding } from '../../../utils/audit/pick-hero';
 import slugToIcp from '../../../utils/audit/slug-to-icp.json';
 import icpVoice from '../../../utils/audit/icp-voice.json';
-import { buildLockedObservation, whyThisFirst, lockedMeta, deriveTone } from '../../../utils/audit/locked-observation';
+import { lockedMeta, deriveTone } from '../../../utils/audit/locked-observation';
 
 // Verdict-dimension icons — verbatim from the V4 Hybrid teardown sprite
 // (Prospect Teardown standalone). Inner SVG markup per VerdictIcon; .dot
@@ -78,60 +77,54 @@ if (!isValidV3Slug(slug)) {
   }
 }
 
-// Resolve hero + non-hero cells when we have a Memo.
 const memo = cached?.memo ?? null;
-const hero = memo ? pickHeroFinding(memo) : null;
+
+// Resolve the per-prospect hero. The hero endpoint owns generation + caching;
+// the page just reads it. If the endpoint is unreachable, fall back to the
+// rule-based pickHeroFinding so the page still renders an honest headline.
+interface PageHero {
+  pageHero: string;
+  strength: string;
+}
+let heroData: PageHero | null = null;
+if (memo) {
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 25_000);
+    try {
+      const res = await fetch(new URL(`/api/audit/v3/hero/${slug}`, Astro.url), {
+        signal: controller.signal,
+      });
+      if (res.ok) {
+        const j = (await res.json()) as { hero?: { pageHero?: string; strength?: string } };
+        if (j?.hero?.pageHero?.trim()) {
+          heroData = { pageHero: j.hero.pageHero, strength: j.hero.strength?.trim() ?? '' };
+        }
+      }
+    } finally {
+      clearTimeout(timer);
+    }
+  } catch (e) {
+    console.error('[audit/v3/slug] hero fetch failed; using rule-based fallback', e);
+  }
+  if (!heroData) {
+    const hf = pickHeroFinding(memo);
+    heroData = { pageHero: hf.diagnosis, strength: '' };
+  }
+}
+
 const scorePercent = cached
   ? Math.round((cached.scoreNumeric / Math.max(cached.scoreMax, 1)) * 100)
   : 0;
 const companyName = memo?.companyName ?? memo?.domain ?? cached?.hostname ?? '';
 
-// Each verdict cell in the Memo represents a dimension. Skip the cell that
-// matches the hero so the locked-card grid never duplicates the headline.
-const heroIcon: VerdictIcon | null = (() => {
-  if (!memo || !hero || hero.dimension === 'clean') return null;
-  const ICON_FOR: Partial<Record<string, VerdictIcon>> = {
-    conversion: 'eye',
-    mobile: 'phone',
-    email: 'mail',
-    pagespeed: 'bolt',
-    seo: 'search',
-    aeo: 'spark',
-    tracking: 'target',
-    ads: 'megaphone',
-    ads_landing: 'megaphone',
-    stack: 'flag',
-  };
-  return ICON_FOR[hero.dimension] ?? null;
-})();
+// All 9 findings render, ungated. The hero is the prose above; the cards are
+// the evidence. No cell is skipped.
+const verdictCells: VerdictCell[] = memo?.verdictCells ?? [];
 
-const lockedCells: VerdictCell[] = (memo?.verdictCells ?? []).filter(
-  (c) => c.icon !== heroIcon,
-);
-
-// Resolve the prospect's ICP voice (one verbatim Reddit quote per industry).
-// Renders ONLY if the slug maps to one of our 10 ICPs AND the ICP has a quote.
-// Off-ICP slugs simply skip the callout.
-const icpSlug: string | null = (slugToIcp as SlugToIcpMap)[slug] ?? null;
-const icpEntry: IcpVoiceEntry | null = icpSlug
-  ? ((icpVoice as IcpVoiceMap)[icpSlug] ?? null)
-  : null;
-const heroQuote: IcpQuote | null = icpEntry?.quotes?.[0] ?? null;
-
-// Display-name mapping for the hero card kicker.
-const DIMENSION_LABEL: Record<string, string> = {
-  ads_landing: 'Quality Score penalty',
-  ads: 'Paid ads',
-  conversion: 'Conversion path',
-  mobile: 'Mobile experience',
-  email: 'Email deliverability',
-  pagespeed: 'Page speed',
-  seo: 'Google visibility',
-  aeo: 'AI search visibility',
-  tracking: 'Measurement',
-  stack: 'Tech stack',
-  clean: 'Clean read',
-};
+// Prioritized-plan preview: the top-3 ranked fixes. The full order and the
+// revenue math behind it is what the call is for.
+const topFixes = (memo?.rankedFixes ?? []).slice(0, 3);
 
 // Numbered dimension codes mirror the v3.astro 9-cell legend so prospects
 // see consistent numbering across the public form path and the gated path.
@@ -148,6 +141,22 @@ const DIM_CODE: Record<VerdictIcon, string> = {
   bar:       '10',
   clock:     '11',
 };
+
+// Reliability-tag copy. Calm, never alarming. Severity (the warn/halt tone
+// colour on the reading) is a separate axis from reliability.
+const REL_LABEL: Record<string, string> = {
+  verified: 'Verified reading',
+  'soft-absence': 'Unconfirmed',
+  inferred: 'A read, not a measurement',
+};
+
+// Resolve the prospect's ICP voice (one verbatim Reddit quote per industry).
+// Renders ONLY if the slug maps to one of our 10 ICPs AND the ICP has a quote.
+const icpSlug: string | null = (slugToIcp as SlugToIcpMap)[slug] ?? null;
+const icpEntry: IcpVoiceEntry | null = icpSlug
+  ? ((icpVoice as IcpVoiceMap)[icpSlug] ?? null)
+  : null;
+const heroQuote: IcpQuote | null = icpEntry?.quotes?.[0] ?? null;
 
 const now = new Date();
 const headerDate = `${now.getUTCFullYear()}·${String(now.getUTCMonth() + 1).padStart(2, '0')}·${String(now.getUTCDate()).padStart(2, '0')}`;
@@ -224,24 +233,33 @@ function bandLabel(pct: number): string {
     color: var(--accent-deep);
     margin-bottom: var(--sp-5);
   }
-  .hero h1 {
+  /* The LLM page_hero renders as a prominent editorial lede — large and
+     readable prose, not an oversized display headline. */
+  .hero .lede {
     font-family: var(--grotesk);
-    font-weight: 800;
-    font-size: clamp(36px, 4.6vw, 56px);
-    line-height: 1.04;
-    letter-spacing: var(--track-display);
-    margin: 0 0 var(--sp-5);
+    font-weight: 500;
+    font-size: clamp(22px, 2.35vw, 31px);
+    line-height: 1.34;
+    letter-spacing: -0.01em;
     color: var(--ink);
+    margin: 0 0 var(--sp-6);
+    max-width: 620px;
+    text-wrap: pretty;
   }
-  .hero h1 .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); }
-  .hero .diagnosis {
-    font-family: var(--serif);
-    font-style: italic;
-    font-size: clamp(18px, 1.5vw, 22px);
-    line-height: 1.55;
-    color: var(--ink-dim);
+  .hero .strength {
     margin: 0 0 var(--sp-7);
-    max-width: 640px;
+    padding-top: var(--sp-4);
+    border-top: var(--bw-hair) solid var(--line);
+    max-width: 560px;
+  }
+  .hero .strength .s-lab {
+    font-family: var(--mono); font-size: var(--t-meta);
+    letter-spacing: var(--track-mono); text-transform: uppercase;
+    color: var(--accent-deep); display: block; margin-bottom: var(--sp-2);
+  }
+  .hero .strength .s-text {
+    font-family: var(--serif); font-style: italic;
+    font-size: 16px; line-height: 1.5; color: var(--ink-dim); margin: 0;
   }
   .hero .cta-block {
     display: flex; flex-direction: column; gap: var(--sp-3);
@@ -253,17 +271,6 @@ function bandLabel(pct: number): string {
     margin: 0;
     max-width: 540px;
     line-height: 1.5;
-  }
-  .hero .why-first {
-    font-family: var(--serif);
-    font-style: italic;
-    font-size: 16px;
-    line-height: 1.5;
-    color: var(--ink-dim);
-    margin: var(--sp-5) 0 0;
-    max-width: 540px;
-    padding-top: var(--sp-4);
-    border-top: var(--bw-hair) solid var(--line);
   }
   .hero-meta-row {
     display: flex; flex-wrap: wrap; gap: var(--sp-5);
@@ -301,7 +308,7 @@ function bandLabel(pct: number): string {
   .score-card .seg.lit { background: var(--accent); }
   .score-card .seg.dim-lit { background: var(--accent-deep); }
 
-  /* Locked cards section */
+  /* Findings section */
   .locked-section {
     padding-top: var(--sp-10);
   }
@@ -319,10 +326,10 @@ function bandLabel(pct: number): string {
     letter-spacing: var(--track-mono); text-transform: uppercase;
     color: var(--accent-deep); margin-bottom: var(--sp-5);
   }
-  /* ---- Locks · dossier grid — verbatim from the V4 Hybrid teardown ---- */
+  /* ---- Findings · dossier grid — verbatim from the V4 Hybrid teardown ---- */
   .v3-locks-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     border: 1px solid var(--ink);
     margin-top: var(--sp-7);
   }
@@ -332,14 +339,13 @@ function bandLabel(pct: number): string {
     border-bottom: 1px solid var(--ink);
     background: var(--paper);
     position: relative;
-    cursor: pointer;
     transition: background 120ms cubic-bezier(0.2, 0.6, 0.2, 1);
     min-height: 232px;
     display: flex;
     flex-direction: column;
   }
-  .v3-lock:nth-child(4n) { border-right: 0; }
-  .v3-lock:nth-last-child(-n+4) { border-bottom: 0; }
+  .v3-lock:nth-child(3n) { border-right: 0; }
+  .v3-lock:nth-last-child(-n+3) { border-bottom: 0; }
   .v3-lock:hover { background: var(--paper-2); }
   .v3-lock .lhead {
     display: flex; justify-content: space-between; align-items: center;
@@ -386,46 +392,34 @@ function bandLabel(pct: number): string {
     margin-top: 14px; font-family: var(--serif); font-style: italic;
     font-size: 14px; line-height: 1.5; color: var(--ink-dim);
   }
+  /* The finding's real observation. Redaction removed in the Phase 1 rebuild —
+     this shows the honest text where the REDACTED bar used to sit. */
   .v3-lock .obs {
-    margin-top: auto; padding-top: 16px;
+    margin-top: 16px; padding-top: 16px;
     border-top: 1px solid var(--line);
     font-family: var(--mono); font-style: normal; font-size: 12px;
     letter-spacing: 0; text-transform: none; line-height: 1.5;
-    color: var(--ink-dim); position: relative;
+    color: var(--ink-dim);
   }
-  .v3-lock .obs .blot {
-    display: inline-block; background: var(--ink); color: transparent;
-    user-select: none; position: relative; padding: 2px 8px; margin: 0 3px;
-    font-family: var(--mono); letter-spacing: 0;
-    transition: background 120ms cubic-bezier(0.2, 0.6, 0.2, 1);
-    vertical-align: baseline;
-  }
-  .v3-lock .obs .blot::after {
-    content: 'REDACTED'; position: absolute; inset: 0;
-    display: flex; align-items: center; justify-content: center;
-    font-family: var(--mono); font-size: 9px; letter-spacing: var(--track-mono);
-    color: var(--on-ink); text-transform: uppercase; font-style: normal;
-  }
-  .v3-lock:hover .obs .blot { background: var(--accent-deep); }
-  .v3-lock .lfoot {
-    margin-top: 16px; padding-top: 14px;
+  /* Reliability tag — calm, mono, bottom-aligned across the grid row. */
+  .v3-lock .rel-tag {
+    margin-top: auto; padding-top: 14px;
     border-top: 1px solid var(--line);
     font-family: var(--mono); font-size: 10.5px;
     letter-spacing: var(--track-mono); text-transform: uppercase;
-    color: var(--ink-faint); display: flex; align-items: center; gap: 10px;
-    transition: color 120ms cubic-bezier(0.2, 0.6, 0.2, 1);
   }
-  .v3-lock .lfoot::before {
-    content: ''; width: 6px; height: 6px; background: #B6BCC6;
-    border-radius: 999px; transition: background 120ms cubic-bezier(0.2, 0.6, 0.2, 1);
+  .v3-lock .rel-tag.rel-verified { color: var(--ink); }
+  .v3-lock .rel-tag.rel-soft-absence { color: var(--ink-faint); }
+  .v3-lock .rel-tag.rel-inferred {
+    font-family: var(--serif); font-style: italic;
+    text-transform: none; letter-spacing: 0;
+    font-size: 13px; color: var(--ink-dim);
   }
-  .v3-lock:hover .lfoot { color: var(--ink); }
-  .v3-lock:hover .lfoot::before { background: var(--accent); }
   @media (max-width: 1100px) {
     .v3-locks-grid { grid-template-columns: repeat(2, 1fr); }
-    .v3-lock:nth-child(4n) { border-right: 1px solid var(--ink); }
+    .v3-lock:nth-child(3n) { border-right: 1px solid var(--ink); }
     .v3-lock:nth-child(2n) { border-right: 0; }
-    .v3-lock:nth-last-child(-n+4) { border-bottom: 1px solid var(--ink); }
+    .v3-lock:nth-last-child(-n+3) { border-bottom: 1px solid var(--ink); }
     .v3-lock:nth-last-child(-n+2) { border-bottom: 0; }
   }
   @media (max-width: 600px) {
@@ -434,6 +428,55 @@ function bandLabel(pct: number): string {
     .v3-lock:nth-last-child(-n+2) { border-bottom: 1px solid var(--ink); }
     .v3-lock:last-child { border-bottom: 0; }
   }
+
+  /* Prioritized-plan preview — the first 3 ranked fixes. */
+  .plan-preview { padding-top: var(--sp-12); }
+  .plan-preview .lab {
+    font-family: var(--mono); font-size: var(--t-meta);
+    letter-spacing: var(--track-mono); text-transform: uppercase;
+    color: var(--accent-deep); margin-bottom: var(--sp-5);
+  }
+  .plan-preview h2 {
+    font-family: var(--grotesk); font-weight: 800;
+    font-size: clamp(26px, 2.4vw, 36px); line-height: 1.15;
+    letter-spacing: var(--track-display); margin: 0 0 var(--sp-4);
+  }
+  .plan-preview h2 .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); }
+  .plan-preview .plan-intro {
+    font-family: var(--serif); font-style: italic;
+    font-size: clamp(16px, 1.4vw, 19px); line-height: 1.55;
+    color: var(--ink-dim); margin: 0 0 var(--sp-8); max-width: 640px;
+  }
+  .plan-list { list-style: none; margin: 0; padding: 0; border: 1px solid var(--ink); }
+  .plan-item {
+    display: flex; gap: var(--sp-6);
+    padding: var(--sp-7); border-bottom: 1px solid var(--ink);
+  }
+  .plan-item:last-child { border-bottom: 0; }
+  @media (max-width: 700px) {
+    .plan-item { gap: var(--sp-5); padding: var(--sp-6) var(--sp-5); }
+  }
+  .plan-rank {
+    font-family: var(--mono); font-size: 26px; font-weight: 500;
+    color: var(--accent-deep); line-height: 1; flex-shrink: 0;
+  }
+  .plan-body { display: flex; flex-direction: column; gap: var(--sp-3); }
+  .plan-body h3 {
+    font-family: var(--grotesk); font-weight: 700;
+    font-size: clamp(18px, 1.6vw, 22px); line-height: 1.2;
+    letter-spacing: -0.02em; margin: 0; color: var(--ink); text-wrap: balance;
+  }
+  .plan-body p {
+    font-family: var(--grotesk); font-size: 15px; line-height: 1.55;
+    color: var(--ink-dim); margin: 0; max-width: 620px;
+  }
+  .plan-chips { display: flex; gap: var(--sp-3); flex-wrap: wrap; margin-top: var(--sp-2); }
+  .plan-chips .chip {
+    font-family: var(--mono); font-size: 10.5px;
+    letter-spacing: var(--track-mono); text-transform: uppercase;
+    color: var(--ink-faint); border: 1px solid var(--line); padding: 4px 9px;
+  }
+  .plan-chips .chip b { color: var(--ink); font-weight: 500; }
 
   /* Footer CTA + bio */
   .closer {
@@ -543,7 +586,7 @@ function bandLabel(pct: number): string {
 </style>
 </head>
 <body>
-{cached && hero && memo ? (
+{cached && memo && heroData ? (
   <main class="page">
     <header class="top">
       <div class="left">
@@ -561,19 +604,20 @@ function bandLabel(pct: number): string {
           <span>Scan · <b>9 of 9</b></span>
         </div>
 
-        <div class="kicker">D · {hero.sourceCell ? DIM_CODE[hero.sourceCell.icon] : '·'} · {DIMENSION_LABEL[hero.dimension] ?? 'Finding'}</div>
-        <h1>
-          {hero.cellHeading}.<br/>
-          <span class="ital">The hero finding.</span>
-        </h1>
-        <p class="diagnosis">{hero.diagnosis}</p>
-        {hero.revenueMath ? <p class="diagnosis" style="color: var(--accent-deep); font-style: normal; font-family: var(--mono); text-transform: uppercase; font-size: 14px; letter-spacing: var(--track-mono);">{hero.revenueMath}</p> : null}
+        <div class="kicker">Diagnosis</div>
+        <p class="lede">{heroData.pageHero}</p>
+
+        {heroData.strength ? (
+          <div class="strength">
+            <span class="s-lab">What's working</span>
+            <p class="s-text">{heroData.strength}</p>
+          </div>
+        ) : null}
 
         <div class="cta-block">
           <a class="btn btn--pri" href={CAL_URL}>Book 30 min with Fred <span aria-hidden="true">→</span></a>
-          <p class="cta-trust">{hero.ctaSubtext}</p>
+          <p class="cta-trust">Thirty minutes with Fred. We walk through your audit, not a slide deck.</p>
         </div>
-        <p class="why-first">{whyThisFirst(hero.dimension)}</p>
       </div>
 
       <aside class="score-card">
@@ -604,13 +648,12 @@ function bandLabel(pct: number): string {
     ) : null}
 
     <section class="locked-section">
-      <div class="lab">The other 8 findings · ranked by revenue impact on the call</div>
-      <h2>What the full teardown <span class="ital">covers.</span></h2>
+      <div class="lab">The full read · all 9 findings</div>
+      <h2>What the audit <span class="ital">found.</span></h2>
       <div class="v3-locks-grid">
-        {lockedCells.map((cell) => {
+        {verdictCells.map((cell) => {
           const value = (cell.value ?? '').trim();
           const isUnmeasured = value === '' || value.toLowerCase() === 'n/a';
-          const obs = buildLockedObservation(cell);
           const meta = lockedMeta(cell.icon);
           const tone = deriveTone(cell);
           return (
@@ -623,33 +666,54 @@ function bandLabel(pct: number): string {
               </div>
               <h3>{meta.shortLabel}</h3>
               {isUnmeasured ? (
-                <div class="reading-unmeasured">Some sites block the public scan. We'll measure it together on the call.</div>
+                <div class="reading-unmeasured">The public scan couldn't reach this one. We measure it together on the call.</div>
               ) : (
                 <Fragment>
                   <div class={`reading ${tone === 'none' ? '' : tone}`.trim()}>{cell.value}</div>
                   <div class="reading-k">{meta.valueLabel}</div>
-                  <div class="obs">
-                    {obs.pre}
-                    <span class="blot" aria-label="redacted, revealed on the call">REDACTED</span>
-                    {obs.post}
-                  </div>
                 </Fragment>
               )}
-              <div class="lfoot">Revealed on the call</div>
+              <p class="obs">{cell.note}</p>
+              {cell.reliability ? (
+                <div class={`rel-tag rel-${cell.reliability}`}>{REL_LABEL[cell.reliability] ?? cell.reliability}</div>
+              ) : null}
             </article>
           );
         })}
       </div>
     </section>
 
+    {topFixes.length ? (
+      <section class="plan-preview">
+        <div class="lab">Where I'd start · the fix order</div>
+        <h2>The first <span class="ital">three moves.</span></h2>
+        <p class="plan-intro">Ranked by what returns the most for the least work. The rest of the order, and the revenue math behind the ranking, is what the call is for.</p>
+        <ol class="plan-list">
+          {topFixes.map((fix) => (
+            <li class="plan-item">
+              <span class="plan-rank">{String(fix.rank).padStart(2, '0')}</span>
+              <div class="plan-body">
+                <h3>{fix.what}</h3>
+                <p>{fix.why}</p>
+                <div class="plan-chips">
+                  <span class="chip">Effort · <b>{fix.effort}</b></span>
+                  <span class="chip">Impact · <b>{fix.impact}</b></span>
+                </div>
+              </div>
+            </li>
+          ))}
+        </ol>
+      </section>
+    ) : null}
+
     <section class="closer">
       <div>
         <div style="font-family: var(--mono); font-size: var(--t-meta); letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--accent); margin-bottom: var(--sp-3);">● 30 min · no deck</div>
         <h2>
           Pick a time.<br/>
-          <span class="ital">I'll walk you through the rest of the read.</span>
+          <span class="ital">We go through the fix order together.</span>
         </h2>
-        <p>The other 8 dimensions, ranked by revenue impact. The fix order. The numbers your in-browser scan can't reach.</p>
+        <p>You've seen all nine findings and the first three moves. The call is the rest of the order, the revenue math behind the ranking, and the things a browser scan can't reach: your pipeline, your follow-up, your numbers.</p>
         <div class="actions">
           <a class="btn btn--inv" href={CAL_URL}>Book a call <span aria-hidden="true">→</span></a>
           <a class="btn btn--sec" href="/audit/v3" style="border-color: var(--on-ink-line-2); color: var(--on-ink);">Audit another domain</a>
