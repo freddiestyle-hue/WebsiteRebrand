@@ -31,21 +31,44 @@ function companyNameFromHostname(hostname: string): string {
   return stripped.split('.')[0];
 }
 
-async function safeJson(url: string, headers: Record<string, string>): Promise<any> {
+// Returns the parsed body on real success, null on transport/HTTP failure,
+// or `{ error: 'credits' | 'auth' | 'unknown', message }` when ScrapeCreators
+// returns a JSON error envelope (HTTP 200 with `success: false`). The previous
+// implementation conflated all three into null, which countResults then turned
+// into a silent "0 ads found" — meaning a depleted credit balance produced
+// the same audit output as a real no-ads result. That bug burned a full
+// 150-prospect audit motion in production.
+type SCResponse =
+  | { ok: true; body: any }
+  | { ok: false; error: 'credits' | 'auth' | 'transport' | 'unknown'; message: string };
+
+async function safeJson(url: string, headers: Record<string, string>): Promise<SCResponse> {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
   try {
     const res = await fetch(url, { headers, signal: ctrl.signal });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch {
-    return null;
+    if (!res.ok) {
+      return { ok: false, error: res.status === 401 || res.status === 403 ? 'auth' : 'transport', message: `HTTP ${res.status}` };
+    }
+    const body = await res.json();
+    if (body && typeof body === 'object' && body.success === false) {
+      const msg = typeof body.message === 'string' ? body.message : '';
+      if (/credit/i.test(msg)) return { ok: false, error: 'credits', message: msg };
+      return { ok: false, error: 'unknown', message: msg || 'success:false' };
+    }
+    return { ok: true, body };
+  } catch (e) {
+    return { ok: false, error: 'transport', message: e instanceof Error ? e.message : String(e) };
   } finally {
     clearTimeout(timer);
   }
 }
 
-function countResults(json: any): number {
+// Returns null (not 0) when the API call errored. Callers must distinguish
+// "ads check failed" from "ads check ran and found zero ads."
+function countResults(resp: SCResponse): number | null {
+  if (!resp.ok) return null;
+  const json = resp.body;
   if (!json) return 0;
   if (Array.isArray(json.results)) return json.results.length;
   if (Array.isArray(json.ads)) return json.ads.length;
@@ -85,28 +108,44 @@ export async function checkAds(hostname: string): Promise<AdsResult | null> {
   const googleUrl = `${SC_BASE}/google/company/ads?domain=${encodeURIComponent(hostname)}&region=US`;
   const linkedinUrl = `${SC_BASE}/linkedin/ads/search?company=${encodeURIComponent(company)}&countries=US`;
 
-  const [metaJson, googleJson, linkedinJson] = await Promise.all([
+  const [metaResp, googleResp, linkedinResp] = await Promise.all([
     safeJson(metaUrl, headers),
     safeJson(googleUrl, headers),
     safeJson(linkedinUrl, headers),
   ]);
 
-  const metaActive = countResults(metaJson);
-  const googleActive = countResults(googleJson);
-  const linkedinActive = countResults(linkedinJson);
+  // Log credit/auth failures loudly so they don't silently corrupt audit output.
+  for (const [name, r] of [['meta', metaResp], ['google', googleResp], ['linkedin', linkedinResp]] as const) {
+    if (!r.ok && (r.error === 'credits' || r.error === 'auth')) {
+      console.error(`[ads-check] ${name} call failed: ${r.error} - ${r.message}`);
+    }
+  }
 
-  const earliestSeen = extractEarliest(metaJson);
-  const sampleLandingPages = extractMetaLandingPages(metaJson);
+  const metaActive = countResults(metaResp);
+  const googleActive = countResults(googleResp);
+  const linkedinActive = countResults(linkedinResp);
 
-  const total = metaActive + googleActive + linkedinActive;
+  const earliestSeen = metaResp.ok ? extractEarliest(metaResp.body) : null;
+  const sampleLandingPages = metaResp.ok ? extractMetaLandingPages(metaResp.body) : [];
+
+  // If every platform errored, the whole check is unreliable - signal that
+  // upstream by returning null so the verdict cell degrades to "not measured"
+  // instead of "no ads found" (which would silently look identical to the
+  // real-zero case to downstream consumers like pick-hero).
+  if (metaActive === null && googleActive === null && linkedinActive === null) {
+    console.error(`[ads-check] all 3 platforms errored for ${hostname} - returning null`);
+    return null;
+  }
+
+  const total = (metaActive ?? 0) + (googleActive ?? 0) + (linkedinActive ?? 0);
   let commentary: string;
   if (total === 0) {
     commentary = `No active paid ads detected for ${hostname} across Meta, Google, or LinkedIn.`;
   } else {
     const parts: string[] = [];
-    if (metaActive > 0) parts.push(`${metaActive} on Meta`);
-    if (googleActive > 0) parts.push(`${googleActive} on Google`);
-    if (linkedinActive > 0) parts.push(`${linkedinActive} on LinkedIn`);
+    if ((metaActive ?? 0) > 0) parts.push(`${metaActive} on Meta`);
+    if ((googleActive ?? 0) > 0) parts.push(`${googleActive} on Google`);
+    if ((linkedinActive ?? 0) > 0) parts.push(`${linkedinActive} on LinkedIn`);
     commentary = `${total} active ${total === 1 ? 'ad' : 'ads'} (${parts.join(', ')}).`;
     if (earliestSeen) commentary += ` Earliest Meta creative dates back to ${earliestSeen}.`;
   }
