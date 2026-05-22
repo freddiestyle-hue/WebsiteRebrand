@@ -157,7 +157,8 @@ export default function QuestionnaireEngine({ config }: QuestionnaireEngineProps
         const value = option.key;
 
         if (current.type === 'multi_select_letter') {
-          const nextValue = toggleOption(Array.isArray(answers[current.id]) ? answers[current.id] : [], value);
+          const existing = answers[current.id];
+          const nextValue = toggleOption(Array.isArray(existing) ? existing : [], value);
           setAnswer(current.id, nextValue);
           return;
         }
@@ -413,7 +414,8 @@ function QuestionField({
   }
 
   if (question.type === 'two_field' || question.type === 'five_field') {
-    const objectValue = typeof value === 'object' && value ? value : {};
+    const objectValue: Record<string, string> =
+      value && typeof value === 'object' && !Array.isArray(value) ? value : {};
     const fields = question.fields ?? [];
     const className = question.type === 'two_field' ? 'two-col' : 'stack-grid';
 
@@ -527,7 +529,8 @@ function validateQuestion(question: QuestionConfig, value: AnswerValue | undefin
   if (question.optional) return null;
 
   if (question.type === 'two_field') {
-    const objectValue = typeof value === 'object' && value ? value : {};
+    const objectValue: Record<string, string> =
+      value && typeof value === 'object' && !Array.isArray(value) ? value : {};
     const missing = (question.fields ?? []).some((field) => !field.optional && !objectValue[field.id]?.trim());
     return missing ? 'Both fields, please.' : null;
   }

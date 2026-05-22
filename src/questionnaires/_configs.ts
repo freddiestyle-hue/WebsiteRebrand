@@ -13,6 +13,6 @@ export function getQuestionnaireConfig(slug: string): ProspectConfig | undefined
   return questionnaireConfigs[slug as QuestionnaireSlug];
 }
 
-export function getQuestionnaireSlugs(): QuestionnaireSlug[] {
-  return Object.keys(questionnaireConfigs) as QuestionnaireSlug[];
+export function getQuestionnaireSlugs(): string[] {
+  return Object.keys(questionnaireConfigs);
 }

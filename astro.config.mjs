@@ -34,12 +34,14 @@ const staticSitemapRoutes = {
   },
 };
 
+/** @param {string | undefined} value */
 function toIsoDate(value) {
   if (!value) return undefined;
   const date = new Date(value.length === 10 ? `${value}T00:00:00.000Z` : value);
   return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
 }
 
+/** @param {string} relativePath */
 function latestGitDate(relativePath) {
   try {
     return execFileSync('git', ['log', '-1', '--format=%cI', '--', relativePath], {
@@ -52,6 +54,7 @@ function latestGitDate(relativePath) {
   }
 }
 
+/** @param {string} relativePath */
 function fileModifiedDate(relativePath) {
   try {
     return fs.statSync(path.join(rootDir, relativePath)).mtime.toISOString();
@@ -60,6 +63,10 @@ function fileModifiedDate(relativePath) {
   }
 }
 
+/**
+ * @param {string} frontmatter
+ * @param {string} key
+ */
 function frontmatterValue(frontmatter, key) {
   const match = frontmatter.match(new RegExp(`^${key}:\\s*"?([^"\\n]+)"?\\s*$`, 'm'));
   return match?.[1]?.trim();
@@ -109,11 +116,13 @@ function staticSitemapMeta() {
 
 const sitemapMeta = new Map([...staticSitemapMeta(), ...blogSitemapMeta()]);
 
+/** @param {string} page */
 function pathnameFor(page) {
   const pathname = page.startsWith('http') ? new URL(page).pathname : page;
   return pathname === '' ? '/' : pathname;
 }
 
+/** @param {string} page */
 function isPublicIndexablePath(page) {
   const pathname = pathnameFor(page);
   return !privateSitemapPrefixes.some((prefix) => pathname.startsWith(prefix));

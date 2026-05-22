@@ -81,7 +81,8 @@ function buildSubject(config: ProspectConfig, answers: QuestionnaireAnswers, ans
   if (config.slug === 'qualify') {
     const companyUrl = formatAnswerValue(answers.company_url) || 'No company URL';
     const nameRole = answers.name_role;
-    const name = typeof nameRole === 'object' && nameRole ? nameRole.name : '';
+    const name =
+      nameRole && typeof nameRole === 'object' && !Array.isArray(nameRole) ? nameRole.name : '';
     return `New qualification: ${companyUrl} - ${name || 'No name'}`;
   }
 
