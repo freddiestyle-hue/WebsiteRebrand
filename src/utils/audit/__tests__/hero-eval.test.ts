@@ -39,6 +39,11 @@ describe('checkAntiAiTell', () => {
     expect(r.tells.some((t) => t.startsWith('one-word sentence'))).toBe(true);
   });
 
+  it('does not read a decimal number as a one-word sentence', () => {
+    const r = checkAntiAiTell("Your homepage LCP is 12.9s while Google's threshold is 2.5s.");
+    expect(r.clean).toBe(true);
+  });
+
   it('flags a rule-of-three staccato cadence', () => {
     expect(checkAntiAiTell('It is fast. It is clean. It is gone.').tells).toContain(
       'rule-of-three cadence',

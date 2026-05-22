@@ -28,10 +28,13 @@ export const BANNED_WORDS: ReadonlyArray<string> = BANNED_PATTERNS.map((p) => p.
 // The DM one-liner has to fit a cold LinkedIn message.
 const DM_ONE_LINER_MAX_WORDS = 30;
 
-// Split text into sentences on ., !, ? - good enough for short hero prose.
+// Split text into sentences on ., !, ? followed by whitespace or end of text.
+// The trailing lookahead keeps a decimal point inside a number ("2.5s",
+// "12.9s") from reading as a sentence boundary - without it a one-liner
+// ending "...threshold is 2.5s." splits off a stray one-word "5s".
 function sentences(text: string): string[] {
   return text
-    .split(/[.!?]+/)
+    .split(/[.!?]+(?=\s|$)/)
     .map((s) => s.trim())
     .filter((s) => s.length > 0);
 }
