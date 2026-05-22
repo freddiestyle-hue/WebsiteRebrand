@@ -58,13 +58,13 @@ const DIAGNOSIS: Record<Exclude<HeroDimension, 'clean' | 'ads_landing'>, string>
   email:
     'Your domain is missing SPF or DMARC. Cold emails from your team are getting silently filtered before anyone reads them, which means the deals you\'re chasing through outbound are dying in spam folders.',
   pagespeed:
-    'Your homepage takes more than 4 seconds to render its main content on mobile. That\'s the point most paid-ad clicks bounce, before seeing a single offer.',
+    'Your homepage is slow to render its main content on mobile. That\'s the point most paid-ad clicks bounce, before seeing a single offer.',
   seo:
     'Your title tag, H1, or meta description is empty or generic. That\'s the difference between Google understanding what you sell and Google guessing.',
   aeo:
     'ChatGPT, Claude, and Perplexity can\'t structure your services in a way they can quote. When an operator asks AI for a vendor like you, you don\'t get cited. Your competitors who structured their pages do.',
   tracking:
-    'Your site fires more than 30 tracking pixels but doesn\'t track the events that actually predict revenue. You\'re paying for visibility into traffic you can\'t correlate to deals.',
+    'Your site fires tracking pixels but doesn\'t track the events that actually predict revenue. You\'re paying for visibility into traffic you can\'t correlate to deals.',
   ads:
     'You\'re running ads, but they land on your homepage instead of a page built to convert. Every click is paying full-funnel CAC to drop visitors into a generic experience. A dedicated landing page usually lifts conversion 2-3x at the same spend.',
   stack:
@@ -83,15 +83,15 @@ const ONE_LINER: Record<Exclude<HeroDimension, 'clean' | 'ads_landing'>, string>
   mobile:
     "On mobile your phone number isn't tappable and the primary CTA falls below the first screen.",
   email:
-    "Domain's missing SPF or DMARC - half your outbound is hitting spam before anyone reads it.",
+    "Domain's missing SPF or DMARC - your outbound is hitting spam before anyone reads it.",
   pagespeed:
-    "Homepage takes over 4 seconds to render its main content on mobile - most paid clicks bounce before they see the offer.",
+    "Homepage is slow to render its main content on mobile - most paid clicks bounce before they see the offer.",
   seo:
     "Title tag, H1, or meta description is empty - Google's guessing what you sell.",
   aeo:
     "ChatGPT and Perplexity can't structure your services to cite. The competitors who did show up in AI answers.",
   tracking:
-    "Site fires 30+ pixels but doesn't track the events that actually predict revenue - you're spending blind.",
+    "Site fires tracking pixels but doesn't track the events that actually predict revenue - you're spending blind.",
   ads:
     "Ads are running but landing on the homepage instead of a page built to convert - you're paying full-funnel CAC into a dead end.",
   stack:
