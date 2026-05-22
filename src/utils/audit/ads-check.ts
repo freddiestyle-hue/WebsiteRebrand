@@ -121,34 +121,38 @@ export async function checkAds(hostname: string): Promise<AdsResult | null> {
     }
   }
 
-  const metaActive = countResults(metaResp);
+  // Meta and LinkedIn ad-library lookups are keyed by a company name guessed
+  // from the hostname (companyNameFromHostname). That guess fuzzy-matches
+  // unrelated advertisers - the domain recom.co resolves to "recom", which
+  // returns ads from Recombee, Recomaze and other "Recom*" companies (verified
+  // against ScrapeCreators and the Meta Ad Library, 2026-05). Only the Google
+  // lookup is keyed by the real domain. Until Meta/LinkedIn can be keyed off a
+  // verified advertiser identity their counts are withheld (null = not
+  // measured), so the audit never reports an ad count it cannot stand behind.
+  // The Meta response is still parsed below for landing-page samples.
+  const metaActive: number | null = null;
+  const linkedinActive: number | null = null;
   const googleActive = countResults(googleResp);
-  const linkedinActive = countResults(linkedinResp);
 
   const earliestSeen = metaResp.ok ? extractEarliest(metaResp.body) : null;
   const sampleLandingPages = metaResp.ok ? extractMetaLandingPages(metaResp.body) : [];
 
-  // If every platform errored, the whole check is unreliable - signal that
-  // upstream by returning null so the verdict cell degrades to "not measured"
-  // instead of "no ads found" (which would silently look identical to the
-  // real-zero case to downstream consumers like pick-hero).
-  if (metaActive === null && googleActive === null && linkedinActive === null) {
-    console.error(`[ads-check] all 3 platforms errored for ${hostname} - returning null`);
+  // Google is the only trustworthy ad signal (domain-keyed). If it errored,
+  // the ads check is unreliable - return null so the verdict cell degrades to
+  // "not measured" rather than a misleading "no ads found" (which would look
+  // identical to a real zero to downstream consumers like pick-hero).
+  if (googleActive === null) {
+    console.error(`[ads-check] Google ad-library call errored for ${hostname} - returning null`);
     return null;
   }
 
-  const total = (metaActive ?? 0) + (googleActive ?? 0) + (linkedinActive ?? 0);
-  let commentary: string;
-  if (total === 0) {
-    commentary = `No active paid ads detected for ${hostname} across Meta, Google, or LinkedIn.`;
-  } else {
-    const parts: string[] = [];
-    if ((metaActive ?? 0) > 0) parts.push(`${metaActive} on Meta`);
-    if ((googleActive ?? 0) > 0) parts.push(`${googleActive} on Google`);
-    if ((linkedinActive ?? 0) > 0) parts.push(`${linkedinActive} on LinkedIn`);
-    commentary = `${total} active ${total === 1 ? 'ad' : 'ads'} (${parts.join(', ')}).`;
-    if (earliestSeen) commentary += ` Earliest Meta creative dates back to ${earliestSeen}.`;
-  }
+  // Google-only: the audit reports the domain-keyed Google ad count, the one
+  // ad number it can stand behind. Meta/LinkedIn are withheld (see above).
+  const total = googleActive;
+  const commentary =
+    total === 0
+      ? `No active paid Google ads detected for ${hostname}.`
+      : `${total} active paid Google ${total === 1 ? 'ad' : 'ads'} detected for ${hostname}.`;
 
   return {
     metaActive,
