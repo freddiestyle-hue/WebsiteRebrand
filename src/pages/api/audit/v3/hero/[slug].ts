@@ -15,7 +15,13 @@ import { Redis } from '@upstash/redis';
 import type { Memo } from '../../../../../utils/audit/memo-schema';
 import { isValidV3Slug } from '../../../../../utils/audit/slug';
 import { pickHeroFinding } from '../../../../../utils/audit/pick-hero';
-import { generateHero, type HeroResult } from '../../../../../utils/audit/hero-llm';
+import {
+  generateHero,
+  buildHeroUserPrompt,
+  type HeroResult,
+  type HeroPromptInput,
+} from '../../../../../utils/audit/hero-llm';
+import { evaluateHero, type HeroEvalResult } from '../../../../../utils/audit/hero-eval';
 import { buildRevenueEstimate } from '../../../../../utils/audit/revenue-estimate';
 import { buildIndustryContext } from '../../../../../utils/audit/icp-context';
 
@@ -40,6 +46,10 @@ interface CachedHero {
   // Composite audit score, surfaced so the bulk-audit CSV (and the Airtable
   // sync downstream) has it without a second round trip to the memo.
   score: number;
+  // Hero eval verdict (grounding, shape, anti-AI-tell). Set on the LLM path
+  // only; the rule-based fallback is flagged by source instead. Observational,
+  // not a gate - the hero ships regardless so the bulk run can review failures.
+  evaluation?: HeroEvalResult;
 }
 
 function json(status: number, body: unknown): Response {
@@ -104,13 +114,19 @@ export const GET: APIRoute = async ({ params }) => {
 
   // 3. Generate the LLM hero; cache it on success. The revenue estimate is
   //    computed deterministically here and handed to the prompt - the LLM may
-  //    cite those figures but never does its own arithmetic.
-  const llm = await generateHero({
+  //    cite those figures but never does its own arithmetic. The hero input is
+  //    built once so the same value can rebuild the prompt for evaluateHero.
+  const heroInput: HeroPromptInput = {
     memo: payload.memo,
     revenueEstimate: buildRevenueEstimate(payload.memo),
     industryContext: buildIndustryContext(slug),
-  });
+  };
+  const llm = await generateHero(heroInput);
   if (llm) {
+    // Evaluate after generation, never gate it: a hero that trips a check
+    // still ships, flagged, so the bulk run can surface it for review rather
+    // than silently swapping in a weaker rule-based hero.
+    const evaluation = evaluateHero(llm, buildHeroUserPrompt(heroInput));
     const record: CachedHero = {
       slug,
       domain: payload.hostname,
@@ -118,6 +134,7 @@ export const GET: APIRoute = async ({ params }) => {
       source: 'llm',
       generatedAt: new Date().toISOString(),
       score: payload.scoreNumeric,
+      evaluation,
     };
     try {
       await redis.set(`audit-v3-hero:${slug}`, JSON.stringify(record));
