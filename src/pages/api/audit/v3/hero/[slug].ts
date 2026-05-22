@@ -17,6 +17,7 @@ import { isValidV3Slug } from '../../../../../utils/audit/slug';
 import { pickHeroFinding } from '../../../../../utils/audit/pick-hero';
 import { generateHero, type HeroResult } from '../../../../../utils/audit/hero-llm';
 import { buildRevenueEstimate } from '../../../../../utils/audit/revenue-estimate';
+import { buildIndustryContext } from '../../../../../utils/audit/icp-context';
 
 export const prerender = false;
 
@@ -107,6 +108,7 @@ export const GET: APIRoute = async ({ params }) => {
   const llm = await generateHero({
     memo: payload.memo,
     revenueEstimate: buildRevenueEstimate(payload.memo),
+    industryContext: buildIndustryContext(slug),
   });
   if (llm) {
     const record: CachedHero = {
