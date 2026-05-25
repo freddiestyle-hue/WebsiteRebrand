@@ -43,3 +43,89 @@ describe('checkHeroGrounding', () => {
     expect(r.grounded).toBe(true);
   });
 });
+
+describe('checkHeroGrounding — ad-platform claims', () => {
+  // Canonical post-fix corpus: only Google has a published count. Meta and
+  // LinkedIn are present as tracking-pixel detections, never as ad counts.
+  const googleOnlyCorpus = `AUDIT_JSON: {
+    "dimensions": [
+      { "dimension": "Tracking", "reading": "Meta Pixel firing, LinkedIn Insight Tag firing" }
+    ],
+    "ads_note": "Google Ads Library: 7 active creatives"
+  }`;
+
+  it('rejects "Meta ad" when the audit only published a Google count', () => {
+    const r = checkHeroGrounding(
+      hero({ dmOneLiner: 'Your one active Meta ad lands on a slow page.' }),
+      googleOnlyCorpus,
+    );
+    expect(r.grounded).toBe(false);
+    expect(r.ungroundedPlatforms).toContain('Meta');
+  });
+
+  it('rejects "LinkedIn ads" when the audit only published a Google count', () => {
+    const r = checkHeroGrounding(
+      hero({ pageHero: 'You are running 7 active LinkedIn ads to a 7.4s page.' }),
+      googleOnlyCorpus,
+    );
+    expect(r.grounded).toBe(false);
+    expect(r.ungroundedPlatforms).toContain('LinkedIn');
+  });
+
+  it('rejects "across Meta and Google" framing without a Meta count', () => {
+    const r = checkHeroGrounding(
+      hero({ pageHero: 'Spending 70 active ads across Meta and Google.' }),
+      googleOnlyCorpus.replace('7 active', '70 active'),
+    );
+    expect(r.grounded).toBe(false);
+    expect(r.ungroundedPlatforms).toContain('Meta');
+  });
+
+  it('does NOT reject "Meta Pixel" / "LinkedIn Insight" tracking-tag mentions', () => {
+    const r = checkHeroGrounding(
+      hero({
+        strength:
+          'Tracking is solid: Meta Pixel and LinkedIn Insight Tag are all confirmed firing.',
+      }),
+      googleOnlyCorpus,
+    );
+    expect(r.grounded).toBe(true);
+    expect(r.ungroundedPlatforms).toEqual([]);
+  });
+
+  it('passes Google ad claims when the corpus has a Google count', () => {
+    const r = checkHeroGrounding(
+      hero({ dmOneLiner: 'You have 7 active Google ads on a slow page.' }),
+      googleOnlyCorpus,
+    );
+    expect(r.grounded).toBe(true);
+  });
+
+  it('passes Meta ad claims when a future memo does publish a Meta count', () => {
+    const futureCorpus = `${googleOnlyCorpus} Meta Ad Library: 12 active creatives`;
+    const r = checkHeroGrounding(
+      hero({ dmOneLiner: 'You have 12 active Meta ads on a slow page.' }),
+      futureCorpus,
+    );
+    expect(r.grounded).toBe(true);
+  });
+
+  it('passes when JSON serialises a numeric metaActive field', () => {
+    const jsonCorpus = `{ "metaActive": 4, "googleActive": 7 }`;
+    const r = checkHeroGrounding(
+      hero({ dmOneLiner: 'You have 4 active Meta ads.' }),
+      jsonCorpus,
+    );
+    expect(r.grounded).toBe(true);
+  });
+
+  it('rejects when JSON serialises metaActive as null', () => {
+    const jsonCorpus = `{ "metaActive": null, "googleActive": 7 }`;
+    const r = checkHeroGrounding(
+      hero({ dmOneLiner: 'You have 4 active Meta ads.' }),
+      jsonCorpus,
+    );
+    expect(r.grounded).toBe(false);
+    expect(r.ungroundedPlatforms).toContain('Meta');
+  });
+});

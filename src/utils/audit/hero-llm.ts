@@ -255,7 +255,7 @@ export async function generateHero(input: HeroPromptInput): Promise<HeroResult |
           if (!grounding.grounded) {
             outcome = 'ungrounded';
             console.warn(
-              `[hero-llm] ungrounded output rejected; numbers not in the audit: ${grounding.ungroundedNumbers.join(', ')}`,
+              `[hero-llm] ungrounded output rejected; numbers not in the audit: [${grounding.ungroundedNumbers.join(', ')}]; ad-platform claims not in the audit: [${grounding.ungroundedPlatforms.join(', ')}]`,
             );
           } else {
             outcome = 'success';
