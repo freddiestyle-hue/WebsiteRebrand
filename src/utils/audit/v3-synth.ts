@@ -305,13 +305,18 @@ function adsCellFromResult(
       ? homepageRef - worstLanding.scorePercent
       : null;
 
+  // ads-check.ts only publishes a Google ad count right now (Meta/LinkedIn are
+  // null until the lookup can be keyed off a verified advertiser identity), so
+  // the synthesis note must not name Meta or LinkedIn as confirmed advertisers.
+  // "Ad platforms" reads honest whether the prospect runs only Google or also
+  // runs Meta/LinkedIn we can't verify.
   let note: string;
   if (total === 0) {
-    note = `No active paid ads detected across Meta, Google, or LinkedIn. Either paid is not part of the mix or campaigns are paused.`;
+    note = `No active paid Google ads detected for this domain. Either paid is not part of the mix or campaigns are paused.`;
   } else if (worstLanding && homepageVsLandingGap != null && homepageVsLandingGap >= 15) {
     note = `${total} active ${total === 1 ? 'ad' : 'ads'}, landing on a page scoring ${Math.round(worstLanding.scorePercent ?? 0)} versus the homepage at ${Math.round(homepageRef ?? 0)}. Paid clicks land where conversion gaps are worst.`;
   } else if (worstLanding && worstLanding.trackingGaps >= 2) {
-    note = `${total} active ${total === 1 ? 'ad' : 'ads'}. Landing pages missing core pixels (${worstLanding.trackingGaps} of 4 trackers absent). Meta and Google can't optimise against conversions they can't see.`;
+    note = `${total} active ${total === 1 ? 'ad' : 'ads'}. Landing pages missing core pixels (${worstLanding.trackingGaps} of 4 trackers absent). The ad platform cannot optimise against conversions it cannot see.`;
   } else {
     note = a.commentary;
   }

@@ -181,8 +181,12 @@ function buildAdsLandingHero(cell: VerdictCell, score: number): HeroFinding {
     band === 'poor'
       ? "That's in Google's \"poor\" band. Quality Score drops, CPC inflates, ad delivery throttles."
       : "That's in Google's \"needs improvement\" band. Enough to drag your Quality Score and inflate your CPC.";
+  // Google is the only ad-platform claim the audit can stand behind right now
+  // (ads-check.ts withholds Meta/LinkedIn counts), so the hero must not name
+  // them. Saying "ad platform" keeps the diagnosis truthful whether the
+  // prospect runs only Google or also runs Meta/LinkedIn we can't verify.
   const diagnosis =
-    `You're paying Meta and Google for clicks that land on a page scoring ${score}/100 for performance. ` +
+    `You're paying for ad clicks that land on a page scoring ${score}/100 for performance. ` +
     `${bandText} The visitors who do land bounce before the page renders. ` +
     `You're paying twice for every click - once in higher bids, once in visitors who never see your offer.`;
 
