@@ -128,4 +128,22 @@ describe('checkHeroGrounding — ad-platform claims', () => {
     expect(r.grounded).toBe(false);
     expect(r.ungroundedPlatforms).toContain('Meta');
   });
+
+  it('rejects implicit-spend framing like "Meta can\'t optimize"', () => {
+    const r = checkHeroGrounding(
+      hero({ dmOneLiner: '4 of 4 tracking pixels missing, Meta can\'t optimize blind.' }),
+      googleOnlyCorpus,
+    );
+    expect(r.grounded).toBe(false);
+    expect(r.ungroundedPlatforms).toContain('Meta');
+  });
+
+  it('rejects "LinkedIn is bidding" framing without a LinkedIn count', () => {
+    const r = checkHeroGrounding(
+      hero({ pageHero: 'Your tracking is dark, so LinkedIn is bidding blind.' }),
+      googleOnlyCorpus,
+    );
+    expect(r.grounded).toBe(false);
+    expect(r.ungroundedPlatforms).toContain('LinkedIn');
+  });
 });

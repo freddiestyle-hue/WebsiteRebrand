@@ -44,7 +44,20 @@ function platformAdClaims(text: string): AdPlatform[] {
   const hit = new Set<AdPlatform>();
   for (const p of AD_PLATFORMS) {
     const adRe = new RegExp(
-      `\\b\\d+\\s+(?:active\\s+)?${p}\\b|\\bactive\\s+${p}\\b|\\b${p}\\s+ads?\\b|\\b(?:across|on)\\s+${p}\\b|\\b${p}\\s+and\\s+(?:Google|Meta|Facebook|LinkedIn)\\b|\\b(?:Google|Meta|Facebook|LinkedIn)\\s+and\\s+${p}\\b|\\b${p}\\s*,\\s*(?:Google|Meta|Facebook|LinkedIn)\\b`,
+      [
+        `\\b\\d+\\s+(?:active\\s+)?${p}\\b`,
+        `\\bactive\\s+${p}\\b`,
+        `\\b${p}\\s+ads?\\b`,
+        `\\b(?:across|on)\\s+${p}\\b`,
+        `\\b${p}\\s+and\\s+(?:Google|Meta|Facebook|LinkedIn)\\b`,
+        `\\b(?:Google|Meta|Facebook|LinkedIn)\\s+and\\s+${p}\\b`,
+        `\\b${p}\\s*,\\s*(?:Google|Meta|Facebook|LinkedIn)\\b`,
+        // Implicit-spend framings: "Meta can't optimize", "Meta is bidding",
+        // "LinkedIn won't see", "Meta will reach". Any of these presuppose
+        // the prospect runs that platform's ads.
+        `\\b${p}\\s+(?:can(?:not|'t)|won't|will|cannot|is|are)\\b`,
+        `\\b${p}\\s+(?:bids?|bidding|optimi[zs]es?|optimi[zs]ing|reaches?)\\b`,
+      ].join('|'),
       'i',
     );
     if (adRe.test(text)) hit.add(p);
