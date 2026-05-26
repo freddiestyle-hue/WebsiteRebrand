@@ -85,6 +85,7 @@ export const POST: APIRoute = async ({ request }) => {
 
   let body: {
     prospect?: string;
+    path?: string;  // accepted alternative to prospect; we extract the slug
     signal?: string;
     detail?: string;
     sessionId?: string;
@@ -101,10 +102,15 @@ export const POST: APIRoute = async ({ request }) => {
     });
   }
 
-  const prospect = (body.prospect ?? '').trim();
+  // Extract prospect slug from either explicit `prospect` or `/audit/(v3|p)/<slug>` path.
+  let prospect = (body.prospect ?? '').trim();
+  if (!prospect && body.path) {
+    const m = body.path.match(/^\/audit\/(?:v3|p)\/([^/?#]+)/);
+    if (m) prospect = m[1];
+  }
   const signal = (body.signal ?? '').trim();
   if (!prospect || !signal) {
-    return new Response(JSON.stringify({ error: 'missing_fields' }), {
+    return new Response(JSON.stringify({ error: 'missing_fields', got: { prospect, signal } }), {
       status: 400,
       headers: { 'content-type': 'application/json' },
     });
