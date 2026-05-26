@@ -1,0 +1,140 @@
+---
+import { PRESETS, type DateRange } from '../../utils/posthog/dateRange';
+
+interface Props {
+  range: DateRange;
+}
+
+const { range } = Astro.props;
+
+// Build a "today" iso date for the custom range max attribute.
+const todayIso = new Date().toISOString().slice(0, 10);
+// Default custom-from is whatever the current range was, formatted YYYY-MM-DD.
+const fromIso = range.fromIso.slice(0, 10);
+const toIso = range.toIso.slice(0, 10);
+---
+<div class="rangebar" role="region" aria-label="Date range">
+  <div class="presets" role="group" aria-label="Date presets">
+    {PRESETS.map((p) => (
+      <a
+        href={`?range=${p.value}`}
+        class={`pill ${range.preset === p.value ? 'pill--active' : ''}`}
+        aria-current={range.preset === p.value ? 'true' : 'false'}
+      >{p.label}</a>
+    ))}
+  </div>
+
+  <form class="custom" method="get" action="/hq">
+    <label class="custom-lab" for="from">From</label>
+    <input type="date" id="from" name="from" value={fromIso} max={todayIso} />
+    <label class="custom-lab" for="to">To</label>
+    <input type="date" id="to" name="to" value={toIso} max={todayIso} />
+    <button type="submit" class={`pill pill--apply ${range.isCustom ? 'pill--active' : ''}`}>Apply</button>
+  </form>
+
+  <div class="current">
+    <span class="cur-lab">Showing</span>
+    <span class="cur-val">{range.label}</span>
+  </div>
+</div>
+
+<style>
+  .rangebar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 1.25rem;
+    padding: 0.75rem 0;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid var(--line, rgba(14,26,44,0.14));
+  }
+  .presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+  }
+  .pill {
+    display: inline-block;
+    padding: 0.35rem 0.75rem;
+    border: 1px solid var(--line, rgba(14,26,44,0.14));
+    border-radius: 999px;
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 0.75rem;
+    text-decoration: none;
+    color: var(--ink-dim, #3A4658);
+    background: var(--paper, #FFFFFF);
+    transition: border-color 100ms, color 100ms, background 100ms;
+    cursor: pointer;
+  }
+  .pill:hover {
+    border-color: var(--ink-dim, #3A4658);
+    color: var(--ink, #0E1A2C);
+  }
+  .pill--active {
+    background: var(--ink, #0E1A2C);
+    border-color: var(--ink, #0E1A2C);
+    color: var(--paper, #FFFFFF);
+    font-weight: 500;
+  }
+  .pill--apply {
+    margin-left: 0.25rem;
+    background: var(--accent, #8FBF3F);
+    border-color: var(--accent, #8FBF3F);
+    color: var(--ink, #0E1A2C);
+    font-weight: 500;
+  }
+  .pill--apply.pill--active {
+    background: var(--accent-deep, #4A6E18);
+    border-color: var(--accent-deep, #4A6E18);
+    color: var(--paper, #FFFFFF);
+  }
+
+  .custom {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+  }
+  .custom-lab {
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-faint, #7A8597);
+  }
+  .custom input[type="date"] {
+    padding: 0.3rem 0.5rem;
+    border: 1px solid var(--line-strong, rgba(14,26,44,0.28));
+    border-radius: 4px;
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 0.8rem;
+    color: var(--ink, #0E1A2C);
+    background: var(--paper, #FFFFFF);
+  }
+  .custom input[type="date"]:focus {
+    outline: 2px solid var(--accent-deep, #4A6E18);
+    outline-offset: 1px;
+  }
+
+  .current {
+    margin-left: auto;
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+  }
+  .cur-lab {
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-faint, #7A8597);
+  }
+  .cur-val {
+    font-weight: 500;
+    color: var(--ink, #0E1A2C);
+  }
+
+  @media (max-width: 720px) {
+    .current { margin-left: 0; width: 100%; }
+  }
+</style>

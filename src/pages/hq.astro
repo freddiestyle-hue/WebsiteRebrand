@@ -34,6 +34,7 @@ import {
   type TrafficSource,
   type ActivityDay,
 } from '../utils/posthog/query';
+import { parseDateRange } from '../utils/posthog/dateRange';
 import SectionHeader from '../components/hq/SectionHeader.astro';
 import MetricCard from '../components/hq/MetricCard.astro';
 import RecentReadsFeed from '../components/hq/RecentReadsFeed.astro';
@@ -45,6 +46,7 @@ import CityTable from '../components/hq/CityTable.astro';
 import DeviceTable from '../components/hq/DeviceTable.astro';
 import ReferrerTable from '../components/hq/ReferrerTable.astro';
 import ActivityTimeline from '../components/hq/ActivityTimeline.astro';
+import DateRangeNav from '../components/hq/DateRangeNav.astro';
 
 // --- Auth gating ---
 // Trim everything in case env vars or cookies carry stray whitespace/newlines
@@ -78,6 +80,9 @@ if (!authed) {
   Astro.response.status = 404;
 }
 
+// --- Parse date range from URL ---
+const range = parseDateRange(url.searchParams);
+
 // --- Data fetch (only when authed) ---
 let headline: HeadlineMetrics | null = null;
 let recent: RecentRead[] = [];
@@ -94,16 +99,16 @@ let fetchError: string | null = null;
 if (authed) {
   try {
     const [h, r, t, c, b, co, ci, dv, sr, ac] = await Promise.all([
-      getHeadlineMetrics(),
-      getRecentReads(14),
-      getTopProspects(14),
-      getCtaClicks(14),
-      getTopBlogPosts(30),
-      getVisitorsByCountry(30),
-      getVisitorsByCity(30),
-      getVisitorTech(30),
-      getTrafficSources(30),
-      getActivityTimeline(30),
+      getHeadlineMetrics(range),
+      getRecentReads(range),
+      getTopProspects(range),
+      getCtaClicks(range),
+      getTopBlogPosts(range),
+      getVisitorsByCountry(range),
+      getVisitorsByCity(range),
+      getVisitorTech(range),
+      getTrafficSources(range),
+      getActivityTimeline(range),
     ]);
     headline = h;
     recent = r;
@@ -337,13 +342,15 @@ const renderedAt = new Date().toISOString();
     </div>
 
     <header class="hero">
-      <div class="kicker">Audit engagement · 14 days · 30 days for visitor data</div>
+      <div class="kicker">Audit engagement · {range.label}</div>
       <h1>
         Who is reading what.
         <span class="ital">And who is on the edge of booking.</span>
       </h1>
       <p class="dek">Real human reads on engagement sections. All traffic on geography (scanners flagged).</p>
     </header>
+
+    <DateRangeNav range={range} />
 
     <nav class="anchornav" aria-label="HQ sections">
       <a href="#recent">§ 01 Reads</a>
@@ -365,8 +372,8 @@ const renderedAt = new Date().toISOString();
 
     {headline && (
       <div class="metrics">
-        <MetricCard label="Memo views" value={headline.memo_views_7d} sub="last 7 days" />
-        <MetricCard label="Unique visitors" value={headline.unique_visitors_7d} sub="last 7 days" />
+        <MetricCard label="Memo views" value={headline.memo_views_7d} sub={range.label.toLowerCase()} />
+        <MetricCard label="Unique visitors" value={headline.unique_visitors_7d} sub={range.label.toLowerCase()} />
         <MetricCard
           label="Engaged reads"
           value={headline.engaged_reads_7d}
@@ -387,7 +394,7 @@ const renderedAt = new Date().toISOString();
         number="01"
         title="Recent reads."
         italicTail="Who looked at what, when."
-        meta={`${recent.length} session${recent.length === 1 ? '' : 's'} · last 14 days · real humans only`}
+        meta={`${recent.length} session${recent.length === 1 ? '' : 's'} · ${range.label.toLowerCase()} · real humans only`}
       />
       <RecentReadsFeed reads={recent} />
     </section>
@@ -397,7 +404,7 @@ const renderedAt = new Date().toISOString();
         number="02"
         title="Top prospects."
         italicTail="Ranked by engagement."
-        meta={`${top.length} prospect${top.length === 1 ? '' : 's'} · last 14 days · click to expand sessions`}
+        meta={`${top.length} prospect${top.length === 1 ? '' : 's'} · ${range.label.toLowerCase()} · click to expand sessions`}
       />
       <TopProspectsTable prospects={top} />
     </section>
@@ -407,7 +414,7 @@ const renderedAt = new Date().toISOString();
         number="03"
         title="CTA clicks."
         italicTail="Book-a-call moments."
-        meta={`${ctas.length} click${ctas.length === 1 ? '' : 's'} · last 14 days`}
+        meta={`${ctas.length} click${ctas.length === 1 ? '' : 's'} · ${range.label.toLowerCase()}`}
       />
       <CtaClicksFeed clicks={ctas} />
     </section>
@@ -417,7 +424,7 @@ const renderedAt = new Date().toISOString();
         number="04"
         title="Blog content."
         italicTail="What is landing with the audience."
-        meta={`${blog.length} post${blog.length === 1 ? '' : 's'} · last 30 days · real humans only`}
+        meta={`${blog.length} post${blog.length === 1 ? '' : 's'} · ${range.label.toLowerCase()} · real humans only`}
       />
       <TopBlogPostsTable posts={blog} />
     </section>
@@ -427,7 +434,7 @@ const renderedAt = new Date().toISOString();
         number="05"
         title="Visitors by country."
         italicTail="Where the traffic lands."
-        meta={`${countries.length} countries · last 30 days · all traffic`}
+        meta={`${countries.length} countries · ${range.label.toLowerCase()} · all traffic`}
       />
       <CountryTable countries={countries} />
     </section>
@@ -437,7 +444,7 @@ const renderedAt = new Date().toISOString();
         number="06"
         title="Cities and regions."
         italicTail="Real humans vs scanners."
-        meta={`${cities.length} cities · last 30 days · scanners and self flagged`}
+        meta={`${cities.length} cities · ${range.label.toLowerCase()} · scanners and self flagged`}
       />
       <CityTable cities={cities} />
     </section>
@@ -447,7 +454,7 @@ const renderedAt = new Date().toISOString();
         number="07"
         title="Device and browser."
         italicTail="How they read."
-        meta={`${devices.length} combinations · last 30 days · real humans only`}
+        meta={`${devices.length} combinations · ${range.label.toLowerCase()} · real humans only`}
       />
       <DeviceTable rows={devices} />
     </section>
@@ -457,7 +464,7 @@ const renderedAt = new Date().toISOString();
         number="08"
         title="Traffic sources."
         italicTail="How they got here."
-        meta={`${sources.length} source${sources.length === 1 ? '' : 's'} · last 30 days · real humans only`}
+        meta={`${sources.length} source${sources.length === 1 ? '' : 's'} · ${range.label.toLowerCase()} · real humans only`}
       />
       <ReferrerTable sources={sources} />
     </section>
@@ -467,7 +474,7 @@ const renderedAt = new Date().toISOString();
         number="09"
         title="Activity over time."
         italicTail="The pulse."
-        meta={`${activity.length} days · daily pageviews and unique visitors · real humans only`}
+        meta={`${activity.length} days · ${range.label.toLowerCase()} · real humans only`}
       />
       <ActivityTimeline days={activity} />
     </section>

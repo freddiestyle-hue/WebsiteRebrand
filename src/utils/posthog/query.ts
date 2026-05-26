@@ -7,6 +7,8 @@
 // All queries exclude datacenter cities (Microsoft SafeLinks/Mimecast/etc.)
 // and Fred's own home cities so the HQ page shows real prospect engagement.
 
+import { hogqlRangeClause, rangeDaysSpan, type DateRange } from './dateRange';
+
 const POSTHOG_HOST = 'https://us.posthog.com';
 const POSTHOG_PROJECT_ID = 373899;
 
@@ -93,7 +95,7 @@ export interface RecentRead {
   last_event: string;
 }
 
-export async function getRecentReads(days = 14): Promise<RecentRead[]> {
+export async function getRecentReads(range: DateRange): Promise<RecentRead[]> {
   const r = await runQuery(`
     SELECT
       properties.$pathname AS path,
@@ -107,7 +109,7 @@ export async function getRecentReads(days = 14): Promise<RecentRead[]> {
       dateDiff('second', min(timestamp), max(timestamp)) AS dwell_seconds,
       max(timestamp) AS last_event
     FROM events
-    WHERE timestamp >= now() - INTERVAL ${days} DAY
+    WHERE ${hogqlRangeClause(range)}
       AND properties.$pathname ILIKE '/audit/%'
       ${REAL_HUMAN_WHERE}
     GROUP BY path, prospect, session_id, distinct_id, city, country
@@ -142,7 +144,7 @@ export interface TopProspect {
   sessions: ProspectSession[];
 }
 
-export async function getTopProspects(days = 14): Promise<TopProspect[]> {
+export async function getTopProspects(range: DateRange): Promise<TopProspect[]> {
   // Aggregate per (prospect, session) first, then group up with groupArray to
   // also return the per-session breakdown (so the UI can expose replay links
   // per session, not just the aggregate).
@@ -164,7 +166,7 @@ export async function getTopProspects(days = 14): Promise<TopProspect[]> {
         dateDiff('second', min(timestamp), max(timestamp)) AS session_dwell,
         max(timestamp) AS last_event
       FROM events
-      WHERE timestamp >= now() - INTERVAL ${days} DAY
+      WHERE ${hogqlRangeClause(range)}
         AND properties.$pathname ILIKE '/audit/v3/%'
         ${REAL_HUMAN_WHERE}
       GROUP BY prospect, sid
@@ -217,7 +219,7 @@ export interface HeadlineMetrics {
   cta_clicks_7d: number;
 }
 
-export async function getHeadlineMetrics(): Promise<HeadlineMetrics> {
+export async function getHeadlineMetrics(range: DateRange): Promise<HeadlineMetrics> {
   const r = await runQuery(`
     SELECT
       countIf(event = '$pageview' AND properties.$pathname ILIKE '/audit/%') AS memo_views_7d,
@@ -225,7 +227,7 @@ export async function getHeadlineMetrics(): Promise<HeadlineMetrics> {
       uniq(if(event = 'scroll_depth' AND toInt(properties.depth) >= 50 AND properties.$pathname ILIKE '/audit/%', properties.$session_id, NULL)) AS engaged_reads_7d,
       countIf(event = 'cta_clicked') AS cta_clicks_7d
     FROM events
-    WHERE timestamp >= now() - INTERVAL 7 DAY
+    WHERE ${hogqlRangeClause(range)}
       ${REAL_HUMAN_WHERE}
   `);
   const o = rowsToObjects<{
@@ -250,7 +252,7 @@ export interface CtaClick {
   when: string;
 }
 
-export async function getCtaClicks(days = 14): Promise<CtaClick[]> {
+export async function getCtaClicks(range: DateRange): Promise<CtaClick[]> {
   const r = await runQuery(`
     SELECT
       properties.cta AS cta,
@@ -261,7 +263,7 @@ export async function getCtaClicks(days = 14): Promise<CtaClick[]> {
       timestamp AS when
     FROM events
     WHERE event = 'cta_clicked'
-      AND timestamp >= now() - INTERVAL ${days} DAY
+      AND ${hogqlRangeClause(range)}
       ${REAL_HUMAN_WHERE}
     ORDER BY timestamp DESC
     LIMIT 25
@@ -286,7 +288,7 @@ export interface TopBlogPost {
   last_view: string;
 }
 
-export async function getTopBlogPosts(days = 30): Promise<TopBlogPost[]> {
+export async function getTopBlogPosts(range: DateRange): Promise<TopBlogPost[]> {
   const r = await runQuery(`
     SELECT
       slug,
@@ -308,7 +310,7 @@ export async function getTopBlogPosts(days = 30): Promise<TopBlogPost[]> {
         dateDiff('second', min(timestamp), max(timestamp)) AS session_dwell,
         max(timestamp) AS last_event
       FROM events
-      WHERE timestamp >= now() - INTERVAL ${days} DAY
+      WHERE ${hogqlRangeClause(range)}
         AND properties.$pathname ILIKE '/blog/%'
         AND properties.$pathname NOT IN ('/blog/', '/blog')
         ${REAL_HUMAN_WHERE}
@@ -336,7 +338,7 @@ export interface CountryBreakdown {
   sessions: number;
 }
 
-export async function getVisitorsByCountry(days = 30): Promise<CountryBreakdown[]> {
+export async function getVisitorsByCountry(range: DateRange): Promise<CountryBreakdown[]> {
   const r = await runQuery(`
     SELECT
       properties.$geoip_country_name AS country,
@@ -344,7 +346,7 @@ export async function getVisitorsByCountry(days = 30): Promise<CountryBreakdown[
       countIf(event = '$pageview') AS pageviews,
       uniq(properties.$session_id) AS sessions
     FROM events
-    WHERE timestamp >= now() - INTERVAL ${days} DAY
+    WHERE ${hogqlRangeClause(range)}
       AND properties.$geoip_country_name IS NOT NULL
     GROUP BY country
     ORDER BY visitors DESC
@@ -371,7 +373,7 @@ export interface CityBreakdown {
 const DATACENTER_CITY_SET = new Set(DATACENTER_CITIES);
 const SELF_CITY_SET = new Set(SELF_CITIES);
 
-export async function getVisitorsByCity(days = 30): Promise<CityBreakdown[]> {
+export async function getVisitorsByCity(range: DateRange): Promise<CityBreakdown[]> {
   const r = await runQuery(`
     SELECT
       properties.$geoip_city_name AS city,
@@ -380,7 +382,7 @@ export async function getVisitorsByCity(days = 30): Promise<CityBreakdown[]> {
       uniq(distinct_id) AS visitors,
       countIf(event = '$pageview') AS pageviews
     FROM events
-    WHERE timestamp >= now() - INTERVAL ${days} DAY
+    WHERE ${hogqlRangeClause(range)}
       AND properties.$geoip_city_name IS NOT NULL
     GROUP BY city, region, country
     ORDER BY visitors DESC
@@ -406,7 +408,7 @@ export interface DeviceRow {
   pageviews: number;
 }
 
-export async function getVisitorTech(days = 30): Promise<DeviceRow[]> {
+export async function getVisitorTech(range: DateRange): Promise<DeviceRow[]> {
   const r = await runQuery(`
     SELECT
       properties.$device_type AS device_type,
@@ -415,7 +417,7 @@ export async function getVisitorTech(days = 30): Promise<DeviceRow[]> {
       uniq(distinct_id) AS visitors,
       countIf(event = '$pageview') AS pageviews
     FROM events
-    WHERE timestamp >= now() - INTERVAL ${days} DAY
+    WHERE ${hogqlRangeClause(range)}
       AND properties.$browser IS NOT NULL
       ${REAL_HUMAN_WHERE}
     GROUP BY device_type, browser, os
@@ -435,14 +437,14 @@ export interface TrafficSource {
   pageviews: number;
 }
 
-export async function getTrafficSources(days = 30): Promise<TrafficSource[]> {
+export async function getTrafficSources(range: DateRange): Promise<TrafficSource[]> {
   const r = await runQuery(`
     SELECT
       coalesce(properties.$initial_referring_domain, '$direct') AS source,
       uniq(distinct_id) AS visitors,
       countIf(event = '$pageview') AS pageviews
     FROM events
-    WHERE timestamp >= now() - INTERVAL ${days} DAY
+    WHERE ${hogqlRangeClause(range)}
       ${REAL_HUMAN_WHERE}
     GROUP BY source
     ORDER BY visitors DESC
@@ -462,14 +464,14 @@ export interface ActivityDay {
   visitors: number;
 }
 
-export async function getActivityTimeline(days = 30): Promise<ActivityDay[]> {
+export async function getActivityTimeline(range: DateRange): Promise<ActivityDay[]> {
   const r = await runQuery(`
     SELECT
       toDate(timestamp) AS day,
       countIf(event = '$pageview') AS pageviews,
       uniq(distinct_id) AS visitors
     FROM events
-    WHERE timestamp >= now() - INTERVAL ${days} DAY
+    WHERE ${hogqlRangeClause(range)}
       ${REAL_HUMAN_WHERE}
     GROUP BY day
     ORDER BY day
@@ -478,10 +480,13 @@ export async function getActivityTimeline(days = 30): Promise<ActivityDay[]> {
   // Pad days with zero so the sparkline has a stable x-axis.
   const byDay = new Map(rows.map((row) => [row.day, row]));
   const out: ActivityDay[] = [];
-  const today = new Date();
-  for (let i = days - 1; i >= 0; i--) {
-    const d = new Date(today);
-    d.setUTCDate(today.getUTCDate() - i);
+  const fromDate = new Date(range.fromIso);
+  const span = rangeDaysSpan(range);
+  // Cap to prevent silly sparkline density on "All time".
+  const padDays = Math.min(span, 90);
+  for (let i = 0; i < padDays; i++) {
+    const d = new Date(fromDate);
+    d.setUTCDate(fromDate.getUTCDate() + i);
     const key = d.toISOString().slice(0, 10);
     const found = byDay.get(key);
     out.push(found ?? { day: key, pageviews: 0, visitors: 0 });
