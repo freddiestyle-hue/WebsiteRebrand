@@ -97,7 +97,7 @@ export async function getRecentReads(days = 14): Promise<RecentRead[]> {
   const r = await runQuery(`
     SELECT
       properties.$pathname AS path,
-      replaceRegexpOne(properties.$pathname, '^/audit/(v3|p)/', '') AS prospect,
+      replaceRegexpOne(properties.$pathname, '^/audit/(v3|p)(/|$)', '') AS prospect,
       properties.$session_id AS session_id,
       distinct_id,
       properties.$geoip_city_name AS city,
@@ -145,7 +145,7 @@ export async function getTopProspects(days = 14): Promise<TopProspect[]> {
       max(last_event) AS last_view
     FROM (
       SELECT
-        replaceRegexpOne(properties.$pathname, '^/audit/(v3|p)/', '') AS prospect,
+        replaceRegexpOne(properties.$pathname, '^/audit/(v3|p)(/|$)', '') AS prospect,
         properties.$session_id AS sid,
         count() AS session_views,
         countIf(event = 'cta_clicked') AS session_clicks,
