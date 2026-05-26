@@ -23,16 +23,21 @@ const POSTHOG_PROJECT_ID = 373899;
 const CACHE_VERSION = 'v1';
 
 // Lazy redis client. Construction is cheap but we only need one instance.
+// Use KV_REST_API_* env vars (set by Vercel KV / Upstash integration) since
+// Redis.fromEnv() looks for UPSTASH_REDIS_REST_* which aren't set here.
 let _redis: Redis | null = null;
+let _redisDisabled = false;
 function getRedis(): Redis | null {
   if (_redis) return _redis;
-  try {
-    _redis = Redis.fromEnv();
-    return _redis;
-  } catch {
-    // No KV env vars locally; cache silently disabled.
+  if (_redisDisabled) return null;
+  const url = process.env.KV_REST_API_URL;
+  const token = process.env.KV_REST_API_TOKEN;
+  if (!url || !token) {
+    _redisDisabled = true;
     return null;
   }
+  _redis = new Redis({ url, token });
+  return _redis;
 }
 
 // TTL in seconds, picked to balance freshness against PostHog query cost.
