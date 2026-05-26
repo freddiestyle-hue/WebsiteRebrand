@@ -1,0 +1,333 @@
+---
+import type { TopProspect } from '../../utils/posthog/query';
+import { sessionReplayUrl } from '../../utils/posthog/query';
+import { linkedinSearchUrl, slugToCompanyName } from '../../utils/hq/messaged';
+
+interface Props {
+  /** Already filtered: engaged AND not yet messaged. Sorted by recency desc. */
+  prospects: TopProspect[];
+}
+
+const { prospects } = Astro.props;
+
+function dwell(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`;
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}m ${s}s`;
+}
+
+function timeAgo(iso: string): string {
+  const then = new Date(iso).getTime();
+  const now = Date.now();
+  const sec = Math.max(0, Math.round((now - then) / 1000));
+  if (sec < 60) return `${sec}s ago`;
+  const min = Math.round(sec / 60);
+  if (min < 60) return `${min}m ago`;
+  const hr = Math.round(min / 60);
+  if (hr < 48) return `${hr}h ago`;
+  return `${Math.round(hr / 24)}d ago`;
+}
+
+function heatBadge(p: TopProspect): { label: string; cls: string } {
+  if (p.cta_clicks > 0) return { label: 'CTA CLICK', cls: 'heat--hot' };
+  if (p.total_dwell_seconds >= 30) return { label: 'DEEP READ', cls: 'heat--warm' };
+  if (p.total_dwell_seconds >= 15) return { label: 'ENGAGED', cls: 'heat--cool' };
+  return { label: 'BROWSED', cls: 'heat--cold' };
+}
+---
+<div class="aq" data-action-queue>
+  <header class="aq-head">
+    <div class="aq-title">
+      <span class="aq-num">{prospects.length}</span>
+      <div>
+        <div class="aq-h">Action queue</div>
+        <div class="aq-sub">
+          {prospects.length === 0
+            ? 'all caught up — send your next outreach batch to refill'
+            : prospects.length === 1
+              ? 'prospect waiting for follow-up'
+              : 'prospects waiting for follow-up'}
+        </div>
+      </div>
+    </div>
+  </header>
+
+  {prospects.length === 0 ? (
+    <div class="aq-empty">
+      <p>No follow-ups queued. Either you're caught up, or your outreach hasn't generated engagement signal yet.</p>
+    </div>
+  ) : (
+    <ol class="aq-list">
+      {prospects.map((p) => {
+        const heat = heatBadge(p);
+        const latestSession = p.sessions[0] ?? null;
+        const replay = latestSession ? sessionReplayUrl(latestSession.sid) : null;
+        const company = slugToCompanyName(p.prospect);
+        const linkedIn = linkedinSearchUrl(p.prospect);
+        return (
+          <li class="aq-row" data-slug={p.prospect}>
+            <div class="aq-left">
+              <span class={`aq-heat ${heat.cls}`}>{heat.label}</span>
+              <span class="aq-when">{timeAgo(p.last_view)}</span>
+            </div>
+            <div class="aq-mid">
+              <div class="aq-prospect">
+                <a href={`https://rivett.tech/audit/v3/${p.prospect}`} target="_blank" rel="noopener">{p.prospect}</a>
+                <span class="aq-co">({company})</span>
+              </div>
+              <div class="aq-signal">
+                <b>{dwell(p.total_dwell_seconds)}</b> dwell
+                · <b>{p.unique_sessions}</b> session{p.unique_sessions === 1 ? '' : 's'}
+                · <b>{p.total_views}</b> view{p.total_views === 1 ? '' : 's'}
+                {p.cta_clicks > 0 && <span class="aq-cta">· {p.cta_clicks} CTA click{p.cta_clicks === 1 ? '' : 's'}</span>}
+              </div>
+            </div>
+            <div class="aq-actions">
+              <a class="aq-btn aq-btn--primary" href={linkedIn} target="_blank" rel="noopener">Compose DM →</a>
+              {replay && (
+                <a class="aq-btn" href={replay} target="_blank" rel="noopener">Replay</a>
+              )}
+              <button class="aq-btn aq-btn--done" type="button" data-mark-messaged>✓ Messaged</button>
+            </div>
+          </li>
+        );
+      })}
+    </ol>
+  )}
+</div>
+
+<script is:inline>
+  (function () {
+    document.querySelectorAll('[data-action-queue]').forEach(function (queue) {
+      queue.querySelectorAll('[data-mark-messaged]').forEach(function (btn) {
+        btn.addEventListener('click', async function (ev) {
+          ev.preventDefault();
+          const row = btn.closest('[data-slug]');
+          if (!row) return;
+          const slug = row.getAttribute('data-slug');
+          if (!slug) return;
+          btn.disabled = true;
+          btn.textContent = '…';
+          try {
+            const res = await fetch('/api/hq/mark-messaged', {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              credentials: 'same-origin',
+              body: JSON.stringify({ slug, action: 'mark' }),
+            });
+            if (!res.ok) throw new Error('mark failed: ' + res.status);
+            row.style.transition = 'opacity 200ms';
+            row.style.opacity = '0';
+            setTimeout(function () {
+              // Full reload to refresh the queue + dependent sections
+              window.location.reload();
+            }, 220);
+          } catch (e) {
+            console.error('[action queue] mark failed', e);
+            btn.disabled = false;
+            btn.textContent = '✓ Messaged';
+            alert('Could not mark messaged. Try again.');
+          }
+        });
+      });
+    });
+  })();
+</script>
+
+<style>
+  .aq {
+    border: 1px solid var(--ink, #0E1A2C);
+    border-radius: 6px;
+    background: var(--paper, #FFFFFF);
+    overflow: hidden;
+    margin-bottom: 2.5rem;
+  }
+
+  .aq-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.85rem 1rem;
+    background: var(--ink, #0E1A2C);
+    color: var(--paper, #FFFFFF);
+  }
+  .aq-title {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+  }
+  .aq-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.25rem;
+    height: 2.25rem;
+    padding: 0 0.5rem;
+    border-radius: 4px;
+    background: var(--accent, #8FBF3F);
+    color: var(--ink, #0E1A2C);
+    font-family: var(--grotesk, 'Inter Tight', system-ui);
+    font-weight: 700;
+    font-size: 1.15rem;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+  .aq-h {
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .aq-sub {
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 0.7rem;
+    color: rgba(255,255,255,0.7);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-top: 0.1rem;
+  }
+
+  .aq-empty {
+    padding: 1.5rem 1rem;
+  }
+  .aq-empty p {
+    margin: 0;
+    color: var(--ink-dim, #3A4658);
+    font-family: var(--serif, 'Newsreader', Georgia, serif);
+    font-style: italic;
+  }
+
+  .aq-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .aq-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 0.5rem 1rem;
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid var(--line, rgba(14,26,44,0.14));
+    align-items: center;
+  }
+  .aq-row:last-child { border-bottom: 0; }
+  .aq-row:hover { background: var(--paper-2, #F4F2ED); }
+
+  .aq-left {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    white-space: nowrap;
+  }
+  .aq-heat {
+    display: inline-block;
+    padding: 0.15rem 0.45rem;
+    border-radius: 3px;
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 0.62rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    text-align: center;
+  }
+  .heat--hot { background: var(--accent-deep, #4A6E18); color: var(--paper, #FFFFFF); }
+  .heat--warm { background: var(--accent, #8FBF3F); color: var(--ink, #0E1A2C); }
+  .heat--cool { background: var(--paper-3, #EBE6DC); color: var(--ink-dim, #3A4658); }
+  .heat--cold { background: var(--paper-2, #F4F2ED); color: var(--ink-faint, #7A8597); }
+  .aq-when {
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 0.7rem;
+    color: var(--ink-faint, #7A8597);
+    text-align: center;
+  }
+
+  .aq-mid { min-width: 0; }
+  .aq-prospect {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  .aq-prospect a {
+    font-weight: 600;
+    color: var(--ink, #0E1A2C);
+    text-decoration: none;
+    border-bottom: 1px solid var(--line-strong, rgba(14,26,44,0.28));
+  }
+  .aq-prospect a:hover {
+    color: var(--accent-deep, #4A6E18);
+    border-bottom-color: var(--accent-deep, #4A6E18);
+  }
+  .aq-co {
+    font-family: var(--serif, 'Newsreader', Georgia, serif);
+    font-style: italic;
+    color: var(--ink-faint, #7A8597);
+    font-size: 0.85rem;
+  }
+  .aq-signal {
+    margin-top: 0.25rem;
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 0.75rem;
+    color: var(--ink-dim, #3A4658);
+  }
+  .aq-signal b { color: var(--ink, #0E1A2C); font-weight: 600; }
+  .aq-cta { color: var(--accent-deep, #4A6E18); font-weight: 500; }
+
+  .aq-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .aq-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.35rem 0.7rem;
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 0.72rem;
+    color: var(--ink-dim, #3A4658);
+    text-decoration: none;
+    border: 1px solid var(--line-strong, rgba(14,26,44,0.28));
+    background: var(--paper, #FFFFFF);
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background 80ms, color 80ms, border-color 80ms;
+    white-space: nowrap;
+  }
+  .aq-btn:hover {
+    border-color: var(--ink, #0E1A2C);
+    color: var(--ink, #0E1A2C);
+  }
+  .aq-btn--primary {
+    background: var(--ink, #0E1A2C);
+    color: var(--paper, #FFFFFF);
+    border-color: var(--ink, #0E1A2C);
+    font-weight: 500;
+  }
+  .aq-btn--primary:hover {
+    background: var(--accent-deep, #4A6E18);
+    border-color: var(--accent-deep, #4A6E18);
+    color: var(--paper, #FFFFFF);
+  }
+  .aq-btn--done {
+    background: var(--accent-bg, #F2F7E5);
+    border-color: var(--accent, #8FBF3F);
+    color: var(--accent-deep, #4A6E18);
+    font-weight: 500;
+  }
+  .aq-btn--done:hover {
+    background: var(--accent, #8FBF3F);
+    color: var(--ink, #0E1A2C);
+  }
+  .aq-btn:disabled { opacity: 0.5; cursor: wait; }
+
+  @media (max-width: 720px) {
+    .aq-row {
+      grid-template-columns: 1fr;
+      gap: 0.5rem;
+    }
+    .aq-left { flex-direction: row; gap: 0.5rem; align-items: center; }
+    .aq-actions { justify-content: flex-start; }
+  }
+</style>

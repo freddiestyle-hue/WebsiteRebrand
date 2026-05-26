@@ -49,6 +49,8 @@ import ActivityTimeline from '../components/hq/ActivityTimeline.astro';
 import DateRangeNav from '../components/hq/DateRangeNav.astro';
 import KpiCard from '../components/hq/KpiCard.astro';
 import ActiveNowBadge from '../components/hq/ActiveNow.astro';
+import ActionQueue from '../components/hq/ActionQueue.astro';
+import { getMessagedSlugs } from '../utils/hq/messaged';
 
 // --- Auth gating ---
 const HQ_KEY = (process.env.HQ_KEY || import.meta.env.HQ_KEY || '').trim();
@@ -104,11 +106,12 @@ let devices: DeviceRow[] = [];
 let sources: TrafficSource[] = [];
 let activity: ActivityDay[] = [];
 let activeNow: ActiveNow | null = null;
+let messagedSlugs: Set<string> = new Set();
 let fetchError: string | null = null;
 
 if (authed) {
   try {
-    const [h, r, t, c, b, co, ci, dv, sr, ac, an] = await Promise.all([
+    const [h, r, t, c, b, co, ci, dv, sr, ac, an, ms] = await Promise.all([
       getHeadlineMetrics(range),
       getRecentReads(range, trafficMode),
       getTopProspects(range, trafficMode),
@@ -120,6 +123,7 @@ if (authed) {
       getTrafficSources(range, trafficMode),
       getActivityTimeline(range, trafficMode),
       getActiveNow(),
+      getMessagedSlugs(),
     ]);
     headline = h;
     recent = r;
@@ -132,22 +136,33 @@ if (authed) {
     sources = sr;
     activity = ac;
     activeNow = an;
+    messagedSlugs = ms;
   } catch (e) {
     fetchError = e instanceof Error ? e.message : String(e);
     console.error('[hq] PostHog fetch failed', e);
   }
 }
 
+// --- Action queue: engaged prospects who haven't been marked messaged ---
+// "Engaged" = real human signal: dwell >= 15s OR a CTA click. Sort by recency
+// so freshest signal floats to the top. Show at most 10 — anything beyond is
+// queue overflow that we surface in Top Prospects below.
+const actionQueue = top
+  .filter((p) => !messagedSlugs.has(p.prospect))
+  .filter((p) => p.total_dwell_seconds >= 15 || p.cta_clicks > 0)
+  .sort((a, b) => (a.last_view < b.last_view ? 1 : -1))
+  .slice(0, 10);
+
+// Top-level (always visible) nav. Deep analytics (geography/devices/sources/
+// activity) are collapsed by default and not in the primary nav — they live
+// behind a "Deep analytics" disclosure at the bottom of the page.
 const sections = [
+  { id: 'action',    num: '00', label: 'Action queue' },
   { id: 'recent',    num: '01', label: 'Recent reads' },
   { id: 'prospects', num: '02', label: 'Prospects' },
   { id: 'ctas',      num: '03', label: 'CTA clicks' },
   { id: 'blog',      num: '04', label: 'Blog' },
-  { id: 'countries', num: '05', label: 'Countries' },
-  { id: 'cities',    num: '06', label: 'Cities' },
-  { id: 'devices',   num: '07', label: 'Devices' },
-  { id: 'sources',   num: '08', label: 'Sources' },
-  { id: 'activity',  num: '09', label: 'Activity' },
+  { id: 'deep',      num: '05', label: 'Deep analytics' },
 ];
 ---
 <!doctype html>
@@ -370,6 +385,63 @@ const sections = [
   /* KPI raw breakdown badge */
   .kpi-raw {
     opacity: 0.7;
+  }
+
+  /* Deep analytics disclosure — collapsed by default so daily view is clean */
+  .deep {
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    margin-bottom: 3rem;
+    scroll-margin-top: 4.5rem;
+    background: var(--paper);
+  }
+  .deep summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 1rem 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    justify-content: space-between;
+  }
+  .deep summary::-webkit-details-marker { display: none; }
+  .deep summary:hover { background: var(--paper-2); }
+  .deep[open] summary { border-bottom: 1px solid var(--line); }
+  .deep-num {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--ink-faint);
+    margin-bottom: 0.15rem;
+  }
+  .deep-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+  }
+  .deep-title .ital {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 400;
+    color: var(--ink-dim);
+  }
+  .deep-meta {
+    margin-top: 0.25rem;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--ink-faint);
+  }
+  .deep-chev {
+    font-family: var(--mono);
+    color: var(--ink-faint);
+    transition: transform 120ms;
+    font-size: 1rem;
+  }
+  .deep[open] .deep-chev { transform: rotate(180deg); }
+  .deep-body {
+    padding: 1.25rem 1.25rem 0.5rem;
   }
 
   /* ============ MAIN CONTENT ============ */
@@ -603,6 +675,16 @@ const sections = [
           </div>
         )}
 
+        <section class="sec" id="action">
+          <SectionHeader
+            number="00"
+            title="Action queue."
+            italicTail="Who needs a follow-up today."
+            meta={`${actionQueue.length} prospect${actionQueue.length === 1 ? '' : 's'} · engaged & unmessaged · ${range.label.toLowerCase()}`}
+          />
+          <ActionQueue prospects={actionQueue} />
+        </section>
+
         <section class="sec" id="recent">
           <SectionHeader
             number="01"
@@ -643,55 +725,68 @@ const sections = [
           <TopBlogPostsTable posts={blog} />
         </section>
 
-        <section class="sec" id="countries">
-          <SectionHeader
-            number="05"
-            title="Visitors by country."
-            italicTail="Where the traffic lands."
-            meta={`${countries.length} countries · ${range.label.toLowerCase()} · all traffic`}
-          />
-          <CountryTable countries={countries} />
-        </section>
+        <details class="deep" id="deep">
+          <summary>
+            <div>
+              <div class="deep-num">§ 05</div>
+              <div class="deep-title">Deep analytics. <span class="ital">Geography, devices, sources, time.</span></div>
+              <div class="deep-meta">countries · cities · device + browser · traffic sources · activity timeline</div>
+            </div>
+            <span class="deep-chev" aria-hidden="true">↓</span>
+          </summary>
 
-        <section class="sec" id="cities">
-          <SectionHeader
-            number="06"
-            title="Cities and regions."
-            italicTail="Real humans vs scanners."
-            meta={`${cities.length} cities · ${range.label.toLowerCase()} · scanners and self flagged`}
-          />
-          <CityTable cities={cities} />
-        </section>
+          <div class="deep-body">
+            <section class="sec" id="countries">
+              <SectionHeader
+                number="05"
+                title="Visitors by country."
+                italicTail="Where the traffic lands."
+                meta={`${countries.length} countries · ${range.label.toLowerCase()} · all traffic`}
+              />
+              <CountryTable countries={countries} />
+            </section>
 
-        <section class="sec" id="devices">
-          <SectionHeader
-            number="07"
-            title="Device and browser."
-            italicTail="How they read."
-            meta={`${devices.length} combinations · ${range.label.toLowerCase()} · ${trafficMode === 'all' ? 'all traffic' : 'real humans only'}`}
-          />
-          <DeviceTable rows={devices} />
-        </section>
+            <section class="sec" id="cities">
+              <SectionHeader
+                number="06"
+                title="Cities and regions."
+                italicTail="Real humans vs scanners."
+                meta={`${cities.length} cities · ${range.label.toLowerCase()} · scanners and self flagged`}
+              />
+              <CityTable cities={cities} />
+            </section>
 
-        <section class="sec" id="sources">
-          <SectionHeader
-            number="08"
-            title="Traffic sources."
-            italicTail="How they got here."
-            meta={`${sources.length} source${sources.length === 1 ? '' : 's'} · ${range.label.toLowerCase()} · ${trafficMode === 'all' ? 'all traffic' : 'real humans only'}`}
-          />
-          <ReferrerTable sources={sources} />
-        </section>
+            <section class="sec" id="devices">
+              <SectionHeader
+                number="07"
+                title="Device and browser."
+                italicTail="How they read."
+                meta={`${devices.length} combinations · ${range.label.toLowerCase()} · ${trafficMode === 'all' ? 'all traffic' : 'real humans only'}`}
+              />
+              <DeviceTable rows={devices} />
+            </section>
 
-        <section class="sec" id="activity">
-          <SectionHeader
-            number="09"
-            title="Activity over time."
-            italicTail="The pulse."
-            meta={`${activity.length} days · ${range.label.toLowerCase()} · ${trafficMode === 'all' ? 'all traffic' : 'real humans only'}`}
-          />
-          <ActivityTimeline days={activity} />
-        </section>
+            <section class="sec" id="sources">
+              <SectionHeader
+                number="08"
+                title="Traffic sources."
+                italicTail="How they got here."
+                meta={`${sources.length} source${sources.length === 1 ? '' : 's'} · ${range.label.toLowerCase()} · ${trafficMode === 'all' ? 'all traffic' : 'real humans only'}`}
+              />
+              <ReferrerTable sources={sources} />
+            </section>
+
+            <section class="sec" id="activity">
+              <SectionHeader
+                number="09"
+                title="Activity over time."
+                italicTail="The pulse."
+                meta={`${activity.length} days · ${range.label.toLowerCase()} · ${trafficMode === 'all' ? 'all traffic' : 'real humans only'}`}
+              />
+              <ActivityTimeline days={activity} />
+            </section>
+          </div>
+        </details>
       </div>
     </main>
   </div>
