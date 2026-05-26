@@ -17,16 +17,19 @@ import {
   getTopProspects,
   getHeadlineMetrics,
   getCtaClicks,
+  getTopBlogPosts,
   type RecentRead,
   type TopProspect,
   type HeadlineMetrics,
   type CtaClick,
+  type TopBlogPost,
 } from '../utils/posthog/query';
 import SectionHeader from '../components/hq/SectionHeader.astro';
 import MetricCard from '../components/hq/MetricCard.astro';
 import RecentReadsFeed from '../components/hq/RecentReadsFeed.astro';
 import TopProspectsTable from '../components/hq/TopProspectsTable.astro';
 import CtaClicksFeed from '../components/hq/CtaClicksFeed.astro';
+import TopBlogPostsTable from '../components/hq/TopBlogPostsTable.astro';
 
 // --- Auth gating ---
 // Trim everything in case env vars or cookies carry stray whitespace/newlines
@@ -65,20 +68,23 @@ let headline: HeadlineMetrics | null = null;
 let recent: RecentRead[] = [];
 let top: TopProspect[] = [];
 let ctas: CtaClick[] = [];
+let blog: TopBlogPost[] = [];
 let fetchError: string | null = null;
 
 if (authed) {
   try {
-    const [h, r, t, c] = await Promise.all([
+    const [h, r, t, c, b] = await Promise.all([
       getHeadlineMetrics(),
       getRecentReads(14),
       getTopProspects(14),
       getCtaClicks(14),
+      getTopBlogPosts(30),
     ]);
     headline = h;
     recent = r;
     top = t;
     ctas = c;
+    blog = b;
   } catch (e) {
     fetchError = e instanceof Error ? e.message : String(e);
     console.error('[hq] PostHog fetch failed', e);
@@ -334,6 +340,16 @@ const renderedAt = new Date().toISOString();
         meta={`${ctas.length} click${ctas.length === 1 ? '' : 's'} · last 14 days`}
       />
       <CtaClicksFeed clicks={ctas} />
+    </section>
+
+    <section class="sec">
+      <SectionHeader
+        number="04"
+        title="Blog content."
+        italicTail="What is landing with the audience."
+        meta={`${blog.length} post${blog.length === 1 ? '' : 's'} · last 30 days · real humans only`}
+      />
+      <TopBlogPostsTable posts={blog} />
     </section>
 
     <footer class="foot">

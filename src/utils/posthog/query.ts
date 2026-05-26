@@ -124,6 +124,14 @@ export async function getRecentReads(days = 14): Promise<RecentRead[]> {
 // What it's for: ranked retargeting list.
 // --------------------------------------------------------------------------
 
+export interface ProspectSession {
+  sid: string | null;
+  dwell_seconds: number;
+  last_event: string;
+  views: number;
+  clicks: number;
+}
+
 export interface TopProspect {
   prospect: string;
   total_views: number;
@@ -131,10 +139,13 @@ export interface TopProspect {
   total_dwell_seconds: number;
   cta_clicks: number;
   last_view: string;
+  sessions: ProspectSession[];
 }
 
 export async function getTopProspects(days = 14): Promise<TopProspect[]> {
-  // Aggregate per (prospect, session) first so we can sum session-level dwell.
+  // Aggregate per (prospect, session) first, then group up with groupArray to
+  // also return the per-session breakdown (so the UI can expose replay links
+  // per session, not just the aggregate).
   const r = await runQuery(`
     SELECT
       prospect,
@@ -142,7 +153,8 @@ export async function getTopProspects(days = 14): Promise<TopProspect[]> {
       count() AS unique_sessions,
       sum(session_dwell) AS total_dwell_seconds,
       sum(session_clicks) AS cta_clicks,
-      max(last_event) AS last_view
+      max(last_event) AS last_view,
+      groupArray(tuple(sid, session_dwell, last_event, session_views, session_clicks)) AS sessions_raw
     FROM (
       SELECT
         replaceRegexpOne(properties.$pathname, '^/audit/(v3|p)(/|$)', '') AS prospect,
@@ -162,7 +174,35 @@ export async function getTopProspects(days = 14): Promise<TopProspect[]> {
     ORDER BY total_views DESC, last_view DESC
     LIMIT 25
   `);
-  return rowsToObjects<TopProspect>(r);
+
+  // Reshape sessions_raw tuples into typed objects, sorted most-recent first.
+  const raw = rowsToObjects<{
+    prospect: string;
+    total_views: number;
+    unique_sessions: number;
+    total_dwell_seconds: number;
+    cta_clicks: number;
+    last_view: string;
+    sessions_raw: Array<[string | null, number, string, number, number]>;
+  }>(r);
+
+  return raw.map((row) => ({
+    prospect: row.prospect,
+    total_views: row.total_views,
+    unique_sessions: row.unique_sessions,
+    total_dwell_seconds: row.total_dwell_seconds,
+    cta_clicks: row.cta_clicks,
+    last_view: row.last_view,
+    sessions: (row.sessions_raw || [])
+      .map(([sid, dwell, last_event, views, clicks]) => ({
+        sid,
+        dwell_seconds: dwell,
+        last_event,
+        views,
+        clicks,
+      }))
+      .sort((a, b) => (a.last_event < b.last_event ? 1 : -1)),
+  }));
 }
 
 // --------------------------------------------------------------------------
@@ -227,6 +267,59 @@ export async function getCtaClicks(days = 14): Promise<CtaClick[]> {
     LIMIT 25
   `);
   return rowsToObjects<CtaClick>(r);
+}
+
+// --------------------------------------------------------------------------
+// Query: top blog posts
+// What it is: which blog posts get read by real humans, ranked by engagement.
+// What it's for: see which content lands with the audience.
+// --------------------------------------------------------------------------
+
+export interface TopBlogPost {
+  slug: string;
+  path: string;
+  total_views: number;
+  unique_visitors: number;
+  engaged_reads: number;
+  cta_clicks: number;
+  total_dwell_seconds: number;
+  last_view: string;
+}
+
+export async function getTopBlogPosts(days = 30): Promise<TopBlogPost[]> {
+  const r = await runQuery(`
+    SELECT
+      slug,
+      path,
+      sum(session_views) AS total_views,
+      count() AS unique_visitors,
+      countIf(session_max_scroll >= 50) AS engaged_reads,
+      sum(session_clicks) AS cta_clicks,
+      sum(session_dwell) AS total_dwell_seconds,
+      max(last_event) AS last_view
+    FROM (
+      SELECT
+        replaceRegexpOne(properties.$pathname, '^/blog/', '') AS slug,
+        properties.$pathname AS path,
+        properties.$session_id AS sid,
+        countIf(event = '$pageview') AS session_views,
+        countIf(event = 'cta_clicked') AS session_clicks,
+        max(if(event = 'scroll_depth', toInt(properties.depth), 0)) AS session_max_scroll,
+        dateDiff('second', min(timestamp), max(timestamp)) AS session_dwell,
+        max(timestamp) AS last_event
+      FROM events
+      WHERE timestamp >= now() - INTERVAL ${days} DAY
+        AND properties.$pathname ILIKE '/blog/%'
+        AND properties.$pathname NOT IN ('/blog/', '/blog')
+        ${REAL_HUMAN_WHERE}
+      GROUP BY slug, path, sid
+    ) AS sessions
+    WHERE slug != ''
+    GROUP BY slug, path
+    ORDER BY total_views DESC, last_view DESC
+    LIMIT 25
+  `);
+  return rowsToObjects<TopBlogPost>(r);
 }
 
 // --------------------------------------------------------------------------

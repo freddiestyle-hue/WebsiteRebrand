@@ -1,5 +1,6 @@
 ---
 import type { TopProspect } from '../../utils/posthog/query';
+import { sessionReplayUrl } from '../../utils/posthog/query';
 
 interface Props {
   prospects: TopProspect[];
@@ -13,36 +14,63 @@ function dwell(seconds: number): string {
   const s = seconds % 60;
   return `${m}m ${s}s`;
 }
+
+function timeAgo(iso: string): string {
+  const then = new Date(iso).getTime();
+  const now = Date.now();
+  const sec = Math.max(0, Math.round((now - then) / 1000));
+  if (sec < 60) return `${sec}s ago`;
+  const min = Math.round(sec / 60);
+  if (min < 60) return `${min}m ago`;
+  const hr = Math.round(min / 60);
+  if (hr < 48) return `${hr}h ago`;
+  return `${Math.round(hr / 24)}d ago`;
+}
 ---
 {prospects.length === 0 ? (
   <p class="empty">No prospect engagement yet.</p>
 ) : (
-  <table class="tbl">
-    <thead>
-      <tr>
-        <th class="th-rank">#</th>
-        <th>Prospect</th>
-        <th class="th-num">Views</th>
-        <th class="th-num">Sessions</th>
-        <th class="th-num">Dwell</th>
-        <th class="th-num">CTA</th>
-      </tr>
-    </thead>
-    <tbody>
-      {prospects.map((p, i) => (
-        <tr>
-          <td class="td-rank">{String(i + 1).padStart(2, '0')}</td>
-          <td class="td-prospect">
+  <div class="list" role="list">
+    {prospects.map((p, i) => (
+      <details role="listitem" class="row">
+        <summary>
+          <span class="rank">{String(i + 1).padStart(2, '0')}</span>
+          <span class="prospect">
             <a href={`https://rivett.tech/audit/v3/${p.prospect}`} target="_blank" rel="noopener">{p.prospect}</a>
-          </td>
-          <td class="td-num">{p.total_views}</td>
-          <td class="td-num">{p.unique_sessions}</td>
-          <td class="td-num">{dwell(p.total_dwell_seconds)}</td>
-          <td class="td-num">{p.cta_clicks > 0 ? <b class="hot">{p.cta_clicks}</b> : <span class="dim">—</span>}</td>
-        </tr>
-      ))}
-    </tbody>
-  </table>
+          </span>
+          <span class="metric"><b>{p.total_views}</b> <span class="lab">views</span></span>
+          <span class="metric"><b>{p.unique_sessions}</b> <span class="lab">sess</span></span>
+          <span class="metric"><b>{dwell(p.total_dwell_seconds)}</b> <span class="lab">dwell</span></span>
+          <span class="metric"><b class={p.cta_clicks > 0 ? 'hot' : 'dim'}>{p.cta_clicks > 0 ? p.cta_clicks : '—'}</b> <span class="lab">cta</span></span>
+          <span class="chev" aria-hidden="true">↓</span>
+        </summary>
+        <div class="sessions">
+          {p.sessions.length === 0 ? (
+            <p class="empty">No session data.</p>
+          ) : (
+            <ol class="sess-list">
+              {p.sessions.map((s) => {
+                const url = sessionReplayUrl(s.sid);
+                return (
+                  <li>
+                    <span class="s-when">{timeAgo(s.last_event)}</span>
+                    <span class="s-dwell">{dwell(s.dwell_seconds)} dwell</span>
+                    <span class="s-views">{s.views} event{s.views === 1 ? '' : 's'}</span>
+                    {s.clicks > 0 && <span class="s-cta hot">{s.clicks} CTA click{s.clicks === 1 ? '' : 's'}</span>}
+                    {url ? (
+                      <a class="s-replay" href={url} target="_blank" rel="noopener">Watch replay →</a>
+                    ) : (
+                      <span class="s-replay s-replay--missing">No replay</span>
+                    )}
+                  </li>
+                );
+              })}
+            </ol>
+          )}
+        </div>
+      </details>
+    ))}
+  </div>
 )}
 
 <style>
@@ -52,43 +80,107 @@ function dwell(seconds: number): string {
     color: var(--ink-faint, #7A8597);
     padding: 1.5rem 0;
   }
-  .tbl {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.9rem;
-  }
-  .tbl th,
-  .tbl td {
-    text-align: left;
-    padding: 0.6rem 0.5rem;
+  .list { display: flex; flex-direction: column; }
+  .row {
     border-bottom: 1px solid var(--line, rgba(14,26,44,0.14));
   }
-  .tbl thead th {
+  .row:last-child { border-bottom: 0; }
+  .row[open] { background: var(--paper-2, #F4F2ED); }
+
+  summary {
+    display: grid;
+    grid-template-columns: 2rem 1fr repeat(4, auto) 1.25rem;
+    gap: 0.4rem 1rem;
+    padding: 0.65rem 0.5rem;
+    cursor: pointer;
+    list-style: none;
+    align-items: baseline;
+    font-size: 0.9rem;
+  }
+  summary::-webkit-details-marker { display: none; }
+  summary:hover { background: var(--paper-2, #F4F2ED); }
+  .row[open] summary { background: var(--paper-3, #EBE6DC); }
+
+  .rank {
     font-family: var(--mono, 'DM Mono', monospace);
-    font-size: 0.7rem;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
+    color: var(--ink-faint, #7A8597);
+    font-size: 0.75rem;
+  }
+  .prospect a {
     font-weight: 500;
-    color: var(--ink-faint, #7A8597);
-    border-bottom-color: var(--line-strong, rgba(14,26,44,0.28));
-  }
-  .th-rank, .td-rank {
-    font-family: var(--mono, 'DM Mono', monospace);
-    color: var(--ink-faint, #7A8597);
-    width: 3rem;
-  }
-  .th-num, .td-num {
-    text-align: right;
-    font-variant-numeric: tabular-nums;
-    white-space: nowrap;
-  }
-  .td-prospect a {
     color: var(--ink, #0E1A2C);
     text-decoration: none;
-    font-weight: 500;
     border-bottom: 1px solid var(--line-strong, rgba(14,26,44,0.28));
   }
-  .td-prospect a:hover { color: var(--accent-deep, #4A6E18); border-bottom-color: var(--accent-deep, #4A6E18); }
+  .prospect a:hover { color: var(--accent-deep, #4A6E18); border-bottom-color: var(--accent-deep, #4A6E18); }
+
+  .metric {
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 0.75rem;
+    color: var(--ink-dim, #3A4658);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  .metric b { color: var(--ink, #0E1A2C); font-weight: 600; }
+  .lab { color: var(--ink-faint, #7A8597); font-weight: 400; margin-left: 0.15rem; }
   .hot { color: var(--accent-deep, #4A6E18); }
-  .dim { color: var(--ink-faint, #7A8597); }
+  .dim { color: var(--ink-faint, #7A8597); font-weight: 400; }
+
+  .chev {
+    font-family: var(--mono, 'DM Mono', monospace);
+    color: var(--ink-faint, #7A8597);
+    font-size: 0.85rem;
+    transition: transform 120ms;
+  }
+  .row[open] .chev { transform: rotate(180deg); }
+
+  .sessions {
+    padding: 0.75rem 0.5rem 1rem 2.4rem;
+    border-top: 1px solid var(--line, rgba(14,26,44,0.14));
+  }
+  .sess-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    counter-reset: sess;
+  }
+  .sess-list li {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 1.25rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px dashed var(--line, rgba(14,26,44,0.14));
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 0.75rem;
+    align-items: baseline;
+  }
+  .sess-list li:last-child { border-bottom: 0; }
+  .s-when { min-width: 5rem; color: var(--ink-faint, #7A8597); }
+  .s-dwell, .s-views { color: var(--ink-dim, #3A4658); }
+  .s-cta { color: var(--accent-deep, #4A6E18); font-weight: 500; }
+  .s-replay {
+    margin-left: auto;
+    color: var(--ink, #0E1A2C);
+    text-decoration: underline;
+    text-decoration-color: var(--line-strong, rgba(14,26,44,0.28));
+    font-weight: 500;
+  }
+  .s-replay:hover { color: var(--accent-deep, #4A6E18); }
+  .s-replay--missing { color: var(--ink-faint, #7A8597); text-decoration: none; font-weight: 400; }
+
+  /* Mobile: stack the row */
+  @media (max-width: 640px) {
+    summary {
+      grid-template-columns: 2rem 1fr 1.25rem;
+      grid-template-areas:
+        "rank prospect chev"
+        "rank metrics chev";
+    }
+    .rank { grid-area: rank; }
+    .prospect { grid-area: prospect; }
+    .chev { grid-area: chev; align-self: center; }
+    summary .metric { grid-column: 2; }
+    summary .metric:nth-of-type(1) { grid-row: 2; grid-column: 2; }
+    summary { row-gap: 0.2rem; }
+  }
 </style>
