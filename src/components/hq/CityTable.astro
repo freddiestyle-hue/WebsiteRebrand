@@ -1,0 +1,89 @@
+---
+import type { CityBreakdown } from '../../utils/posthog/query';
+
+interface Props {
+  cities: CityBreakdown[];
+}
+
+const { cities } = Astro.props;
+---
+{cities.length === 0 ? (
+  <p class="empty">No city data yet.</p>
+) : (
+  <table class="tbl">
+    <thead>
+      <tr>
+        <th class="th-rank">#</th>
+        <th>City</th>
+        <th>Region</th>
+        <th>Country</th>
+        <th class="th-num">Visitors</th>
+        <th class="th-num">Views</th>
+        <th class="th-tag">Tag</th>
+      </tr>
+    </thead>
+    <tbody>
+      {cities.map((c, i) => (
+        <tr class={c.is_datacenter ? 'row--dc' : (c.is_self ? 'row--self' : '')}>
+          <td class="td-rank">{String(i + 1).padStart(2, '0')}</td>
+          <td class="td-city">{c.city}</td>
+          <td class="td-region">{c.region || '—'}</td>
+          <td class="td-country">{c.country}</td>
+          <td class="td-num"><b>{c.visitors}</b></td>
+          <td class="td-num">{c.pageviews}</td>
+          <td class="td-tag">
+            {c.is_datacenter && <span class="tag tag--dc">scanner</span>}
+            {c.is_self && <span class="tag tag--self">you</span>}
+            {!c.is_datacenter && !c.is_self && <span class="tag tag--ok">real</span>}
+          </td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+)}
+
+<style>
+  .empty {
+    font-family: var(--serif, 'Newsreader', Georgia, serif);
+    font-style: italic;
+    color: var(--ink-faint, #7A8597);
+    padding: 1.5rem 0;
+  }
+  .tbl { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+  .tbl th, .tbl td {
+    text-align: left; padding: 0.6rem 0.5rem;
+    border-bottom: 1px solid var(--line, rgba(14,26,44,0.14));
+  }
+  .tbl thead th {
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em;
+    font-weight: 500; color: var(--ink-faint, #7A8597);
+    border-bottom-color: var(--line-strong, rgba(14,26,44,0.28));
+  }
+  .th-rank, .td-rank {
+    font-family: var(--mono, 'DM Mono', monospace);
+    color: var(--ink-faint, #7A8597); width: 3rem;
+  }
+  .th-num, .td-num {
+    text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .td-city { font-weight: 500; color: var(--ink, #0E1A2C); }
+  .td-region, .td-country { color: var(--ink-dim, #3A4658); }
+  .row--dc td { color: var(--ink-faint, #7A8597); }
+  .row--dc .td-city { font-weight: 400; }
+  .row--self td { background: var(--paper-2, #F4F2ED); }
+
+  .tag {
+    display: inline-block;
+    padding: 0.15rem 0.45rem;
+    border-radius: 999px;
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 500;
+  }
+  .tag--ok { background: var(--accent-bg, #F2F7E5); color: var(--accent-deep, #4A6E18); }
+  .tag--dc { background: var(--paper-3, #EBE6DC); color: var(--ink-faint, #7A8597); }
+  .tag--self { background: var(--paper-3, #EBE6DC); color: var(--ink-dim, #3A4658); }
+</style>

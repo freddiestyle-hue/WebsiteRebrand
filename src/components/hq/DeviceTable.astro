@@ -1,0 +1,135 @@
+---
+import type { DeviceRow } from '../../utils/posthog/query';
+
+interface Props {
+  rows: DeviceRow[];
+}
+
+const { rows } = Astro.props;
+
+// Aggregate splits for the summary cards (mobile/desktop/tablet ratios)
+const totals = rows.reduce(
+  (acc, r) => {
+    const type = (r.device_type || 'unknown').toLowerCase();
+    acc.total += r.visitors;
+    if (type === 'mobile') acc.mobile += r.visitors;
+    else if (type === 'desktop') acc.desktop += r.visitors;
+    else if (type === 'tablet') acc.tablet += r.visitors;
+    else acc.other += r.visitors;
+    return acc;
+  },
+  { total: 0, mobile: 0, desktop: 0, tablet: 0, other: 0 }
+);
+
+function pct(n: number): string {
+  if (totals.total === 0) return '0%';
+  return `${Math.round((n / totals.total) * 100)}%`;
+}
+---
+{rows.length === 0 ? (
+  <p class="empty">No device data yet.</p>
+) : (
+  <>
+    <div class="splits">
+      <div class="split">
+        <div class="lab">Desktop</div>
+        <div class="val">{pct(totals.desktop)}</div>
+        <div class="sub">{totals.desktop} visitors</div>
+      </div>
+      <div class="split">
+        <div class="lab">Mobile</div>
+        <div class="val">{pct(totals.mobile)}</div>
+        <div class="sub">{totals.mobile} visitors</div>
+      </div>
+      <div class="split">
+        <div class="lab">Tablet</div>
+        <div class="val">{pct(totals.tablet)}</div>
+        <div class="sub">{totals.tablet} visitors</div>
+      </div>
+    </div>
+    <table class="tbl">
+      <thead>
+        <tr>
+          <th class="th-rank">#</th>
+          <th>Device</th>
+          <th>Browser</th>
+          <th>OS</th>
+          <th class="th-num">Visitors</th>
+          <th class="th-num">Views</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((r, i) => (
+          <tr>
+            <td class="td-rank">{String(i + 1).padStart(2, '0')}</td>
+            <td class="td-device">{r.device_type || '—'}</td>
+            <td>{r.browser || '—'}</td>
+            <td>{r.os || '—'}</td>
+            <td class="td-num"><b>{r.visitors}</b></td>
+            <td class="td-num">{r.pageviews}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </>
+)}
+
+<style>
+  .empty {
+    font-family: var(--serif, 'Newsreader', Georgia, serif);
+    font-style: italic;
+    color: var(--ink-faint, #7A8597);
+    padding: 1.5rem 0;
+  }
+  .splits {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+  }
+  .split {
+    padding: 1rem;
+    background: var(--paper-2, #F4F2ED);
+    border: 1px solid var(--line, rgba(14,26,44,0.14));
+    border-radius: 4px;
+  }
+  .split .lab {
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink-faint, #7A8597);
+    margin-bottom: 0.3rem;
+  }
+  .split .val {
+    font-size: 1.75rem;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.03em;
+  }
+  .split .sub {
+    margin-top: 0.3rem;
+    font-size: 0.8rem;
+    color: var(--ink-dim, #3A4658);
+  }
+
+  .tbl { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+  .tbl th, .tbl td {
+    text-align: left; padding: 0.6rem 0.5rem;
+    border-bottom: 1px solid var(--line, rgba(14,26,44,0.14));
+  }
+  .tbl thead th {
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em;
+    font-weight: 500; color: var(--ink-faint, #7A8597);
+    border-bottom-color: var(--line-strong, rgba(14,26,44,0.28));
+  }
+  .th-rank, .td-rank {
+    font-family: var(--mono, 'DM Mono', monospace);
+    color: var(--ink-faint, #7A8597); width: 3rem;
+  }
+  .th-num, .td-num {
+    text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .td-device { font-weight: 500; text-transform: capitalize; }
+</style>

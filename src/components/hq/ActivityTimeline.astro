@@ -1,0 +1,166 @@
+---
+import type { ActivityDay } from '../../utils/posthog/query';
+
+interface Props {
+  days: ActivityDay[];
+}
+
+const { days } = Astro.props;
+
+const maxPageviews = Math.max(...days.map((d) => d.pageviews), 1);
+const maxVisitors = Math.max(...days.map((d) => d.visitors), 1);
+const totalPageviews = days.reduce((s, d) => s + d.pageviews, 0);
+const totalVisitors = days.reduce((s, d) => s + d.visitors, 0);
+
+// Build SVG path for the pageviews + visitors lines
+const W = 800;
+const H = 160;
+const PAD_X = 16;
+const PAD_Y = 16;
+const innerW = W - PAD_X * 2;
+const innerH = H - PAD_Y * 2;
+
+function xFor(i: number): number {
+  if (days.length === 1) return PAD_X + innerW / 2;
+  return PAD_X + (i / (days.length - 1)) * innerW;
+}
+function yFor(value: number, max: number): number {
+  if (max === 0) return H - PAD_Y;
+  return H - PAD_Y - (value / max) * innerH;
+}
+
+const pageviewsPath = days
+  .map((d, i) => `${i === 0 ? 'M' : 'L'} ${xFor(i).toFixed(1)},${yFor(d.pageviews, maxPageviews).toFixed(1)}`)
+  .join(' ');
+
+const visitorsPath = days
+  .map((d, i) => `${i === 0 ? 'M' : 'L'} ${xFor(i).toFixed(1)},${yFor(d.visitors, maxVisitors).toFixed(1)}`)
+  .join(' ');
+
+function dayLabel(iso: string): string {
+  const d = new Date(iso + 'T00:00:00Z');
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+}
+
+const firstDay = days[0]?.day;
+const lastDay = days[days.length - 1]?.day;
+---
+<div class="wrap">
+  <div class="totals">
+    <div class="total">
+      <div class="lab">Pageviews</div>
+      <div class="val">{totalPageviews.toLocaleString()}</div>
+      <div class="sub">over {days.length} days</div>
+    </div>
+    <div class="total">
+      <div class="lab">Visitors</div>
+      <div class="val">{totalVisitors.toLocaleString()}</div>
+      <div class="sub">unique visitors</div>
+    </div>
+    <div class="total">
+      <div class="lab">Peak day</div>
+      <div class="val">{maxPageviews}</div>
+      <div class="sub">{dayLabel(days.find((d) => d.pageviews === maxPageviews)?.day || lastDay || '')}</div>
+    </div>
+  </div>
+
+  <div class="chart-wrap">
+    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" class="chart" aria-label="Daily activity">
+      {/* Gridlines */}
+      <line x1={PAD_X} y1={PAD_Y} x2={W - PAD_X} y2={PAD_Y} class="grid" />
+      <line x1={PAD_X} y1={H / 2} x2={W - PAD_X} y2={H / 2} class="grid grid--mid" />
+      <line x1={PAD_X} y1={H - PAD_Y} x2={W - PAD_X} y2={H - PAD_Y} class="grid" />
+
+      {/* Pageviews line */}
+      <path d={pageviewsPath} class="line line--pageviews" />
+
+      {/* Visitors line */}
+      <path d={visitorsPath} class="line line--visitors" />
+
+      {/* Day markers */}
+      {days.map((d, i) => (
+        <circle cx={xFor(i)} cy={yFor(d.pageviews, maxPageviews)} r="2.5" class="dot dot--pageviews">
+          <title>{`${d.day} · ${d.pageviews} views · ${d.visitors} visitors`}</title>
+        </circle>
+      ))}
+    </svg>
+    <div class="axis">
+      <span>{firstDay && dayLabel(firstDay)}</span>
+      <span>{lastDay && dayLabel(lastDay)}</span>
+    </div>
+    <div class="legend">
+      <span><span class="dot dot--pageviews" style="display:inline-block;width:10px;height:2px;background:var(--ink);vertical-align:middle"></span> Pageviews</span>
+      <span><span class="dot dot--visitors" style="display:inline-block;width:10px;height:2px;background:var(--accent-deep);vertical-align:middle"></span> Visitors</span>
+    </div>
+  </div>
+</div>
+
+<style>
+  .wrap { display: flex; flex-direction: column; gap: 1.5rem; }
+  .totals {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+  }
+  .total {
+    padding: 1rem;
+    background: var(--paper-2, #F4F2ED);
+    border: 1px solid var(--line, rgba(14,26,44,0.14));
+    border-radius: 4px;
+  }
+  .total .lab {
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink-faint, #7A8597);
+    margin-bottom: 0.3rem;
+  }
+  .total .val {
+    font-size: 1.75rem;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.03em;
+  }
+  .total .sub {
+    margin-top: 0.3rem;
+    font-size: 0.8rem;
+    color: var(--ink-dim, #3A4658);
+  }
+
+  .chart-wrap {
+    background: var(--paper-2, #F4F2ED);
+    border: 1px solid var(--line, rgba(14,26,44,0.14));
+    border-radius: 4px;
+    padding: 1rem;
+  }
+  .chart {
+    width: 100%;
+    height: 160px;
+    display: block;
+  }
+  .grid { stroke: var(--line, rgba(14,26,44,0.14)); stroke-width: 1; }
+  .grid--mid { stroke-dasharray: 2 4; }
+  .line { fill: none; stroke-width: 2; }
+  .line--pageviews { stroke: var(--ink, #0E1A2C); }
+  .line--visitors { stroke: var(--accent-deep, #4A6E18); stroke-width: 1.5; stroke-dasharray: 4 3; }
+  .dot--pageviews { fill: var(--ink, #0E1A2C); }
+  .dot--visitors { fill: var(--accent-deep, #4A6E18); }
+
+  .axis {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 0.5rem;
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 0.7rem;
+    color: var(--ink-faint, #7A8597);
+  }
+  .legend {
+    display: flex;
+    gap: 1.5rem;
+    margin-top: 0.75rem;
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 0.75rem;
+    color: var(--ink-dim, #3A4658);
+  }
+</style>

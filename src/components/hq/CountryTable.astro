@@ -1,0 +1,99 @@
+---
+import type { CountryBreakdown } from '../../utils/posthog/query';
+
+interface Props {
+  countries: CountryBreakdown[];
+}
+
+const { countries } = Astro.props;
+const totalVisitors = countries.reduce((s, c) => s + c.visitors, 0) || 1;
+---
+{countries.length === 0 ? (
+  <p class="empty">No country data yet.</p>
+) : (
+  <table class="tbl">
+    <thead>
+      <tr>
+        <th class="th-rank">#</th>
+        <th>Country</th>
+        <th class="th-num">Visitors</th>
+        <th class="th-num">% share</th>
+        <th class="th-num">Views</th>
+        <th class="th-num">Sessions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {countries.map((c, i) => {
+        const pct = (c.visitors / totalVisitors) * 100;
+        return (
+          <tr>
+            <td class="td-rank">{String(i + 1).padStart(2, '0')}</td>
+            <td class="td-country">{c.country}</td>
+            <td class="td-num"><b>{c.visitors}</b></td>
+            <td class="td-num td-pct">
+              <span class="pct-bar" style={`--pct:${pct.toFixed(1)}%`}>
+                <span class="pct-fill"></span>
+              </span>
+              <span class="pct-val">{pct.toFixed(0)}%</span>
+            </td>
+            <td class="td-num">{c.pageviews}</td>
+            <td class="td-num">{c.sessions}</td>
+          </tr>
+        );
+      })}
+    </tbody>
+  </table>
+)}
+
+<style>
+  .empty {
+    font-family: var(--serif, 'Newsreader', Georgia, serif);
+    font-style: italic;
+    color: var(--ink-faint, #7A8597);
+    padding: 1.5rem 0;
+  }
+  .tbl { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+  .tbl th, .tbl td {
+    text-align: left; padding: 0.6rem 0.5rem;
+    border-bottom: 1px solid var(--line, rgba(14,26,44,0.14));
+  }
+  .tbl thead th {
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em;
+    font-weight: 500; color: var(--ink-faint, #7A8597);
+    border-bottom-color: var(--line-strong, rgba(14,26,44,0.28));
+  }
+  .th-rank, .td-rank {
+    font-family: var(--mono, 'DM Mono', monospace);
+    color: var(--ink-faint, #7A8597); width: 3rem;
+  }
+  .th-num, .td-num {
+    text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .td-country { font-weight: 500; }
+  .td-pct {
+    width: 140px;
+    position: relative;
+  }
+  .pct-bar {
+    display: inline-block;
+    width: 70px;
+    height: 6px;
+    background: var(--paper-3, #EBE6DC);
+    border-radius: 999px;
+    overflow: hidden;
+    vertical-align: middle;
+    margin-right: 0.5rem;
+  }
+  .pct-fill {
+    display: block;
+    height: 100%;
+    width: var(--pct, 0%);
+    background: var(--accent, #8FBF3F);
+  }
+  .pct-val {
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 0.75rem;
+    color: var(--ink-dim, #3A4658);
+  }
+</style>

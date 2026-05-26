@@ -18,11 +18,21 @@ import {
   getHeadlineMetrics,
   getCtaClicks,
   getTopBlogPosts,
+  getVisitorsByCountry,
+  getVisitorsByCity,
+  getVisitorTech,
+  getTrafficSources,
+  getActivityTimeline,
   type RecentRead,
   type TopProspect,
   type HeadlineMetrics,
   type CtaClick,
   type TopBlogPost,
+  type CountryBreakdown,
+  type CityBreakdown,
+  type DeviceRow,
+  type TrafficSource,
+  type ActivityDay,
 } from '../utils/posthog/query';
 import SectionHeader from '../components/hq/SectionHeader.astro';
 import MetricCard from '../components/hq/MetricCard.astro';
@@ -30,6 +40,11 @@ import RecentReadsFeed from '../components/hq/RecentReadsFeed.astro';
 import TopProspectsTable from '../components/hq/TopProspectsTable.astro';
 import CtaClicksFeed from '../components/hq/CtaClicksFeed.astro';
 import TopBlogPostsTable from '../components/hq/TopBlogPostsTable.astro';
+import CountryTable from '../components/hq/CountryTable.astro';
+import CityTable from '../components/hq/CityTable.astro';
+import DeviceTable from '../components/hq/DeviceTable.astro';
+import ReferrerTable from '../components/hq/ReferrerTable.astro';
+import ActivityTimeline from '../components/hq/ActivityTimeline.astro';
 
 // --- Auth gating ---
 // Trim everything in case env vars or cookies carry stray whitespace/newlines
@@ -69,22 +84,37 @@ let recent: RecentRead[] = [];
 let top: TopProspect[] = [];
 let ctas: CtaClick[] = [];
 let blog: TopBlogPost[] = [];
+let countries: CountryBreakdown[] = [];
+let cities: CityBreakdown[] = [];
+let devices: DeviceRow[] = [];
+let sources: TrafficSource[] = [];
+let activity: ActivityDay[] = [];
 let fetchError: string | null = null;
 
 if (authed) {
   try {
-    const [h, r, t, c, b] = await Promise.all([
+    const [h, r, t, c, b, co, ci, dv, sr, ac] = await Promise.all([
       getHeadlineMetrics(),
       getRecentReads(14),
       getTopProspects(14),
       getCtaClicks(14),
       getTopBlogPosts(30),
+      getVisitorsByCountry(30),
+      getVisitorsByCity(30),
+      getVisitorTech(30),
+      getTrafficSources(30),
+      getActivityTimeline(30),
     ]);
     headline = h;
     recent = r;
     top = t;
     ctas = c;
     blog = b;
+    countries = co;
+    cities = ci;
+    devices = dv;
+    sources = sr;
+    activity = ac;
   } catch (e) {
     fetchError = e instanceof Error ? e.message : String(e);
     console.error('[hq] PostHog fetch failed', e);
@@ -204,6 +234,34 @@ const renderedAt = new Date().toISOString();
   /* Sections */
   section.sec {
     margin-bottom: 3rem;
+    scroll-margin-top: 4.5rem;
+  }
+
+  /* Sticky anchor nav */
+  .anchornav {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--paper);
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    margin: 0 -1.5rem 2.5rem;
+    padding: 0.6rem 1.5rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 1.25rem;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+  }
+  .anchornav a {
+    color: var(--ink-dim);
+    text-decoration: none;
+    white-space: nowrap;
+    padding: 0.15rem 0;
+  }
+  .anchornav a:hover { color: var(--accent-deep); }
+  @media (max-width: 720px) {
+    .anchornav { margin: 0 -1rem 1.5rem; padding: 0.5rem 1rem; }
   }
 
   /* Footer */
@@ -279,13 +337,25 @@ const renderedAt = new Date().toISOString();
     </div>
 
     <header class="hero">
-      <div class="kicker">Audit engagement · last 14 days</div>
+      <div class="kicker">Audit engagement · 14 days · 30 days for visitor data</div>
       <h1>
         Who is reading what.
         <span class="ital">And who is on the edge of booking.</span>
       </h1>
-      <p class="dek">Real human reads only. Datacenter scanners filtered out at the source.</p>
+      <p class="dek">Real human reads on engagement sections. All traffic on geography (scanners flagged).</p>
     </header>
+
+    <nav class="anchornav" aria-label="HQ sections">
+      <a href="#recent">§ 01 Reads</a>
+      <a href="#prospects">§ 02 Prospects</a>
+      <a href="#ctas">§ 03 CTAs</a>
+      <a href="#blog">§ 04 Blog</a>
+      <a href="#countries">§ 05 Countries</a>
+      <a href="#cities">§ 06 Cities</a>
+      <a href="#devices">§ 07 Devices</a>
+      <a href="#sources">§ 08 Sources</a>
+      <a href="#activity">§ 09 Activity</a>
+    </nav>
 
     {fetchError && (
       <div class="err">
@@ -312,7 +382,7 @@ const renderedAt = new Date().toISOString();
       </div>
     )}
 
-    <section class="sec">
+    <section class="sec" id="recent">
       <SectionHeader
         number="01"
         title="Recent reads."
@@ -322,17 +392,17 @@ const renderedAt = new Date().toISOString();
       <RecentReadsFeed reads={recent} />
     </section>
 
-    <section class="sec">
+    <section class="sec" id="prospects">
       <SectionHeader
         number="02"
         title="Top prospects."
         italicTail="Ranked by engagement."
-        meta={`${top.length} prospect${top.length === 1 ? '' : 's'} · last 14 days`}
+        meta={`${top.length} prospect${top.length === 1 ? '' : 's'} · last 14 days · click to expand sessions`}
       />
       <TopProspectsTable prospects={top} />
     </section>
 
-    <section class="sec">
+    <section class="sec" id="ctas">
       <SectionHeader
         number="03"
         title="CTA clicks."
@@ -342,7 +412,7 @@ const renderedAt = new Date().toISOString();
       <CtaClicksFeed clicks={ctas} />
     </section>
 
-    <section class="sec">
+    <section class="sec" id="blog">
       <SectionHeader
         number="04"
         title="Blog content."
@@ -350,6 +420,56 @@ const renderedAt = new Date().toISOString();
         meta={`${blog.length} post${blog.length === 1 ? '' : 's'} · last 30 days · real humans only`}
       />
       <TopBlogPostsTable posts={blog} />
+    </section>
+
+    <section class="sec" id="countries">
+      <SectionHeader
+        number="05"
+        title="Visitors by country."
+        italicTail="Where the traffic lands."
+        meta={`${countries.length} countries · last 30 days · all traffic`}
+      />
+      <CountryTable countries={countries} />
+    </section>
+
+    <section class="sec" id="cities">
+      <SectionHeader
+        number="06"
+        title="Cities and regions."
+        italicTail="Real humans vs scanners."
+        meta={`${cities.length} cities · last 30 days · scanners and self flagged`}
+      />
+      <CityTable cities={cities} />
+    </section>
+
+    <section class="sec" id="devices">
+      <SectionHeader
+        number="07"
+        title="Device and browser."
+        italicTail="How they read."
+        meta={`${devices.length} combinations · last 30 days · real humans only`}
+      />
+      <DeviceTable rows={devices} />
+    </section>
+
+    <section class="sec" id="sources">
+      <SectionHeader
+        number="08"
+        title="Traffic sources."
+        italicTail="How they got here."
+        meta={`${sources.length} source${sources.length === 1 ? '' : 's'} · last 30 days · real humans only`}
+      />
+      <ReferrerTable sources={sources} />
+    </section>
+
+    <section class="sec" id="activity">
+      <SectionHeader
+        number="09"
+        title="Activity over time."
+        italicTail="The pulse."
+        meta={`${activity.length} days · daily pageviews and unique visitors · real humans only`}
+      />
+      <ActivityTimeline days={activity} />
     </section>
 
     <footer class="foot">

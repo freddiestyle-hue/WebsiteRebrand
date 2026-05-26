@@ -323,6 +323,173 @@ export async function getTopBlogPosts(days = 30): Promise<TopBlogPost[]> {
 }
 
 // --------------------------------------------------------------------------
+// Query: visitors by country
+// What it is: country-level breakdown of all $pageview traffic.
+// Note: this query DOES NOT exclude datacenter cities — we want operators to
+// see the raw geographic distribution. Bot cities are flagged client-side.
+// --------------------------------------------------------------------------
+
+export interface CountryBreakdown {
+  country: string;
+  visitors: number;
+  pageviews: number;
+  sessions: number;
+}
+
+export async function getVisitorsByCountry(days = 30): Promise<CountryBreakdown[]> {
+  const r = await runQuery(`
+    SELECT
+      properties.$geoip_country_name AS country,
+      uniq(distinct_id) AS visitors,
+      countIf(event = '$pageview') AS pageviews,
+      uniq(properties.$session_id) AS sessions
+    FROM events
+    WHERE timestamp >= now() - INTERVAL ${days} DAY
+      AND properties.$geoip_country_name IS NOT NULL
+    GROUP BY country
+    ORDER BY visitors DESC
+    LIMIT 30
+  `);
+  return rowsToObjects<CountryBreakdown>(r);
+}
+
+// --------------------------------------------------------------------------
+// Query: visitors by city (with region + country)
+// What it is: city-level breakdown of all $pageview traffic, NOT filtered.
+// --------------------------------------------------------------------------
+
+export interface CityBreakdown {
+  city: string;
+  region: string | null;
+  country: string;
+  visitors: number;
+  pageviews: number;
+  is_datacenter: boolean;
+  is_self: boolean;
+}
+
+const DATACENTER_CITY_SET = new Set(DATACENTER_CITIES);
+const SELF_CITY_SET = new Set(SELF_CITIES);
+
+export async function getVisitorsByCity(days = 30): Promise<CityBreakdown[]> {
+  const r = await runQuery(`
+    SELECT
+      properties.$geoip_city_name AS city,
+      properties.$geoip_subdivision_1_name AS region,
+      properties.$geoip_country_name AS country,
+      uniq(distinct_id) AS visitors,
+      countIf(event = '$pageview') AS pageviews
+    FROM events
+    WHERE timestamp >= now() - INTERVAL ${days} DAY
+      AND properties.$geoip_city_name IS NOT NULL
+    GROUP BY city, region, country
+    ORDER BY visitors DESC
+    LIMIT 50
+  `);
+  const rows = rowsToObjects<Omit<CityBreakdown, 'is_datacenter' | 'is_self'>>(r);
+  return rows.map((row) => ({
+    ...row,
+    is_datacenter: DATACENTER_CITY_SET.has(row.city),
+    is_self: SELF_CITY_SET.has(row.city),
+  }));
+}
+
+// --------------------------------------------------------------------------
+// Query: device / browser / OS breakdown (real humans only)
+// --------------------------------------------------------------------------
+
+export interface DeviceRow {
+  device_type: string | null;
+  browser: string | null;
+  os: string | null;
+  visitors: number;
+  pageviews: number;
+}
+
+export async function getVisitorTech(days = 30): Promise<DeviceRow[]> {
+  const r = await runQuery(`
+    SELECT
+      properties.$device_type AS device_type,
+      properties.$browser AS browser,
+      properties.$os AS os,
+      uniq(distinct_id) AS visitors,
+      countIf(event = '$pageview') AS pageviews
+    FROM events
+    WHERE timestamp >= now() - INTERVAL ${days} DAY
+      AND properties.$browser IS NOT NULL
+      ${REAL_HUMAN_WHERE}
+    GROUP BY device_type, browser, os
+    ORDER BY visitors DESC
+    LIMIT 20
+  `);
+  return rowsToObjects<DeviceRow>(r);
+}
+
+// --------------------------------------------------------------------------
+// Query: traffic sources (initial referring domain, real humans only)
+// --------------------------------------------------------------------------
+
+export interface TrafficSource {
+  source: string;
+  visitors: number;
+  pageviews: number;
+}
+
+export async function getTrafficSources(days = 30): Promise<TrafficSource[]> {
+  const r = await runQuery(`
+    SELECT
+      coalesce(properties.$initial_referring_domain, '$direct') AS source,
+      uniq(distinct_id) AS visitors,
+      countIf(event = '$pageview') AS pageviews
+    FROM events
+    WHERE timestamp >= now() - INTERVAL ${days} DAY
+      ${REAL_HUMAN_WHERE}
+    GROUP BY source
+    ORDER BY visitors DESC
+    LIMIT 20
+  `);
+  return rowsToObjects<TrafficSource>(r);
+}
+
+// --------------------------------------------------------------------------
+// Query: daily activity timeline (for a sparkline)
+// Returns one row per day including today, padded with zeros for missing days.
+// --------------------------------------------------------------------------
+
+export interface ActivityDay {
+  day: string;
+  pageviews: number;
+  visitors: number;
+}
+
+export async function getActivityTimeline(days = 30): Promise<ActivityDay[]> {
+  const r = await runQuery(`
+    SELECT
+      toDate(timestamp) AS day,
+      countIf(event = '$pageview') AS pageviews,
+      uniq(distinct_id) AS visitors
+    FROM events
+    WHERE timestamp >= now() - INTERVAL ${days} DAY
+      ${REAL_HUMAN_WHERE}
+    GROUP BY day
+    ORDER BY day
+  `);
+  const rows = rowsToObjects<{ day: string; pageviews: number; visitors: number }>(r);
+  // Pad days with zero so the sparkline has a stable x-axis.
+  const byDay = new Map(rows.map((row) => [row.day, row]));
+  const out: ActivityDay[] = [];
+  const today = new Date();
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setUTCDate(today.getUTCDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    const found = byDay.get(key);
+    out.push(found ?? { day: key, pageviews: 0, visitors: 0 });
+  }
+  return out;
+}
+
+// --------------------------------------------------------------------------
 // Session recording deep link — generates the PostHog URL to watch a session.
 // --------------------------------------------------------------------------
 
