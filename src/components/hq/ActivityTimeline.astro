@@ -12,11 +12,11 @@ const maxVisitors = Math.max(...days.map((d) => d.visitors), 1);
 const totalPageviews = days.reduce((s, d) => s + d.pageviews, 0);
 const totalVisitors = days.reduce((s, d) => s + d.visitors, 0);
 
-// Build SVG path for the pageviews + visitors lines
+// SVG geometry — viewBox stays fixed so positions are deterministic.
 const W = 800;
-const H = 160;
-const PAD_X = 16;
-const PAD_Y = 16;
+const H = 200;
+const PAD_X = 24;
+const PAD_Y = 20;
 const innerW = W - PAD_X * 2;
 const innerH = H - PAD_Y * 2;
 
@@ -44,6 +44,20 @@ function dayLabel(iso: string): string {
 
 const firstDay = days[0]?.day;
 const lastDay = days[days.length - 1]?.day;
+
+// Pre-build per-day position data the client script needs (x, pageviews, visitors, etc.).
+// Embedded as JSON in a data attribute so the script can read without an API call.
+const pointsJson = JSON.stringify(
+  days.map((d, i) => ({
+    i,
+    x: xFor(i),
+    yPv: yFor(d.pageviews, maxPageviews),
+    yVis: yFor(d.visitors, maxVisitors),
+    day: d.day,
+    pv: d.pageviews,
+    vis: d.visitors,
+  }))
+);
 ---
 <div class="wrap">
   <div class="totals">
@@ -64,81 +78,210 @@ const lastDay = days[days.length - 1]?.day;
     </div>
   </div>
 
-  <div class="chart-wrap">
+  <div class="chart-wrap" data-points={pointsJson} data-vb-w={W} data-vb-h={H}>
     <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" class="chart" aria-label="Daily activity">
       {/* Gridlines */}
       <line x1={PAD_X} y1={PAD_Y} x2={W - PAD_X} y2={PAD_Y} class="grid" />
       <line x1={PAD_X} y1={H / 2} x2={W - PAD_X} y2={H / 2} class="grid grid--mid" />
       <line x1={PAD_X} y1={H - PAD_Y} x2={W - PAD_X} y2={H - PAD_Y} class="grid" />
 
-      {/* Pageviews line */}
+      {/* Pageviews line + dots */}
       <path d={pageviewsPath} class="line line--pageviews" />
-
-      {/* Visitors line */}
+      {/* Visitors line + dots */}
       <path d={visitorsPath} class="line line--visitors" />
 
-      {/* Day markers */}
+      {/* Day markers (kept small, no native title — JS tooltip handles hover) */}
       {days.map((d, i) => (
-        <circle cx={xFor(i)} cy={yFor(d.pageviews, maxPageviews)} r="2.5" class="dot dot--pageviews">
-          <title>{`${d.day} · ${d.pageviews} views · ${d.visitors} visitors`}</title>
-        </circle>
+        <>
+          <circle cx={xFor(i)} cy={yFor(d.pageviews, maxPageviews)} r="2.5" class="dot dot--pageviews" data-idx={i} />
+          <circle cx={xFor(i)} cy={yFor(d.visitors, maxVisitors)} r="2.5" class="dot dot--visitors" data-idx={i} />
+        </>
       ))}
+
+      {/* Hover guide line — hidden until JS positions it */}
+      <line class="hover-line" x1="0" y1={PAD_Y} x2="0" y2={H - PAD_Y} />
+      {/* Highlighted dots — hidden until JS positions them */}
+      <circle class="hover-dot hover-dot--pageviews" cx="0" cy="0" r="4.5" />
+      <circle class="hover-dot hover-dot--visitors" cx="0" cy="0" r="4.5" />
+
+      {/* Invisible hit area covering whole chart so mousemove always fires */}
+      <rect class="hit" x={PAD_X} y={PAD_Y} width={innerW} height={innerH} fill="transparent" />
     </svg>
+    <div class="tooltip" role="status" aria-live="polite">
+      <div class="t-day"></div>
+      <div class="t-row"><span class="t-key">Pageviews</span><span class="t-val t-pv">0</span></div>
+      <div class="t-row"><span class="t-key">Visitors</span><span class="t-val t-vis">0</span></div>
+    </div>
     <div class="axis">
       <span>{firstDay && dayLabel(firstDay)}</span>
       <span>{lastDay && dayLabel(lastDay)}</span>
     </div>
     <div class="legend">
-      <span><span class="dot dot--pageviews" style="display:inline-block;width:10px;height:2px;background:var(--ink);vertical-align:middle"></span> Pageviews</span>
-      <span><span class="dot dot--visitors" style="display:inline-block;width:10px;height:2px;background:var(--accent-deep);vertical-align:middle"></span> Visitors</span>
+      <span class="leg leg--pageviews">Pageviews</span>
+      <span class="leg leg--visitors">Visitors</span>
     </div>
   </div>
 </div>
 
+<script is:inline>
+  (function () {
+    document.querySelectorAll('.chart-wrap').forEach(function (wrap) {
+      var pointsRaw = wrap.getAttribute('data-points');
+      if (!pointsRaw) return;
+      var points;
+      try { points = JSON.parse(pointsRaw); } catch (e) { return; }
+      if (!points.length) return;
+
+      var vbW = Number(wrap.getAttribute('data-vb-w')) || 800;
+      var vbH = Number(wrap.getAttribute('data-vb-h')) || 200;
+      var svg = wrap.querySelector('svg');
+      var hit = wrap.querySelector('.hit');
+      var hoverLine = wrap.querySelector('.hover-line');
+      var hoverDotPv = wrap.querySelector('.hover-dot--pageviews');
+      var hoverDotVis = wrap.querySelector('.hover-dot--visitors');
+      var tooltip = wrap.querySelector('.tooltip');
+      var tDay = tooltip.querySelector('.t-day');
+      var tPv = tooltip.querySelector('.t-pv');
+      var tVis = tooltip.querySelector('.t-vis');
+
+      function formatDate(iso) {
+        var d = new Date(iso + 'T00:00:00Z');
+        return d.toLocaleDateString('en-US', {
+          weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC'
+        });
+      }
+
+      function setHover(idx, clientX, clientY) {
+        var p = points[idx];
+        if (!p) return;
+
+        // Move the guide line + dots in SVG coords.
+        hoverLine.setAttribute('x1', p.x);
+        hoverLine.setAttribute('x2', p.x);
+        hoverLine.classList.add('hover-line--on');
+        hoverDotPv.setAttribute('cx', p.x);
+        hoverDotPv.setAttribute('cy', p.yPv);
+        hoverDotPv.classList.add('hover-dot--on');
+        hoverDotVis.setAttribute('cx', p.x);
+        hoverDotVis.setAttribute('cy', p.yVis);
+        hoverDotVis.classList.add('hover-dot--on');
+
+        // Populate tooltip text.
+        tDay.textContent = formatDate(p.day);
+        tPv.textContent = p.pv.toLocaleString();
+        tVis.textContent = p.vis.toLocaleString();
+
+        // Position tooltip in wrapper coords. svg fills wrap horizontally, so
+        // map SVG x (0..vbW) to wrap pixels.
+        var wrapRect = wrap.getBoundingClientRect();
+        var svgRect = svg.getBoundingClientRect();
+        var pxPerVbX = svgRect.width / vbW;
+        var leftPx = (p.x * pxPerVbX) + (svgRect.left - wrapRect.left);
+
+        // Clamp so tooltip doesn't fall off either edge
+        var ttRect = tooltip.getBoundingClientRect();
+        var tooltipW = ttRect.width || 140;
+        var maxLeft = wrapRect.width - tooltipW - 8;
+        var clamped = Math.max(8, Math.min(leftPx - tooltipW / 2, maxLeft));
+        tooltip.style.left = clamped + 'px';
+        tooltip.style.top = '8px';
+        tooltip.classList.add('tooltip--on');
+      }
+
+      function clearHover() {
+        hoverLine.classList.remove('hover-line--on');
+        hoverDotPv.classList.remove('hover-dot--on');
+        hoverDotVis.classList.remove('hover-dot--on');
+        tooltip.classList.remove('tooltip--on');
+      }
+
+      function nearestIdx(evt) {
+        var svgRect = svg.getBoundingClientRect();
+        var clientX = (evt.touches && evt.touches[0]) ? evt.touches[0].clientX : evt.clientX;
+        var pxX = clientX - svgRect.left;
+        // Convert pixel x to viewBox x
+        var vbX = (pxX / svgRect.width) * vbW;
+        var best = 0;
+        var bestDist = Infinity;
+        for (var i = 0; i < points.length; i++) {
+          var d = Math.abs(points[i].x - vbX);
+          if (d < bestDist) { bestDist = d; best = i; }
+        }
+        return best;
+      }
+
+      function onMove(evt) {
+        var idx = nearestIdx(evt);
+        setHover(idx, evt.clientX, evt.clientY);
+      }
+
+      // Use the SVG itself as hit target so dots remain interactive.
+      svg.addEventListener('mousemove', onMove);
+      svg.addEventListener('touchstart', onMove, { passive: true });
+      svg.addEventListener('touchmove', onMove, { passive: true });
+      svg.addEventListener('mouseleave', clearHover);
+      svg.addEventListener('touchend', function () {
+        // Keep visible briefly on touch end so user can read it
+        setTimeout(clearHover, 1500);
+      });
+    });
+  })();
+</script>
+
 <style>
-  .wrap { display: flex; flex-direction: column; gap: 1.5rem; }
+  .wrap { display: flex; flex-direction: column; gap: 1.25rem; }
   .totals {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 0.75rem;
-  }
-  .total {
-    padding: 1rem;
-    background: var(--paper-2, #F4F2ED);
+    gap: 0;
     border: 1px solid var(--line, rgba(14,26,44,0.14));
     border-radius: 4px;
+    overflow: hidden;
   }
+  .total {
+    padding: 0.85rem 1rem;
+    border-right: 1px solid var(--line, rgba(14,26,44,0.14));
+  }
+  .total:last-child { border-right: 0; }
   .total .lab {
     font-family: var(--mono, 'DM Mono', monospace);
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     text-transform: uppercase;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.12em;
     color: var(--ink-faint, #7A8597);
     margin-bottom: 0.3rem;
   }
   .total .val {
-    font-size: 1.75rem;
+    font-size: 1.55rem;
     font-weight: 700;
     line-height: 1;
     letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
   }
   .total .sub {
     margin-top: 0.3rem;
-    font-size: 0.8rem;
-    color: var(--ink-dim, #3A4658);
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 0.7rem;
+    color: var(--ink-faint, #7A8597);
   }
 
+  /* Chart container is relative so the tooltip can absolute-position over the svg */
   .chart-wrap {
-    background: var(--paper-2, #F4F2ED);
+    position: relative;
     border: 1px solid var(--line, rgba(14,26,44,0.14));
     border-radius: 4px;
-    padding: 1rem;
+    padding: 1rem 0.5rem 0.75rem;
+    background: var(--paper, #FFFFFF);
   }
   .chart {
     width: 100%;
-    height: 160px;
+    height: 200px;
     display: block;
+    cursor: crosshair;
   }
+  .hit { cursor: crosshair; }
+
+  /* Grid + lines */
   .grid { stroke: var(--line, rgba(14,26,44,0.14)); stroke-width: 1; }
   .grid--mid { stroke-dasharray: 2 4; }
   .line { fill: none; stroke-width: 2; }
@@ -147,20 +290,107 @@ const lastDay = days[days.length - 1]?.day;
   .dot--pageviews { fill: var(--ink, #0E1A2C); }
   .dot--visitors { fill: var(--accent-deep, #4A6E18); }
 
+  /* Hover guide */
+  .hover-line {
+    stroke: var(--line-strong, rgba(14,26,44,0.28));
+    stroke-width: 1;
+    stroke-dasharray: 2 3;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 80ms;
+  }
+  .hover-line--on { opacity: 1; }
+  .hover-dot {
+    fill: var(--paper, #FFFFFF);
+    stroke-width: 2;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 80ms;
+  }
+  .hover-dot--pageviews { stroke: var(--ink, #0E1A2C); }
+  .hover-dot--visitors { stroke: var(--accent-deep, #4A6E18); }
+  .hover-dot--on { opacity: 1; }
+
+  /* Tooltip overlay */
+  .tooltip {
+    position: absolute;
+    top: 8px;
+    left: 0;
+    min-width: 130px;
+    padding: 0.5rem 0.65rem;
+    background: var(--ink, #0E1A2C);
+    color: var(--paper, #FFFFFF);
+    border-radius: 3px;
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 0.72rem;
+    box-shadow: 0 4px 12px rgba(14,26,44,0.18);
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(-4px);
+    transition: opacity 80ms, transform 80ms;
+    z-index: 2;
+  }
+  .tooltip--on {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .t-day {
+    color: var(--paper, #FFFFFF);
+    font-weight: 500;
+    margin-bottom: 0.35rem;
+    padding-bottom: 0.3rem;
+    border-bottom: 1px solid rgba(255,255,255,0.16);
+    font-size: 0.72rem;
+  }
+  .t-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    line-height: 1.5;
+  }
+  .t-key {
+    opacity: 0.7;
+  }
+  .t-val {
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+  }
+
   .axis {
     display: flex;
     justify-content: space-between;
     margin-top: 0.5rem;
+    padding: 0 0.25rem;
     font-family: var(--mono, 'DM Mono', monospace);
     font-size: 0.7rem;
     color: var(--ink-faint, #7A8597);
   }
   .legend {
     display: flex;
-    gap: 1.5rem;
-    margin-top: 0.75rem;
+    gap: 1rem;
+    margin-top: 0.5rem;
+    padding: 0 0.25rem;
     font-family: var(--mono, 'DM Mono', monospace);
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     color: var(--ink-dim, #3A4658);
+  }
+  .leg {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .leg::before {
+    content: '';
+    display: inline-block;
+    width: 14px;
+    height: 2px;
+  }
+  .leg--pageviews::before { background: var(--ink, #0E1A2C); }
+  .leg--visitors::before { background: var(--accent-deep, #4A6E18); }
+
+  @media (max-width: 640px) {
+    .totals { grid-template-columns: 1fr; }
+    .total { border-right: 0; border-bottom: 1px solid var(--line, rgba(14,26,44,0.14)); }
+    .total:last-child { border-bottom: 0; }
   }
 </style>
