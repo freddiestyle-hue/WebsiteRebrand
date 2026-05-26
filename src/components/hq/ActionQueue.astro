@@ -1,7 +1,11 @@
 ---
 import type { TopProspect } from '../../utils/posthog/query';
 import { sessionReplayUrl } from '../../utils/posthog/query';
-import { linkedinSearchUrl, slugToCompanyName } from '../../utils/hq/messaged';
+import {
+  findOnLinkedinUrl,
+  prospectWebsiteUrl,
+  slugToDomain,
+} from '../../utils/hq/messaged';
 
 interface Props {
   /** Already filtered: engaged AND not yet messaged. Sorted by recency desc. */
@@ -63,8 +67,9 @@ function heatBadge(p: TopProspect): { label: string; cls: string } {
         const heat = heatBadge(p);
         const latestSession = p.sessions[0] ?? null;
         const replay = latestSession ? sessionReplayUrl(latestSession.sid) : null;
-        const company = slugToCompanyName(p.prospect);
-        const linkedIn = linkedinSearchUrl(p.prospect);
+        const domain = slugToDomain(p.prospect);
+        const liUrl = findOnLinkedinUrl(p.prospect);
+        const siteUrl = prospectWebsiteUrl(p.prospect);
         return (
           <li class="aq-row" data-slug={p.prospect}>
             <div class="aq-left">
@@ -73,8 +78,7 @@ function heatBadge(p: TopProspect): { label: string; cls: string } {
             </div>
             <div class="aq-mid">
               <div class="aq-prospect">
-                <a href={`https://rivett.tech/audit/v3/${p.prospect}`} target="_blank" rel="noopener">{p.prospect}</a>
-                <span class="aq-co">({company})</span>
+                <a href={`https://rivett.tech/audit/v3/${p.prospect}`} target="_blank" rel="noopener">{domain}</a>
               </div>
               <div class="aq-signal">
                 <b>{dwell(p.total_dwell_seconds)}</b> dwell
@@ -84,7 +88,8 @@ function heatBadge(p: TopProspect): { label: string; cls: string } {
               </div>
             </div>
             <div class="aq-actions">
-              <a class="aq-btn aq-btn--primary" href={linkedIn} target="_blank" rel="noopener">Compose DM →</a>
+              <a class="aq-btn aq-btn--primary" href={liUrl} target="_blank" rel="noopener" title="Google site:linkedin.com for this domain — most reliable finder">→ LinkedIn</a>
+              <a class="aq-btn" href={siteUrl} target="_blank" rel="noopener" title="Open the prospect's website">Site</a>
               {replay && (
                 <a class="aq-btn" href={replay} target="_blank" rel="noopener">Replay</a>
               )}

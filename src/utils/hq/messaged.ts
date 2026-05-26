@@ -86,24 +86,65 @@ export async function unmarkMessaged(slug: string): Promise<boolean> {
   }
 }
 
-/** Convert a prospect slug into a likely company-name search query. */
-export function slugToCompanyName(slug: string): string {
-  // Strip the TLD-style suffix at the end (co-uk, com, io, etc.) and
-  // replace remaining hyphens with spaces. Slug "beaphar-co-uk" -> "beaphar".
-  // Slug "transit-technologies-com" -> "transit technologies".
-  return slug
-    .replace(/-(com|co-uk|io|net|org|ai|tech|app|us|biz|co|us-com)$/i, '')
-    .replace(/-/g, ' ');
+/** Convert a prospect slug back into a likely DNS hostname. */
+export function slugToDomain(slug: string): string {
+  // Slugs are domains with dots replaced by hyphens, e.g.
+  //   "beaphar-co-uk"     -> "beaphar.co.uk"
+  //   "transit-technologies-com" -> "transit-technologies.com"
+  //   "accentinns-com"   -> "accentinns.com"
+  // Two-part TLDs (co-uk, com-au, etc.) handled first, then common single TLDs.
+  // We do this by detecting the trailing TLD-shape rather than a wholesale
+  // replace, so the company portion (e.g. "transit-technologies") keeps its
+  // intra-name hyphens.
+  const twoPartTlds: Record<string, string> = {
+    'co-uk': '.co.uk',
+    'co-za': '.co.za',
+    'co-nz': '.co.nz',
+    'co-il': '.co.il',
+    'co-jp': '.co.jp',
+    'com-au': '.com.au',
+    'com-br': '.com.br',
+    'com-mx': '.com.mx',
+  };
+  for (const [k, v] of Object.entries(twoPartTlds)) {
+    if (slug.endsWith(`-${k}`)) {
+      return slug.slice(0, -k.length - 1) + v;
+    }
+  }
+  const singleTlds = ['com','io','net','org','ai','tech','app','us','biz','co','dev','xyz','me','tv','agency','digital','health','careers','city','careers','marketing','consulting'];
+  for (const tld of singleTlds) {
+    if (slug.endsWith(`-${tld}`)) {
+      return slug.slice(0, -tld.length - 1) + `.${tld}`;
+    }
+  }
+  // Unknown TLD — best-effort: replace last hyphen with a dot.
+  const lastHyphen = slug.lastIndexOf('-');
+  if (lastHyphen === -1) return slug;
+  return slug.slice(0, lastHyphen) + '.' + slug.slice(lastHyphen + 1);
 }
 
-/** LinkedIn people search URL for a prospect (best-effort name guess). */
+/** The prospect's actual website URL (best-effort, https://). */
+export function prospectWebsiteUrl(slug: string): string {
+  return `https://${slugToDomain(slug)}`;
+}
+
+/** Google search with site:linkedin.com filter — most reliable LinkedIn finder. */
+export function findOnLinkedinUrl(slug: string): string {
+  const domain = slugToDomain(slug);
+  return `https://www.google.com/search?q=${encodeURIComponent(`site:linkedin.com ${domain}`)}`;
+}
+
+/** @deprecated kept for backwards compat — same as findOnLinkedinUrl */
 export function linkedinSearchUrl(slug: string): string {
-  const name = slugToCompanyName(slug);
-  return `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(name)}`;
+  return findOnLinkedinUrl(slug);
 }
 
-/** Build a Google site:linkedin.com URL — useful when LinkedIn search is noisy. */
+/** @deprecated kept for backwards compat — same as findOnLinkedinUrl */
 export function googleLinkedinUrl(slug: string): string {
-  const name = slugToCompanyName(slug);
-  return `https://www.google.com/search?q=${encodeURIComponent('site:linkedin.com ' + name)}`;
+  return findOnLinkedinUrl(slug);
+}
+
+/** Pretty company label for display (best-effort, from slug). */
+export function slugToCompanyName(slug: string): string {
+  return slugToDomain(slug);
 }
