@@ -40,17 +40,19 @@ function getRedis(): Redis | null {
   return _redis;
 }
 
-// TTL in seconds, picked to balance freshness against PostHog query cost.
+// TTL in seconds. Stretched longer than ideal-freshness so the daily cron
+// pre-warm + sporadic real visits keep the cache populated all day. Fred
+// reads this 3-5x/day, so 5-30 min staleness is invisible to him.
 function ttlFor(range: DateRange): number {
   switch (range.preset) {
-    case 'today': return 30;
-    case '7d': return 60;
-    case '14d': return 60;
-    case '30d': return 300;
-    case '90d': return 600;
-    case 'all': return 600;
-    case 'custom': return 120;
-    default: return 60;
+    case 'today': return 60;       // 1 min: today data moves
+    case '7d':    return 300;      // 5 min
+    case '14d':   return 300;
+    case '30d':   return 1800;     // 30 min
+    case '90d':   return 3600;     // 1 hour
+    case 'all':   return 3600;
+    case 'custom': return 600;     // 10 min
+    default: return 300;
   }
 }
 
