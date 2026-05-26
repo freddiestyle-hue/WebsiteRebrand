@@ -1,0 +1,61 @@
+---
+import Block from './Block.astro';
+
+interface Item {
+  q: string;
+  a: string;
+}
+
+interface Props {
+  sectionNumber?: string;
+  headline: string;
+  italicTail?: string;
+  items: Item[];
+}
+
+const { sectionNumber = '05', headline, italicTail, items } = Astro.props;
+---
+<Block id="faq" label="FAQ">
+  <div class="head">
+    <div class="num">§ {sectionNumber}</div>
+    <h2>
+      {headline}
+      {italicTail && <> <span class="ital">{italicTail}</span></>}
+    </h2>
+  </div>
+  <div class="items">
+    {items.map((item, idx) => (
+      <details data-faq-index={idx} open={idx === 0}>
+        <summary>{item.q}</summary>
+        <p>{item.a}</p>
+      </details>
+    ))}
+  </div>
+</Block>
+
+<script is:inline>
+  // Track which FAQ items get opened. Reveals what objections prospects have.
+  document.addEventListener('toggle', function (e) {
+    var el = e.target;
+    if (!el || el.tagName !== 'DETAILS' || !el.hasAttribute('data-faq-index')) return;
+    if (el.open && window.rivett && window.rivett.track) {
+      window.rivett.track('faq_opened', {
+        index: Number(el.getAttribute('data-faq-index')),
+        question: (el.querySelector('summary')?.innerText || '').trim().slice(0, 120),
+        path: window.location.pathname,
+      });
+    }
+  }, true);
+</script>
+
+<style>
+  .head { margin-bottom: 1.5rem; }
+  .num { font-family: var(--mono, 'DM Mono', monospace); font-size: 0.75rem; opacity: 0.6; margin-bottom: 0.5rem; }
+  h2 { font-size: clamp(1.5rem, 3vw, 2.25rem); line-height: 1.15; font-weight: 600; margin: 0; }
+  .ital { font-family: var(--serif, 'Newsreader', Georgia, serif); font-style: italic; font-weight: 400; }
+  .items { display: flex; flex-direction: column; gap: 0.5rem; }
+  details { border: 1px solid var(--ink-dim, #3A4658); border-radius: 4px; padding: 0.75rem 1rem; }
+  summary { cursor: pointer; font-weight: 600; }
+  details[open] summary { margin-bottom: 0.5rem; }
+  details p { margin: 0; line-height: 1.5; opacity: 0.85; }
+</style>

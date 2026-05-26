@@ -1,0 +1,122 @@
+---
+// /audit — public HQ landing page for the audit story.
+//
+// Composed of modular blocks under src/components/audit/. Copy below is
+// PLACEHOLDER — Fred will replace each block's strings with his voice. The
+// structural scaffolding (block composition, tracking attributes, CTA wiring)
+// is locked in so Claude design can restyle each block independently without
+// touching content or analytics.
+//
+// All CTAs route to /diagnostic (the booking flow). Each CTA has data-cta
+// so it flows through the global cta_clicked event handler.
+
+import Base from '../../layouts/Base.astro';
+import HeroBlock from '../../components/audit/HeroBlock.astro';
+import ProblemBlock from '../../components/audit/ProblemBlock.astro';
+import HowBlock from '../../components/audit/HowBlock.astro';
+import ProofBlock from '../../components/audit/ProofBlock.astro';
+import CTABlock from '../../components/audit/CTABlock.astro';
+import FAQBlock from '../../components/audit/FAQBlock.astro';
+
+const title = 'The Rivett Audit · Find the revenue leak';
+const description = 'Nine-dimension read on any operator-led B2B domain. Crawl, schema, ads, deliverability, page speed, conversion path. The audit Rivett uses on every prospect.';
+
+// Placeholder copy — Fred will replace.
+const hero = {
+  kicker: 'The Rivett audit',
+  headline: 'Nine reads on your domain.',
+  italicTail: 'One verdict.',
+  dek: 'Crawl, schema, ads, deliverability, page speed, conversion path. The same audit Rivett runs on every prospect, made public.',
+  primaryCtaLabel: 'Book a diagnostic',
+  primaryCtaHref: '/diagnostic',
+  primaryCtaName: 'hq_hero_book_diagnostic',
+  secondaryCtaLabel: 'See an example memo',
+  secondaryCtaHref: '/audit/v3',
+  secondaryCtaName: 'hq_hero_view_example',
+};
+
+const problem = {
+  sectionNumber: '01',
+  headline: 'Most operators pay for clicks then lose them.',
+  italicTail: 'Quietly.',
+  intro: 'Acquisition gets the budget. The conversion path gets ignored. The leak is between the ad click and the form submit, and it never shows up in the dashboard until someone external reads the site cold.',
+  bullets: [
+    { heading: 'Page speed', body: 'Mobile LCP over 4s means Google deprioritizes the page and the user bounces before render. Every paid click that lands there is wasted.' },
+    { heading: 'Schema + crawl', body: 'No structured data, no canonical tags, broken sitemap. Google can crawl you but cannot understand you. Ranking ceiling is set artificially low.' },
+    { heading: 'Deliverability', body: 'SPF/DKIM/DMARC misconfigured. Cold outreach lands in spam, warm sequences hit promotions tab. The list is fine, the delivery is broken.' },
+    { heading: 'Conversion path', body: 'Three CTAs above the fold all leading different places. Form has nine fields. Booking flow opens a new tab and breaks tracking.' },
+  ],
+};
+
+const how = {
+  sectionNumber: '02',
+  headline: 'Nine dimensions.',
+  italicTail: 'One verdict each.',
+  intro: 'Every audit covers the same nine reads. Each gets a grade, a checked-against benchmark, and a one-line note on what to fix first.',
+  dimensions: [
+    { code: 'D · 01', title: 'How Google sees you', body: 'Sitemap, robots, canonical, schema, og tags. The crawler view.' },
+    { code: 'D · 02', title: 'Page speed', body: 'Core Web Vitals (LCP, INP, CLS) measured against the 2.5s/200ms/0.1 thresholds.' },
+    { code: 'D · 03', title: 'Mobile experience', body: 'Viewport, tap targets, font scaling, layout shifts on mobile devices.' },
+    { code: 'D · 04', title: 'Conversion path', body: 'Landing page audit on the URLs your ads point to. CTA clarity, friction, dead clicks.' },
+    { code: 'D · 05', title: 'Ad spend hygiene', body: 'Visible Google Ads campaigns, landing-page consistency, ad-to-page friction.' },
+    { code: 'D · 06', title: 'Deliverability', body: 'SPF, DKIM, DMARC, BIMI. Whether your cold emails actually arrive.' },
+    { code: 'D · 07', title: 'AI search visibility', body: 'How LLM crawlers index you. llms.txt, structured content, machine-readable signals.' },
+    { code: 'D · 08', title: 'Tech stack', body: 'What you are running, what is missing, what is misconfigured.' },
+    { code: 'D · 09', title: 'Brand presence', body: 'How a human (or an AI) sees you on first impression. Hero clarity, social proof, trust signals.' },
+  ],
+};
+
+const proof = {
+  sectionNumber: '03',
+  headline: 'Already running, already finding leaks.',
+  italicTail: 'Some examples.',
+  intro: 'PLACEHOLDER — Fred to drop in real numbers, an example screenshot or two, and any client quote that has cleared.',
+  stats: [
+    { value: '40+', label: 'Memos delivered this month' },
+    { value: '9', label: 'Dimensions per audit' },
+    { value: '~30s', label: 'Median engaged read' },
+    { value: 'Free', label: 'For prospects we already work with' },
+  ],
+  exampleMemoUrl: '/audit/v3',
+  exampleMemoLabel: 'See an interactive audit',
+};
+
+const cta = {
+  sectionNumber: '04',
+  headline: 'Want the read on your domain.',
+  italicTail: 'Twenty minutes.',
+  body: 'Book the diagnostic and we walk through the audit live on your site. No deck, no sales motion. You bring questions, I bring the read.',
+  primaryCtaLabel: 'Book a diagnostic',
+  primaryCtaHref: '/diagnostic',
+  primaryCtaName: 'hq_cta_book_diagnostic',
+  secondaryCtaLabel: 'Email instead',
+  secondaryCtaHref: 'mailto:fred@rivett.tech?subject=Audit%20request',
+  secondaryCtaName: 'hq_cta_email',
+  signature: 'Fred Style · rivett.tech',
+};
+
+const faq = {
+  sectionNumber: '05',
+  headline: 'What people ask.',
+  italicTail: 'Honestly.',
+  items: [
+    { q: 'How is this different from a Lighthouse report?', a: 'PLACEHOLDER — Fred to answer. Lighthouse is one dimension of nine. We also read the conversion path, the deliverability, the AI surface, and the brand presence as an external read.' },
+    { q: 'Will you fix the issues or just point them out?', a: 'PLACEHOLDER — clarify the scope between audit, diagnostic, and full engagement.' },
+    { q: 'Is this for SMB only?', a: 'PLACEHOLDER — define the ICP: 10-150 person operator-led B2B companies. Not enterprise. Not pre-revenue.' },
+    { q: 'How long does an audit take?', a: 'PLACEHOLDER — 24-48 hours from sign-off to delivery. Diagnostic call slot can be the same week.' },
+    { q: 'Do I get the report?', a: 'PLACEHOLDER — yes, the memo is yours to keep regardless of whether we end up working together.' },
+  ],
+};
+---
+<Base
+  title={title}
+  description={description}
+  posthogCapturePageview={true}
+>
+  <HeroBlock {...hero} />
+  <ProblemBlock {...problem} />
+  <HowBlock {...how} />
+  <ProofBlock {...proof} />
+  <CTABlock {...cta} />
+  <FAQBlock {...faq} />
+</Base>

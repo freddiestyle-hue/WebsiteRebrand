@@ -1,0 +1,51 @@
+---
+import Block from './Block.astro';
+
+interface Bullet {
+  heading: string;
+  body: string;
+}
+
+interface Props {
+  sectionNumber?: string;
+  headline: string;
+  italicTail?: string;
+  intro?: string;
+  bullets?: Bullet[];
+}
+
+const { sectionNumber = '01', headline, italicTail, intro, bullets = [] } = Astro.props;
+---
+<Block id="problem" label="Problem">
+  <div class="head">
+    <div class="num">§ {sectionNumber}</div>
+    <h2>
+      {headline}
+      {italicTail && <> <span class="ital">{italicTail}</span></>}
+    </h2>
+  </div>
+  {intro && <p class="intro">{intro}</p>}
+  {bullets.length > 0 && (
+    <ul class="bullets">
+      {bullets.map((b) => (
+        <li>
+          <h3>{b.heading}</h3>
+          <p>{b.body}</p>
+        </li>
+      ))}
+    </ul>
+  )}
+</Block>
+
+<style>
+  .head { margin-bottom: 1.5rem; }
+  .num { font-family: var(--mono, 'DM Mono', monospace); font-size: 0.75rem; opacity: 0.6; margin-bottom: 0.5rem; }
+  h2 { font-size: clamp(1.5rem, 3vw, 2.25rem); line-height: 1.15; font-weight: 600; margin: 0; }
+  .ital { font-family: var(--serif, 'Newsreader', Georgia, serif); font-style: italic; font-weight: 400; }
+  .intro { font-size: 1.05rem; line-height: 1.5; opacity: 0.85; max-width: 64ch; margin: 0 0 1.5rem; }
+  .bullets { list-style: none; padding: 0; margin: 0; display: grid; gap: 1.25rem; grid-template-columns: 1fr; }
+  .bullets li { padding: 1rem; border: 1px solid var(--ink-dim, #3A4658); border-radius: 4px; }
+  .bullets h3 { font-size: 1rem; font-weight: 600; margin: 0 0 0.5rem; }
+  .bullets p { margin: 0; font-size: 0.95rem; line-height: 1.45; opacity: 0.85; }
+  @media (min-width: 720px) { .bullets { grid-template-columns: 1fr 1fr; } }
+</style>

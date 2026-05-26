@@ -1,0 +1,65 @@
+---
+import Block from './Block.astro';
+
+interface Stat {
+  label: string;
+  value: string;
+}
+
+interface Props {
+  sectionNumber?: string;
+  headline: string;
+  italicTail?: string;
+  intro?: string;
+  stats?: Stat[];
+  exampleMemoUrl?: string;
+  exampleMemoLabel?: string;
+}
+
+const {
+  sectionNumber = '03',
+  headline,
+  italicTail,
+  intro,
+  stats = [],
+  exampleMemoUrl,
+  exampleMemoLabel = 'See an example memo',
+} = Astro.props;
+---
+<Block id="proof" label="Proof">
+  <div class="head">
+    <div class="num">§ {sectionNumber}</div>
+    <h2>
+      {headline}
+      {italicTail && <> <span class="ital">{italicTail}</span></>}
+    </h2>
+  </div>
+  {intro && <p class="intro">{intro}</p>}
+  {stats.length > 0 && (
+    <div class="stats">
+      {stats.map((s) => (
+        <div class="stat">
+          <div class="v">{s.value}</div>
+          <div class="l">{s.label}</div>
+        </div>
+      ))}
+    </div>
+  )}
+  {exampleMemoUrl && (
+    <a class="example" data-cta="hq_view_example_memo" href={exampleMemoUrl}>{exampleMemoLabel} →</a>
+  )}
+</Block>
+
+<style>
+  .head { margin-bottom: 1.5rem; }
+  .num { font-family: var(--mono, 'DM Mono', monospace); font-size: 0.75rem; opacity: 0.6; margin-bottom: 0.5rem; }
+  h2 { font-size: clamp(1.5rem, 3vw, 2.25rem); line-height: 1.15; font-weight: 600; margin: 0; }
+  .ital { font-family: var(--serif, 'Newsreader', Georgia, serif); font-style: italic; font-weight: 400; }
+  .intro { font-size: 1.05rem; line-height: 1.5; opacity: 0.85; max-width: 64ch; margin: 0 0 1.5rem; }
+  .stats { display: grid; gap: 1rem; grid-template-columns: 1fr 1fr; margin-bottom: 1.5rem; }
+  .stat { padding: 1rem; border: 1px solid var(--ink-dim, #3A4658); border-radius: 4px; text-align: left; }
+  .v { font-size: 1.75rem; font-weight: 700; line-height: 1; margin-bottom: 0.25rem; }
+  .l { font-size: 0.85rem; opacity: 0.7; }
+  .example { display: inline-block; padding: 0.5rem 0; font-weight: 500; text-decoration: underline; }
+  @media (min-width: 720px) { .stats { grid-template-columns: repeat(4, 1fr); } }
+</style>

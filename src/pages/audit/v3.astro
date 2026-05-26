@@ -284,7 +284,22 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
 <link rel="stylesheet" href="/audit/v3-css/kit.css" />
 <link rel="stylesheet" href="/audit/v3-css/audit.css" />
 <link rel="stylesheet" href="/audit/v3-css/audit-page.css" />
-<PostHog capturePageview={true} />
+<PostHog
+  capturePageview={true}
+  identifyAs={memo && v3Slug ? v3Slug : undefined}
+  personProperties={memo ? {
+    type: 'memo_v3',
+    domain: memo.domain,
+    company_name: memo.companyName ?? null,
+    industry: memo.industry ?? null,
+    score_numeric: memo.benchmark?.scoreNumeric ?? null,
+    percentile: memo.benchmark?.percentile ?? null,
+    first_viewed_at: new Date().toISOString(),
+    from_cache: fromCache,
+  } : undefined}
+  groupKey={memo?.domain}
+  groupType="company"
+/>
 <style>
   /* Wordmark image (matches site header/footer behavior) */
   .wordmark img { display: block; width: auto; height: 1em; }
@@ -640,7 +655,7 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
           <span class="stamp stamp--on-ink">20 min · no deck</span>
           <h2 style="font-family: var(--grotesk); font-weight: 800; font-size: clamp(36px, 5vw, 64px); line-height: 1; letter-spacing: var(--track-display); margin: var(--sp-6) 0 var(--sp-6); color: var(--on-ink);">Pick a time. Twenty minutes. <span class="ital" style="font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--on-ink-italic);">I'll bring the rest of the read.</span></h2>
           <p style="font-family: var(--serif); font-style: italic; font-size: clamp(18px, 1.6vw, 22px); line-height: 1.5; color: var(--on-ink-italic); max-width: 720px; margin: 0 0 var(--sp-8);">AI citation probe, benchmark percentile, deliverability against a live mailbox. The numbers the in-browser scan can't reach.</p>
-          <a class="btn btn--inv" href="https://cal.com/fred-style/discovery?overlayCalendar=true">Book a call <span aria-hidden="true">→</span></a>
+          <a class="btn btn--inv" data-cta="v3_book_call" href="https://cal.com/fred-style/discovery?overlayCalendar=true">Book a call <span aria-hidden="true">→</span></a>
         </div>
       </div>
 
@@ -833,7 +848,7 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
                   <p>AI citation probe across eight category prompts. Benchmark percentile against tracked competitors in your set. Live deliverability test against a seeded inbox. Twelve-week instrumentation plan.</p>
                 </div>
                 <div class="stack">
-                  <a class="btn btn--pri" href="https://cal.com/fred-style/discovery?overlayCalendar=true">Book a call <span aria-hidden="true">→</span></a>
+                  <a class="btn btn--pri" data-cta="v3_book_call_primary" href="https://cal.com/fred-style/discovery?overlayCalendar=true">Book a call <span aria-hidden="true">→</span></a>
                 </div>
               </div>
             </div>
@@ -849,7 +864,7 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
         <h2>Pick a time. Twenty minutes. <span class="ital">I'll bring the rest of the read.</span></h2>
         <p>AI citation probe, benchmark percentile, deliverability against a live mailbox. The numbers the in-browser scan can't reach.</p>
         <div class="end-actions">
-          <a class="btn btn--inv" href="https://cal.com/fred-style/discovery?overlayCalendar=true">Book a call <span aria-hidden="true">→</span></a>
+          <a class="btn btn--inv" data-cta="v3_book_call" href="https://cal.com/fred-style/discovery?overlayCalendar=true">Book a call <span aria-hidden="true">→</span></a>
           <a class="btn btn--sec" href="/audit/v3" style="border-color: var(--on-ink-line-2); color: var(--on-ink);">Audit another domain</a>
         </div>
       </div>

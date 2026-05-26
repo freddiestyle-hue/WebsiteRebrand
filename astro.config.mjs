@@ -32,6 +32,11 @@ const staticSitemapRoutes = {
     changefreq: 'monthly',
     priority: 0.8,
   },
+  '/audit': {
+    file: 'src/pages/audit/index.astro',
+    changefreq: 'weekly',
+    priority: 0.9,
+  },
 };
 
 /** @param {string | undefined} value */

@@ -81,7 +81,21 @@ const pageTitle = memo
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&family=Newsreader:ital,wght@0,400;0,500;1,400;1,500&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="/audit/memo.css" />
-<PostHog capturePageview={true} />
+<PostHog
+  capturePageview={true}
+  identifyAs={memo ? slug : undefined}
+  personProperties={memo ? {
+    type: 'memo',
+    domain: memo.domain,
+    company_name: memo.companyName ?? null,
+    industry: memo.industry ?? null,
+    score_numeric: memo.benchmark?.scoreNumeric ?? null,
+    percentile: memo.benchmark?.percentile ?? null,
+    first_viewed_at: new Date().toISOString(),
+  } : undefined}
+  groupKey={memo?.domain}
+  groupType="company"
+/>
 </head>
 <body>
 
@@ -285,8 +299,8 @@ const pageTitle = memo
           </h2>
           <p>No deck, no sales motion. You bring questions, I bring the read.</p>
           <div class="actions">
-            <a class="btn btn--inv" href="https://cal.com/fred-style/discovery?overlayCalendar=true">Book a call <svg class="ic" style="width:14px;height:14px"><use href="#ic-arrow"/></svg></a>
-            <a class="btn" href={`mailto:fred@rivett.tech?subject=${encodeURIComponent(`Re ${memo.domain} teardown`)}`}>Reply by email</a>
+            <a class="btn btn--inv" data-cta="memo_book_call" href="https://cal.com/fred-style/discovery?overlayCalendar=true">Book a call <svg class="ic" style="width:14px;height:14px"><use href="#ic-arrow"/></svg></a>
+            <a class="btn" data-cta="memo_reply_email" href={`mailto:fred@rivett.tech?subject=${encodeURIComponent(`Re ${memo.domain} teardown`)}`}>Reply by email</a>
           </div>
           <div class="sig">
             <b>Fred Style</b>

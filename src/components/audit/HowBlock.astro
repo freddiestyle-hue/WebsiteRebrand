@@ -1,0 +1,52 @@
+---
+import Block from './Block.astro';
+
+interface Dimension {
+  code: string;
+  title: string;
+  body: string;
+}
+
+interface Props {
+  sectionNumber?: string;
+  headline: string;
+  italicTail?: string;
+  intro?: string;
+  dimensions: Dimension[];
+}
+
+const { sectionNumber = '02', headline, italicTail, intro, dimensions } = Astro.props;
+---
+<Block id="how" label="How (9 dimensions)">
+  <div class="head">
+    <div class="num">§ {sectionNumber}</div>
+    <h2>
+      {headline}
+      {italicTail && <> <span class="ital">{italicTail}</span></>}
+    </h2>
+  </div>
+  {intro && <p class="intro">{intro}</p>}
+  <div class="grid">
+    {dimensions.map((d) => (
+      <div class="dim">
+        <div class="code">{d.code}</div>
+        <h3>{d.title}</h3>
+        <p>{d.body}</p>
+      </div>
+    ))}
+  </div>
+</Block>
+
+<style>
+  .head { margin-bottom: 1.5rem; }
+  .num { font-family: var(--mono, 'DM Mono', monospace); font-size: 0.75rem; opacity: 0.6; margin-bottom: 0.5rem; }
+  h2 { font-size: clamp(1.5rem, 3vw, 2.25rem); line-height: 1.15; font-weight: 600; margin: 0; }
+  .ital { font-family: var(--serif, 'Newsreader', Georgia, serif); font-style: italic; font-weight: 400; }
+  .intro { font-size: 1.05rem; line-height: 1.5; opacity: 0.85; max-width: 64ch; margin: 0 0 1.5rem; }
+  .grid { display: grid; gap: 1rem; grid-template-columns: 1fr; }
+  .dim { padding: 1rem; border: 1px solid var(--ink-dim, #3A4658); border-radius: 4px; }
+  .code { font-family: var(--mono, 'DM Mono', monospace); font-size: 0.7rem; opacity: 0.6; margin-bottom: 0.25rem; }
+  .dim h3 { font-size: 1rem; font-weight: 600; margin: 0 0 0.4rem; }
+  .dim p { margin: 0; font-size: 0.9rem; line-height: 1.4; opacity: 0.85; }
+  @media (min-width: 720px) { .grid { grid-template-columns: 1fr 1fr 1fr; } }
+</style>

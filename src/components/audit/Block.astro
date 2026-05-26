@@ -1,0 +1,65 @@
+---
+// Base wrapper for every audit landing block.
+//
+// Wraps content with a tracked section that fires `block_viewed` once the
+// block scrolls into the viewport. Each block gets a `data-block` id so the
+// analytics show which sections engaged users see and where they drop off.
+// All semantic / structural styling lives on each block; Block itself is a
+// thin shell so Claude design can restyle each block independently.
+
+interface Props {
+  id: string;
+  label?: string;
+  /** Threshold 0-1 of how much of the block must be visible to fire the event. */
+  threshold?: number;
+}
+
+const { id, label, threshold = 0.4 } = Astro.props;
+---
+<section class="block" data-block={id} data-block-label={label ?? id} data-block-threshold={threshold}>
+  <slot />
+</section>
+
+<script is:inline>
+  (function () {
+    function init() {
+      if (!('IntersectionObserver' in window)) return;
+      var seen = {};
+      var blocks = document.querySelectorAll('section.block[data-block]');
+      if (!blocks.length) return;
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (!entry.isIntersecting) return;
+          var el = entry.target;
+          var id = el.getAttribute('data-block');
+          if (seen[id]) return;
+          seen[id] = true;
+          if (window.rivett && window.rivett.track) {
+            window.rivett.track('block_viewed', {
+              block: id,
+              label: el.getAttribute('data-block-label'),
+              path: window.location.pathname,
+            });
+          }
+        });
+      }, { threshold: 0.4 });
+      blocks.forEach(function (b) { io.observe(b); });
+    }
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+      setTimeout(init, 0);
+    } else {
+      document.addEventListener('DOMContentLoaded', init);
+    }
+  })();
+</script>
+
+<style>
+  .block {
+    padding: 4rem 1.5rem;
+    max-width: 920px;
+    margin: 0 auto;
+  }
+  .block + .block {
+    border-top: 1px solid var(--ink-dim, #3A4658);
+  }
+</style>
