@@ -29,30 +29,14 @@ import TopProspectsTable from '../components/hq/TopProspectsTable.astro';
 import CtaClicksFeed from '../components/hq/CtaClicksFeed.astro';
 
 // --- Auth gating ---
-const HQ_KEY = process.env.HQ_KEY || import.meta.env.HQ_KEY;
+// Trim everything in case env vars or cookies carry stray whitespace/newlines
+// (Vercel CLI added the previous value with a trailing \n from `echo`).
+const HQ_KEY = (process.env.HQ_KEY || import.meta.env.HQ_KEY || '').trim();
 
 const url = new URL(Astro.request.url);
-const providedKey = url.searchParams.get('key');
+const providedKey = (url.searchParams.get('key') || '').trim();
 const cookieHeader = Astro.request.headers.get('cookie') || '';
 const cookieKey = (cookieHeader.match(/(?:^|;\s*)rivett_hq_key=([^;]+)/)?.[1] ?? '').trim();
-
-// TEMP: expose auth state when ?debug=peek passed (no secret values revealed)
-const showDebug = url.searchParams.get('debug') === 'peek';
-const debugState = {
-  hq_key_set: Boolean(HQ_KEY),
-  hq_key_len: HQ_KEY ? HQ_KEY.length : 0,
-  hq_key_first2: HQ_KEY ? HQ_KEY.slice(0, 2) : null,
-  provided_key_set: Boolean(providedKey),
-  provided_key_len: providedKey ? providedKey.length : 0,
-  provided_key_first2: providedKey ? providedKey.slice(0, 2) : null,
-  cookie_key_set: Boolean(cookieKey),
-  match_provided: Boolean(HQ_KEY && providedKey && providedKey === HQ_KEY),
-  match_cookie: Boolean(HQ_KEY && cookieKey && cookieKey === HQ_KEY),
-  process_env_keys_count: Object.keys(process.env).length,
-  has_posthog: Boolean(process.env.POSTHOG_PERSONAL_API_KEY),
-  has_hq_via_process: Boolean(process.env.HQ_KEY),
-  has_hq_via_import_meta: Boolean(import.meta.env.HQ_KEY),
-};
 
 let authed = false;
 let setCookie = false;
@@ -274,17 +258,10 @@ const renderedAt = new Date().toISOString();
 </style>
 </head>
 <body>
-{!authed && !showDebug && (
+{!authed && (
   <div class="nf">
     <h1>404</h1>
     <p>Nothing here.</p>
-  </div>
-)}
-
-{showDebug && (
-  <div style="padding:2rem;font-family:ui-monospace,monospace;font-size:13px;">
-    <h2>HQ debug peek</h2>
-    <pre>{JSON.stringify(debugState, null, 2)}</pre>
   </div>
 )}
 
