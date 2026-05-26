@@ -3,12 +3,10 @@
 //
 // Auth model: HQ_KEY env var is the shared secret. Visitors can authenticate
 // via `?key=<secret>` (sets a cookie) or by carrying the cookie from a prior
-// authenticated visit. Wrong key or no key returns 404 — not 403, so the
-// page's existence isn't even confirmed to unauthenticated probers.
+// authenticated visit. Wrong key or no key returns 404.
 //
-// Data: server-rendered on each request. Hits PostHog HogQL API in parallel.
-// Expect a 1-3s render time. No caching at the Astro layer for now; Vercel
-// edge can layer a short cache if traffic ever justifies it.
+// Data: server-rendered. All PostHog queries go through a Redis cache so
+// warm-cache renders are sub-second. Daily cron pre-warms the hot ranges.
 
 export const prerender = false;
 
@@ -36,7 +34,6 @@ import {
 } from '../utils/posthog/query';
 import { parseDateRange } from '../utils/posthog/dateRange';
 import SectionHeader from '../components/hq/SectionHeader.astro';
-import MetricCard from '../components/hq/MetricCard.astro';
 import RecentReadsFeed from '../components/hq/RecentReadsFeed.astro';
 import TopProspectsTable from '../components/hq/TopProspectsTable.astro';
 import CtaClicksFeed from '../components/hq/CtaClicksFeed.astro';
@@ -49,8 +46,6 @@ import ActivityTimeline from '../components/hq/ActivityTimeline.astro';
 import DateRangeNav from '../components/hq/DateRangeNav.astro';
 
 // --- Auth gating ---
-// Trim everything in case env vars or cookies carry stray whitespace/newlines
-// (Vercel CLI added the previous value with a trailing \n from `echo`).
 const HQ_KEY = (process.env.HQ_KEY || import.meta.env.HQ_KEY || '').trim();
 
 const url = new URL(Astro.request.url);
@@ -68,8 +63,6 @@ if (HQ_KEY && providedKey && providedKey === HQ_KEY) {
 }
 
 if (setCookie) {
-  // 1-year persistent cookie. SameSite=Lax so links from external sites still
-  // carry it back. HttpOnly so JS can't read or exfiltrate it.
   Astro.response.headers.set(
     'Set-Cookie',
     `rivett_hq_key=${HQ_KEY}; Path=/; Max-Age=31536000; HttpOnly; SameSite=Lax; Secure`
@@ -126,7 +119,17 @@ if (authed) {
   }
 }
 
-const renderedAt = new Date().toISOString();
+const sections = [
+  { id: 'recent',    num: '01', label: 'Recent reads' },
+  { id: 'prospects', num: '02', label: 'Prospects' },
+  { id: 'ctas',      num: '03', label: 'CTA clicks' },
+  { id: 'blog',      num: '04', label: 'Blog' },
+  { id: 'countries', num: '05', label: 'Countries' },
+  { id: 'cities',    num: '06', label: 'Cities' },
+  { id: 'devices',   num: '07', label: 'Devices' },
+  { id: 'sources',   num: '08', label: 'Sources' },
+  { id: 'activity',  num: '09', label: 'Activity' },
+];
 ---
 <!doctype html>
 <html lang="en">
@@ -154,28 +157,57 @@ const renderedAt = new Date().toISOString();
     --grotesk: 'Inter Tight', system-ui, sans-serif;
     --serif: 'Newsreader', Georgia, serif;
     --mono: 'DM Mono', ui-monospace, monospace;
+    --rail-w: 220px;
   }
   * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; background: var(--paper); color: var(--ink); font-family: var(--grotesk); -webkit-font-smoothing: antialiased; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--grotesk);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
   a { color: inherit; }
-  .page { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
-  @media (max-width: 720px) { .page { padding: 1.25rem 1rem 3rem; } }
+  button { font: inherit; cursor: pointer; }
 
-  /* Top bar */
-  .topbar {
+  /* ============ APP SHELL ============ */
+  .app {
+    display: grid;
+    grid-template-columns: var(--rail-w) 1fr;
+    min-height: 100vh;
+  }
+  .rail {
+    border-right: 1px solid var(--line);
+    background: var(--paper-2);
+    padding: 1.25rem 0.85rem;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    overflow-y: auto;
+  }
+  .main {
+    background: var(--paper);
+    padding: 0;
+    min-width: 0;
+  }
+
+  /* ============ RAIL ============ */
+  .rail-top {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding-bottom: 1.25rem;
-    border-bottom: 1px solid var(--line);
-    margin-bottom: 2rem;
+    padding: 0 0.4rem;
   }
   .wordmark {
     display: inline-flex;
     align-items: baseline;
     gap: 0.05em;
     font-weight: 700;
-    font-size: 1.25rem;
+    font-size: 1.15rem;
     letter-spacing: -0.04em;
     text-decoration: none;
     color: var(--ink);
@@ -187,54 +219,152 @@ const renderedAt = new Date().toISOString();
     border-radius: 999px;
     background: var(--accent);
   }
-  .topmeta {
+  .rail-label {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--ink-faint);
+    padding: 0.15rem 0.4rem;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+  }
+
+  .sections-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 0.05rem;
+    flex: 1;
+  }
+  .sec-link {
+    display: grid;
+    grid-template-columns: 2rem 1fr;
+    gap: 0.5rem;
+    align-items: center;
+    padding: 0.4rem 0.5rem;
+    text-decoration: none;
+    border-radius: 3px;
+    color: var(--ink-dim);
+    transition: background 80ms, color 80ms;
+  }
+  .sec-link:hover {
+    background: var(--paper-3);
+    color: var(--ink);
+  }
+  .sec-num {
     font-family: var(--mono);
     font-size: 0.7rem;
     color: var(--ink-faint);
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.05em;
+  }
+  .sec-name {
+    font-size: 0.85rem;
+    font-weight: 500;
   }
 
-  /* Hero kicker */
-  .hero {
-    margin-bottom: 2.5rem;
-  }
-  .hero .kicker {
+  .rail-foot {
+    padding: 0.5rem 0.4rem 0;
+    border-top: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
     font-family: var(--mono);
-    font-size: 0.75rem;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--ink-faint);
-    margin-bottom: 0.5rem;
+    font-size: 0.7rem;
   }
-  .hero h1 {
+  .rail-foot a {
+    color: var(--ink-dim);
+    text-decoration: none;
+    padding: 0.25rem 0.1rem;
+  }
+  .rail-foot a:hover { color: var(--accent-deep); }
+
+  /* ============ APP BAR (top of main) ============ */
+  .appbar {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: var(--paper);
+    border-bottom: 1px solid var(--line);
+    padding: 0.85rem 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .appbar-title {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+  }
+  .appbar-h1 {
+    font-size: 0.95rem;
+    font-weight: 600;
     margin: 0;
-    font-size: clamp(1.75rem, 4vw, 2.5rem);
-    font-weight: 700;
-    letter-spacing: -0.03em;
-    line-height: 1.05;
+    letter-spacing: -0.01em;
   }
-  .hero h1 .ital {
+  .appbar-sub {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink-faint);
+  }
+  .appbar-range {
+    margin-left: auto;
+  }
+
+  /* ============ MAIN CONTENT ============ */
+  .content {
+    max-width: 1100px;
+    padding: 1.5rem 2rem 4rem;
+  }
+
+  /* KPI strip — denser than 4 cards, more like ticker */
+  .kpis {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 2.5rem;
+    background: var(--paper);
+  }
+  .kpi {
+    padding: 1rem 1.25rem;
+    border-right: 1px solid var(--line);
+  }
+  .kpi:last-child { border-right: 0; }
+  .kpi-lab {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--ink-faint);
+    margin-bottom: 0.4rem;
+  }
+  .kpi-val {
+    font-size: 1.85rem;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.03em;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+  .kpi-sub {
+    margin-top: 0.35rem;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--ink-faint);
+  }
+  .kpi-hint {
+    margin-top: 0.3rem;
     font-family: var(--serif);
     font-style: italic;
-    font-weight: 400;
-    color: var(--ink-dim);
+    font-size: 0.78rem;
+    color: var(--ink-faint);
+    line-height: 1.3;
   }
-  .hero .dek {
-    margin: 0.75rem 0 0;
-    color: var(--ink-dim);
-    max-width: 60ch;
-    font-size: 0.95rem;
-  }
-
-  /* Metric grid */
-  .metrics {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.75rem;
-    margin-bottom: 2.5rem;
-  }
-  @media (min-width: 720px) { .metrics { grid-template-columns: repeat(4, 1fr); } }
 
   /* Sections */
   section.sec {
@@ -242,53 +372,17 @@ const renderedAt = new Date().toISOString();
     scroll-margin-top: 4.5rem;
   }
 
-  /* Sticky anchor nav */
-  .anchornav {
-    position: sticky;
-    top: 0;
-    z-index: 10;
-    background: var(--paper);
-    border-top: 1px solid var(--line);
-    border-bottom: 1px solid var(--line);
-    margin: 0 -1.5rem 2.5rem;
-    padding: 0.6rem 1.5rem;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.25rem 1.25rem;
+  /* Error banner */
+  .err {
+    margin: 1rem 0 2rem;
+    padding: 1rem;
+    border: 1px solid var(--line-strong);
+    background: var(--paper-2);
     font-family: var(--mono);
-    font-size: 0.75rem;
-  }
-  .anchornav a {
+    font-size: 0.8rem;
     color: var(--ink-dim);
-    text-decoration: none;
-    white-space: nowrap;
-    padding: 0.15rem 0;
   }
-  .anchornav a:hover { color: var(--accent-deep); }
-  @media (max-width: 720px) {
-    .anchornav { margin: 0 -1rem 1.5rem; padding: 0.5rem 1rem; }
-  }
-
-  /* Footer */
-  .foot {
-    margin-top: 4rem;
-    padding-top: 1.25rem;
-    border-top: 1px solid var(--line);
-    display: flex;
-    justify-content: space-between;
-    font-family: var(--mono);
-    font-size: 0.7rem;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: var(--ink-faint);
-    flex-wrap: wrap;
-    gap: 0.5rem;
-  }
-  .foot a {
-    color: var(--ink-dim);
-    text-decoration: underline;
-    text-decoration-color: var(--line-strong);
-  }
+  .err b { color: var(--ink); }
 
   /* 404 */
   .nf {
@@ -302,7 +396,6 @@ const renderedAt = new Date().toISOString();
     font-weight: 700;
     margin: 0;
     letter-spacing: -0.05em;
-    color: var(--ink);
   }
   .nf p {
     color: var(--ink-faint);
@@ -312,18 +405,65 @@ const renderedAt = new Date().toISOString();
     letter-spacing: 0.1em;
   }
 
-  /* Error banner */
-  .err {
-    margin: 1rem 0 2rem;
-    padding: 1rem;
-    border: 1px solid var(--line-strong);
-    border-radius: 4px;
-    background: var(--paper-2);
-    font-family: var(--mono);
-    font-size: 0.8rem;
-    color: var(--ink-dim);
+  /* ============ MOBILE (<960px) ============ */
+  @media (max-width: 960px) {
+    .app {
+      grid-template-columns: 1fr;
+    }
+    .rail {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      height: auto;
+      flex-direction: column;
+      padding: 0;
+      background: var(--paper);
+      border-right: 0;
+      border-bottom: 1px solid var(--line);
+      gap: 0;
+    }
+    .rail-top {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--line);
+    }
+    .sections-nav {
+      flex-direction: row;
+      overflow-x: auto;
+      gap: 0.3rem;
+      padding: 0.5rem 1rem;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .sections-nav::-webkit-scrollbar { display: none; }
+    .sec-link {
+      flex-shrink: 0;
+      grid-template-columns: auto auto;
+      padding: 0.35rem 0.7rem;
+      background: var(--paper-2);
+      border-radius: 999px;
+    }
+    .sec-link:hover { background: var(--paper-3); }
+    .sec-num { font-size: 0.65rem; }
+    .sec-name { font-size: 0.75rem; }
+    .rail-foot { display: none; }
+
+    .appbar {
+      padding: 0.65rem 1rem;
+      gap: 0.5rem;
+    }
+    .appbar-range { width: 100%; margin-left: 0; }
+
+    .content {
+      padding: 1rem 1rem 3rem;
+    }
+
+    .kpis {
+      grid-template-columns: 1fr 1fr;
+    }
+    .kpi { border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+    .kpi:nth-child(2n) { border-right: 0; }
+    .kpi:nth-last-child(-n+2) { border-bottom: 0; }
   }
-  .err b { color: var(--ink); }
 </style>
 </head>
 <body>
@@ -335,154 +475,166 @@ const renderedAt = new Date().toISOString();
 )}
 
 {authed && (
-  <div class="page">
-    <div class="topbar">
-      <a class="wordmark" href="/">rivett<span class="dot-mark" aria-hidden="true"></span></a>
-      <div class="topmeta">HQ · private</div>
-    </div>
-
-    <header class="hero">
-      <div class="kicker">Audit engagement · {range.label}</div>
-      <h1>
-        Who is reading what.
-        <span class="ital">And who is on the edge of booking.</span>
-      </h1>
-      <p class="dek">Real human reads on engagement sections. All traffic on geography (scanners flagged).</p>
-    </header>
-
-    <DateRangeNav range={range} />
-
-    <nav class="anchornav" aria-label="HQ sections">
-      <a href="#recent">§ 01 Reads</a>
-      <a href="#prospects">§ 02 Prospects</a>
-      <a href="#ctas">§ 03 CTAs</a>
-      <a href="#blog">§ 04 Blog</a>
-      <a href="#countries">§ 05 Countries</a>
-      <a href="#cities">§ 06 Cities</a>
-      <a href="#devices">§ 07 Devices</a>
-      <a href="#sources">§ 08 Sources</a>
-      <a href="#activity">§ 09 Activity</a>
-    </nav>
-
-    {fetchError && (
-      <div class="err">
-        <b>Could not load live data.</b> {fetchError}
+  <div class="app">
+    <aside class="rail" aria-label="HQ sections">
+      <div class="rail-top">
+        <a class="wordmark" href="/">rivett<span class="dot-mark" aria-hidden="true"></span></a>
+        <span class="rail-label">HQ</span>
       </div>
-    )}
-
-    {headline && (
-      <div class="metrics">
-        <MetricCard label="Memo views" value={headline.memo_views_7d} sub={range.label.toLowerCase()} />
-        <MetricCard label="Unique visitors" value={headline.unique_visitors_7d} sub={range.label.toLowerCase()} />
-        <MetricCard
-          label="Engaged reads"
-          value={headline.engaged_reads_7d}
-          sub="scrolled past 50%"
-          hint={headline.engaged_reads_7d === 0 ? 'No 50% scrolls yet. Will populate once next batch lands.' : undefined}
-        />
-        <MetricCard
-          label="CTA clicks"
-          value={headline.cta_clicks_7d}
-          sub="Book a call etc."
-          hint={headline.cta_clicks_7d === 0 ? 'No clicks yet. Tracking just shipped.' : undefined}
-        />
+      <nav class="sections-nav" aria-label="Section navigation">
+        {sections.map((s) => (
+          <a href={`#${s.id}`} class="sec-link">
+            <span class="sec-num">{s.num}</span>
+            <span class="sec-name">{s.label}</span>
+          </a>
+        ))}
+      </nav>
+      <div class="rail-foot">
+        <a href="/hq">↻ Refresh</a>
+        <a href="https://us.posthog.com/project/373899" target="_blank" rel="noopener">PostHog console ↗</a>
       </div>
-    )}
+    </aside>
 
-    <section class="sec" id="recent">
-      <SectionHeader
-        number="01"
-        title="Recent reads."
-        italicTail="Who looked at what, when."
-        meta={`${recent.length} session${recent.length === 1 ? '' : 's'} · ${range.label.toLowerCase()} · real humans only`}
-      />
-      <RecentReadsFeed reads={recent} />
-    </section>
+    <main class="main">
+      <div class="appbar">
+        <div class="appbar-title">
+          <h1 class="appbar-h1">Audit engagement</h1>
+          <span class="appbar-sub">{range.label}</span>
+        </div>
+        <div class="appbar-range">
+          <DateRangeNav range={range} />
+        </div>
+      </div>
 
-    <section class="sec" id="prospects">
-      <SectionHeader
-        number="02"
-        title="Top prospects."
-        italicTail="Ranked by engagement."
-        meta={`${top.length} prospect${top.length === 1 ? '' : 's'} · ${range.label.toLowerCase()} · click to expand sessions`}
-      />
-      <TopProspectsTable prospects={top} />
-    </section>
+      <div class="content">
+        {fetchError && (
+          <div class="err">
+            <b>Could not load live data.</b> {fetchError}
+          </div>
+        )}
 
-    <section class="sec" id="ctas">
-      <SectionHeader
-        number="03"
-        title="CTA clicks."
-        italicTail="Book-a-call moments."
-        meta={`${ctas.length} click${ctas.length === 1 ? '' : 's'} · ${range.label.toLowerCase()}`}
-      />
-      <CtaClicksFeed clicks={ctas} />
-    </section>
+        {headline && (
+          <div class="kpis">
+            <div class="kpi">
+              <div class="kpi-lab">Memo views</div>
+              <div class="kpi-val">{headline.memo_views_7d}</div>
+              <div class="kpi-sub">{range.label.toLowerCase()}</div>
+            </div>
+            <div class="kpi">
+              <div class="kpi-lab">Unique visitors</div>
+              <div class="kpi-val">{headline.unique_visitors_7d}</div>
+              <div class="kpi-sub">{range.label.toLowerCase()}</div>
+            </div>
+            <div class="kpi">
+              <div class="kpi-lab">Engaged reads</div>
+              <div class="kpi-val">{headline.engaged_reads_7d}</div>
+              <div class="kpi-sub">scrolled past 50%</div>
+              {headline.engaged_reads_7d === 0 && (
+                <div class="kpi-hint">No 50% scrolls yet. Will populate as outreach traffic grows.</div>
+              )}
+            </div>
+            <div class="kpi">
+              <div class="kpi-lab">CTA clicks</div>
+              <div class="kpi-val">{headline.cta_clicks_7d}</div>
+              <div class="kpi-sub">Book a call etc.</div>
+              {headline.cta_clicks_7d === 0 && (
+                <div class="kpi-hint">No clicks yet. Tracking shipped recently.</div>
+              )}
+            </div>
+          </div>
+        )}
 
-    <section class="sec" id="blog">
-      <SectionHeader
-        number="04"
-        title="Blog content."
-        italicTail="What is landing with the audience."
-        meta={`${blog.length} post${blog.length === 1 ? '' : 's'} · ${range.label.toLowerCase()} · real humans only`}
-      />
-      <TopBlogPostsTable posts={blog} />
-    </section>
+        <section class="sec" id="recent">
+          <SectionHeader
+            number="01"
+            title="Recent reads."
+            italicTail="Who looked at what, when."
+            meta={`${recent.length} session${recent.length === 1 ? '' : 's'} · ${range.label.toLowerCase()} · real humans only`}
+          />
+          <RecentReadsFeed reads={recent} />
+        </section>
 
-    <section class="sec" id="countries">
-      <SectionHeader
-        number="05"
-        title="Visitors by country."
-        italicTail="Where the traffic lands."
-        meta={`${countries.length} countries · ${range.label.toLowerCase()} · all traffic`}
-      />
-      <CountryTable countries={countries} />
-    </section>
+        <section class="sec" id="prospects">
+          <SectionHeader
+            number="02"
+            title="Top prospects."
+            italicTail="Ranked by engagement."
+            meta={`${top.length} prospect${top.length === 1 ? '' : 's'} · ${range.label.toLowerCase()} · click a row to expand sessions`}
+          />
+          <TopProspectsTable prospects={top} />
+        </section>
 
-    <section class="sec" id="cities">
-      <SectionHeader
-        number="06"
-        title="Cities and regions."
-        italicTail="Real humans vs scanners."
-        meta={`${cities.length} cities · ${range.label.toLowerCase()} · scanners and self flagged`}
-      />
-      <CityTable cities={cities} />
-    </section>
+        <section class="sec" id="ctas">
+          <SectionHeader
+            number="03"
+            title="CTA clicks."
+            italicTail="Book-a-call moments."
+            meta={`${ctas.length} click${ctas.length === 1 ? '' : 's'} · ${range.label.toLowerCase()}`}
+          />
+          <CtaClicksFeed clicks={ctas} />
+        </section>
 
-    <section class="sec" id="devices">
-      <SectionHeader
-        number="07"
-        title="Device and browser."
-        italicTail="How they read."
-        meta={`${devices.length} combinations · ${range.label.toLowerCase()} · real humans only`}
-      />
-      <DeviceTable rows={devices} />
-    </section>
+        <section class="sec" id="blog">
+          <SectionHeader
+            number="04"
+            title="Blog content."
+            italicTail="What is landing with the audience."
+            meta={`${blog.length} post${blog.length === 1 ? '' : 's'} · ${range.label.toLowerCase()} · real humans only`}
+          />
+          <TopBlogPostsTable posts={blog} />
+        </section>
 
-    <section class="sec" id="sources">
-      <SectionHeader
-        number="08"
-        title="Traffic sources."
-        italicTail="How they got here."
-        meta={`${sources.length} source${sources.length === 1 ? '' : 's'} · ${range.label.toLowerCase()} · real humans only`}
-      />
-      <ReferrerTable sources={sources} />
-    </section>
+        <section class="sec" id="countries">
+          <SectionHeader
+            number="05"
+            title="Visitors by country."
+            italicTail="Where the traffic lands."
+            meta={`${countries.length} countries · ${range.label.toLowerCase()} · all traffic`}
+          />
+          <CountryTable countries={countries} />
+        </section>
 
-    <section class="sec" id="activity">
-      <SectionHeader
-        number="09"
-        title="Activity over time."
-        italicTail="The pulse."
-        meta={`${activity.length} days · ${range.label.toLowerCase()} · real humans only`}
-      />
-      <ActivityTimeline days={activity} />
-    </section>
+        <section class="sec" id="cities">
+          <SectionHeader
+            number="06"
+            title="Cities and regions."
+            italicTail="Real humans vs scanners."
+            meta={`${cities.length} cities · ${range.label.toLowerCase()} · scanners and self flagged`}
+          />
+          <CityTable cities={cities} />
+        </section>
 
-    <footer class="foot">
-      <span>Rendered {new Date(renderedAt).toUTCString().replace('GMT', 'UTC')}</span>
-      <span><a href="/hq">Refresh</a> · <a href="https://us.posthog.com/project/373899" target="_blank" rel="noopener">PostHog console</a></span>
-    </footer>
+        <section class="sec" id="devices">
+          <SectionHeader
+            number="07"
+            title="Device and browser."
+            italicTail="How they read."
+            meta={`${devices.length} combinations · ${range.label.toLowerCase()} · real humans only`}
+          />
+          <DeviceTable rows={devices} />
+        </section>
+
+        <section class="sec" id="sources">
+          <SectionHeader
+            number="08"
+            title="Traffic sources."
+            italicTail="How they got here."
+            meta={`${sources.length} source${sources.length === 1 ? '' : 's'} · ${range.label.toLowerCase()} · real humans only`}
+          />
+          <ReferrerTable sources={sources} />
+        </section>
+
+        <section class="sec" id="activity">
+          <SectionHeader
+            number="09"
+            title="Activity over time."
+            italicTail="The pulse."
+            meta={`${activity.length} days · ${range.label.toLowerCase()} · real humans only`}
+          />
+          <ActivityTimeline days={activity} />
+        </section>
+      </div>
+    </main>
   </div>
 )}
 </body>
