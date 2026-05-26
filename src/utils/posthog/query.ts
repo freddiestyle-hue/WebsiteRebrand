@@ -20,7 +20,7 @@ const POSTHOG_HOST = 'https://us.posthog.com';
 const POSTHOG_PROJECT_ID = 373899;
 
 // Cache versioning lets us bust everything by bumping this string.
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2';
 
 // Lazy redis client. Construction is cheap but we only need one instance.
 // Use KV_REST_API_* env vars (set by Vercel KV / Upstash integration) since
@@ -317,39 +317,180 @@ export async function getTopProspects(range: DateRange, mode: TrafficMode = 'hum
 // --------------------------------------------------------------------------
 
 export interface HeadlineMetrics {
-  // Filtered counts (real humans only)
+  // Filtered counts (real humans only) — current period
   memo_views: number;
   unique_visitors: number;
   engaged_reads: number;
   cta_clicks: number;
-  // Raw counts (all traffic incl. scanners + self)
+  // Raw counts (all traffic incl. scanners + self) — current period
   memo_views_raw: number;
   unique_visitors_raw: number;
   engaged_reads_raw: number;
   cta_clicks_raw: number;
+  // Previous-period equivalents (humans only) — for % change comparison
+  memo_views_prev: number;
+  unique_visitors_prev: number;
+  engaged_reads_prev: number;
+  cta_clicks_prev: number;
+  // Daily sparkline arrays (humans only) — for the inline mini-chart
+  spark_memo_views: number[];
+  spark_unique_visitors: number[];
+  spark_engaged_reads: number[];
+  spark_cta_clicks: number[];
 }
 
 export async function getHeadlineMetrics(range: DateRange): Promise<HeadlineMetrics> {
   return cached('headlineMetrics', range, async () => {
-    const r = await runQuery(`
-      SELECT
-        countIf(event = '$pageview' AND properties.$pathname ILIKE '/audit/%' AND ${IS_HUMAN_EXPR}) AS memo_views,
-        uniq(if(event = '$pageview' AND properties.$pathname ILIKE '/audit/%' AND ${IS_HUMAN_EXPR}, distinct_id, NULL)) AS unique_visitors,
-        uniq(if(event = 'scroll_depth' AND toInt(properties.depth) >= 50 AND properties.$pathname ILIKE '/audit/%' AND ${IS_HUMAN_EXPR}, properties.$session_id, NULL)) AS engaged_reads,
-        countIf(event = 'cta_clicked' AND ${IS_HUMAN_EXPR}) AS cta_clicks,
-        countIf(event = '$pageview' AND properties.$pathname ILIKE '/audit/%') AS memo_views_raw,
-        uniq(if(event = '$pageview' AND properties.$pathname ILIKE '/audit/%', distinct_id, NULL)) AS unique_visitors_raw,
-        uniq(if(event = 'scroll_depth' AND toInt(properties.depth) >= 50 AND properties.$pathname ILIKE '/audit/%', properties.$session_id, NULL)) AS engaged_reads_raw,
-        countIf(event = 'cta_clicked') AS cta_clicks_raw
-      FROM events
-      WHERE ${hogqlRangeClause(range)}
-    `);
-    const o = rowsToObjects<HeadlineMetrics>(r);
-    return o[0] ?? {
+    // Compute the equivalent previous period: same length, ending where the
+    // current period begins. e.g. for last 14 days, prev = 14 days before that.
+    const fromMs = new Date(range.fromIso).getTime();
+    const toMs = new Date(range.toIso).getTime();
+    const spanMs = Math.max(toMs - fromMs, 24 * 60 * 60 * 1000);
+    const prevToIso = new Date(fromMs - 1).toISOString();
+    const prevFromIso = new Date(fromMs - spanMs).toISOString();
+
+    // Run three queries in parallel: current totals, previous-period totals,
+    // daily breakdown for sparklines.
+    const [currentRes, prevRes, dailyRes] = await Promise.all([
+      runQuery(`
+        SELECT
+          countIf(event = '$pageview' AND properties.$pathname ILIKE '/audit/%' AND ${IS_HUMAN_EXPR}) AS memo_views,
+          uniq(if(event = '$pageview' AND properties.$pathname ILIKE '/audit/%' AND ${IS_HUMAN_EXPR}, distinct_id, NULL)) AS unique_visitors,
+          uniq(if(event = 'scroll_depth' AND toInt(properties.depth) >= 50 AND properties.$pathname ILIKE '/audit/%' AND ${IS_HUMAN_EXPR}, properties.$session_id, NULL)) AS engaged_reads,
+          countIf(event = 'cta_clicked' AND ${IS_HUMAN_EXPR}) AS cta_clicks,
+          countIf(event = '$pageview' AND properties.$pathname ILIKE '/audit/%') AS memo_views_raw,
+          uniq(if(event = '$pageview' AND properties.$pathname ILIKE '/audit/%', distinct_id, NULL)) AS unique_visitors_raw,
+          uniq(if(event = 'scroll_depth' AND toInt(properties.depth) >= 50 AND properties.$pathname ILIKE '/audit/%', properties.$session_id, NULL)) AS engaged_reads_raw,
+          countIf(event = 'cta_clicked') AS cta_clicks_raw
+        FROM events
+        WHERE ${hogqlRangeClause(range)}
+      `),
+      runQuery(`
+        SELECT
+          countIf(event = '$pageview' AND properties.$pathname ILIKE '/audit/%' AND ${IS_HUMAN_EXPR}) AS memo_views,
+          uniq(if(event = '$pageview' AND properties.$pathname ILIKE '/audit/%' AND ${IS_HUMAN_EXPR}, distinct_id, NULL)) AS unique_visitors,
+          uniq(if(event = 'scroll_depth' AND toInt(properties.depth) >= 50 AND properties.$pathname ILIKE '/audit/%' AND ${IS_HUMAN_EXPR}, properties.$session_id, NULL)) AS engaged_reads,
+          countIf(event = 'cta_clicked' AND ${IS_HUMAN_EXPR}) AS cta_clicks
+        FROM events
+        WHERE timestamp >= toDateTime('${prevFromIso}') AND timestamp <= toDateTime('${prevToIso}')
+      `),
+      runQuery(`
+        SELECT
+          toDate(timestamp) AS day,
+          countIf(event = '$pageview' AND properties.$pathname ILIKE '/audit/%' AND ${IS_HUMAN_EXPR}) AS memo_views,
+          uniq(if(event = '$pageview' AND properties.$pathname ILIKE '/audit/%' AND ${IS_HUMAN_EXPR}, distinct_id, NULL)) AS unique_visitors,
+          uniq(if(event = 'scroll_depth' AND toInt(properties.depth) >= 50 AND properties.$pathname ILIKE '/audit/%' AND ${IS_HUMAN_EXPR}, properties.$session_id, NULL)) AS engaged_reads,
+          countIf(event = 'cta_clicked' AND ${IS_HUMAN_EXPR}) AS cta_clicks
+        FROM events
+        WHERE ${hogqlRangeClause(range)}
+        GROUP BY day
+        ORDER BY day
+      `),
+    ]);
+
+    const current = rowsToObjects<{
+      memo_views: number;
+      unique_visitors: number;
+      engaged_reads: number;
+      cta_clicks: number;
+      memo_views_raw: number;
+      unique_visitors_raw: number;
+      engaged_reads_raw: number;
+      cta_clicks_raw: number;
+    }>(currentRes)[0] ?? {
       memo_views: 0, unique_visitors: 0, engaged_reads: 0, cta_clicks: 0,
       memo_views_raw: 0, unique_visitors_raw: 0, engaged_reads_raw: 0, cta_clicks_raw: 0,
     };
+
+    const prev = rowsToObjects<{
+      memo_views: number;
+      unique_visitors: number;
+      engaged_reads: number;
+      cta_clicks: number;
+    }>(prevRes)[0] ?? { memo_views: 0, unique_visitors: 0, engaged_reads: 0, cta_clicks: 0 };
+
+    // Build per-day sparkline arrays, padded with 0 for missing days so the
+    // sparkline x-axis spans the full requested range.
+    const daily = rowsToObjects<{
+      day: string;
+      memo_views: number;
+      unique_visitors: number;
+      engaged_reads: number;
+      cta_clicks: number;
+    }>(dailyRes);
+    const byDay = new Map(daily.map((d) => [d.day, d]));
+    const span = Math.max(1, Math.min(rangeDaysSpan(range), 90));
+    const sparkV: number[] = [];
+    const sparkU: number[] = [];
+    const sparkE: number[] = [];
+    const sparkC: number[] = [];
+    const fromDate = new Date(range.fromIso);
+    for (let i = 0; i < span; i++) {
+      const d = new Date(fromDate);
+      d.setUTCDate(fromDate.getUTCDate() + i);
+      const key = d.toISOString().slice(0, 10);
+      const hit = byDay.get(key);
+      sparkV.push(hit?.memo_views ?? 0);
+      sparkU.push(hit?.unique_visitors ?? 0);
+      sparkE.push(hit?.engaged_reads ?? 0);
+      sparkC.push(hit?.cta_clicks ?? 0);
+    }
+
+    return {
+      ...current,
+      memo_views_prev: prev.memo_views,
+      unique_visitors_prev: prev.unique_visitors,
+      engaged_reads_prev: prev.engaged_reads,
+      cta_clicks_prev: prev.cta_clicks,
+      spark_memo_views: sparkV,
+      spark_unique_visitors: sparkU,
+      spark_engaged_reads: sparkE,
+      spark_cta_clicks: sparkC,
+    };
   });
+}
+
+// --------------------------------------------------------------------------
+// Query: active now — distinct sessions that fired any event in the last 30
+// minutes. For the real-time "viewing now" widget at the top of /hq.
+// Not cached: this needs live freshness.
+// --------------------------------------------------------------------------
+
+export interface ActiveNow {
+  active_sessions: number;
+  active_visitors: number;
+  recent_paths: { path: string; count: number }[];
+}
+
+export async function getActiveNow(): Promise<ActiveNow> {
+  const r = await runQuery(`
+    SELECT
+      uniq(properties.$session_id) AS active_sessions,
+      uniq(distinct_id) AS active_visitors
+    FROM events
+    WHERE timestamp >= now() - INTERVAL 30 MINUTE
+      ${REAL_HUMAN_WHERE}
+  `);
+  const head = rowsToObjects<{ active_sessions: number; active_visitors: number }>(r)[0] ?? {
+    active_sessions: 0,
+    active_visitors: 0,
+  };
+  const pathsRes = await runQuery(`
+    SELECT
+      properties.$pathname AS path,
+      count() AS count
+    FROM events
+    WHERE event = '$pageview'
+      AND timestamp >= now() - INTERVAL 30 MINUTE
+      ${REAL_HUMAN_WHERE}
+    GROUP BY path
+    ORDER BY count DESC
+    LIMIT 5
+  `);
+  return {
+    ...head,
+    recent_paths: rowsToObjects<{ path: string; count: number }>(pathsRes),
+  };
 }
 
 // --------------------------------------------------------------------------

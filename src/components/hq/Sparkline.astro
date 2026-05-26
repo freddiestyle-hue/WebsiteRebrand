@@ -1,0 +1,84 @@
+---
+interface Props {
+  data: number[];
+  width?: number;
+  height?: number;
+  color?: string;
+  fillOpacity?: number;
+  ariaLabel?: string;
+}
+
+const {
+  data,
+  width = 120,
+  height = 32,
+  color = 'currentColor',
+  fillOpacity = 0.12,
+  ariaLabel = 'Trend',
+} = Astro.props;
+
+const max = Math.max(...data, 1);
+const len = Math.max(data.length, 1);
+const PAD_X = 1;
+const PAD_Y = 2;
+const innerW = width - PAD_X * 2;
+const innerH = height - PAD_Y * 2;
+
+function xFor(i: number): number {
+  if (len === 1) return PAD_X + innerW / 2;
+  return PAD_X + (i / (len - 1)) * innerW;
+}
+function yFor(v: number): number {
+  if (max === 0) return height - PAD_Y;
+  return height - PAD_Y - (v / max) * innerH;
+}
+
+const linePath = data
+  .map((v, i) => `${i === 0 ? 'M' : 'L'} ${xFor(i).toFixed(1)},${yFor(v).toFixed(1)}`)
+  .join(' ');
+
+// Closed area: line path + down to baseline + back to start
+const baselineY = height - PAD_Y;
+const areaPath =
+  linePath +
+  ` L ${xFor(data.length - 1).toFixed(1)},${baselineY.toFixed(1)}` +
+  ` L ${xFor(0).toFixed(1)},${baselineY.toFixed(1)} Z`;
+
+const lastIdx = data.length - 1;
+const lastX = xFor(lastIdx);
+const lastY = yFor(data[lastIdx] ?? 0);
+---
+<svg
+  class="spark"
+  viewBox={`0 0 ${width} ${height}`}
+  preserveAspectRatio="none"
+  width={width}
+  height={height}
+  role="img"
+  aria-label={ariaLabel}
+>
+  {data.length > 0 && (
+    <>
+      <path d={areaPath} class="spark-area" style={`fill:${color};fill-opacity:${fillOpacity}`} />
+      <path d={linePath} class="spark-line" style={`stroke:${color}`} />
+      <circle cx={lastX} cy={lastY} r="2" class="spark-end" style={`fill:${color}`} />
+    </>
+  )}
+</svg>
+
+<style>
+  .spark {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+  .spark-line {
+    fill: none;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .spark-area {
+    stroke: none;
+  }
+</style>

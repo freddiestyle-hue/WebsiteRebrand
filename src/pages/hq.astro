@@ -21,6 +21,7 @@ import {
   getVisitorTech,
   getTrafficSources,
   getActivityTimeline,
+  getActiveNow,
   type RecentRead,
   type TopProspect,
   type HeadlineMetrics,
@@ -32,6 +33,7 @@ import {
   type TrafficSource,
   type ActivityDay,
   type TrafficMode,
+  type ActiveNow,
 } from '../utils/posthog/query';
 import { parseDateRange } from '../utils/posthog/dateRange';
 import SectionHeader from '../components/hq/SectionHeader.astro';
@@ -45,6 +47,8 @@ import DeviceTable from '../components/hq/DeviceTable.astro';
 import ReferrerTable from '../components/hq/ReferrerTable.astro';
 import ActivityTimeline from '../components/hq/ActivityTimeline.astro';
 import DateRangeNav from '../components/hq/DateRangeNav.astro';
+import KpiCard from '../components/hq/KpiCard.astro';
+import ActiveNowBadge from '../components/hq/ActiveNow.astro';
 
 // --- Auth gating ---
 const HQ_KEY = (process.env.HQ_KEY || import.meta.env.HQ_KEY || '').trim();
@@ -99,11 +103,12 @@ let cities: CityBreakdown[] = [];
 let devices: DeviceRow[] = [];
 let sources: TrafficSource[] = [];
 let activity: ActivityDay[] = [];
+let activeNow: ActiveNow | null = null;
 let fetchError: string | null = null;
 
 if (authed) {
   try {
-    const [h, r, t, c, b, co, ci, dv, sr, ac] = await Promise.all([
+    const [h, r, t, c, b, co, ci, dv, sr, ac, an] = await Promise.all([
       getHeadlineMetrics(range),
       getRecentReads(range, trafficMode),
       getTopProspects(range, trafficMode),
@@ -114,6 +119,7 @@ if (authed) {
       getVisitorTech(range, trafficMode),
       getTrafficSources(range, trafficMode),
       getActivityTimeline(range, trafficMode),
+      getActiveNow(),
     ]);
     headline = h;
     recent = r;
@@ -125,6 +131,7 @@ if (authed) {
     devices = dv;
     sources = sr;
     activity = ac;
+    activeNow = an;
   } catch (e) {
     fetchError = e instanceof Error ? e.message : String(e);
     console.error('[hq] PostHog fetch failed', e);
@@ -382,40 +389,8 @@ const sections = [
     margin-bottom: 2.5rem;
     background: var(--paper);
   }
-  .kpi {
-    padding: 1rem 1.25rem;
-    border-right: 1px solid var(--line);
-  }
-  .kpi:last-child { border-right: 0; }
-  .kpi-lab {
-    font-family: var(--mono);
-    font-size: 0.65rem;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: var(--ink-faint);
-    margin-bottom: 0.4rem;
-  }
-  .kpi-val {
-    font-size: 1.85rem;
-    font-weight: 700;
-    line-height: 1;
-    letter-spacing: -0.03em;
-    color: var(--ink);
-    font-variant-numeric: tabular-nums;
-  }
-  .kpi-sub {
-    margin-top: 0.35rem;
-    font-family: var(--mono);
-    font-size: 0.7rem;
-    color: var(--ink-faint);
-  }
-  .kpi-hint {
-    margin-top: 0.3rem;
-    font-family: var(--serif);
-    font-style: italic;
-    font-size: 0.78rem;
-    color: var(--ink-faint);
-    line-height: 1.3;
+  .kpis :global(.kpi:last-child) {
+    border-right: 0;
   }
 
   /* Sections */
@@ -554,6 +529,7 @@ const sections = [
         <div class="appbar-title">
           <h1 class="appbar-h1">Audit engagement</h1>
           <span class="appbar-sub">{range.label}</span>
+          {activeNow && <ActiveNowBadge data={activeNow} />}
         </div>
         <div class="appbar-range">
           <DateRangeNav range={range} />
@@ -581,29 +557,49 @@ const sections = [
 
         {headline && (
           <div class="kpis">
-            <div class="kpi">
-              <div class="kpi-lab">Memo views</div>
-              <div class="kpi-val">{headline.memo_views}</div>
-              <div class="kpi-sub">humans · <span class="kpi-raw">{headline.memo_views_raw} total</span></div>
-            </div>
-            <div class="kpi">
-              <div class="kpi-lab">Unique visitors</div>
-              <div class="kpi-val">{headline.unique_visitors}</div>
-              <div class="kpi-sub">humans · <span class="kpi-raw">{headline.unique_visitors_raw} total</span></div>
-            </div>
-            <div class="kpi">
-              <div class="kpi-lab">Engaged reads</div>
-              <div class="kpi-val">{headline.engaged_reads}</div>
-              <div class="kpi-sub">past 50% scroll · <span class="kpi-raw">{headline.engaged_reads_raw} total</span></div>
-              {headline.engaged_reads === 0 && headline.memo_views > 0 && (
-                <div class="kpi-hint">Memos read but nobody scrolled past 50%. Tighten the hook.</div>
-              )}
-            </div>
-            <div class="kpi">
-              <div class="kpi-lab">CTA clicks</div>
-              <div class="kpi-val">{headline.cta_clicks}</div>
-              <div class="kpi-sub">humans · <span class="kpi-raw">{headline.cta_clicks_raw} total</span></div>
-            </div>
+            <KpiCard
+              label="Memo views"
+              value={headline.memo_views}
+              rawValue={headline.memo_views_raw}
+              prevValue={headline.memo_views_prev}
+              prevLabel={`prev ${range.days}d`}
+              sub="humans"
+              spark={headline.spark_memo_views}
+              sparkColor="var(--ink)"
+            />
+            <KpiCard
+              label="Unique visitors"
+              value={headline.unique_visitors}
+              rawValue={headline.unique_visitors_raw}
+              prevValue={headline.unique_visitors_prev}
+              prevLabel={`prev ${range.days}d`}
+              sub="humans"
+              spark={headline.spark_unique_visitors}
+              sparkColor="var(--ink)"
+            />
+            <KpiCard
+              label="Engaged reads"
+              value={headline.engaged_reads}
+              rawValue={headline.engaged_reads_raw}
+              prevValue={headline.engaged_reads_prev}
+              prevLabel={`prev ${range.days}d`}
+              sub="past 50% scroll"
+              hint={headline.engaged_reads === 0 && headline.memo_views > 0 ? 'Memos read but no 50% scrollers. Tighten the hook.' : undefined}
+              spark={headline.spark_engaged_reads}
+              sparkColor="var(--accent-deep)"
+              emphasis="accent"
+            />
+            <KpiCard
+              label="CTA clicks"
+              value={headline.cta_clicks}
+              rawValue={headline.cta_clicks_raw}
+              prevValue={headline.cta_clicks_prev}
+              prevLabel={`prev ${range.days}d`}
+              sub="Book a call etc."
+              spark={headline.spark_cta_clicks}
+              sparkColor="var(--accent-deep)"
+              emphasis="accent"
+            />
           </div>
         )}
 

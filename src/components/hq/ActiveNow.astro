@@ -1,0 +1,64 @@
+---
+import type { ActiveNow } from '../../utils/posthog/query';
+
+interface Props {
+  data: ActiveNow;
+}
+
+const { data } = Astro.props;
+const live = data.active_sessions > 0;
+---
+<div class={`active ${live ? 'active--on' : ''}`} title={live ? `${data.active_sessions} active sessions in last 30 min` : 'No active sessions in last 30 min'}>
+  <span class="dot" aria-hidden="true"></span>
+  <span class="count">{data.active_sessions}</span>
+  <span class="lab">{data.active_sessions === 1 ? 'session' : 'sessions'} now</span>
+</div>
+
+<style>
+  .active {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.3rem 0.7rem;
+    border: 1px solid var(--line, rgba(14,26,44,0.14));
+    border-radius: 999px;
+    background: var(--paper-2, #F4F2ED);
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 0.7rem;
+    color: var(--ink-dim, #3A4658);
+  }
+  .dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: var(--ink-faint, #7A8597);
+  }
+  .active--on .dot {
+    background: var(--accent, #8FBF3F);
+    box-shadow: 0 0 0 0 var(--accent, #8FBF3F);
+    animation: pulse 1.6s infinite;
+  }
+  .active--on {
+    border-color: var(--accent, #8FBF3F);
+    background: var(--accent-bg, #F2F7E5);
+    color: var(--accent-deep, #4A6E18);
+  }
+  .count {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink, #0E1A2C);
+  }
+  .active--on .count { color: var(--accent-deep, #4A6E18); }
+  .lab {
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 0.65rem;
+  }
+
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(143,191,63,0.6); }
+    70% { box-shadow: 0 0 0 8px rgba(143,191,63,0); }
+    100% { box-shadow: 0 0 0 0 rgba(143,191,63,0); }
+  }
+</style>
