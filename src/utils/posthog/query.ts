@@ -56,25 +56,27 @@ function ttlFor(range: DateRange): number {
   }
 }
 
-function cacheKey(queryName: string, range: DateRange): string {
+function cacheKey(queryName: string, range: DateRange, mode: TrafficMode = 'humans'): string {
   // Round the "to" side to the current day so a preset like "7d" produces
   // the same key across requests within a day. Without this rounding, toIso
   // was `now.toISOString()` and every request had a unique key (never hit).
   // Custom ranges already have stable from/to so they're keyed exactly.
   const today = new Date().toISOString().slice(0, 10);
+  const modeTag = mode === 'all' ? ':all' : '';
   if (range.isCustom) {
-    return `hq:${CACHE_VERSION}:${queryName}:custom:${range.fromIso.slice(0, 10)}:${range.toIso.slice(0, 10)}`;
+    return `hq:${CACHE_VERSION}:${queryName}${modeTag}:custom:${range.fromIso.slice(0, 10)}:${range.toIso.slice(0, 10)}`;
   }
-  return `hq:${CACHE_VERSION}:${queryName}:${range.preset}:${today}`;
+  return `hq:${CACHE_VERSION}:${queryName}${modeTag}:${range.preset}:${today}`;
 }
 
 async function cached<T>(
   queryName: string,
   range: DateRange,
-  fetchFresh: () => Promise<T>
+  fetchFresh: () => Promise<T>,
+  mode: TrafficMode = 'humans'
 ): Promise<T> {
   const redis = getRedis();
-  const key = cacheKey(queryName, range);
+  const key = cacheKey(queryName, range, mode);
   if (redis) {
     try {
       const hit = await redis.get<T>(key);
@@ -108,6 +110,20 @@ const REAL_HUMAN_WHERE = `
   AND NOT (properties.$geoip_city_name IN (${DATACENTER_CITIES.map((c) => `'${c}'`).join(', ')}))
   AND NOT (properties.$geoip_city_name IN (${SELF_CITIES.map((c) => `'${c}'`).join(', ')}))
 `;
+
+// As an inline boolean predicate (for use inside countIf etc.)
+const IS_HUMAN_EXPR = `(
+  NOT (properties.$geoip_city_name IN (${DATACENTER_CITIES.map((c) => `'${c}'`).join(', ')}))
+  AND NOT (properties.$geoip_city_name IN (${SELF_CITIES.map((c) => `'${c}'`).join(', ')}))
+)`;
+
+// Traffic mode controls whether queries apply the real-human filter or
+// show all traffic. /hq surfaces this via ?traffic=all|humans.
+export type TrafficMode = 'humans' | 'all';
+
+function humanWhereFor(mode: TrafficMode): string {
+  return mode === 'all' ? '' : REAL_HUMAN_WHERE;
+}
 
 export interface HogQLResult {
   columns: string[];
@@ -176,31 +192,34 @@ export interface RecentRead {
   last_event: string;
 }
 
-export async function getRecentReads(range: DateRange): Promise<RecentRead[]> {
+export async function getRecentReads(range: DateRange, mode: TrafficMode = 'humans'): Promise<RecentRead[]> {
   return cached('recentReads', range, async () => {
-  const r = await runQuery(`
-    SELECT
-      properties.$pathname AS path,
-      replaceRegexpOne(properties.$pathname, '^/audit/(v3|p)(/|$)', '') AS prospect,
-      properties.$session_id AS session_id,
-      distinct_id,
-      properties.$geoip_city_name AS city,
-      properties.$geoip_country_name AS country,
-      count() AS events,
-      countIf(event = 'cta_clicked') AS cta_clicks,
-      dateDiff('second', min(timestamp), max(timestamp)) AS dwell_seconds,
-      max(timestamp) AS last_event
-    FROM events
-    WHERE ${hogqlRangeClause(range)}
-      AND properties.$pathname ILIKE '/audit/%'
-      ${REAL_HUMAN_WHERE}
-    GROUP BY path, prospect, session_id, distinct_id, city, country
-    HAVING dwell_seconds >= 5
-    ORDER BY last_event DESC
-    LIMIT 50
-  `);
-  return rowsToObjects<RecentRead>(r);
-  });
+    // Lower the dwell-seconds floor to 1s when showing all traffic so scanner
+    // hits actually appear (they typically dwell 0-2s).
+    const minDwell = mode === 'all' ? 1 : 5;
+    const r = await runQuery(`
+      SELECT
+        properties.$pathname AS path,
+        replaceRegexpOne(properties.$pathname, '^/audit/(v3|p)(/|$)', '') AS prospect,
+        properties.$session_id AS session_id,
+        distinct_id,
+        properties.$geoip_city_name AS city,
+        properties.$geoip_country_name AS country,
+        count() AS events,
+        countIf(event = 'cta_clicked') AS cta_clicks,
+        dateDiff('second', min(timestamp), max(timestamp)) AS dwell_seconds,
+        max(timestamp) AS last_event
+      FROM events
+      WHERE ${hogqlRangeClause(range)}
+        AND properties.$pathname ILIKE '/audit/%'
+        ${humanWhereFor(mode)}
+      GROUP BY path, prospect, session_id, distinct_id, city, country
+      HAVING dwell_seconds >= ${minDwell}
+      ORDER BY last_event DESC
+      LIMIT 50
+    `);
+    return rowsToObjects<RecentRead>(r);
+  }, mode);
 }
 
 // --------------------------------------------------------------------------
@@ -227,7 +246,7 @@ export interface TopProspect {
   sessions: ProspectSession[];
 }
 
-export async function getTopProspects(range: DateRange): Promise<TopProspect[]> {
+export async function getTopProspects(range: DateRange, mode: TrafficMode = 'humans'): Promise<TopProspect[]> {
   return cached('topProspects', range, async () => {
   // Aggregate per (prospect, session) first, then group up with groupArray to
   // also return the per-session breakdown (so the UI can expose replay links
@@ -252,7 +271,7 @@ export async function getTopProspects(range: DateRange): Promise<TopProspect[]> 
       FROM events
       WHERE ${hogqlRangeClause(range)}
         AND properties.$pathname ILIKE '/audit/v3/%'
-        ${REAL_HUMAN_WHERE}
+        ${humanWhereFor(mode)}
       GROUP BY prospect, sid
     ) AS sessions
     WHERE prospect != ''
@@ -289,7 +308,7 @@ export async function getTopProspects(range: DateRange): Promise<TopProspect[]> 
       }))
       .sort((a, b) => (a.last_event < b.last_event ? 1 : -1)),
   }));
-  });
+  }, mode);
 }
 
 // --------------------------------------------------------------------------
@@ -298,31 +317,38 @@ export async function getTopProspects(range: DateRange): Promise<TopProspect[]> 
 // --------------------------------------------------------------------------
 
 export interface HeadlineMetrics {
-  memo_views_7d: number;
-  unique_visitors_7d: number;
-  engaged_reads_7d: number;
-  cta_clicks_7d: number;
+  // Filtered counts (real humans only)
+  memo_views: number;
+  unique_visitors: number;
+  engaged_reads: number;
+  cta_clicks: number;
+  // Raw counts (all traffic incl. scanners + self)
+  memo_views_raw: number;
+  unique_visitors_raw: number;
+  engaged_reads_raw: number;
+  cta_clicks_raw: number;
 }
 
 export async function getHeadlineMetrics(range: DateRange): Promise<HeadlineMetrics> {
   return cached('headlineMetrics', range, async () => {
-  const r = await runQuery(`
-    SELECT
-      countIf(event = '$pageview' AND properties.$pathname ILIKE '/audit/%') AS memo_views_7d,
-      uniq(if(event = '$pageview' AND properties.$pathname ILIKE '/audit/%', distinct_id, NULL)) AS unique_visitors_7d,
-      uniq(if(event = 'scroll_depth' AND toInt(properties.depth) >= 50 AND properties.$pathname ILIKE '/audit/%', properties.$session_id, NULL)) AS engaged_reads_7d,
-      countIf(event = 'cta_clicked') AS cta_clicks_7d
-    FROM events
-    WHERE ${hogqlRangeClause(range)}
-      ${REAL_HUMAN_WHERE}
-  `);
-  const o = rowsToObjects<{
-    memo_views_7d: number;
-    unique_visitors_7d: number;
-    engaged_reads_7d: number;
-    cta_clicks_7d: number;
-  }>(r);
-  return o[0] ?? { memo_views_7d: 0, unique_visitors_7d: 0, engaged_reads_7d: 0, cta_clicks_7d: 0 };
+    const r = await runQuery(`
+      SELECT
+        countIf(event = '$pageview' AND properties.$pathname ILIKE '/audit/%' AND ${IS_HUMAN_EXPR}) AS memo_views,
+        uniq(if(event = '$pageview' AND properties.$pathname ILIKE '/audit/%' AND ${IS_HUMAN_EXPR}, distinct_id, NULL)) AS unique_visitors,
+        uniq(if(event = 'scroll_depth' AND toInt(properties.depth) >= 50 AND properties.$pathname ILIKE '/audit/%' AND ${IS_HUMAN_EXPR}, properties.$session_id, NULL)) AS engaged_reads,
+        countIf(event = 'cta_clicked' AND ${IS_HUMAN_EXPR}) AS cta_clicks,
+        countIf(event = '$pageview' AND properties.$pathname ILIKE '/audit/%') AS memo_views_raw,
+        uniq(if(event = '$pageview' AND properties.$pathname ILIKE '/audit/%', distinct_id, NULL)) AS unique_visitors_raw,
+        uniq(if(event = 'scroll_depth' AND toInt(properties.depth) >= 50 AND properties.$pathname ILIKE '/audit/%', properties.$session_id, NULL)) AS engaged_reads_raw,
+        countIf(event = 'cta_clicked') AS cta_clicks_raw
+      FROM events
+      WHERE ${hogqlRangeClause(range)}
+    `);
+    const o = rowsToObjects<HeadlineMetrics>(r);
+    return o[0] ?? {
+      memo_views: 0, unique_visitors: 0, engaged_reads: 0, cta_clicks: 0,
+      memo_views_raw: 0, unique_visitors_raw: 0, engaged_reads_raw: 0, cta_clicks_raw: 0,
+    };
   });
 }
 
@@ -339,7 +365,7 @@ export interface CtaClick {
   when: string;
 }
 
-export async function getCtaClicks(range: DateRange): Promise<CtaClick[]> {
+export async function getCtaClicks(range: DateRange, mode: TrafficMode = 'humans'): Promise<CtaClick[]> {
   return cached('ctaClicks', range, async () => {
   const r = await runQuery(`
     SELECT
@@ -352,12 +378,12 @@ export async function getCtaClicks(range: DateRange): Promise<CtaClick[]> {
     FROM events
     WHERE event = 'cta_clicked'
       AND ${hogqlRangeClause(range)}
-      ${REAL_HUMAN_WHERE}
+      ${humanWhereFor(mode)}
     ORDER BY timestamp DESC
     LIMIT 25
   `);
   return rowsToObjects<CtaClick>(r);
-  });
+  }, mode);
 }
 
 // --------------------------------------------------------------------------
@@ -377,7 +403,7 @@ export interface TopBlogPost {
   last_view: string;
 }
 
-export async function getTopBlogPosts(range: DateRange): Promise<TopBlogPost[]> {
+export async function getTopBlogPosts(range: DateRange, mode: TrafficMode = 'humans'): Promise<TopBlogPost[]> {
   return cached('topBlogPosts', range, async () => {
   const r = await runQuery(`
     SELECT
@@ -403,7 +429,7 @@ export async function getTopBlogPosts(range: DateRange): Promise<TopBlogPost[]> 
       WHERE ${hogqlRangeClause(range)}
         AND properties.$pathname ILIKE '/blog/%'
         AND properties.$pathname NOT IN ('/blog/', '/blog')
-        ${REAL_HUMAN_WHERE}
+        ${humanWhereFor(mode)}
       GROUP BY slug, path, sid
     ) AS sessions
     WHERE slug != ''
@@ -412,7 +438,7 @@ export async function getTopBlogPosts(range: DateRange): Promise<TopBlogPost[]> 
     LIMIT 25
   `);
   return rowsToObjects<TopBlogPost>(r);
-  });
+  }, mode);
 }
 
 // --------------------------------------------------------------------------
@@ -503,7 +529,7 @@ export interface DeviceRow {
   pageviews: number;
 }
 
-export async function getVisitorTech(range: DateRange): Promise<DeviceRow[]> {
+export async function getVisitorTech(range: DateRange, mode: TrafficMode = 'humans'): Promise<DeviceRow[]> {
   return cached('devices', range, async () => {
     const r = await runQuery(`
       SELECT
@@ -515,13 +541,13 @@ export async function getVisitorTech(range: DateRange): Promise<DeviceRow[]> {
       FROM events
       WHERE ${hogqlRangeClause(range)}
         AND properties.$browser IS NOT NULL
-        ${REAL_HUMAN_WHERE}
+        ${humanWhereFor(mode)}
       GROUP BY device_type, browser, os
       ORDER BY visitors DESC
       LIMIT 20
     `);
     return rowsToObjects<DeviceRow>(r);
-  });
+  }, mode);
 }
 
 // --------------------------------------------------------------------------
@@ -534,7 +560,7 @@ export interface TrafficSource {
   pageviews: number;
 }
 
-export async function getTrafficSources(range: DateRange): Promise<TrafficSource[]> {
+export async function getTrafficSources(range: DateRange, mode: TrafficMode = 'humans'): Promise<TrafficSource[]> {
   return cached('sources', range, async () => {
     const r = await runQuery(`
       SELECT
@@ -543,13 +569,13 @@ export async function getTrafficSources(range: DateRange): Promise<TrafficSource
         countIf(event = '$pageview') AS pageviews
       FROM events
       WHERE ${hogqlRangeClause(range)}
-        ${REAL_HUMAN_WHERE}
+        ${humanWhereFor(mode)}
       GROUP BY source
       ORDER BY visitors DESC
       LIMIT 20
     `);
     return rowsToObjects<TrafficSource>(r);
-  });
+  }, mode);
 }
 
 // --------------------------------------------------------------------------
@@ -563,7 +589,7 @@ export interface ActivityDay {
   visitors: number;
 }
 
-export async function getActivityTimeline(range: DateRange): Promise<ActivityDay[]> {
+export async function getActivityTimeline(range: DateRange, mode: TrafficMode = 'humans'): Promise<ActivityDay[]> {
   return cached('activity', range, async () => {
   const r = await runQuery(`
     SELECT
@@ -572,7 +598,7 @@ export async function getActivityTimeline(range: DateRange): Promise<ActivityDay
       uniq(distinct_id) AS visitors
     FROM events
     WHERE ${hogqlRangeClause(range)}
-      ${REAL_HUMAN_WHERE}
+      ${humanWhereFor(mode)}
     GROUP BY day
     ORDER BY day
   `);
@@ -592,7 +618,7 @@ export async function getActivityTimeline(range: DateRange): Promise<ActivityDay
     out.push(found ?? { day: key, pageviews: 0, visitors: 0 });
   }
   return out;
-  });
+  }, mode);
 }
 
 // --------------------------------------------------------------------------

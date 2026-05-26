@@ -31,6 +31,7 @@ import {
   type DeviceRow,
   type TrafficSource,
   type ActivityDay,
+  type TrafficMode,
 } from '../utils/posthog/query';
 import { parseDateRange } from '../utils/posthog/dateRange';
 import SectionHeader from '../components/hq/SectionHeader.astro';
@@ -73,8 +74,19 @@ if (!authed) {
   Astro.response.status = 404;
 }
 
-// --- Parse date range from URL ---
+// --- Parse date range and traffic mode from URL ---
 const range = parseDateRange(url.searchParams);
+const trafficParam = url.searchParams.get('traffic');
+const trafficMode: TrafficMode = trafficParam === 'all' ? 'all' : 'humans';
+
+// Build href helper that preserves current range when flipping traffic mode
+function hrefWithTraffic(mode: TrafficMode): string {
+  const sp = new URLSearchParams(url.search);
+  if (mode === 'all') sp.set('traffic', 'all');
+  else sp.delete('traffic');
+  const q = sp.toString();
+  return `/hq${q ? '?' + q : ''}`;
+}
 
 // --- Data fetch (only when authed) ---
 let headline: HeadlineMetrics | null = null;
@@ -93,15 +105,15 @@ if (authed) {
   try {
     const [h, r, t, c, b, co, ci, dv, sr, ac] = await Promise.all([
       getHeadlineMetrics(range),
-      getRecentReads(range),
-      getTopProspects(range),
-      getCtaClicks(range),
-      getTopBlogPosts(range),
+      getRecentReads(range, trafficMode),
+      getTopProspects(range, trafficMode),
+      getCtaClicks(range, trafficMode),
+      getTopBlogPosts(range, trafficMode),
       getVisitorsByCountry(range),
       getVisitorsByCity(range),
-      getVisitorTech(range),
-      getTrafficSources(range),
-      getActivityTimeline(range),
+      getVisitorTech(range, trafficMode),
+      getTrafficSources(range, trafficMode),
+      getActivityTimeline(range, trafficMode),
     ]);
     headline = h;
     recent = r;
@@ -311,6 +323,46 @@ const sections = [
   }
   .appbar-range {
     margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  /* Traffic toggle pill */
+  .traffic-toggle {
+    display: inline-flex;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    overflow: hidden;
+    background: var(--paper-2);
+  }
+  .tt {
+    padding: 0.35rem 0.7rem;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--ink-dim);
+    text-decoration: none;
+    transition: background 80ms, color 80ms;
+    white-space: nowrap;
+  }
+  .tt:hover {
+    background: var(--paper);
+    color: var(--ink);
+  }
+  .tt--active {
+    background: var(--ink);
+    color: var(--paper);
+    font-weight: 500;
+  }
+  .tt--active:hover {
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  /* KPI raw breakdown badge */
+  .kpi-raw {
+    opacity: 0.7;
   }
 
   /* ============ MAIN CONTENT ============ */
@@ -451,7 +503,9 @@ const sections = [
       padding: 0.65rem 1rem;
       gap: 0.5rem;
     }
-    .appbar-range { width: 100%; margin-left: 0; }
+    .appbar-range { width: 100%; margin-left: 0; gap: 0.5rem; }
+    .traffic-toggle { width: 100%; justify-content: center; }
+    .tt { flex: 1; text-align: center; }
 
     .content {
       padding: 1rem 1rem 3rem;
@@ -503,6 +557,18 @@ const sections = [
         </div>
         <div class="appbar-range">
           <DateRangeNav range={range} />
+          <div class="traffic-toggle" role="group" aria-label="Traffic filter">
+            <a
+              href={hrefWithTraffic('humans')}
+              class={`tt ${trafficMode === 'humans' ? 'tt--active' : ''}`}
+              aria-current={trafficMode === 'humans' ? 'true' : 'false'}
+            >Humans</a>
+            <a
+              href={hrefWithTraffic('all')}
+              class={`tt ${trafficMode === 'all' ? 'tt--active' : ''}`}
+              aria-current={trafficMode === 'all' ? 'true' : 'false'}
+            >All traffic</a>
+          </div>
         </div>
       </div>
 
@@ -517,29 +583,26 @@ const sections = [
           <div class="kpis">
             <div class="kpi">
               <div class="kpi-lab">Memo views</div>
-              <div class="kpi-val">{headline.memo_views_7d}</div>
-              <div class="kpi-sub">{range.label.toLowerCase()}</div>
+              <div class="kpi-val">{headline.memo_views}</div>
+              <div class="kpi-sub">humans · <span class="kpi-raw">{headline.memo_views_raw} total</span></div>
             </div>
             <div class="kpi">
               <div class="kpi-lab">Unique visitors</div>
-              <div class="kpi-val">{headline.unique_visitors_7d}</div>
-              <div class="kpi-sub">{range.label.toLowerCase()}</div>
+              <div class="kpi-val">{headline.unique_visitors}</div>
+              <div class="kpi-sub">humans · <span class="kpi-raw">{headline.unique_visitors_raw} total</span></div>
             </div>
             <div class="kpi">
               <div class="kpi-lab">Engaged reads</div>
-              <div class="kpi-val">{headline.engaged_reads_7d}</div>
-              <div class="kpi-sub">scrolled past 50%</div>
-              {headline.engaged_reads_7d === 0 && (
-                <div class="kpi-hint">No 50% scrolls yet. Will populate as outreach traffic grows.</div>
+              <div class="kpi-val">{headline.engaged_reads}</div>
+              <div class="kpi-sub">past 50% scroll · <span class="kpi-raw">{headline.engaged_reads_raw} total</span></div>
+              {headline.engaged_reads === 0 && headline.memo_views > 0 && (
+                <div class="kpi-hint">Memos read but nobody scrolled past 50%. Tighten the hook.</div>
               )}
             </div>
             <div class="kpi">
               <div class="kpi-lab">CTA clicks</div>
-              <div class="kpi-val">{headline.cta_clicks_7d}</div>
-              <div class="kpi-sub">Book a call etc.</div>
-              {headline.cta_clicks_7d === 0 && (
-                <div class="kpi-hint">No clicks yet. Tracking shipped recently.</div>
-              )}
+              <div class="kpi-val">{headline.cta_clicks}</div>
+              <div class="kpi-sub">humans · <span class="kpi-raw">{headline.cta_clicks_raw} total</span></div>
             </div>
           </div>
         )}
@@ -549,7 +612,7 @@ const sections = [
             number="01"
             title="Recent reads."
             italicTail="Who looked at what, when."
-            meta={`${recent.length} session${recent.length === 1 ? '' : 's'} · ${range.label.toLowerCase()} · real humans only`}
+            meta={`${recent.length} session${recent.length === 1 ? '' : 's'} · ${range.label.toLowerCase()} · ${trafficMode === 'all' ? 'all traffic' : 'real humans only'}`}
           />
           <RecentReadsFeed reads={recent} />
         </section>
@@ -579,7 +642,7 @@ const sections = [
             number="04"
             title="Blog content."
             italicTail="What is landing with the audience."
-            meta={`${blog.length} post${blog.length === 1 ? '' : 's'} · ${range.label.toLowerCase()} · real humans only`}
+            meta={`${blog.length} post${blog.length === 1 ? '' : 's'} · ${range.label.toLowerCase()} · ${trafficMode === 'all' ? 'all traffic' : 'real humans only'}`}
           />
           <TopBlogPostsTable posts={blog} />
         </section>
@@ -609,7 +672,7 @@ const sections = [
             number="07"
             title="Device and browser."
             italicTail="How they read."
-            meta={`${devices.length} combinations · ${range.label.toLowerCase()} · real humans only`}
+            meta={`${devices.length} combinations · ${range.label.toLowerCase()} · ${trafficMode === 'all' ? 'all traffic' : 'real humans only'}`}
           />
           <DeviceTable rows={devices} />
         </section>
@@ -619,7 +682,7 @@ const sections = [
             number="08"
             title="Traffic sources."
             italicTail="How they got here."
-            meta={`${sources.length} source${sources.length === 1 ? '' : 's'} · ${range.label.toLowerCase()} · real humans only`}
+            meta={`${sources.length} source${sources.length === 1 ? '' : 's'} · ${range.label.toLowerCase()} · ${trafficMode === 'all' ? 'all traffic' : 'real humans only'}`}
           />
           <ReferrerTable sources={sources} />
         </section>
@@ -629,7 +692,7 @@ const sections = [
             number="09"
             title="Activity over time."
             italicTail="The pulse."
-            meta={`${activity.length} days · ${range.label.toLowerCase()} · real humans only`}
+            meta={`${activity.length} days · ${range.label.toLowerCase()} · ${trafficMode === 'all' ? 'all traffic' : 'real humans only'}`}
           />
           <ActivityTimeline days={activity} />
         </section>
