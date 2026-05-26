@@ -20,7 +20,8 @@ const POSTHOG_HOST = 'https://us.posthog.com';
 const POSTHOG_PROJECT_ID = 373899;
 
 // Cache versioning lets us bust everything by bumping this string.
-const CACHE_VERSION = 'v2';
+// v3: added `surface` column to RecentRead/TopProspect for intake-review integration.
+const CACHE_VERSION = 'v3';
 
 // Lazy redis client. Construction is cheap but we only need one instance.
 // Use KV_REST_API_* env vars (set by Vercel KV / Upstash integration) since
@@ -173,6 +174,43 @@ function rowsToObjects<T = Record<string, unknown>>(r: HogQLResult): T[] {
 }
 
 // --------------------------------------------------------------------------
+// Prospect surfaces — both feed into /hq:
+//   audit          → rivett.tech/audit/v3/{slug} and /audit/p/{slug}
+//   intake-review  → intake-reviews.vercel.app/intake-review/{slug}
+// Same PostHog project (373899), different domains. The PostHog snippet in
+// each surface registers `surface: '<name>'` as a super-property, but we
+// fall back to path-based detection so historic data without the property
+// still classifies correctly.
+// --------------------------------------------------------------------------
+
+// Path filter: any prospect-facing surface, either audit or intake review.
+const PROSPECT_PATH_FILTER = `(
+  properties.$pathname ILIKE '/audit/%'
+  OR properties.$pathname ILIKE '/intake-review/%'
+)`;
+
+// Top-prospects path filter: same, but only the v3 audit format (since the
+// older v1/v2 audits are deprecated and shouldn't pollute the leaderboard).
+const PROSPECT_PATH_FILTER_TOP = `(
+  properties.$pathname ILIKE '/audit/v3/%'
+  OR properties.$pathname ILIKE '/intake-review/%'
+)`;
+
+// Slug extraction: strip the leading surface path so the remainder is the
+// prospect identifier (a domain-like slug, e.g. "mindfulhealthsolutions-com").
+const PROSPECT_SLUG_EXPR =
+  `replaceRegexpOne(properties.$pathname, '^/(audit/(v3|p)|intake-review)(/|$)', '')`;
+
+// Surface classification — inspect the path. Cheaper than reading the
+// PostHog super-property and works on historic events too.
+const PROSPECT_SURFACE_EXPR = `
+  CASE
+    WHEN properties.$pathname ILIKE '/intake-review/%' THEN 'intake-review'
+    ELSE 'audit'
+  END
+`;
+
+// --------------------------------------------------------------------------
 // Query: recent engaged reads
 // What it is: every real human session that hit an audit page in the last
 // `days` days, with at least 5 seconds of dwell.
@@ -182,6 +220,7 @@ function rowsToObjects<T = Record<string, unknown>>(r: HogQLResult): T[] {
 export interface RecentRead {
   path: string;
   prospect: string;
+  surface: 'audit' | 'intake-review';
   session_id: string | null;
   distinct_id: string;
   city: string | null;
@@ -200,7 +239,8 @@ export async function getRecentReads(range: DateRange, mode: TrafficMode = 'huma
     const r = await runQuery(`
       SELECT
         properties.$pathname AS path,
-        replaceRegexpOne(properties.$pathname, '^/audit/(v3|p)(/|$)', '') AS prospect,
+        ${PROSPECT_SLUG_EXPR} AS prospect,
+        ${PROSPECT_SURFACE_EXPR} AS surface,
         properties.$session_id AS session_id,
         distinct_id,
         properties.$geoip_city_name AS city,
@@ -211,9 +251,9 @@ export async function getRecentReads(range: DateRange, mode: TrafficMode = 'huma
         max(timestamp) AS last_event
       FROM events
       WHERE ${hogqlRangeClause(range)}
-        AND properties.$pathname ILIKE '/audit/%'
+        AND ${PROSPECT_PATH_FILTER}
         ${humanWhereFor(mode)}
-      GROUP BY path, prospect, session_id, distinct_id, city, country
+      GROUP BY path, prospect, surface, session_id, distinct_id, city, country
       HAVING dwell_seconds >= ${minDwell}
       ORDER BY last_event DESC
       LIMIT 50
@@ -238,6 +278,7 @@ export interface ProspectSession {
 
 export interface TopProspect {
   prospect: string;
+  surface: 'audit' | 'intake-review';
   total_views: number;
   unique_sessions: number;
   total_dwell_seconds: number;
@@ -254,6 +295,7 @@ export async function getTopProspects(range: DateRange, mode: TrafficMode = 'hum
   const r = await runQuery(`
     SELECT
       prospect,
+      surface,
       sum(session_views) AS total_views,
       count() AS unique_sessions,
       sum(session_dwell) AS total_dwell_seconds,
@@ -262,7 +304,8 @@ export async function getTopProspects(range: DateRange, mode: TrafficMode = 'hum
       groupArray(tuple(sid, session_dwell, last_event, session_views, session_clicks)) AS sessions_raw
     FROM (
       SELECT
-        replaceRegexpOne(properties.$pathname, '^/audit/(v3|p)(/|$)', '') AS prospect,
+        ${PROSPECT_SLUG_EXPR} AS prospect,
+        ${PROSPECT_SURFACE_EXPR} AS surface,
         properties.$session_id AS sid,
         count() AS session_views,
         countIf(event = 'cta_clicked') AS session_clicks,
@@ -270,12 +313,12 @@ export async function getTopProspects(range: DateRange, mode: TrafficMode = 'hum
         max(timestamp) AS last_event
       FROM events
       WHERE ${hogqlRangeClause(range)}
-        AND properties.$pathname ILIKE '/audit/v3/%'
+        AND ${PROSPECT_PATH_FILTER_TOP}
         ${humanWhereFor(mode)}
-      GROUP BY prospect, sid
+      GROUP BY prospect, surface, sid
     ) AS sessions
     WHERE prospect != ''
-    GROUP BY prospect
+    GROUP BY prospect, surface
     ORDER BY total_views DESC, last_view DESC
     LIMIT 25
   `);
@@ -283,6 +326,7 @@ export async function getTopProspects(range: DateRange, mode: TrafficMode = 'hum
   // Reshape sessions_raw tuples into typed objects, sorted most-recent first.
   const raw = rowsToObjects<{
     prospect: string;
+    surface: 'audit' | 'intake-review';
     total_views: number;
     unique_sessions: number;
     total_dwell_seconds: number;
@@ -293,6 +337,7 @@ export async function getTopProspects(range: DateRange, mode: TrafficMode = 'hum
 
   return raw.map((row) => ({
     prospect: row.prospect,
+    surface: row.surface,
     total_views: row.total_views,
     unique_sessions: row.unique_sessions,
     total_dwell_seconds: row.total_dwell_seconds,
@@ -354,22 +399,22 @@ export async function getHeadlineMetrics(range: DateRange): Promise<HeadlineMetr
     const [currentRes, prevRes, dailyRes] = await Promise.all([
       runQuery(`
         SELECT
-          countIf(event = '$pageview' AND properties.$pathname ILIKE '/audit/%' AND ${IS_HUMAN_EXPR}) AS memo_views,
-          uniq(if(event = '$pageview' AND properties.$pathname ILIKE '/audit/%' AND ${IS_HUMAN_EXPR}, distinct_id, NULL)) AS unique_visitors,
-          uniq(if(event = 'scroll_depth' AND toInt(properties.depth) >= 50 AND properties.$pathname ILIKE '/audit/%' AND ${IS_HUMAN_EXPR}, properties.$session_id, NULL)) AS engaged_reads,
+          countIf(event = '$pageview' AND ${PROSPECT_PATH_FILTER} AND ${IS_HUMAN_EXPR}) AS memo_views,
+          uniq(if(event = '$pageview' AND ${PROSPECT_PATH_FILTER} AND ${IS_HUMAN_EXPR}, distinct_id, NULL)) AS unique_visitors,
+          uniq(if(event = 'scroll_depth' AND toInt(properties.depth) >= 50 AND ${PROSPECT_PATH_FILTER} AND ${IS_HUMAN_EXPR}, properties.$session_id, NULL)) AS engaged_reads,
           countIf(event = 'cta_clicked' AND ${IS_HUMAN_EXPR}) AS cta_clicks,
-          countIf(event = '$pageview' AND properties.$pathname ILIKE '/audit/%') AS memo_views_raw,
-          uniq(if(event = '$pageview' AND properties.$pathname ILIKE '/audit/%', distinct_id, NULL)) AS unique_visitors_raw,
-          uniq(if(event = 'scroll_depth' AND toInt(properties.depth) >= 50 AND properties.$pathname ILIKE '/audit/%', properties.$session_id, NULL)) AS engaged_reads_raw,
+          countIf(event = '$pageview' AND ${PROSPECT_PATH_FILTER}) AS memo_views_raw,
+          uniq(if(event = '$pageview' AND ${PROSPECT_PATH_FILTER}, distinct_id, NULL)) AS unique_visitors_raw,
+          uniq(if(event = 'scroll_depth' AND toInt(properties.depth) >= 50 AND ${PROSPECT_PATH_FILTER}, properties.$session_id, NULL)) AS engaged_reads_raw,
           countIf(event = 'cta_clicked') AS cta_clicks_raw
         FROM events
         WHERE ${hogqlRangeClause(range)}
       `),
       runQuery(`
         SELECT
-          countIf(event = '$pageview' AND properties.$pathname ILIKE '/audit/%' AND ${IS_HUMAN_EXPR}) AS memo_views,
-          uniq(if(event = '$pageview' AND properties.$pathname ILIKE '/audit/%' AND ${IS_HUMAN_EXPR}, distinct_id, NULL)) AS unique_visitors,
-          uniq(if(event = 'scroll_depth' AND toInt(properties.depth) >= 50 AND properties.$pathname ILIKE '/audit/%' AND ${IS_HUMAN_EXPR}, properties.$session_id, NULL)) AS engaged_reads,
+          countIf(event = '$pageview' AND ${PROSPECT_PATH_FILTER} AND ${IS_HUMAN_EXPR}) AS memo_views,
+          uniq(if(event = '$pageview' AND ${PROSPECT_PATH_FILTER} AND ${IS_HUMAN_EXPR}, distinct_id, NULL)) AS unique_visitors,
+          uniq(if(event = 'scroll_depth' AND toInt(properties.depth) >= 50 AND ${PROSPECT_PATH_FILTER} AND ${IS_HUMAN_EXPR}, properties.$session_id, NULL)) AS engaged_reads,
           countIf(event = 'cta_clicked' AND ${IS_HUMAN_EXPR}) AS cta_clicks
         FROM events
         WHERE timestamp >= toDateTime('${prevFromIso}') AND timestamp <= toDateTime('${prevToIso}')
@@ -377,9 +422,9 @@ export async function getHeadlineMetrics(range: DateRange): Promise<HeadlineMetr
       runQuery(`
         SELECT
           toDate(timestamp) AS day,
-          countIf(event = '$pageview' AND properties.$pathname ILIKE '/audit/%' AND ${IS_HUMAN_EXPR}) AS memo_views,
-          uniq(if(event = '$pageview' AND properties.$pathname ILIKE '/audit/%' AND ${IS_HUMAN_EXPR}, distinct_id, NULL)) AS unique_visitors,
-          uniq(if(event = 'scroll_depth' AND toInt(properties.depth) >= 50 AND properties.$pathname ILIKE '/audit/%' AND ${IS_HUMAN_EXPR}, properties.$session_id, NULL)) AS engaged_reads,
+          countIf(event = '$pageview' AND ${PROSPECT_PATH_FILTER} AND ${IS_HUMAN_EXPR}) AS memo_views,
+          uniq(if(event = '$pageview' AND ${PROSPECT_PATH_FILTER} AND ${IS_HUMAN_EXPR}, distinct_id, NULL)) AS unique_visitors,
+          uniq(if(event = 'scroll_depth' AND toInt(properties.depth) >= 50 AND ${PROSPECT_PATH_FILTER} AND ${IS_HUMAN_EXPR}, properties.$session_id, NULL)) AS engaged_reads,
           countIf(event = 'cta_clicked' AND ${IS_HUMAN_EXPR}) AS cta_clicks
         FROM events
         WHERE ${hogqlRangeClause(range)}
@@ -500,6 +545,7 @@ export async function getActiveNow(): Promise<ActiveNow> {
 export interface CtaClick {
   cta: string;
   prospect: string;
+  surface: 'audit' | 'intake-review';
   city: string | null;
   country: string | null;
   href: string;
@@ -511,7 +557,11 @@ export async function getCtaClicks(range: DateRange, mode: TrafficMode = 'humans
   const r = await runQuery(`
     SELECT
       properties.cta AS cta,
-      replaceRegexpOne(properties.path, '^/audit/(v3|p)/', '') AS prospect,
+      replaceRegexpOne(properties.path, '^/(audit/(v3|p)|intake-review)/', '') AS prospect,
+      CASE
+        WHEN properties.path ILIKE '/intake-review/%' THEN 'intake-review'
+        ELSE 'audit'
+      END AS surface,
       properties.$geoip_city_name AS city,
       properties.$geoip_country_name AS country,
       properties.href AS href,
@@ -536,50 +586,66 @@ export async function getCtaClicks(range: DateRange, mode: TrafficMode = 'humans
 export interface TopBlogPost {
   slug: string;
   path: string;
-  total_views: number;
-  unique_visitors: number;
-  engaged_reads: number;
-  cta_clicks: number;
-  total_dwell_seconds: number;
+  // Humans-only (real readers, scanners + self excluded)
+  views_humans: number;
+  visitors_humans: number;
+  engaged_humans: number;
+  cta_clicks_humans: number;
+  // Raw (all traffic) — so freshly-published posts that only had a scanner
+  // hit show '0 humans · 3 raw' instead of looking empty.
+  views_raw: number;
+  visitors_raw: number;
+  engaged_raw: number;
+  cta_clicks_raw: number;
+  total_dwell_seconds_humans: number;
   last_view: string;
 }
 
-export async function getTopBlogPosts(range: DateRange, mode: TrafficMode = 'humans'): Promise<TopBlogPost[]> {
+export async function getTopBlogPosts(range: DateRange): Promise<TopBlogPost[]> {
+  // Mode-agnostic: always returns BOTH human + raw counts in one query so the
+  // table can show '0 humans · 3 raw' for newly-published posts that only
+  // have scanner traffic so far. The page's traffic toggle no longer affects
+  // this section because the table shows both anyway.
   return cached('topBlogPosts', range, async () => {
-  const r = await runQuery(`
-    SELECT
-      slug,
-      path,
-      sum(session_views) AS total_views,
-      count() AS unique_visitors,
-      countIf(session_max_scroll >= 50) AS engaged_reads,
-      sum(session_clicks) AS cta_clicks,
-      sum(session_dwell) AS total_dwell_seconds,
-      max(last_event) AS last_view
-    FROM (
+    const r = await runQuery(`
       SELECT
-        replaceRegexpOne(properties.$pathname, '^/blog/', '') AS slug,
-        properties.$pathname AS path,
-        properties.$session_id AS sid,
-        countIf(event = '$pageview') AS session_views,
-        countIf(event = 'cta_clicked') AS session_clicks,
-        max(if(event = 'scroll_depth', toInt(properties.depth), 0)) AS session_max_scroll,
-        dateDiff('second', min(timestamp), max(timestamp)) AS session_dwell,
-        max(timestamp) AS last_event
-      FROM events
-      WHERE ${hogqlRangeClause(range)}
-        AND properties.$pathname ILIKE '/blog/%'
-        AND properties.$pathname NOT IN ('/blog/', '/blog')
-        ${humanWhereFor(mode)}
-      GROUP BY slug, path, sid
-    ) AS sessions
-    WHERE slug != ''
-    GROUP BY slug, path
-    ORDER BY total_views DESC, last_view DESC
-    LIMIT 25
-  `);
-  return rowsToObjects<TopBlogPost>(r);
-  }, mode);
+        slug,
+        path,
+        sumIf(session_views, session_is_human) AS views_humans,
+        countIf(session_is_human) AS visitors_humans,
+        countIf(session_is_human AND session_max_scroll >= 50) AS engaged_humans,
+        sumIf(session_clicks, session_is_human) AS cta_clicks_humans,
+        sum(session_views) AS views_raw,
+        count() AS visitors_raw,
+        countIf(session_max_scroll >= 50) AS engaged_raw,
+        sum(session_clicks) AS cta_clicks_raw,
+        sumIf(session_dwell, session_is_human) AS total_dwell_seconds_humans,
+        max(last_event) AS last_view
+      FROM (
+        SELECT
+          replaceRegexpOne(properties.$pathname, '^/blog/', '') AS slug,
+          properties.$pathname AS path,
+          properties.$session_id AS sid,
+          countIf(event = '$pageview') AS session_views,
+          countIf(event = 'cta_clicked') AS session_clicks,
+          max(if(event = 'scroll_depth', toInt(properties.depth), 0)) AS session_max_scroll,
+          dateDiff('second', min(timestamp), max(timestamp)) AS session_dwell,
+          max(timestamp) AS last_event,
+          /* session is human if any event was outside scanner+self cities */
+          max(${IS_HUMAN_EXPR}) AS session_is_human
+        FROM events
+        WHERE ${hogqlRangeClause(range)}
+          AND properties.$pathname ILIKE '/blog/%'
+          AND properties.$pathname NOT IN ('/blog/', '/blog')
+        GROUP BY slug, path, sid
+      ) AS sessions
+      WHERE slug != ''
+      GROUP BY slug, path
+      ORDER BY views_raw DESC, last_view DESC
+      LIMIT 25
+    `);
+    return rowsToObjects<TopBlogPost>(r);
+  });
 }
 
 // --------------------------------------------------------------------------
