@@ -73,26 +73,15 @@ async function cached<T>(
 ): Promise<T> {
   const redis = getRedis();
   const key = cacheKey(queryName, range);
-  const t0 = Date.now();
   if (redis) {
     try {
       const hit = await redis.get<T>(key);
-      const rt = Date.now() - t0;
-      if (hit !== null && hit !== undefined) {
-        console.log(`[hq cache] HIT ${queryName} ${rt}ms`);
-        return hit;
-      }
-      console.log(`[hq cache] MISS ${queryName} ${rt}ms`);
+      if (hit !== null && hit !== undefined) return hit;
     } catch (e) {
       console.warn('[hq cache] read failed', queryName, e);
     }
-  } else {
-    console.log(`[hq cache] DISABLED ${queryName}`);
   }
-  const fetchStart = Date.now();
   const fresh = await fetchFresh();
-  const fetchMs = Date.now() - fetchStart;
-  console.log(`[hq cache] FETCH ${queryName} ${fetchMs}ms`);
   if (redis) {
     // Fire-and-forget write so we don't block the response on the cache write.
     redis.set(key, fresh, { ex: ttlFor(range) }).catch((e) => {
