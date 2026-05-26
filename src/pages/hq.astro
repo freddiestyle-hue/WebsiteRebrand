@@ -1,0 +1,344 @@
+---
+// /hq — private analytics HQ. Fred's view of who is reading the audit memos.
+//
+// Auth model: HQ_KEY env var is the shared secret. Visitors can authenticate
+// via `?key=<secret>` (sets a cookie) or by carrying the cookie from a prior
+// authenticated visit. Wrong key or no key returns 404 — not 403, so the
+// page's existence isn't even confirmed to unauthenticated probers.
+//
+// Data: server-rendered on each request. Hits PostHog HogQL API in parallel.
+// Expect a 1-3s render time. No caching at the Astro layer for now; Vercel
+// edge can layer a short cache if traffic ever justifies it.
+
+export const prerender = false;
+
+import {
+  getRecentReads,
+  getTopProspects,
+  getHeadlineMetrics,
+  getCtaClicks,
+  type RecentRead,
+  type TopProspect,
+  type HeadlineMetrics,
+  type CtaClick,
+} from '../utils/posthog/query';
+import SectionHeader from '../components/hq/SectionHeader.astro';
+import MetricCard from '../components/hq/MetricCard.astro';
+import RecentReadsFeed from '../components/hq/RecentReadsFeed.astro';
+import TopProspectsTable from '../components/hq/TopProspectsTable.astro';
+import CtaClicksFeed from '../components/hq/CtaClicksFeed.astro';
+
+// --- Auth gating ---
+const HQ_KEY = process.env.HQ_KEY || import.meta.env.HQ_KEY;
+
+const url = new URL(Astro.request.url);
+const providedKey = url.searchParams.get('key');
+const cookieHeader = Astro.request.headers.get('cookie') || '';
+const cookieKey = (cookieHeader.match(/(?:^|;\s*)rivett_hq_key=([^;]+)/)?.[1] ?? '').trim();
+
+let authed = false;
+let setCookie = false;
+if (HQ_KEY && providedKey && providedKey === HQ_KEY) {
+  authed = true;
+  setCookie = true;
+} else if (HQ_KEY && cookieKey && cookieKey === HQ_KEY) {
+  authed = true;
+}
+
+if (setCookie) {
+  // 1-year persistent cookie. SameSite=Lax so links from external sites still
+  // carry it back. HttpOnly so JS can't read or exfiltrate it.
+  Astro.response.headers.set(
+    'Set-Cookie',
+    `rivett_hq_key=${HQ_KEY}; Path=/; Max-Age=31536000; HttpOnly; SameSite=Lax; Secure`
+  );
+}
+
+if (!authed) {
+  Astro.response.status = 404;
+}
+
+// --- Data fetch (only when authed) ---
+let headline: HeadlineMetrics | null = null;
+let recent: RecentRead[] = [];
+let top: TopProspect[] = [];
+let ctas: CtaClick[] = [];
+let fetchError: string | null = null;
+
+if (authed) {
+  try {
+    const [h, r, t, c] = await Promise.all([
+      getHeadlineMetrics(),
+      getRecentReads(14),
+      getTopProspects(14),
+      getCtaClicks(14),
+    ]);
+    headline = h;
+    recent = r;
+    top = t;
+    ctas = c;
+  } catch (e) {
+    fetchError = e instanceof Error ? e.message : String(e);
+    console.error('[hq] PostHog fetch failed', e);
+  }
+}
+
+const renderedAt = new Date().toISOString();
+---
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="robots" content="noindex,nofollow" />
+<title>{authed ? 'HQ · Rivett' : 'Not found'}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=DM+Mono:wght@400;500&family=Newsreader:ital,wght@0,400;1,400;1,500&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --paper: #FFFFFF;
+    --paper-2: #F4F2ED;
+    --paper-3: #EBE6DC;
+    --ink: #0E1A2C;
+    --ink-dim: #3A4658;
+    --ink-faint: #7A8597;
+    --line: rgba(14,26,44,0.14);
+    --line-strong: rgba(14,26,44,0.28);
+    --accent: #8FBF3F;
+    --accent-deep: #4A6E18;
+    --accent-bg: #F2F7E5;
+    --grotesk: 'Inter Tight', system-ui, sans-serif;
+    --serif: 'Newsreader', Georgia, serif;
+    --mono: 'DM Mono', ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--paper); color: var(--ink); font-family: var(--grotesk); -webkit-font-smoothing: antialiased; }
+  a { color: inherit; }
+  .page { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+  @media (max-width: 720px) { .page { padding: 1.25rem 1rem 3rem; } }
+
+  /* Top bar */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 2rem;
+  }
+  .wordmark {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.05em;
+    font-weight: 700;
+    font-size: 1.25rem;
+    letter-spacing: -0.04em;
+    text-decoration: none;
+    color: var(--ink);
+  }
+  .wordmark .dot-mark {
+    display: inline-block;
+    width: 0.3em;
+    height: 0.3em;
+    border-radius: 999px;
+    background: var(--accent);
+  }
+  .topmeta {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  /* Hero kicker */
+  .hero {
+    margin-bottom: 2.5rem;
+  }
+  .hero .kicker {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 0.5rem;
+  }
+  .hero h1 {
+    margin: 0;
+    font-size: clamp(1.75rem, 4vw, 2.5rem);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.05;
+  }
+  .hero h1 .ital {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 400;
+    color: var(--ink-dim);
+  }
+  .hero .dek {
+    margin: 0.75rem 0 0;
+    color: var(--ink-dim);
+    max-width: 60ch;
+    font-size: 0.95rem;
+  }
+
+  /* Metric grid */
+  .metrics {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    margin-bottom: 2.5rem;
+  }
+  @media (min-width: 720px) { .metrics { grid-template-columns: repeat(4, 1fr); } }
+
+  /* Sections */
+  section.sec {
+    margin-bottom: 3rem;
+  }
+
+  /* Footer */
+  .foot {
+    margin-top: 4rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--line);
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink-faint);
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .foot a {
+    color: var(--ink-dim);
+    text-decoration: underline;
+    text-decoration-color: var(--line-strong);
+  }
+
+  /* 404 */
+  .nf {
+    max-width: 480px;
+    margin: 6rem auto;
+    padding: 0 1.5rem;
+    text-align: center;
+  }
+  .nf h1 {
+    font-size: 5rem;
+    font-weight: 700;
+    margin: 0;
+    letter-spacing: -0.05em;
+    color: var(--ink);
+  }
+  .nf p {
+    color: var(--ink-faint);
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  /* Error banner */
+  .err {
+    margin: 1rem 0 2rem;
+    padding: 1rem;
+    border: 1px solid var(--line-strong);
+    border-radius: 4px;
+    background: var(--paper-2);
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    color: var(--ink-dim);
+  }
+  .err b { color: var(--ink); }
+</style>
+</head>
+<body>
+{!authed && (
+  <div class="nf">
+    <h1>404</h1>
+    <p>Nothing here.</p>
+  </div>
+)}
+
+{authed && (
+  <div class="page">
+    <div class="topbar">
+      <a class="wordmark" href="/">rivett<span class="dot-mark" aria-hidden="true"></span></a>
+      <div class="topmeta">HQ · private</div>
+    </div>
+
+    <header class="hero">
+      <div class="kicker">Audit engagement · last 14 days</div>
+      <h1>
+        Who is reading what.
+        <span class="ital">And who is on the edge of booking.</span>
+      </h1>
+      <p class="dek">Real human reads only. Datacenter scanners filtered out at the source.</p>
+    </header>
+
+    {fetchError && (
+      <div class="err">
+        <b>Could not load live data.</b> {fetchError}
+      </div>
+    )}
+
+    {headline && (
+      <div class="metrics">
+        <MetricCard label="Memo views" value={headline.memo_views_7d} sub="last 7 days" />
+        <MetricCard label="Unique visitors" value={headline.unique_visitors_7d} sub="last 7 days" />
+        <MetricCard
+          label="Engaged reads"
+          value={headline.engaged_reads_7d}
+          sub="scrolled past 50%"
+          hint={headline.engaged_reads_7d === 0 ? 'No 50% scrolls yet. Will populate once next batch lands.' : undefined}
+        />
+        <MetricCard
+          label="CTA clicks"
+          value={headline.cta_clicks_7d}
+          sub="Book a call etc."
+          hint={headline.cta_clicks_7d === 0 ? 'No clicks yet. Tracking just shipped.' : undefined}
+        />
+      </div>
+    )}
+
+    <section class="sec">
+      <SectionHeader
+        number="01"
+        title="Recent reads."
+        italicTail="Who looked at what, when."
+        meta={`${recent.length} session${recent.length === 1 ? '' : 's'} · last 14 days · real humans only`}
+      />
+      <RecentReadsFeed reads={recent} />
+    </section>
+
+    <section class="sec">
+      <SectionHeader
+        number="02"
+        title="Top prospects."
+        italicTail="Ranked by engagement."
+        meta={`${top.length} prospect${top.length === 1 ? '' : 's'} · last 14 days`}
+      />
+      <TopProspectsTable prospects={top} />
+    </section>
+
+    <section class="sec">
+      <SectionHeader
+        number="03"
+        title="CTA clicks."
+        italicTail="Book-a-call moments."
+        meta={`${ctas.length} click${ctas.length === 1 ? '' : 's'} · last 14 days`}
+      />
+      <CtaClicksFeed clicks={ctas} />
+    </section>
+
+    <footer class="foot">
+      <span>Rendered {new Date(renderedAt).toUTCString().replace('GMT', 'UTC')}</span>
+      <span><a href="/hq">Refresh</a> · <a href="https://us.posthog.com/project/373899" target="_blank" rel="noopener">PostHog console</a></span>
+    </footer>
+  </div>
+)}
+</body>
+</html>

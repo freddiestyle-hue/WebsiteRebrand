@@ -1,0 +1,59 @@
+---
+interface Props {
+  number: string;
+  title: string;
+  italicTail?: string;
+  meta?: string;
+}
+
+const { number, title, italicTail, meta } = Astro.props;
+---
+<header class="hd">
+  <div class="num">§ {number}</div>
+  <div class="t">
+    <h2>
+      {title}
+      {italicTail && <> <span class="ital">{italicTail}</span></>}
+    </h2>
+    {meta && <div class="meta">{meta}</div>}
+  </div>
+</header>
+
+<style>
+  .hd {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 1rem 1.25rem;
+    align-items: baseline;
+    padding: 0 0 0.75rem;
+    border-bottom: 1px solid var(--line, rgba(14,26,44,0.14));
+    margin-bottom: 1.25rem;
+  }
+  .num {
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 0.75rem;
+    letter-spacing: 0.04em;
+    color: var(--ink-faint, #7A8597);
+    white-space: nowrap;
+  }
+  h2 {
+    margin: 0;
+    font-family: var(--grotesk, 'Inter Tight', system-ui);
+    font-size: clamp(1.25rem, 2vw, 1.75rem);
+    font-weight: 600;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+  }
+  .ital {
+    font-family: var(--serif, 'Newsreader', Georgia, serif);
+    font-style: italic;
+    font-weight: 400;
+    color: var(--ink-dim, #3A4658);
+  }
+  .meta {
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 0.75rem;
+    color: var(--ink-faint, #7A8597);
+    margin-top: 0.25rem;
+  }
+</style>

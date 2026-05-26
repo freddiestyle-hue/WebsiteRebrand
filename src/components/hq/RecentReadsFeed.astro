@@ -1,0 +1,157 @@
+---
+import type { RecentRead } from '../../utils/posthog/query';
+import { sessionReplayUrl } from '../../utils/posthog/query';
+
+interface Props {
+  reads: RecentRead[];
+}
+
+const { reads } = Astro.props;
+
+function timeAgo(iso: string): string {
+  const then = new Date(iso).getTime();
+  const now = Date.now();
+  const sec = Math.max(0, Math.round((now - then) / 1000));
+  if (sec < 60) return `${sec}s ago`;
+  const min = Math.round(sec / 60);
+  if (min < 60) return `${min}m ago`;
+  const hr = Math.round(min / 60);
+  if (hr < 48) return `${hr}h ago`;
+  const day = Math.round(hr / 24);
+  return `${day}d ago`;
+}
+
+function dwell(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`;
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}m ${s}s`;
+}
+
+function engagementClass(seconds: number, clicks: number): string {
+  if (clicks > 0) return 'eng--hot';
+  if (seconds >= 30) return 'eng--warm';
+  if (seconds >= 15) return 'eng--cool';
+  return 'eng--cold';
+}
+---
+{reads.length === 0 ? (
+  <p class="empty">No engaged reads yet. Send the next batch and watch this populate.</p>
+) : (
+  <ol class="feed">
+    {reads.map((r) => {
+      const replay = sessionReplayUrl(r.session_id);
+      return (
+        <li class={`row ${engagementClass(r.dwell_seconds, r.cta_clicks)}`}>
+          <div class="when">{timeAgo(r.last_event)}</div>
+          <div class="who">
+            <div class="prospect">{r.prospect || '(unknown)'}</div>
+            <div class="geo">{[r.city, r.country].filter(Boolean).join(', ') || '—'}</div>
+          </div>
+          <div class="signals">
+            <span class="sig"><b>{dwell(r.dwell_seconds)}</b> dwell</span>
+            <span class="sig"><b>{r.events}</b> events</span>
+            {r.cta_clicks > 0 && <span class="sig sig--hot"><b>{r.cta_clicks}</b> CTA click{r.cta_clicks === 1 ? '' : 's'}</span>}
+          </div>
+          <div class="actions">
+            {replay && <a class="action" href={replay} target="_blank" rel="noopener">Watch replay →</a>}
+            <a class="action" href={r.path} target="_blank" rel="noopener">Open memo →</a>
+          </div>
+        </li>
+      );
+    })}
+  </ol>
+)}
+
+<style>
+  .empty {
+    font-family: var(--serif, 'Newsreader', Georgia, serif);
+    font-style: italic;
+    color: var(--ink-faint, #7A8597);
+    padding: 1.5rem 0;
+  }
+  .feed {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    counter-reset: feed;
+  }
+  .row {
+    display: grid;
+    grid-template-columns: 7rem 1fr auto;
+    gap: 0.75rem 1.5rem;
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--line, rgba(14,26,44,0.14));
+    align-items: center;
+  }
+  .row:last-child { border-bottom: 0; }
+  .when {
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 0.75rem;
+    color: var(--ink-faint, #7A8597);
+    white-space: nowrap;
+  }
+  .who { min-width: 0; }
+  .prospect {
+    font-weight: 600;
+    color: var(--ink, #0E1A2C);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .geo {
+    font-size: 0.85rem;
+    color: var(--ink-faint, #7A8597);
+  }
+  .signals {
+    grid-column: 2 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 0.75rem;
+    color: var(--ink-dim, #3A4658);
+  }
+  .sig b { color: var(--ink, #0E1A2C); font-weight: 600; }
+  .sig--hot { color: var(--accent-deep, #4A6E18); }
+  .sig--hot b { color: var(--accent-deep, #4A6E18); }
+  .actions {
+    grid-column: 2 / -1;
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .action {
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 0.75rem;
+    color: var(--ink-dim, #3A4658);
+    text-decoration: underline;
+    text-decoration-color: var(--line-strong, rgba(14,26,44,0.28));
+  }
+  .action:hover { color: var(--accent-deep, #4A6E18); }
+
+  /* Engagement bands left rail accent */
+  .row { position: relative; padding-left: 1rem; }
+  .row::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 1rem;
+    bottom: 1rem;
+    width: 2px;
+    background: var(--line, rgba(14,26,44,0.14));
+  }
+  .eng--hot::before  { background: var(--accent-deep, #4A6E18); }
+  .eng--warm::before { background: var(--accent, #8FBF3F); }
+  .eng--cool::before { background: var(--ink-dim, #3A4658); }
+  .eng--cold::before { background: var(--line-strong, rgba(14,26,44,0.28)); }
+
+  @media (min-width: 720px) {
+    .row {
+      grid-template-columns: 7rem 1fr auto auto;
+      grid-template-rows: auto;
+    }
+    .signals { grid-column: auto; }
+    .actions { grid-column: auto; justify-content: flex-end; }
+  }
+</style>

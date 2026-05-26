@@ -1,0 +1,94 @@
+---
+import type { TopProspect } from '../../utils/posthog/query';
+
+interface Props {
+  prospects: TopProspect[];
+}
+
+const { prospects } = Astro.props;
+
+function dwell(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`;
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}m ${s}s`;
+}
+---
+{prospects.length === 0 ? (
+  <p class="empty">No prospect engagement yet.</p>
+) : (
+  <table class="tbl">
+    <thead>
+      <tr>
+        <th class="th-rank">#</th>
+        <th>Prospect</th>
+        <th class="th-num">Views</th>
+        <th class="th-num">Sessions</th>
+        <th class="th-num">Dwell</th>
+        <th class="th-num">CTA</th>
+      </tr>
+    </thead>
+    <tbody>
+      {prospects.map((p, i) => (
+        <tr>
+          <td class="td-rank">{String(i + 1).padStart(2, '0')}</td>
+          <td class="td-prospect">
+            <a href={`https://rivett.tech/audit/v3/${p.prospect}`} target="_blank" rel="noopener">{p.prospect}</a>
+          </td>
+          <td class="td-num">{p.total_views}</td>
+          <td class="td-num">{p.unique_sessions}</td>
+          <td class="td-num">{dwell(p.total_dwell_seconds)}</td>
+          <td class="td-num">{p.cta_clicks > 0 ? <b class="hot">{p.cta_clicks}</b> : <span class="dim">—</span>}</td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+)}
+
+<style>
+  .empty {
+    font-family: var(--serif, 'Newsreader', Georgia, serif);
+    font-style: italic;
+    color: var(--ink-faint, #7A8597);
+    padding: 1.5rem 0;
+  }
+  .tbl {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+  }
+  .tbl th,
+  .tbl td {
+    text-align: left;
+    padding: 0.6rem 0.5rem;
+    border-bottom: 1px solid var(--line, rgba(14,26,44,0.14));
+  }
+  .tbl thead th {
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-weight: 500;
+    color: var(--ink-faint, #7A8597);
+    border-bottom-color: var(--line-strong, rgba(14,26,44,0.28));
+  }
+  .th-rank, .td-rank {
+    font-family: var(--mono, 'DM Mono', monospace);
+    color: var(--ink-faint, #7A8597);
+    width: 3rem;
+  }
+  .th-num, .td-num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .td-prospect a {
+    color: var(--ink, #0E1A2C);
+    text-decoration: none;
+    font-weight: 500;
+    border-bottom: 1px solid var(--line-strong, rgba(14,26,44,0.28));
+  }
+  .td-prospect a:hover { color: var(--accent-deep, #4A6E18); border-bottom-color: var(--accent-deep, #4A6E18); }
+  .hot { color: var(--accent-deep, #4A6E18); }
+  .dim { color: var(--ink-faint, #7A8597); }
+</style>

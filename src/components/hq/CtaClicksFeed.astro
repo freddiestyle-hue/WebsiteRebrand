@@ -1,0 +1,76 @@
+---
+import type { CtaClick } from '../../utils/posthog/query';
+
+interface Props {
+  clicks: CtaClick[];
+}
+
+const { clicks } = Astro.props;
+
+function timeAgo(iso: string): string {
+  const then = new Date(iso).getTime();
+  const now = Date.now();
+  const sec = Math.max(0, Math.round((now - then) / 1000));
+  if (sec < 60) return `${sec}s ago`;
+  const min = Math.round(sec / 60);
+  if (min < 60) return `${min}m ago`;
+  const hr = Math.round(min / 60);
+  if (hr < 48) return `${hr}h ago`;
+  return `${Math.round(hr / 24)}d ago`;
+}
+---
+{clicks.length === 0 ? (
+  <p class="empty">No CTA clicks yet. Every Book-a-call click will land here when it happens.</p>
+) : (
+  <ul class="clicks">
+    {clicks.map((c) => (
+      <li>
+        <span class="when">{timeAgo(c.when)}</span>
+        <span class="cta">{c.cta}</span>
+        <span class="prospect">{c.prospect || '(no slug)'}</span>
+        <span class="geo">{[c.city, c.country].filter(Boolean).join(', ') || '—'}</span>
+      </li>
+    ))}
+  </ul>
+)}
+
+<style>
+  .empty {
+    font-family: var(--serif, 'Newsreader', Georgia, serif);
+    font-style: italic;
+    color: var(--ink-faint, #7A8597);
+    padding: 1.5rem 0;
+  }
+  .clicks {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .clicks li {
+    display: grid;
+    grid-template-columns: 6rem 1fr 1fr 1fr;
+    gap: 1rem;
+    padding: 0.6rem 0;
+    border-bottom: 1px solid var(--line, rgba(14,26,44,0.14));
+    font-size: 0.85rem;
+  }
+  .clicks li:last-child { border-bottom: 0; }
+  .when {
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 0.75rem;
+    color: var(--ink-faint, #7A8597);
+  }
+  .cta {
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 0.8rem;
+    color: var(--accent-deep, #4A6E18);
+    font-weight: 500;
+  }
+  .prospect {
+    font-weight: 500;
+    color: var(--ink, #0E1A2C);
+  }
+  .geo {
+    color: var(--ink-faint, #7A8597);
+  }
+</style>

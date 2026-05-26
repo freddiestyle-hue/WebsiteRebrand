@@ -1,0 +1,53 @@
+---
+interface Props {
+  label: string;
+  value: string | number;
+  sub?: string;
+  hint?: string;
+}
+
+const { label, value, sub, hint } = Astro.props;
+---
+<div class="card">
+  <div class="lab">{label}</div>
+  <div class="val">{value}</div>
+  {sub && <div class="sub">{sub}</div>}
+  {hint && <div class="hint">{hint}</div>}
+</div>
+
+<style>
+  .card {
+    padding: 1.25rem 1.25rem 1rem;
+    background: var(--paper-2, #F4F2ED);
+    border: 1px solid var(--line, rgba(14,26,44,0.14));
+    border-radius: 4px;
+  }
+  .lab {
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink-faint, #7A8597);
+    margin-bottom: 0.5rem;
+  }
+  .val {
+    font-family: var(--grotesk, 'Inter Tight', system-ui);
+    font-size: clamp(2rem, 4vw, 2.75rem);
+    font-weight: 700;
+    line-height: 1;
+    color: var(--ink, #0E1A2C);
+    letter-spacing: -0.03em;
+  }
+  .sub {
+    margin-top: 0.4rem;
+    font-size: 0.85rem;
+    color: var(--ink-dim, #3A4658);
+  }
+  .hint {
+    margin-top: 0.4rem;
+    font-family: var(--serif, 'Newsreader', Georgia, serif);
+    font-style: italic;
+    font-size: 0.85rem;
+    color: var(--ink-faint, #7A8597);
+  }
+</style>
