@@ -36,6 +36,19 @@ const providedKey = url.searchParams.get('key');
 const cookieHeader = Astro.request.headers.get('cookie') || '';
 const cookieKey = (cookieHeader.match(/(?:^|;\s*)rivett_hq_key=([^;]+)/)?.[1] ?? '').trim();
 
+// TEMP: log auth state for debug, no secrets exposed
+console.log('[hq] auth check', {
+  hq_key_set: Boolean(HQ_KEY),
+  hq_key_len: HQ_KEY ? HQ_KEY.length : 0,
+  provided_key_set: Boolean(providedKey),
+  provided_key_len: providedKey ? providedKey.length : 0,
+  cookie_key_set: Boolean(cookieKey),
+  match_provided: HQ_KEY && providedKey && providedKey === HQ_KEY,
+  match_cookie: HQ_KEY && cookieKey && cookieKey === HQ_KEY,
+  process_env_keys_count: Object.keys(process.env).length,
+  has_posthog: Boolean(process.env.POSTHOG_PERSONAL_API_KEY),
+});
+
 let authed = false;
 let setCookie = false;
 if (HQ_KEY && providedKey && providedKey === HQ_KEY) {
