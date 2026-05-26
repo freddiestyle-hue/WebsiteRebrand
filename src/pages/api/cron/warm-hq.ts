@@ -22,6 +22,8 @@ import {
   getActivityTimeline,
 } from '../../../utils/posthog/query';
 import { parseDateRange, PRESETS } from '../../../utils/posthog/dateRange';
+import { getMessagedSlugs } from '../../../utils/hq/messaged';
+import { sendDigestEmail } from '../../../utils/hq/notify';
 
 export const prerender = false;
 
@@ -98,11 +100,53 @@ export const GET: APIRoute = async ({ request, url }) => {
     }
   });
 
+  // After warming, build and send the daily digest email. Caches are now
+  // warm so this reads from Redis (fast). Skip if ?skip_digest=1 is passed
+  // (manual warmup runs shouldn't spam Fred's inbox).
+  let digestResult: { sent: boolean; error?: string } = { sent: false };
+  const skipDigest = url.searchParams.get('skip_digest') === '1';
+  if (!skipDigest) {
+    try {
+      const todaySp = new URLSearchParams(); todaySp.set('range', 'today');
+      const sevenSp = new URLSearchParams(); sevenSp.set('range', '7d');
+      const fourteenSp = new URLSearchParams(); fourteenSp.set('range', '14d');
+      const todayRange = parseDateRange(todaySp);
+      const sevenRange = parseDateRange(sevenSp);
+      const fourteenRange = parseDateRange(fourteenSp);
+
+      const [todayHeadline, sevenHeadline, fourteenTop, messaged] = await Promise.all([
+        getHeadlineMetrics(todayRange),
+        getHeadlineMetrics(sevenRange),
+        getTopProspects(fourteenRange),
+        getMessagedSlugs(),
+      ]);
+
+      const actionQueue = fourteenTop
+        .filter((p) => !messaged.has(p.prospect))
+        .filter((p) => p.total_dwell_seconds >= 15 || p.cta_clicks > 0)
+        .sort((a, b) => (a.last_view < b.last_view ? 1 : -1));
+
+      const digest = await sendDigestEmail({
+        actionQueue,
+        totalEngagedToday: todayHeadline.engaged_reads,
+        ctaClicksToday: todayHeadline.cta_clicks,
+        ctaClicks7d: sevenHeadline.cta_clicks,
+        memoViewsToday: todayHeadline.memo_views,
+        memoViews7d: sevenHeadline.memo_views,
+        hqUrl: 'https://rivett.tech/hq',
+      });
+      digestResult = digest.ok ? { sent: true } : { sent: false, error: digest.error };
+    } catch (e) {
+      digestResult = { sent: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  }
+
   return new Response(
     JSON.stringify({
       totalMs: Date.now() - started,
       warmed: toWarm,
       results,
+      digest: digestResult,
     }),
     {
       status: 200,
