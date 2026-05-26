@@ -45,39 +45,63 @@ async function warmRange(rangeKey: string) {
   ]);
 }
 
-export const GET: APIRoute = async ({ request }) => {
+// Default to the 3 hot ranges Fred actually uses. Vercel Hobby caps function
+// duration at 10s, and warming all 6 presets sequentially blows past that.
+// Other ranges warm on first real visit (one slow load, then cached).
+const DEFAULT_WARM = ['today', '7d', '14d'];
+
+export const GET: APIRoute = async ({ request, url }) => {
   const expected = process.env.CRON_SECRET;
   const auth = request.headers.get('authorization') || '';
   const bearer = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
 
-  // Vercel always sends the bearer. Allow manual triggering only if no
-  // CRON_SECRET is set (local dev safety).
   if (expected && bearer !== expected) {
     return new Response('Unauthorized', { status: 401 });
   }
 
-  const started = Date.now();
-  const results: Record<string, { ok: boolean; ms: number; error?: string }> = {};
+  // Allow custom range list via ?ranges=today,7d (comma-separated). Default is
+  // the hot trio. `?ranges=all-presets` warms every preset (manual operator
+  // trigger only — won't fit in the 10s cron budget).
+  const param = url.searchParams.get('ranges');
+  let toWarm: string[];
+  if (param === 'all-presets') {
+    toWarm = PRESETS.map((p) => p.value);
+  } else if (param) {
+    toWarm = param.split(',').map((s) => s.trim()).filter(Boolean);
+  } else {
+    toWarm = DEFAULT_WARM;
+  }
 
-  // Warm each preset range sequentially so we don't hammer PostHog with 60
-  // concurrent queries at once. Within a range, the 10 queries run in parallel.
-  for (const preset of PRESETS) {
-    const t0 = Date.now();
-    try {
-      await warmRange(preset.value);
-      results[preset.value] = { ok: true, ms: Date.now() - t0 };
-    } catch (e) {
-      results[preset.value] = {
+  const started = Date.now();
+  // Warm in parallel — each range internally fires 10 PostHog queries in
+  // parallel. Three ranges × 10 = 30 concurrent queries, comfortably inside
+  // the function timeout.
+  const settled = await Promise.allSettled(
+    toWarm.map(async (preset) => {
+      const t0 = Date.now();
+      await warmRange(preset);
+      return { preset, ms: Date.now() - t0 };
+    })
+  );
+
+  const results: Record<string, { ok: boolean; ms: number; error?: string }> = {};
+  settled.forEach((r, i) => {
+    const preset = toWarm[i];
+    if (r.status === 'fulfilled') {
+      results[preset] = { ok: true, ms: r.value.ms };
+    } else {
+      results[preset] = {
         ok: false,
-        ms: Date.now() - t0,
-        error: e instanceof Error ? e.message : String(e),
+        ms: 0,
+        error: r.reason instanceof Error ? r.reason.message : String(r.reason),
       };
     }
-  }
+  });
 
   return new Response(
     JSON.stringify({
       totalMs: Date.now() - started,
+      warmed: toWarm,
       results,
     }),
     {
