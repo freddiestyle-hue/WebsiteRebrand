@@ -6,11 +6,75 @@
 //
 // All queries exclude datacenter cities (Microsoft SafeLinks/Mimecast/etc.)
 // and Fred's own home cities so the HQ page shows real prospect engagement.
+//
+// Caching: every query result is cached in Upstash Redis keyed by
+// (queryName, fromIso, toIso). TTL varies by date-range size so "today" stays
+// fresh while "all time" stays cheap. On cache miss we fetch PostHog (1-3s),
+// on cache hit we read Redis (10-50ms). The /hq page hits this 10 times in
+// parallel per render; warm cache turns a 2-4s render into a sub-second one.
 
+import { Redis } from '@upstash/redis';
 import { hogqlRangeClause, rangeDaysSpan, type DateRange } from './dateRange';
 
 const POSTHOG_HOST = 'https://us.posthog.com';
 const POSTHOG_PROJECT_ID = 373899;
+
+// Cache versioning lets us bust everything by bumping this string.
+const CACHE_VERSION = 'v1';
+
+// Lazy redis client. Construction is cheap but we only need one instance.
+let _redis: Redis | null = null;
+function getRedis(): Redis | null {
+  if (_redis) return _redis;
+  try {
+    _redis = Redis.fromEnv();
+    return _redis;
+  } catch {
+    // No KV env vars locally; cache silently disabled.
+    return null;
+  }
+}
+
+// TTL in seconds, picked to balance freshness against PostHog query cost.
+function ttlFor(range: DateRange): number {
+  switch (range.preset) {
+    case 'today': return 30;
+    case '7d': return 60;
+    case '14d': return 60;
+    case '30d': return 300;
+    case '90d': return 600;
+    case 'all': return 600;
+    case 'custom': return 120;
+    default: return 60;
+  }
+}
+
+async function cached<T>(
+  queryName: string,
+  range: DateRange,
+  fetchFresh: () => Promise<T>
+): Promise<T> {
+  const redis = getRedis();
+  const key = `hq:${CACHE_VERSION}:${queryName}:${range.fromIso}:${range.toIso}`;
+  if (redis) {
+    try {
+      const hit = await redis.get<T>(key);
+      if (hit !== null && hit !== undefined) return hit;
+    } catch (e) {
+      // Cache read failed — continue to live fetch, don't break the page.
+      console.warn('[hq cache] read failed', queryName, e);
+    }
+  }
+  const fresh = await fetchFresh();
+  if (redis) {
+    try {
+      await redis.set(key, fresh, { ex: ttlFor(range) });
+    } catch (e) {
+      console.warn('[hq cache] write failed', queryName, e);
+    }
+  }
+  return fresh;
+}
 
 // Datacenter cities — these are headless link scanners, not humans. Same
 // list configured at the PostHog project level for insights.
@@ -96,6 +160,7 @@ export interface RecentRead {
 }
 
 export async function getRecentReads(range: DateRange): Promise<RecentRead[]> {
+  return cached('recentReads', range, async () => {
   const r = await runQuery(`
     SELECT
       properties.$pathname AS path,
@@ -118,6 +183,7 @@ export async function getRecentReads(range: DateRange): Promise<RecentRead[]> {
     LIMIT 50
   `);
   return rowsToObjects<RecentRead>(r);
+  });
 }
 
 // --------------------------------------------------------------------------
@@ -145,6 +211,7 @@ export interface TopProspect {
 }
 
 export async function getTopProspects(range: DateRange): Promise<TopProspect[]> {
+  return cached('topProspects', range, async () => {
   // Aggregate per (prospect, session) first, then group up with groupArray to
   // also return the per-session breakdown (so the UI can expose replay links
   // per session, not just the aggregate).
@@ -205,6 +272,7 @@ export async function getTopProspects(range: DateRange): Promise<TopProspect[]> 
       }))
       .sort((a, b) => (a.last_event < b.last_event ? 1 : -1)),
   }));
+  });
 }
 
 // --------------------------------------------------------------------------
@@ -220,6 +288,7 @@ export interface HeadlineMetrics {
 }
 
 export async function getHeadlineMetrics(range: DateRange): Promise<HeadlineMetrics> {
+  return cached('headlineMetrics', range, async () => {
   const r = await runQuery(`
     SELECT
       countIf(event = '$pageview' AND properties.$pathname ILIKE '/audit/%') AS memo_views_7d,
@@ -237,6 +306,7 @@ export async function getHeadlineMetrics(range: DateRange): Promise<HeadlineMetr
     cta_clicks_7d: number;
   }>(r);
   return o[0] ?? { memo_views_7d: 0, unique_visitors_7d: 0, engaged_reads_7d: 0, cta_clicks_7d: 0 };
+  });
 }
 
 // --------------------------------------------------------------------------
@@ -253,6 +323,7 @@ export interface CtaClick {
 }
 
 export async function getCtaClicks(range: DateRange): Promise<CtaClick[]> {
+  return cached('ctaClicks', range, async () => {
   const r = await runQuery(`
     SELECT
       properties.cta AS cta,
@@ -269,6 +340,7 @@ export async function getCtaClicks(range: DateRange): Promise<CtaClick[]> {
     LIMIT 25
   `);
   return rowsToObjects<CtaClick>(r);
+  });
 }
 
 // --------------------------------------------------------------------------
@@ -289,6 +361,7 @@ export interface TopBlogPost {
 }
 
 export async function getTopBlogPosts(range: DateRange): Promise<TopBlogPost[]> {
+  return cached('topBlogPosts', range, async () => {
   const r = await runQuery(`
     SELECT
       slug,
@@ -322,6 +395,7 @@ export async function getTopBlogPosts(range: DateRange): Promise<TopBlogPost[]> 
     LIMIT 25
   `);
   return rowsToObjects<TopBlogPost>(r);
+  });
 }
 
 // --------------------------------------------------------------------------
@@ -339,20 +413,22 @@ export interface CountryBreakdown {
 }
 
 export async function getVisitorsByCountry(range: DateRange): Promise<CountryBreakdown[]> {
-  const r = await runQuery(`
-    SELECT
-      properties.$geoip_country_name AS country,
-      uniq(distinct_id) AS visitors,
-      countIf(event = '$pageview') AS pageviews,
-      uniq(properties.$session_id) AS sessions
-    FROM events
-    WHERE ${hogqlRangeClause(range)}
-      AND properties.$geoip_country_name IS NOT NULL
-    GROUP BY country
-    ORDER BY visitors DESC
-    LIMIT 30
-  `);
-  return rowsToObjects<CountryBreakdown>(r);
+  return cached('countries', range, async () => {
+    const r = await runQuery(`
+      SELECT
+        properties.$geoip_country_name AS country,
+        uniq(distinct_id) AS visitors,
+        countIf(event = '$pageview') AS pageviews,
+        uniq(properties.$session_id) AS sessions
+      FROM events
+      WHERE ${hogqlRangeClause(range)}
+        AND properties.$geoip_country_name IS NOT NULL
+      GROUP BY country
+      ORDER BY visitors DESC
+      LIMIT 30
+    `);
+    return rowsToObjects<CountryBreakdown>(r);
+  });
 }
 
 // --------------------------------------------------------------------------
@@ -374,6 +450,7 @@ const DATACENTER_CITY_SET = new Set(DATACENTER_CITIES);
 const SELF_CITY_SET = new Set(SELF_CITIES);
 
 export async function getVisitorsByCity(range: DateRange): Promise<CityBreakdown[]> {
+  return cached('cities', range, async () => {
   const r = await runQuery(`
     SELECT
       properties.$geoip_city_name AS city,
@@ -394,6 +471,7 @@ export async function getVisitorsByCity(range: DateRange): Promise<CityBreakdown
     is_datacenter: DATACENTER_CITY_SET.has(row.city),
     is_self: SELF_CITY_SET.has(row.city),
   }));
+  });
 }
 
 // --------------------------------------------------------------------------
@@ -409,22 +487,24 @@ export interface DeviceRow {
 }
 
 export async function getVisitorTech(range: DateRange): Promise<DeviceRow[]> {
-  const r = await runQuery(`
-    SELECT
-      properties.$device_type AS device_type,
-      properties.$browser AS browser,
-      properties.$os AS os,
-      uniq(distinct_id) AS visitors,
-      countIf(event = '$pageview') AS pageviews
-    FROM events
-    WHERE ${hogqlRangeClause(range)}
-      AND properties.$browser IS NOT NULL
-      ${REAL_HUMAN_WHERE}
-    GROUP BY device_type, browser, os
-    ORDER BY visitors DESC
-    LIMIT 20
-  `);
-  return rowsToObjects<DeviceRow>(r);
+  return cached('devices', range, async () => {
+    const r = await runQuery(`
+      SELECT
+        properties.$device_type AS device_type,
+        properties.$browser AS browser,
+        properties.$os AS os,
+        uniq(distinct_id) AS visitors,
+        countIf(event = '$pageview') AS pageviews
+      FROM events
+      WHERE ${hogqlRangeClause(range)}
+        AND properties.$browser IS NOT NULL
+        ${REAL_HUMAN_WHERE}
+      GROUP BY device_type, browser, os
+      ORDER BY visitors DESC
+      LIMIT 20
+    `);
+    return rowsToObjects<DeviceRow>(r);
+  });
 }
 
 // --------------------------------------------------------------------------
@@ -438,19 +518,21 @@ export interface TrafficSource {
 }
 
 export async function getTrafficSources(range: DateRange): Promise<TrafficSource[]> {
-  const r = await runQuery(`
-    SELECT
-      coalesce(properties.$initial_referring_domain, '$direct') AS source,
-      uniq(distinct_id) AS visitors,
-      countIf(event = '$pageview') AS pageviews
-    FROM events
-    WHERE ${hogqlRangeClause(range)}
-      ${REAL_HUMAN_WHERE}
-    GROUP BY source
-    ORDER BY visitors DESC
-    LIMIT 20
-  `);
-  return rowsToObjects<TrafficSource>(r);
+  return cached('sources', range, async () => {
+    const r = await runQuery(`
+      SELECT
+        coalesce(properties.$initial_referring_domain, '$direct') AS source,
+        uniq(distinct_id) AS visitors,
+        countIf(event = '$pageview') AS pageviews
+      FROM events
+      WHERE ${hogqlRangeClause(range)}
+        ${REAL_HUMAN_WHERE}
+      GROUP BY source
+      ORDER BY visitors DESC
+      LIMIT 20
+    `);
+    return rowsToObjects<TrafficSource>(r);
+  });
 }
 
 // --------------------------------------------------------------------------
@@ -465,6 +547,7 @@ export interface ActivityDay {
 }
 
 export async function getActivityTimeline(range: DateRange): Promise<ActivityDay[]> {
+  return cached('activity', range, async () => {
   const r = await runQuery(`
     SELECT
       toDate(timestamp) AS day,
@@ -492,6 +575,7 @@ export async function getActivityTimeline(range: DateRange): Promise<ActivityDay
     out.push(found ?? { day: key, pageviews: 0, visitors: 0 });
   }
   return out;
+  });
 }
 
 // --------------------------------------------------------------------------
