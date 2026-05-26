@@ -54,13 +54,25 @@ function ttlFor(range: DateRange): number {
   }
 }
 
+function cacheKey(queryName: string, range: DateRange): string {
+  // Round the "to" side to the current day so a preset like "7d" produces
+  // the same key across requests within a day. Without this rounding, toIso
+  // was `now.toISOString()` and every request had a unique key (never hit).
+  // Custom ranges already have stable from/to so they're keyed exactly.
+  const today = new Date().toISOString().slice(0, 10);
+  if (range.isCustom) {
+    return `hq:${CACHE_VERSION}:${queryName}:custom:${range.fromIso.slice(0, 10)}:${range.toIso.slice(0, 10)}`;
+  }
+  return `hq:${CACHE_VERSION}:${queryName}:${range.preset}:${today}`;
+}
+
 async function cached<T>(
   queryName: string,
   range: DateRange,
   fetchFresh: () => Promise<T>
 ): Promise<T> {
   const redis = getRedis();
-  const key = `hq:${CACHE_VERSION}:${queryName}:${range.fromIso}:${range.toIso}`;
+  const key = cacheKey(queryName, range);
   const t0 = Date.now();
   if (redis) {
     try {
