@@ -143,17 +143,20 @@ if (authed) {
   }
 }
 
-// --- Action queue: engaged prospects who haven't been marked messaged ---
-// Source of truth for "messaged" is the Outreach Stage field on the Airtable
-// Prospects record. If we have a record AND the stage means "moved on"
-// (Sent, Replied, Booked, Won, Lost, Disqualified), drop the row. Anyone
-// without an Airtable record stays visible regardless.
+// --- Action queue: engaged prospects who need a follow-up ---
+// "Sent" doesn't mean "ignore." Sending the audit IS what starts the loop.
+// The queue surfaces anyone who engaged AFTER the initial send so Fred can
+// follow up on that engagement. We only drop prospects in a terminal /
+// conversation state where a follow-up makes no sense.
+//
+// Filter passes if: prospect has no Airtable record (still visible), OR
+// their stage is in early/active funnel (Not Sent / Drafted / Sent / Bumped
+// / Connection Sent / Connection Accepted).
 //
 // To make the cut on engagement: at least one concrete action (CTA, print,
 // copy, verdict expand, full scroll) OR >= 60s of real focus time.
 const STAGES_DONE = new Set([
-  'Sent', 'Connection Sent', 'Connection Accepted',
-  'Bumped', 'Replied', 'Booked', 'Won', 'Lost', 'Disqualified',
+  'Replied', 'Booked', 'Won', 'Lost', 'Disqualified',
 ]);
 
 const actionQueue = top
