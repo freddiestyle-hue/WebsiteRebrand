@@ -99,11 +99,17 @@ const heroReplay = heroLatest ? sessionReplayUrl(heroLatest.sid) : null;
         return_visitor: hero.return_visitor,
         last_view: hero.last_view,
       })}
+      data-heat-score={hero.heat_score}
+      data-heat-label={heroHeat.label}
+      data-heat-temp={heroHeat.temp}
       data-li-url={heroInfo?.linkedinUrl || heroLiHref}
       data-email={heroInfo?.email || ''}
       data-first-name={heroInfo?.firstName || ''}
+      data-title={heroInfo?.title || ''}
       data-company={heroInfo?.company || heroDomain}
+      data-industry={heroInfo?.industry || ''}
       data-source={heroInfo?.source || ''}
+      data-stage={heroInfo?.outreachStage || ''}
     >
       <div class={`heat-rail ${heroHeat.temp}`}></div>
       <div class="hero-body">
@@ -179,11 +185,17 @@ const heroReplay = heroLatest ? sessionReplayUrl(heroLatest.sid) : null;
               return_visitor: p.return_visitor,
               last_view: p.last_view,
             })}
+            data-heat-score={p.heat_score}
+            data-heat-label={heat.label}
+            data-heat-temp={heat.temp}
             data-li-url={info?.linkedinUrl || liHref}
             data-email={info?.email || ''}
             data-first-name={info?.firstName || ''}
+            data-title={info?.title || ''}
             data-company={info?.company || domain}
+            data-industry={info?.industry || ''}
             data-source={info?.source || ''}
+            data-stage={info?.outreachStage || ''}
           >
             <div class={`heat-rail ${heat.temp}`}></div>
             <div class="meta-col">
@@ -224,32 +236,56 @@ const heroReplay = heroLatest ? sessionReplayUrl(heroLatest.sid) : null;
   )}
 </section>
 
-<!-- Draft preview modal — one instance, populated per click -->
+<!-- Draft composer modal — 2-column: context rail + compose pane -->
 <div class="dm-modal" data-dm-modal hidden>
   <div class="dm-backdrop" data-dm-close></div>
   <div class="dm-card" role="dialog" aria-modal="true" aria-labelledby="dm-title">
-    <header class="dm-head">
-      <h3 id="dm-title" class="dm-h">Draft message</h3>
-      <div class="dm-meta" data-dm-meta></div>
-      <button class="dm-x" type="button" data-dm-close aria-label="Close">×</button>
-    </header>
-    <div class="dm-body">
-      <div class="dm-row" data-dm-subject-row hidden>
-        <label class="dm-lbl" for="dm-subject">Subject</label>
-        <input class="dm-input" id="dm-subject" type="text" data-dm-subject />
+    <!-- Left rail: full prospect context -->
+    <aside class="dm-ctx">
+      <div class="ctx-stamp" data-dm-stamp>STAMP</div>
+      <h4 class="ctx-name" data-dm-name>—</h4>
+      <div class="ctx-ti" data-dm-ti>—</div>
+      <div class="ctx-block">
+        <div class="ctx-lbl">Engagement</div>
+        <dl class="ctx-kv" data-dm-engagement>
+          <!-- populated by JS -->
+        </dl>
       </div>
-      <div class="dm-row">
-        <label class="dm-lbl" for="dm-text">Message</label>
-        <textarea class="dm-text" id="dm-text" data-dm-text rows="10"></textarea>
+      <div class="ctx-block">
+        <div class="ctx-lbl">Source</div>
+        <dl class="ctx-kv" data-dm-source-kv>
+        </dl>
       </div>
-      <div class="dm-status" data-dm-status></div>
+    </aside>
+
+    <!-- Right pane: compose -->
+    <div class="dm-compose">
+      <header class="dm-head">
+        <h3 id="dm-title" class="dm-h">Draft message. <span class="dm-h-ital">edit anything.</span></h3>
+        <button class="dm-x" type="button" data-dm-close aria-label="Close">×</button>
+        <div class="dm-tabs" role="tablist">
+          <button class="dm-tab" type="button" role="tab" data-dm-tab="linkedin">LinkedIn DM</button>
+          <button class="dm-tab" type="button" role="tab" data-dm-tab="email">Email</button>
+        </div>
+      </header>
+      <div class="dm-body">
+        <div class="dm-row" data-dm-subject-row hidden>
+          <label class="dm-lbl" for="dm-subject">Subject · 4–7 lowercase words</label>
+          <input class="dm-input" id="dm-subject" type="text" data-dm-subject />
+        </div>
+        <div class="dm-row">
+          <label class="dm-lbl" for="dm-text" data-dm-body-lbl>Message · 600–900 chars</label>
+          <textarea class="dm-text" id="dm-text" data-dm-text rows="11"></textarea>
+        </div>
+        <div class="dm-status" data-dm-status></div>
+      </div>
+      <footer class="dm-foot">
+        <button class="dm-btn" type="button" data-dm-regenerate>↻ Regenerate</button>
+        <div class="dm-spacer"></div>
+        <button class="dm-btn" type="button" data-dm-close>Cancel</button>
+        <button class="dm-btn dm-btn--primary" type="button" data-dm-go>Copy + open</button>
+      </footer>
     </div>
-    <footer class="dm-foot">
-      <button class="dm-btn" type="button" data-dm-regenerate>↻ Regenerate</button>
-      <div class="dm-spacer"></div>
-      <button class="dm-btn" type="button" data-dm-close>Cancel</button>
-      <button class="dm-btn dm-btn--primary" type="button" data-dm-go>Copy + open</button>
-    </footer>
   </div>
 </div>
 
@@ -259,11 +295,17 @@ const heroReplay = heroLatest ? sessionReplayUrl(heroLatest.sid) : null;
     const modalSubjectRow = modal?.querySelector('[data-dm-subject-row]');
     const modalSubject = modal?.querySelector('[data-dm-subject]');
     const modalText = modal?.querySelector('[data-dm-text]');
+    const modalBodyLbl = modal?.querySelector('[data-dm-body-lbl]');
     const modalStatus = modal?.querySelector('[data-dm-status]');
-    const modalMeta = modal?.querySelector('[data-dm-meta]');
     const modalGo = modal?.querySelector('[data-dm-go]');
     const modalRegen = modal?.querySelector('[data-dm-regenerate]');
     const modalCloseEls = modal?.querySelectorAll('[data-dm-close]');
+    const modalTabs = modal?.querySelectorAll('[data-dm-tab]');
+    const ctxStamp = modal?.querySelector('[data-dm-stamp]');
+    const ctxName = modal?.querySelector('[data-dm-name]');
+    const ctxTi = modal?.querySelector('[data-dm-ti]');
+    const ctxEng = modal?.querySelector('[data-dm-engagement]');
+    const ctxSrc = modal?.querySelector('[data-dm-source-kv]');
     let ctx = null;
 
     function openModal() { modal && (modal.hidden = false); }
@@ -271,6 +313,50 @@ const heroReplay = heroLatest ? sessionReplayUrl(heroLatest.sid) : null;
     modalCloseEls?.forEach((el) => el.addEventListener('click', closeModal));
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && modal && !modal.hidden) closeModal();
+    });
+
+    function fmtDwell(s) {
+      if (!s) return '0s';
+      if (s < 60) return s + 's';
+      const m = Math.floor(s / 60); const r = s % 60;
+      return m + 'm ' + r + 's';
+    }
+    function fmtAgo(iso) {
+      if (!iso) return '—';
+      const sec = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 1000));
+      if (sec < 60) return sec + 's ago';
+      const min = Math.round(sec / 60);
+      if (min < 60) return min + 'm ago';
+      const hr = Math.round(min / 60);
+      if (hr < 48) return hr + 'h ago';
+      return Math.round(hr / 24) + 'd ago';
+    }
+    function kvHtml(rows) {
+      return rows.map(([k, v, hot]) => (
+        '<dt>' + k + '</dt><dd' + (hot ? ' class="hot"' : '') + '>' + (v != null && v !== '' ? v : '—') + '</dd>'
+      )).join('');
+    }
+    function setTab(channel) {
+      if (!modal) return;
+      modal.querySelectorAll('[data-dm-tab]').forEach((t) => {
+        t.classList.toggle('active', t.getAttribute('data-dm-tab') === channel);
+      });
+      modalSubjectRow.hidden = channel !== 'email';
+      if (modalBodyLbl) {
+        modalBodyLbl.textContent = channel === 'email'
+          ? 'Message · 80–150 words'
+          : 'Message · 600–900 chars';
+      }
+      modalGo.textContent = channel === 'email' ? 'Open in mail' : 'Copy + open LinkedIn';
+    }
+    modalTabs?.forEach((tab) => {
+      tab.addEventListener('click', () => {
+        if (!ctx) return;
+        const channel = tab.getAttribute('data-dm-tab');
+        ctx.channel = channel;
+        setTab(channel);
+        runDraft(false);
+      });
     });
 
     async function fetchDraft(slug, channel, signals, force) {
@@ -285,42 +371,23 @@ const heroReplay = heroLatest ? sessionReplayUrl(heroLatest.sid) : null;
       return data;
     }
 
-    async function startDraft(row, channel) {
-      const slug = row.getAttribute('data-slug');
-      const liUrl = row.getAttribute('data-li-url') || '';
-      const email = row.getAttribute('data-email') || '';
-      const firstName = row.getAttribute('data-first-name') || '';
-      const company = row.getAttribute('data-company') || '';
-      const source = row.getAttribute('data-source') || '';
-      let signals = {};
-      try { signals = JSON.parse(row.getAttribute('data-signals') || '{}'); } catch (e) {}
-
-      ctx = { slug, channel, signals, liUrl, email, firstName, company, source };
-
-      modalSubjectRow.hidden = channel !== 'email';
-      modalSubject.value = '';
-      modalText.value = '';
+    async function runDraft(force) {
+      if (!ctx) return;
       modalStatus.textContent = 'Drafting with Claude...';
       modalStatus.className = 'dm-status dm-status--info';
-      modalMeta.textContent = (firstName || slug) + (company ? ' · ' + company : '') + (source ? ' · ' + source : '') + ' · ' + (channel === 'email' ? 'Email' : 'LinkedIn DM');
-      modalGo.textContent = channel === 'email' ? 'Open in mail' : 'Copy + open LinkedIn';
-      modalGo.disabled = true;
-      modalRegen.disabled = true;
-      openModal();
-
+      modalGo.disabled = true; modalRegen.disabled = true;
       try {
-        const data = await fetchDraft(slug, channel, signals, false);
+        const data = await fetchDraft(ctx.slug, ctx.channel, ctx.signals, force);
         modalSubject.value = data.subject || '';
         modalText.value = data.body || '';
         const noAt = data.has_airtable_record === false;
         modalStatus.textContent = data.cached
           ? 'Loaded cached draft. ↻ Regenerate for a fresh one.'
           : noAt
-            ? 'Drafted from engagement signals only (no Airtable match for ' + slug + ').'
+            ? 'Drafted from engagement signals only (no Airtable match).'
             : 'Drafted. Edit if needed, then copy + open.';
         modalStatus.className = 'dm-status ' + (noAt && !data.cached ? 'dm-status--info' : 'dm-status--ok');
-        modalGo.disabled = false;
-        modalRegen.disabled = false;
+        modalGo.disabled = false; modalRegen.disabled = false;
       } catch (e) {
         modalStatus.textContent = 'Could not draft: ' + (e && e.message ? e.message : String(e));
         modalStatus.className = 'dm-status dm-status--err';
@@ -328,30 +395,70 @@ const heroReplay = heroLatest ? sessionReplayUrl(heroLatest.sid) : null;
       }
     }
 
+    async function startDraft(row, channel) {
+      const slug = row.getAttribute('data-slug');
+      const liUrl = row.getAttribute('data-li-url') || '';
+      const email = row.getAttribute('data-email') || '';
+      const firstName = row.getAttribute('data-first-name') || '';
+      const title = row.getAttribute('data-title') || '';
+      const company = row.getAttribute('data-company') || '';
+      const industry = row.getAttribute('data-industry') || '';
+      const source = row.getAttribute('data-source') || '';
+      const stage = row.getAttribute('data-stage') || '';
+      const heatScore = row.getAttribute('data-heat-score') || '0';
+      const heatLabel = row.getAttribute('data-heat-label') || '';
+      const heatTemp = row.getAttribute('data-heat-temp') || 'cool';
+      let signals = {};
+      try { signals = JSON.parse(row.getAttribute('data-signals') || '{}'); } catch (e) {}
+
+      ctx = { slug, channel, signals, liUrl, email, firstName, company, source };
+
+      // Populate left context rail
+      if (ctxStamp) {
+        ctxStamp.textContent = heatLabel || 'NEW';
+        ctxStamp.className = 'ctx-stamp ctx-stamp--' + heatTemp;
+      }
+      if (ctxName) ctxName.textContent = firstName || slug;
+      if (ctxTi) {
+        const parts = [];
+        if (title) parts.push(title);
+        if (company) parts.push('<b>' + company + '</b>');
+        if (industry) parts.push('<span class="ind">' + industry + '</span>');
+        ctxTi.innerHTML = parts.join(' · ');
+      }
+      if (ctxEng) {
+        ctxEng.innerHTML = kvHtml([
+          ['Heat score', heatScore],
+          ['Dwell', fmtDwell(signals.total_dwell_seconds || 0)],
+          ['Sessions', signals.unique_sessions || 0],
+          ['Views', signals.total_views || 0],
+          ['Verdicts opened', signals.verdict_expansions || 0],
+          ['Full reads', signals.scroll_100s || 0],
+          ['CTA clicks', signals.cta_clicks || 0, (signals.cta_clicks || 0) > 0],
+          ['Last seen', fmtAgo(signals.last_view)],
+        ]);
+      }
+      if (ctxSrc) {
+        ctxSrc.innerHTML = kvHtml([
+          ['Play', source || '—'],
+          ['Slug', slug],
+          ['Stage', stage || 'Not Sent'],
+        ]);
+      }
+
+      setTab(channel);
+      modalSubject.value = '';
+      modalText.value = '';
+      openModal();
+      runDraft(false);
+    }
+
     async function copyToClipboard(text) {
       try { await navigator.clipboard.writeText(text); return true; }
       catch { return false; }
     }
 
-    modalRegen?.addEventListener('click', async () => {
-      if (!ctx) return;
-      modalStatus.textContent = 'Regenerating...';
-      modalStatus.className = 'dm-status dm-status--info';
-      modalGo.disabled = true; modalRegen.disabled = true;
-      try {
-        const data = await fetchDraft(ctx.slug, ctx.channel, ctx.signals, true);
-        modalSubject.value = data.subject || '';
-        modalText.value = data.body || '';
-        modalStatus.textContent = 'Regenerated.';
-        modalStatus.className = 'dm-status dm-status--ok';
-      } catch (e) {
-        modalStatus.textContent = 'Regenerate failed: ' + (e && e.message ? e.message : String(e));
-        modalStatus.className = 'dm-status dm-status--err';
-      } finally {
-        modalGo.disabled = false;
-        modalRegen.disabled = false;
-      }
-    });
+    modalRegen?.addEventListener('click', () => runDraft(true));
 
     modalGo?.addEventListener('click', async () => {
       if (!ctx) return;
@@ -674,32 +781,109 @@ const heroReplay = heroLatest ? sessionReplayUrl(heroLatest.sid) : null;
   .hq-btn.sm { padding: 5px 10px; font-size: 10px; }
   .hq-btn:disabled { opacity: 0.5; cursor: wait; }
 
-  /* ===== Draft modal ===== */
+  /* ===== Draft composer modal (2-column: context | compose) ===== */
   .dm-modal[hidden] { display: none; }
   .dm-modal { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; }
   .dm-backdrop { position: absolute; inset: 0; background: rgba(14,26,44,0.55); backdrop-filter: blur(2px); }
   .dm-card {
     position: relative; background: var(--paper, #FFFFFF);
     border: 1px solid var(--ink, #0E1A2C);
-    width: min(720px, 92vw); max-height: 92vh;
-    display: flex; flex-direction: column; overflow: hidden;
+    width: min(960px, 94vw); max-height: 92vh;
+    display: grid; grid-template-columns: 280px 1fr;
+    overflow: hidden;
     box-shadow: 0 8px 24px -10px rgba(14,26,44,0.18);
   }
-  .dm-head {
-    display: grid; grid-template-columns: 1fr auto; gap: 0.5rem 1rem;
-    align-items: baseline; padding: 14px 20px;
-    background: var(--ink, #0E1A2C); color: var(--paper, #FFFFFF);
+
+  /* Context rail (left) */
+  .dm-ctx {
+    background: var(--paper-2, #F4F2ED);
+    border-right: 1px solid var(--line, rgba(14,26,44,0.14));
+    padding: 22px 22px 22px 24px;
+    overflow-y: auto;
+    display: flex; flex-direction: column; gap: 14px;
   }
-  .dm-h { margin: 0; font-size: 14px; font-weight: 600; letter-spacing: -0.01em; }
-  .dm-meta {
-    grid-column: 1; font-family: var(--mono, 'DM Mono', monospace);
-    font-size: 10.5px; color: rgba(255,255,255,0.7); letter-spacing: 0.04em;
+  .ctx-stamp {
+    align-self: flex-start;
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase;
+    padding: 4px 8px; border: 1px solid var(--line, rgba(14,26,44,0.14));
+  }
+  .ctx-stamp--hot { background: var(--accent, #8FBF3F); color: var(--ink, #0E1A2C); border-color: var(--accent, #8FBF3F); font-weight: 600; }
+  .ctx-stamp--warm { background: var(--sage, #E8F0D9); color: var(--accent-deep, #4A6E18); border-color: var(--accent-deep, #4A6E18); }
+  .ctx-stamp--cool { color: var(--ink-dim, #3A4658); border-color: var(--line-strong, rgba(14,26,44,0.28)); background: var(--paper, #FFFFFF); }
+  .ctx-stamp--cold { color: var(--ink-faint, #7A8597); border-color: var(--line, rgba(14,26,44,0.14)); background: var(--paper, #FFFFFF); }
+  .ctx-name {
+    font-family: var(--grotesk, 'Inter Tight', system-ui, sans-serif);
+    font-weight: 700; font-size: 18px; letter-spacing: -0.02em;
+    color: var(--ink, #0E1A2C); margin: 4px 0 0;
+  }
+  .ctx-ti {
+    font-family: var(--serif, 'Newsreader', Georgia, serif);
+    font-style: italic; font-size: 14.5px; line-height: 1.4;
+    color: var(--ink-dim, #3A4658);
+  }
+  .ctx-ti b { color: var(--ink, #0E1A2C); font-family: var(--grotesk, 'Inter Tight', system-ui, sans-serif); font-style: normal; font-weight: 600; }
+  .ctx-ti .ind { color: var(--ink-faint, #7A8597); font-family: var(--mono, 'DM Mono', monospace); font-style: normal; font-size: 10.5px; letter-spacing: 0.06em; }
+  .ctx-block { display: flex; flex-direction: column; gap: 6px; }
+  .ctx-lbl {
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 9.5px; letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--ink-faint, #7A8597);
+  }
+  .ctx-kv { margin: 0; display: grid; grid-template-columns: auto 1fr; column-gap: 14px; row-gap: 4px; }
+  .ctx-kv dt {
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 10.5px; letter-spacing: 0.04em;
+    color: var(--ink-faint, #7A8597);
+    text-transform: lowercase;
+  }
+  .ctx-kv dd {
+    margin: 0;
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 11px;
+    color: var(--ink, #0E1A2C);
+    font-variant-numeric: tabular-nums;
+  }
+  .ctx-kv dd.hot { color: var(--accent-deep, #4A6E18); font-weight: 600; }
+
+  /* Compose pane (right) */
+  .dm-compose { display: flex; flex-direction: column; min-width: 0; }
+  .dm-head {
+    position: relative;
+    padding: 14px 20px 0;
+    background: var(--paper, #FFFFFF);
+    border-bottom: 1px solid var(--line, rgba(14,26,44,0.14));
+  }
+  .dm-h {
+    margin: 0;
+    font-family: var(--grotesk, 'Inter Tight', system-ui, sans-serif);
+    font-size: 17px; font-weight: 700; letter-spacing: -0.02em;
+    color: var(--ink, #0E1A2C);
+  }
+  .dm-h-ital {
+    font-family: var(--serif, 'Newsreader', Georgia, serif);
+    font-style: italic; font-weight: 400; color: var(--ink-dim, #3A4658);
   }
   .dm-x {
-    grid-row: 1 / span 2; grid-column: 2; background: transparent; color: var(--paper, #FFFFFF);
-    border: 0; font-size: 22px; line-height: 1; padding: 0 4px; cursor: pointer; opacity: 0.7;
+    position: absolute; top: 12px; right: 14px;
+    background: transparent; color: var(--ink-faint, #7A8597);
+    border: 0; font-size: 22px; line-height: 1; padding: 0 4px;
+    cursor: pointer;
   }
-  .dm-x:hover { opacity: 1; }
+  .dm-x:hover { color: var(--ink, #0E1A2C); }
+  .dm-tabs { display: inline-flex; margin: 12px 0 -1px; border: 1px solid var(--line, rgba(14,26,44,0.14)); border-bottom: 0; }
+  .dm-tab {
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase;
+    padding: 7px 14px;
+    background: transparent;
+    color: var(--ink-faint, #7A8597);
+    border: 0; cursor: pointer;
+    border-right: 1px solid var(--line, rgba(14,26,44,0.14));
+  }
+  .dm-tab:last-child { border-right: 0; }
+  .dm-tab:hover { background: var(--paper-2, #F4F2ED); color: var(--ink, #0E1A2C); }
+  .dm-tab.active { background: var(--ink, #0E1A2C); color: var(--paper, #FFFFFF); }
   .dm-body { padding: 16px 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
   .dm-row { display: flex; flex-direction: column; gap: 5px; }
   .dm-lbl {
@@ -756,7 +940,16 @@ const heroReplay = heroLatest ? sessionReplayUrl(heroLatest.sid) : null;
     .qrow > .body-col { grid-column: 2; grid-row: 2; padding: 0 14px 8px; }
     .qrow > .act-col { grid-column: 1 / -1; grid-row: 3; padding: 0 14px 12px; flex-wrap: wrap; }
     .qrow > .heat-rail { grid-row: 1 / span 3; }
-    .dm-card { width: 96vw; max-height: 96vh; }
+    .dm-card {
+      width: 96vw; max-height: 96vh;
+      grid-template-columns: 1fr;
+      grid-template-rows: auto 1fr;
+    }
+    .dm-ctx {
+      border-right: 0;
+      border-bottom: 1px solid var(--line, rgba(14,26,44,0.14));
+      max-height: 40vh;
+    }
     .dm-foot { flex-wrap: wrap; }
     .dm-spacer { display: none; }
     .dm-btn { flex: 1; min-width: 0; text-align: center; }
