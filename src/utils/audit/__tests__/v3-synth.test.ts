@@ -289,3 +289,63 @@ describe('buildMemoFromAudit (Upgrade 7 wiring)', () => {
     }
   });
 });
+
+describe('rollupReliability weight-aware cascade (Upgrade 8)', () => {
+  it('weight-0 soft-absence does not cascade to the cell reliability', () => {
+    // Spok scenario: 3 measured trackers verified firing + 3 channel-specific
+    // trackers (linkedin/tiktok/posthog) absent at weight 0. Cell headline
+    // should read VERIFIED, not UNCONFIRMED - the prospect doesn't run those
+    // channels and we shouldn't penalise the cell for absences they don't care
+    // about.
+    const audit = mkAudit([
+      mkCheck({ id: 'tracking-meta-pixel', category: 'tracking', passed: true, weight: 1, reliability: 'verified' }),
+      mkCheck({ id: 'tracking-gtm', category: 'tracking', passed: true, weight: 1, reliability: 'verified' }),
+      mkCheck({ id: 'tracking-ga4', category: 'tracking', passed: true, weight: 1, reliability: 'verified' }),
+      mkCheck({ id: 'tracking-linkedin-insight', category: 'tracking', passed: false, weight: 0, reliability: 'soft-absence' }),
+      mkCheck({ id: 'tracking-tiktok-pixel', category: 'tracking', passed: false, weight: 0, reliability: 'soft-absence' }),
+      mkCheck({ id: 'tracking-posthog', category: 'tracking', passed: false, weight: 0, reliability: 'soft-absence' }),
+    ]);
+    const memo = buildMemoFromAudit(audit);
+    const target = memo.verdictCells.find((c) => c.icon === 'target');
+    expect(target?.reliability).toBe('verified');
+  });
+
+  it('weight-1 soft-absence still cascades (real load-bearing miss)', () => {
+    // A site missing GA4 specifically - that's a load-bearing absence, the
+    // cell should still flag UNCONFIRMED.
+    const audit = mkAudit([
+      mkCheck({ id: 'tracking-meta-pixel', category: 'tracking', passed: true, weight: 1, reliability: 'verified' }),
+      mkCheck({ id: 'tracking-gtm', category: 'tracking', passed: true, weight: 1, reliability: 'verified' }),
+      mkCheck({ id: 'tracking-ga4', category: 'tracking', passed: false, weight: 1, reliability: 'soft-absence' }),
+    ]);
+    const memo = buildMemoFromAudit(audit);
+    const target = memo.verdictCells.find((c) => c.icon === 'target');
+    expect(target?.reliability).toBe('soft-absence');
+  });
+
+  it('weight-0.5 chat-widget soft-absence still cascades', () => {
+    // Strict equality to 0 in the cascade - the 0.5-weight chat widget is
+    // a smaller signal but still load-bearing. Its absence still flags
+    // UNCONFIRMED on the conversion cell.
+    const audit = mkAudit([
+      mkCheck({ id: 'conversion-chat-widget', category: 'conversion', passed: false, weight: 0.5, reliability: 'soft-absence' }),
+    ]);
+    const memo = buildMemoFromAudit(audit);
+    const conv = memo.verdictCells.find((c) => c.icon === 'eye');
+    expect(conv?.reliability).toBe('soft-absence');
+  });
+
+  it('cell with only weight-0 checks returns verified by default', () => {
+    // Edge case: a cell where every check is informational (weight 0).
+    // Rollup returns verified - there's nothing load-bearing to be
+    // unconfirmed about. Doesn't happen in current code but guards
+    // against future schema drift.
+    const audit = mkAudit([
+      mkCheck({ id: 'tracking-linkedin-insight', category: 'tracking', passed: false, weight: 0, reliability: 'soft-absence' }),
+      mkCheck({ id: 'tracking-tiktok-pixel', category: 'tracking', passed: false, weight: 0, reliability: 'soft-absence' }),
+    ]);
+    const memo = buildMemoFromAudit(audit);
+    const target = memo.verdictCells.find((c) => c.icon === 'target');
+    expect(target?.reliability).toBe('verified');
+  });
+});
