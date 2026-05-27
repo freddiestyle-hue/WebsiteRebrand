@@ -6,7 +6,7 @@
 import type { TopProspect } from '../../utils/posthog/query';
 import { sessionReplayUrl } from '../../utils/posthog/query';
 import type { ProspectInfo } from '../../utils/hq/airtable';
-import { slugToDomain } from '../../utils/hq/messaged';
+import { slugToDomain, findOnLinkedinUrl } from '../../utils/hq/messaged';
 
 interface Props {
   prospects: TopProspect[];
@@ -50,14 +50,16 @@ function heatClass(h: number): string {
       const displayName = info?.firstName || p.prospect;
       const displayCo = info?.company || slugToDomain(p.prospect);
       const noContact = !info?.firstName;
+      const liHref = info?.linkedinUrl || findOnLinkedinUrl(p.prospect);
       return (
         <details class="row">
           <summary>
             <span class="rank">{String(i + 1).padStart(2, '0')}</span>
             <div class="who">
               <div class="line-1">
-                <a class="name" href={prospectUrl(p.prospect, p.surface)} target="_blank" rel="noopener">{displayName}</a>
+                <a class="name" href={liHref} target="_blank" rel="noopener" title={info?.linkedinUrl ? "Open LinkedIn profile" : "Google site:linkedin.com search"}>{displayName}<span class="name-arrow" aria-hidden="true"> ↗</span></a>
                 {info?.title && <span class="title">, {info.title}</span>}
+                <a class="memo-side-link" href={prospectUrl(p.prospect, p.surface)} target="_blank" rel="noopener" title="Open the memo">memo ↗</a>
               </div>
               <div class="line-2">
                 <span class="co">{displayCo}</span>
@@ -156,6 +158,24 @@ function heatClass(h: number): string {
     flex-shrink: 0;
   }
   .name:hover { color: var(--accent-deep, #4A6E18); border-bottom-color: var(--accent-deep, #4A6E18); }
+  .name-arrow {
+    font-size: 0.75em;
+    color: var(--ink-faint, #7A8597);
+    margin-left: 2px;
+    font-weight: 400;
+  }
+  .name:hover .name-arrow { color: var(--accent-deep, #4A6E18); }
+  .memo-side-link {
+    margin-left: 10px;
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    color: var(--ink-faint, #7A8597);
+    text-decoration: none;
+    border-bottom: 1px dotted var(--line, rgba(14,26,44,0.14));
+    padding-bottom: 1px;
+  }
+  .memo-side-link:hover { color: var(--accent-deep, #4A6E18); border-bottom-color: var(--accent-deep, #4A6E18); }
   .title {
     font-family: var(--serif, 'Newsreader', Georgia, serif);
     font-style: italic;

@@ -128,7 +128,13 @@ const heroReplay = heroLatest ? sessionReplayUrl(heroLatest.sid) : null;
           <span class="head-fill"></span>
           <span class="heat-score">heat <b>{hero.heat_score}</b></span>
         </div>
-        <h3 class="hero-name">{heroInfo?.firstName || heroDomain}</h3>
+        <h3 class="hero-name">
+          {(heroInfo?.linkedinUrl || heroLiHref) ? (
+            <a href={heroInfo?.linkedinUrl || heroLiHref} target="_blank" rel="noopener" class="name-link" title={heroInfo?.linkedinUrl ? "Open LinkedIn profile" : "Google site:linkedin.com search"}>
+              {heroInfo?.firstName || heroDomain}<span class="name-link-arrow" aria-hidden="true"> ↗</span>
+            </a>
+          ) : (heroInfo?.firstName || heroDomain)}
+        </h3>
         <div class="hero-ti">
           {heroInfo?.title && <>{heroInfo.title}, </>}<b>{heroInfo?.company || heroDomain}</b>
           {heroInfo?.industry && <span class="hero-ind"> {heroInfo.industry}</span>}
@@ -213,7 +219,11 @@ const heroReplay = heroLatest ? sessionReplayUrl(heroLatest.sid) : null;
             </div>
             <div class="body-col">
               <div class="name">
-                {info?.firstName || domain}
+                {(info?.linkedinUrl || liHref) ? (
+                  <a href={info?.linkedinUrl || liHref} target="_blank" rel="noopener" class="name-link" title={info?.linkedinUrl ? "Open LinkedIn profile" : "Google site:linkedin.com search"}>
+                    {info?.firstName || domain}<span class="name-link-arrow" aria-hidden="true"> ↗</span>
+                  </a>
+                ) : (info?.firstName || domain)}
                 <span class="when">heat {p.heat_score}</span>
               </div>
               <div class="ti">
@@ -474,11 +484,12 @@ const heroReplay = heroLatest ? sessionReplayUrl(heroLatest.sid) : null;
       const subject = modalSubject.value || '';
       const body = modalText.value || '';
       if (ctx.channel === 'email') {
-        const params = new URLSearchParams();
-        if (subject) params.set('subject', subject);
-        if (body) params.set('body', body);
+        const qs = [];
+        if (subject) qs.push('subject=' + encodeURIComponent(subject));
+        if (body) qs.push('body=' + encodeURIComponent(body));
         await copyToClipboard(body);
-        window.location.href = 'mailto:' + encodeURIComponent(ctx.email) + '?' + params.toString();
+        const href = 'mailto:' + ctx.email + (qs.length ? '?' + qs.join('&') : '');
+        window.location.href = href;
         modalStatus.textContent = 'Opened mail. Body copied as backup.';
         modalStatus.className = 'dm-status dm-status--ok';
       } else {
@@ -691,6 +702,27 @@ const heroReplay = heroLatest ? sessionReplayUrl(heroLatest.sid) : null;
     letter-spacing: -0.03em; color: var(--ink, #0E1A2C);
     margin: 4px 0 0;
   }
+  /* Clickable name -> LinkedIn profile (or Google site:linkedin search fallback) */
+  .name-link {
+    color: inherit;
+    text-decoration: none;
+    border-bottom: 1px dotted var(--line-strong, rgba(14,26,44,0.28));
+    padding-bottom: 1px;
+    transition: color 120ms, border-color 120ms;
+  }
+  .name-link:hover {
+    color: var(--accent-deep, #4A6E18);
+    border-bottom-color: var(--accent-deep, #4A6E18);
+    border-bottom-style: solid;
+  }
+  .name-link-arrow {
+    font-size: 0.7em;
+    color: var(--ink-faint, #7A8597);
+    margin-left: 2px;
+    vertical-align: 0.1em;
+    font-weight: 400;
+  }
+  .name-link:hover .name-link-arrow { color: var(--accent-deep, #4A6E18); }
   .qhero .hero-ti {
     font-family: var(--serif, 'Newsreader', Georgia, serif);
     font-style: italic; font-size: 16px; line-height: 1.4;

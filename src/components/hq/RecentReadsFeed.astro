@@ -8,7 +8,7 @@
 import type { RecentRead } from '../../utils/posthog/query';
 import { sessionReplayUrl } from '../../utils/posthog/query';
 import type { ProspectInfo } from '../../utils/hq/airtable';
-import { slugToDomain } from '../../utils/hq/messaged';
+import { slugToDomain, findOnLinkedinUrl } from '../../utils/hq/messaged';
 
 interface Props {
   reads: RecentRead[];
@@ -63,10 +63,15 @@ function fullUrl(path: string, surface: 'audit' | 'intake-review' | undefined): 
       const displayName = info?.firstName || r.prospect || '(unknown)';
       const displayCo = info?.company || (r.prospect ? slugToDomain(r.prospect) : '');
       const geo = [r.city, r.country].filter(Boolean).join(', ');
+      const liHref = info?.linkedinUrl || (r.prospect ? findOnLinkedinUrl(r.prospect) : '');
       return (
         <div class="feed-row">
           <div class="cell name">
-            <a href={fullUrl(r.path, r.surface)} target="_blank" rel="noopener">{displayName}</a>
+            {liHref ? (
+              <a href={liHref} target="_blank" rel="noopener" title={info?.linkedinUrl ? "Open LinkedIn profile" : "Google site:linkedin.com search"}>{displayName}<span class="li-arrow" aria-hidden="true"> ↗</span></a>
+            ) : (
+              <span>{displayName}</span>
+            )}
             {info?.title && <span class="title-ital">, {info.title}</span>}
           </div>
           <div class="cell co">
@@ -127,6 +132,13 @@ function fullUrl(path: string, surface: 'audit' | 'intake-review' | undefined): 
     flex-shrink: 0;
   }
   .name a:hover { color: var(--accent-deep, #4A6E18); border-bottom-color: var(--accent-deep, #4A6E18); }
+  .li-arrow {
+    font-size: 0.75em;
+    color: var(--ink-faint, #7A8597);
+    margin-left: 2px;
+    font-weight: 400;
+  }
+  .name a:hover .li-arrow { color: var(--accent-deep, #4A6E18); }
   .title-ital {
     font-family: var(--serif, 'Newsreader', Georgia, serif);
     font-style: italic;

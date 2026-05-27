@@ -6,7 +6,7 @@
 
 import type { CtaClick } from '../../utils/posthog/query';
 import type { ProspectInfo } from '../../utils/hq/airtable';
-import { slugToDomain } from '../../utils/hq/messaged';
+import { slugToDomain, findOnLinkedinUrl } from '../../utils/hq/messaged';
 
 interface Props {
   clicks: CtaClick[];
@@ -34,10 +34,17 @@ function timeAgo(iso: string): string {
       const displayName = info?.firstName || c.prospect || '(no slug)';
       const displayCo = info?.company || (c.prospect ? slugToDomain(c.prospect) : '');
       const geo = [c.city, c.country].filter(Boolean).join(', ');
+      const liHref = info?.linkedinUrl || (c.prospect ? findOnLinkedinUrl(c.prospect) : '');
       return (
       <div class="feed-row">
         <div class="cell name">
-          <strong>{displayName}</strong>
+          {liHref ? (
+            <a href={liHref} target="_blank" rel="noopener" class="name-link" title={info?.linkedinUrl ? "Open LinkedIn profile" : "Google site:linkedin.com search"}>
+              <strong>{displayName}</strong><span class="li-arrow" aria-hidden="true"> ↗</span>
+            </a>
+          ) : (
+            <strong>{displayName}</strong>
+          )}
           {info?.title && <span class="title-ital">, {info.title}</span>}
         </div>
         <div class="cell co">
@@ -85,6 +92,22 @@ function timeAgo(iso: string): string {
   .cell { min-width: 0; }
   .name { display: flex; align-items: baseline; gap: 4px; min-width: 0; }
   .name strong { font-weight: 600; color: var(--ink, #0E1A2C); flex-shrink: 0; }
+  .name-link {
+    color: inherit;
+    text-decoration: none;
+    border-bottom: 1px dotted var(--line-strong, rgba(14,26,44,0.28));
+    padding-bottom: 1px;
+    transition: color 120ms, border-color 120ms;
+  }
+  .name-link:hover { color: var(--accent-deep, #4A6E18); border-bottom-color: var(--accent-deep, #4A6E18); border-bottom-style: solid; }
+  .name-link:hover strong { color: var(--accent-deep, #4A6E18); }
+  .li-arrow {
+    font-size: 0.75em;
+    color: var(--ink-faint, #7A8597);
+    margin-left: 2px;
+    font-weight: 400;
+  }
+  .name-link:hover .li-arrow { color: var(--accent-deep, #4A6E18); }
   .title-ital {
     font-family: var(--serif, 'Newsreader', Georgia, serif);
     font-style: italic;
