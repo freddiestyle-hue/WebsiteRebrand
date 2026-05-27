@@ -125,24 +125,107 @@ async function enumerateCtas(page: Page): Promise<CtaCandidate[]> {
     .catch(() => [] as CtaCandidate[]);
 }
 
-// Best-effort cookie-consent dismissal so the banner does not intercept the
-// CTA click. Clicks an in-page accept button via the page's own handler.
-async function dismissCookieBanner(page: Page): Promise<void> {
-  try {
-    await page.evaluate(() => {
-      const buttons = Array.from(document.querySelectorAll('button, a, [role="button"]'));
-      for (const b of buttons) {
-        const t = (b.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase();
-        if (/^(accept|accept all|accept cookies|agree|i agree|got it|allow all|ok|continue)$/.test(t)) {
-          (b as HTMLElement).click();
-          return;
-        }
-      }
-    });
-    await page.waitForTimeout(400);
-  } catch {
-    // best effort - a banner we cannot dismiss just risks a trace-failed
+// Upgrade 10 - consent-aware tracking measurement. CMP banners gate pixels
+// behind user consent (Google Consent Mode, IAB TCF, OneTrust integrations
+// with Meta Pixel). Without accepting the banner the static + headless scan
+// reports "present, not firing" on every consent-gated site - which is most
+// EU/UK sites and a growing share of US ones.
+//
+// Strategy: try explicit CMP "accept all" selectors first (fast, reliable,
+// targets the well-known providers), then fall back to text-pattern matching
+// for unknown CMPs. The fallback explicitly excludes Reject/Decline buttons
+// so a site offering both "Accept all" and "Reject all" doesn't get its
+// rejection clicked.
+//
+// Returns true when a dismissal was performed so the caller can adjust
+// observation timing - consent-gated scripts need a beat to boot.
+
+// Common CMP "accept all" selectors. These are stable across CMP versions
+// and target the buttons that grant full pixel consent (not "only essential").
+const CMP_ACCEPT_SELECTORS = [
+  '#onetrust-accept-btn-handler', // OneTrust (most common enterprise CMP)
+  '#CybotCookiebotDialogBodyButtonAccept', // Cookiebot
+  '#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll', // Cookiebot variant
+  '.iubenda-cs-accept-btn', // Iubenda
+  '[data-testid="uc-accept-all-button"]', // Usercentrics
+  '#axeptio_btn_acceptAll', // Axeptio
+  '#cookiescript_accept', // Cookie-Script
+  '.fc-cta-consent', // Funding Choices (Google)
+  '#hs-eu-confirmation-button', // HubSpot
+];
+
+// Pure text-pattern matcher. Returns true when the given button text reads
+// as "accept consent" - exported so its corpus can be unit-tested without
+// spinning up a real browser. Hard-rejects rejection variants so a "Reject
+// all" button never gets clicked even when its text contains "all".
+export function isConsentAcceptText(text: string): boolean {
+  const t = text.replace(/\s+/g, ' ').trim();
+  if (t.length === 0 || t.length > 60) return false;
+  // Explicit reject - never click these even if they incidentally contain
+  // an "accept"-shaped word.
+  if (/\b(reject|decline|deny|opt[\s-]?out|refuse|disagree)\b/i.test(t)) return false;
+  // Accept variants - word-boundaries on common consent verbs.
+  return /\b(accept|agree|allow|got it|i'?m ok|continue|confirm|allow all|accept all|i understand)\b/i.test(
+    t,
+  );
+}
+
+async function dismissCookieBanner(page: Page): Promise<boolean> {
+  // Try explicit CMP selectors first - fastest path. Short timeout per
+  // selector so a no-match doesn't add measurable latency to sites without
+  // a banner. Total worst case ~3s if every selector misses.
+  for (const sel of CMP_ACCEPT_SELECTORS) {
+    const clicked = await page
+      .click(sel, { timeout: 300 })
+      .then(() => true)
+      .catch(() => false);
+    if (clicked) {
+      // Bumped from 400ms to 1000ms - consent-gated tracking scripts
+      // (Meta Pixel via consent mode, GA4 with consent_default, LinkedIn
+      // Insight via consent integration) need 500-800ms to boot after the
+      // CMP fires its consent-update event. 400ms missed most of them.
+      await page.waitForTimeout(1000).catch(() => {});
+      return true;
+    }
   }
+
+  // Fallback - text-pattern scan for unknown CMPs. Single page.evaluate so
+  // the loop runs in one IPC hop. Best-effort, swallows errors.
+  try {
+    const clicked = await page.evaluate(
+      ({ acceptPattern, rejectPattern }) => {
+        const buttons = Array.from(
+          document.querySelectorAll('button, a, [role="button"], [onclick]'),
+        );
+        const acceptRe = new RegExp(acceptPattern, 'i');
+        const rejectRe = new RegExp(rejectPattern, 'i');
+        for (const b of buttons) {
+          const t = (b.textContent || '').replace(/\s+/g, ' ').trim();
+          if (t.length === 0 || t.length > 60) continue;
+          if (rejectRe.test(t)) continue;
+          if (acceptRe.test(t)) {
+            (b as HTMLElement).click();
+            return true;
+          }
+        }
+        return false;
+      },
+      {
+        acceptPattern:
+          "\\b(accept|agree|allow|got it|i'?m ok|continue|confirm|allow all|accept all|i understand)\\b",
+        rejectPattern: '\\b(reject|decline|deny|opt[\\s-]?out|refuse|disagree)\\b',
+      },
+    );
+    if (clicked) {
+      await page.waitForTimeout(1000).catch(() => {});
+      return true;
+    }
+  } catch {
+    // best effort - banner could be in a shadow DOM or iframe we can't reach.
+    // The downstream code handles undismissed banners by reporting tracking
+    // as "present, not firing" - honest, not silent failure.
+  }
+  return false;
 }
 
 // Path patterns for the deep-page escalation when the homepage trace returns
@@ -379,8 +462,17 @@ async function runHeadlessOnce(url: string): Promise<HeadlessResult | null> {
         // Even on timeout we want to capture what loaded; don't bail.
       });
 
+      // Upgrade 10 - dismiss the consent banner BEFORE the settle period so
+      // consent-gated pixels (Meta Pixel under consent mode, GA4 with
+      // consent_default, LinkedIn Insight via TCF) can fire during the
+      // observation window. Without this we report "present, not firing"
+      // on every EU/UK site with a CMP - which is most of them. The trace
+      // call later is idempotent (no banner to find on second pass).
+      await dismissCookieBanner(page);
+
       // Brief settle for any post-networkidle late-fires (e.g., GTM hits after
-      // initial idle). 800ms is a small bribe for the long tail of trackers.
+      // initial idle, plus consent-update events that boot the rest of the
+      // pixel stack). 800ms is a small bribe for the long tail of trackers.
       await page.waitForTimeout(800);
 
       // Scroll simulation: GTM containers commonly trigger conditional pixels
