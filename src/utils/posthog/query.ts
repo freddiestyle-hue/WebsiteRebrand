@@ -201,6 +201,15 @@ function humanWhereFor(mode: TrafficMode, range: DateRange): string {
   return mode === 'all' ? '' : humanWhere(range);
 }
 
+/**
+ * Light-mode equivalent. Drops Fred's home cities only. Used by every query
+ * except Top Prospects (which needs the strict behavioural filter to find
+ * actionable, not just-viewing, prospects).
+ */
+function lightHumanWhereFor(mode: TrafficMode): string {
+  return mode === 'all' ? '' : `AND ${SELF_CITY_EXCLUSION}`;
+}
+
 export interface HogQLResult {
   columns: string[];
   results: unknown[][];
@@ -327,7 +336,7 @@ export async function getRecentReads(range: DateRange, mode: TrafficMode = 'huma
       FROM events
       WHERE ${hogqlRangeClause(range)}
         AND ${PROSPECT_PATH_FILTER}
-        ${humanWhereFor(mode, range)}
+        ${lightHumanWhereFor(mode)}
       GROUP BY path, prospect, surface, session_id, distinct_id, city, country
       HAVING dwell_seconds >= ${minDwell}
       ORDER BY last_event DESC
@@ -718,7 +727,7 @@ export async function getCtaClicks(range: DateRange, mode: TrafficMode = 'humans
     FROM events
     WHERE event = 'cta_clicked'
       AND ${hogqlRangeClause(range)}
-      ${humanWhereFor(mode, range)}
+      ${lightHumanWhereFor(mode)}
     ORDER BY timestamp DESC
     LIMIT 25
   `);
@@ -897,7 +906,7 @@ export async function getVisitorTech(range: DateRange, mode: TrafficMode = 'huma
       FROM events
       WHERE ${hogqlRangeClause(range)}
         AND properties.$browser IS NOT NULL
-        ${humanWhereFor(mode, range)}
+        ${lightHumanWhereFor(mode)}
       GROUP BY device_type, browser, os
       ORDER BY visitors DESC
       LIMIT 20
@@ -925,7 +934,7 @@ export async function getTrafficSources(range: DateRange, mode: TrafficMode = 'h
         countIf(event = '$pageview') AS pageviews
       FROM events
       WHERE ${hogqlRangeClause(range)}
-        ${humanWhereFor(mode, range)}
+        ${lightHumanWhereFor(mode)}
       GROUP BY source
       ORDER BY visitors DESC
       LIMIT 20
@@ -954,7 +963,7 @@ export async function getActivityTimeline(range: DateRange, mode: TrafficMode = 
       uniq(distinct_id) AS visitors
     FROM events
     WHERE ${hogqlRangeClause(range)}
-      ${humanWhereFor(mode, range)}
+      ${lightHumanWhereFor(mode)}
     GROUP BY day
     ORDER BY day
   `);
