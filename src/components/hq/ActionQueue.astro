@@ -45,6 +45,7 @@ function heatBadge(p: TopProspect): { label: string; temp: Temp } {
   if (p.cta_clicks > 0) return { label: 'CTA CLICK', temp: 'hot' };
   if (p.prints > 0) return { label: 'PRINTED', temp: 'hot' };
   if (p.copies > 0) return { label: 'COPIED', temp: 'hot' };
+  if (p.related_clicks > 0) return { label: 'EXPLORED', temp: 'warm' };
   const engagedReturn = p.return_visitor && (
     p.scroll_100s > 0 || p.verdict_expansions > 0 ||
     p.total_dwell_seconds >= 30 || p.focus_seconds_total >= 30
@@ -223,6 +224,7 @@ const heroReplay = heroLatest ? sessionReplayUrl(heroLatest.sid) : null;
                 <span class="m"><b>{p.unique_sessions}</b> sess</span>
                 <span class="m"><b>{p.total_views}</b> views</span>
                 {p.cta_clicks > 0 && <span class="m accent"><b>{p.cta_clicks}</b> cta</span>}
+                {p.related_clicks > 0 && <span class="m accent"><b>{p.related_clicks}</b> rel</span>}
                 {p.verdict_expansions > 0 && <span class="m"><b>{p.verdict_expansions}</b> vrd</span>}
                 {p.scroll_100s > 0 && <span class="m"><b>full</b></span>}
                 {p.copies > 0 && <span class="m"><b>{p.copies}</b> cp</span>}

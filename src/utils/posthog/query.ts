@@ -38,7 +38,10 @@ const POSTHOG_PROJECT_ID = 373899;
 // v8: slug extraction strips trailing punctuation (signaturit-com. ->
 //     signaturit-com) so the Airtable join hits. Recent Reads filters out
 //     bare-page sessions where the slug extraction returns ''.
-const CACHE_VERSION = 'v8';
+// v9: added related_clicks to TopProspect — counts memo_related and
+//     memo_to_mri CTA hits (the new sticky exit ramps). Weighted +20 in
+//     heat_score so prospects who explore further surface higher.
+const CACHE_VERSION = 'v9';
 
 // Lazy redis client. Construction is cheap but we only need one instance.
 // Use KV_REST_API_* env vars (set by Vercel KV / Upstash integration) since
@@ -380,6 +383,8 @@ export interface TopProspect {
   prints: number;                 // content_printed events (saving as PDF)
   focus_seconds_total: number;    // sum of tab_focus_time.focus_seconds across sessions
   return_visitor: boolean;        // unique_sessions > 1 (came back at least once)
+  // v9 stickiness signal
+  related_clicks: number;         // cta_clicked with cta=memo_related (blog read-next) or memo_to_mri
   heat_score: number;             // weighted composite, see heatScoreSql below
   last_view: string;
   sessions: ProspectSession[];
@@ -396,6 +401,7 @@ export interface TopProspect {
 //   prints:                      +40
 //   copies:                      +30
 //   cta_clicks:                  +25
+//   related_clicks:              +20  (memo_related / memo_to_mri — sticky signal)
 //   scroll_100s:                 +15
 //   verdict_expansions:          +10
 //   return_visitor (bool):       +30, ONLY if there is also real engagement
@@ -405,9 +411,10 @@ const HEAT_SCORE_SQL = `(
   (prints * 40) +
   (copies * 30) +
   (cta_clicks * 25) +
+  (related_clicks * 20) +
   (scroll_100s * 15) +
   (verdict_expansions * 10) +
-  (if(unique_sessions > 1 AND (total_dwell_seconds >= 30 OR scroll_100s > 0 OR verdict_expansions > 0 OR cta_clicks > 0 OR copies > 0 OR prints > 0), 30, 0)) +
+  (if(unique_sessions > 1 AND (total_dwell_seconds >= 30 OR scroll_100s > 0 OR verdict_expansions > 0 OR cta_clicks > 0 OR copies > 0 OR prints > 0 OR related_clicks > 0), 30, 0)) +
   least(20, intDiv(focus_seconds_total, 10)) +
   least(10, intDiv(total_dwell_seconds, 30))
 )`;
@@ -430,6 +437,7 @@ export async function getTopProspects(range: DateRange, mode: TrafficMode = 'hum
       sum(session_copies) AS copies,
       sum(session_prints) AS prints,
       sum(session_focus) AS focus_seconds_total,
+      sum(session_related) AS related_clicks,
       ${HEAT_SCORE_SQL} AS heat_score,
       max(last_event) AS last_view,
       groupArray(tuple(sid, session_dwell, last_event, session_views, session_clicks)) AS sessions_raw
@@ -445,6 +453,7 @@ export async function getTopProspects(range: DateRange, mode: TrafficMode = 'hum
         countIf(event = 'content_copied') AS session_copies,
         countIf(event = 'content_printed') AS session_prints,
         sumIf(toInt(properties.focus_seconds), event = 'tab_focus_time') AS session_focus,
+        countIf(event = 'cta_clicked' AND (properties.cta = 'memo_related' OR properties.cta = 'memo_to_mri')) AS session_related,
         dateDiff('second', min(timestamp), max(timestamp)) AS session_dwell,
         max(timestamp) AS last_event
       FROM events
@@ -472,6 +481,7 @@ export async function getTopProspects(range: DateRange, mode: TrafficMode = 'hum
     copies: number;
     prints: number;
     focus_seconds_total: number;
+    related_clicks: number;
     heat_score: number;
     last_view: string;
     sessions_raw: Array<[string | null, number, string, number, number]>;
@@ -489,6 +499,7 @@ export async function getTopProspects(range: DateRange, mode: TrafficMode = 'hum
     copies: row.copies ?? 0,
     prints: row.prints ?? 0,
     focus_seconds_total: row.focus_seconds_total ?? 0,
+    related_clicks: row.related_clicks ?? 0,
     return_visitor: row.unique_sessions > 1,
     heat_score: row.heat_score ?? 0,
     last_view: row.last_view,

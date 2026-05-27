@@ -72,6 +72,26 @@ const identifyPayload = identifyAs
       } catch (e) {}
 
       // Identify the visitor if the caller knows who they are (e.g. memo slug).
+      // Also persist the slug as a 30-day cookie so subsequent visits to ANY
+      // page on rivett.tech (blog, MRI, etc) attribute back to this prospect
+      // even after the PostHog session expires. This is the sticky-identity
+      // play — a prospect who reads the memo Monday and the AI blog Friday
+      // shows up in HQ as one trail, not two anonymous visits.
+      var COOKIE_NAME = 'rivett_prospect';
+      function readCookie(name) {
+        try {
+          var m = document.cookie.match(new RegExp('(?:^|;\\s*)' + name + '=([^;]+)'));
+          return m ? decodeURIComponent(m[1]) : null;
+        } catch (e) { return null; }
+      }
+      function writeCookie(name, val) {
+        try {
+          var maxAge = 60 * 60 * 24 * 30; // 30 days
+          document.cookie = name + '=' + encodeURIComponent(val) +
+            '; Max-Age=' + maxAge + '; Path=/; SameSite=Lax';
+        } catch (e) {}
+      }
+
       if (identifyPayload && identifyPayload.id) {
         var props = Object.assign({}, identifyPayload.props || {}, {
           first_seen_path: window.location.pathname,
@@ -79,6 +99,16 @@ const identifyPayload = identifyAs
         ph.identify(identifyPayload.id, props);
         if (identifyPayload.groupKey) {
           ph.group(identifyPayload.groupType, identifyPayload.groupKey);
+        }
+        // Stamp the slug so future visits to other pages re-identify.
+        writeCookie(COOKIE_NAME, identifyPayload.id);
+      } else {
+        // No explicit identify on this page. Check the cookie — if a prior
+        // memo visit stamped one, re-identify so this page's events
+        // attribute to the prospect.
+        var stickySlug = readCookie(COOKIE_NAME);
+        if (stickySlug) {
+          ph.identify(stickySlug, { sticky_identity_path: window.location.pathname });
         }
       }
 

@@ -15,6 +15,7 @@ import PostHog from '../../../components/PostHog.astro';
 import type { Memo, VerdictCell, VerdictIcon } from '../../../utils/audit/memo-schema';
 import { isValidV3Slug } from '../../../utils/audit/slug';
 import { pickHeroFinding } from '../../../utils/audit/pick-hero';
+import { pickRelatedNotes } from '../../../utils/audit/related-notes';
 import slugToIcp from '../../../utils/audit/slug-to-icp.json';
 import icpVoice from '../../../utils/audit/icp-voice.json';
 import { lockedMeta, deriveTone } from '../../../utils/audit/locked-observation';
@@ -125,6 +126,7 @@ const verdictCells: VerdictCell[] = memo?.verdictCells ?? [];
 // Prioritized-plan preview: the top-3 ranked fixes. The full order and the
 // revenue math behind it is what the call is for.
 const topFixes = (memo?.rankedFixes ?? []).slice(0, 3);
+const relatedNotes = memo ? pickRelatedNotes(memo, 3) : [];
 
 // Numbered dimension codes mirror the v3.astro 9-cell legend so prospects
 // see consistent numbering across the public form path and the gated path.
@@ -494,6 +496,90 @@ function bandLabel(pct: number): string {
   }
   .plan-chips .chip b { color: var(--ink); font-weight: 500; }
 
+  /* Related notes — three editorial cards keyed off the audit findings */
+  .related-notes {
+    margin-top: var(--sp-12);
+    padding-top: var(--sp-10);
+    border-top: 1px solid var(--line);
+  }
+  .related-notes .rn-lab {
+    font-family: var(--mono); font-size: var(--t-meta);
+    letter-spacing: var(--track-mono); text-transform: uppercase;
+    color: var(--accent-deep);
+    margin-bottom: var(--sp-3);
+  }
+  .related-notes .rn-h {
+    font-family: var(--grotesk); font-weight: 800;
+    font-size: clamp(26px, 2.4vw, 36px); line-height: 1.15;
+    letter-spacing: var(--track-display); margin: 0 0 var(--sp-7);
+  }
+  .related-notes .rn-h .ital {
+    font-family: var(--serif); font-style: italic; font-weight: 400;
+    color: var(--ink-dim);
+  }
+  .related-notes .rn-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    border: 1px solid var(--ink);
+  }
+  @media (max-width: 980px) { .related-notes .rn-grid { grid-template-columns: 1fr; } }
+  .related-notes .rn-card {
+    display: flex; flex-direction: column;
+    padding: var(--sp-7);
+    border-right: 1px solid var(--ink);
+    background: var(--paper);
+    color: var(--ink);
+    text-decoration: none;
+    transition: background 120ms;
+    min-height: 220px;
+  }
+  .related-notes .rn-card:last-child { border-right: 0; }
+  @media (max-width: 980px) {
+    .related-notes .rn-card { border-right: 0; border-bottom: 1px solid var(--ink); }
+    .related-notes .rn-card:last-child { border-bottom: 0; }
+  }
+  .related-notes .rn-card:hover { background: var(--paper-2); }
+  .related-notes .rn-title {
+    font-family: var(--grotesk); font-weight: 700;
+    font-size: 20px; line-height: 1.2;
+    letter-spacing: -0.02em; color: var(--ink);
+    margin: 0 0 var(--sp-3);
+    text-wrap: balance;
+  }
+  .related-notes .rn-hook {
+    font-family: var(--serif); font-style: italic;
+    font-size: 14.5px; line-height: 1.5;
+    color: var(--ink-dim);
+    margin: 0 0 var(--sp-5);
+    flex: 1;
+  }
+  .related-notes .rn-more {
+    font-family: var(--mono); font-size: var(--t-meta);
+    letter-spacing: var(--track-mono); text-transform: uppercase;
+    color: var(--accent-deep);
+    margin-top: auto;
+  }
+
+  /* MRI soft-ramp link below the primary closer CTA */
+  .ramp-ramp {
+    margin: var(--sp-5) 0 0 !important;
+    font-family: var(--mono);
+    font-size: var(--t-meta);
+    letter-spacing: var(--track-mono);
+    text-transform: uppercase;
+    color: var(--on-ink-italic) !important;
+  }
+  .ramp-ramp a {
+    color: var(--accent) !important;
+    text-decoration: none;
+    border-bottom: 1px dotted var(--on-ink-line-2);
+    padding-bottom: 1px;
+  }
+  .ramp-ramp a:hover {
+    color: var(--on-ink) !important;
+    border-bottom-color: var(--on-ink);
+  }
+
   /* Footer CTA + bio */
   .closer {
     margin-top: var(--sp-12);
@@ -722,6 +808,30 @@ function bandLabel(pct: number): string {
       </section>
     ) : null}
 
+    {relatedNotes.length > 0 ? (
+      <section class="related-notes">
+        <div class="rn-lab">What to read next · related to this audit</div>
+        <h2 class="rn-h">Three notes <span class="ital">on the gaps this audit found.</span></h2>
+        <div class="rn-grid">
+          {relatedNotes.map((n) => (
+            <a
+              class="rn-card"
+              href={`/blog/${n.slug}`}
+              data-cta="memo_related"
+              data-cta-location="memo_footer"
+              data-content-slug={n.slug}
+              target="_blank"
+              rel="noopener"
+            >
+              <h3 class="rn-title">{n.title}</h3>
+              <p class="rn-hook">{n.hook}</p>
+              <span class="rn-more">Read note <span aria-hidden="true">→</span></span>
+            </a>
+          ))}
+        </div>
+      </section>
+    ) : null}
+
     <section class="closer">
       <div>
         <div style="font-family: var(--mono); font-size: var(--t-meta); letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--accent); margin-bottom: var(--sp-3);">● 30 min · no deck</div>
@@ -731,9 +841,12 @@ function bandLabel(pct: number): string {
         </h2>
         <p>You've seen all nine findings and the first three moves. The call is the rest of the order, the revenue math behind the ranking, and the things a browser scan can't reach: your pipeline, your follow-up, your numbers.</p>
         <div class="actions">
-          <a class="btn btn--inv" href={CAL_URL}>Book a call <span aria-hidden="true">→</span></a>
-          <a class="btn btn--sec" href="/audit/v3" style="border-color: var(--on-ink-line-2); color: var(--on-ink);">Audit another domain</a>
+          <a class="btn btn--inv" href={CAL_URL} data-cta="memo_book_call" data-cta-location="memo_closer">Book a call <span aria-hidden="true">→</span></a>
+          <a class="btn btn--sec" href="/audit/v3" style="border-color: var(--on-ink-line-2); color: var(--on-ink);" data-cta="memo_audit_another" data-cta-location="memo_closer">Audit another domain</a>
         </div>
+        <p class="ramp-ramp">
+          <a href="/revenue-leak-mri" data-cta="memo_to_mri" data-cta-location="memo_closer">Or run the Revenue Leak MRI yourself first <span aria-hidden="true">→</span></a>
+        </p>
       </div>
       <div class="sig">
         <span style="display:block; color: var(--accent); margin-bottom: var(--sp-2);">● Signature</span>
