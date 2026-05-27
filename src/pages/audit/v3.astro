@@ -105,23 +105,32 @@ if (isPOST && !memo) {
         // once internally, so a null at this point means two cold starts
         // failed in a row - the operator can retry the audit later when the
         // lambda is warm.
-        if (!headless) {
+        // Verified reads require headless. Also treat a degenerate headless
+        // result (no rendered HTML or a tiny page that suggests timeout) as
+        // a failure - the lambda technically returned but didn't capture the
+        // DOM, and the downstream synthesis quietly falls back to static-only
+        // mode. Real homepages have far more than 500 bytes of HTML, so the
+        // threshold is a sanity floor, not a quality bar.
+        const renderedHtmlLen = headless?.renderedHtml?.length ?? 0;
+        const headlessUsable = !!headless && renderedHtmlLen >= 500;
+
+        if (!headlessUsable) {
           Astro.response.status = 503;
           Astro.response.headers.set('Retry-After', '10');
-          runtimeError = 'Headless render failed twice; audit not written. Retry later when the lambda is warm.';
-          console.error('[audit/v3] headless null for', norm.url, '- refusing to cache partial audit');
+          runtimeError = `Headless render failed (renderedHtml=${renderedHtmlLen}b). Audit not written.`;
+          console.error('[audit/v3] headless unusable for', norm.url, 'renderedHtml=', renderedHtmlLen);
           // Evict any stale cached memo for this slug. Otherwise a 503 response
           // on POST silently leaves an OLD partial-audit in KV, and the bulk
           // script's GET-the-slug fallback returns 200 with stale data and
-          // marks the prospect "success" - the exact bug we're fixing here.
+          // marks the prospect "success". MUST await so the del completes
+          // before we return - otherwise the script's immediate GET races
+          // against the async delete.
           try {
             const staleSlug = v3SlugFromDomain(norm.hostname);
             const redis = Redis.fromEnv();
-            redis
-              .del(`audit-v3:${staleSlug}`)
-              .catch((e) => console.error('[audit/v3] KV del on 503 failed', e));
+            await redis.del(`audit-v3:${staleSlug}`);
           } catch (e) {
-            console.error('[audit/v3] KV init for stale-evict failed', e);
+            console.error('[audit/v3] KV del on 503 failed', e);
           }
         } else {
         audit = await runAudit(norm.url, {
