@@ -52,9 +52,10 @@ function surfaceLabel(surface: 'audit' | 'intake-review' | undefined): string {
           <span class="rank">{String(i + 1).padStart(2, '0')}</span>
           <span class="prospect">
             <span class={`surface surface--${p.surface || 'audit'}`}>{surfaceLabel(p.surface)}</span>
-            {info?.fullName ? (
+            {info?.firstName ? (
               <span class="person">
-                <span class="person-name">{info.fullName}</span>
+                <span class="person-name">{info.firstName}</span>
+                {info.title && <span class="person-title">, {info.title}</span>}
                 <span class="person-co">· {info.company || p.prospect}</span>
               </span>
             ) : (
@@ -131,6 +132,12 @@ function surfaceLabel(surface: 'audit' | 'intake-review' | undefined): string {
   .person-name {
     font-weight: 600;
     color: var(--ink, #0E1A2C);
+  }
+  .person-title {
+    color: var(--ink-dim, #3A4658);
+    font-size: 0.8rem;
+    font-family: var(--serif, 'Newsreader', Georgia, serif);
+    font-style: italic;
   }
   .person-co {
     color: var(--ink-dim, #3A4658);

@@ -20,7 +20,7 @@ const BASE_ID = 'appgYU8VToutChjSi';
 const TABLE = 'Advertisers';
 const FIELDS = [
   'First Name',
-  'Last Name',
+  'Title',
   'Company',
   'Email',
   'LinkedIn URL',
@@ -33,15 +33,16 @@ const CACHE_TTL_SECONDS = 1800; // 30 min
 
 export interface ProspectInfo {
   slug: string;
-  firstName: string;
-  lastName: string;
-  fullName: string;
+  firstName: string;       // Airtable "First Name" - the only name field that exists
+  title: string;           // Airtable "Title" - job title (CEO, VP, etc.)
   company: string;
   industry: string;
   email: string;
   linkedinUrl: string;
   outreachStage: string;
   recordId: string;
+  // Convenience field for display: firstName, falls back to slug if missing.
+  displayName: string;
 }
 
 let _redis: Redis | null = null;
@@ -150,20 +151,21 @@ function toProspectInfo(rec: AirtableRecord): ProspectInfo | null {
   if (!slug) return null;
 
   const firstName = String(f['First Name'] || '').trim();
-  const lastName = String(f['Last Name'] || '').trim();
-  const fullName = [firstName, lastName].filter(Boolean).join(' ');
+  const title = String(f['Title'] || '').trim();
+  const company = String(f['Company'] || '').trim();
+  const displayName = firstName || slug;
 
   return {
     slug,
     firstName,
-    lastName,
-    fullName,
-    company: String(f['Company'] || '').trim(),
+    title,
+    company,
     industry: String(f['Industry'] || '').trim(),
     email: String(f['Email'] || '').trim(),
     linkedinUrl: String(f['LinkedIn URL'] || '').trim(),
     outreachStage: String(f['Outreach Stage'] || '').trim(),
     recordId: rec.id,
+    displayName,
   };
 }
 

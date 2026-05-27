@@ -92,9 +92,10 @@ function heatBadge(p: TopProspect): { label: string; cls: string } {
             </div>
             <div class="aq-mid">
               <div class="aq-prospect">
-                {info?.fullName ? (
+                {info?.firstName ? (
                   <>
-                    <span class="aq-person">{info.fullName}</span>
+                    <span class="aq-person">{info.firstName}</span>
+                    {info.title && <span class="aq-title">, {info.title}</span>}
                     <span class="aq-company">· {info.company || domain}</span>
                   </>
                 ) : (
@@ -313,6 +314,12 @@ function heatBadge(p: TopProspect): { label: string; cls: string } {
     font-weight: 600;
     color: var(--ink, #0E1A2C);
     font-size: 0.95rem;
+  }
+  .aq-title {
+    color: var(--ink-dim, #3A4658);
+    font-size: 0.85rem;
+    font-family: var(--serif, 'Newsreader', Georgia, serif);
+    font-style: italic;
   }
   .aq-company {
     color: var(--ink-dim, #3A4658);
