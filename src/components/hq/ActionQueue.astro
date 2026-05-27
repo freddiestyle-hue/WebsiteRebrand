@@ -68,8 +68,15 @@ const heroReplay = heroLatest ? sessionReplayUrl(heroLatest.sid) : null;
 ---
 <section class="aqv2" data-action-queue>
   <div class="aqv2-head">
-    <div class="aqv2-eyebrow">00 · ACTION QUEUE</div>
-    <h2 class="aqv2-title">The queue. <span class="ital">{prospects.length} waiting for a follow-up.</span></h2>
+    <div class="aqv2-head-left">
+      <div class="aqv2-eyebrow">00 · ACTION QUEUE</div>
+      <h2 class="aqv2-title">The queue. <span class="ital">{prospects.length} waiting for a follow-up.</span></h2>
+    </div>
+    <div class="aqv2-sort" role="group" aria-label="Sort">
+      <button class="sort-pill active" type="button" data-sort="heat">Heat</button>
+      <button class="sort-pill" type="button" data-sort="recent">Recent</button>
+      <button class="sort-pill" type="button" data-sort="model">Model <span class="star">★</span></button>
+    </div>
   </div>
 
   {prospects.length === 0 && (
@@ -482,8 +489,38 @@ const heroReplay = heroLatest ? sessionReplayUrl(heroLatest.sid) : null;
       }
     });
 
-    // Wire per-row buttons
+    // Wire sort control. Re-orders DOM rows client-side based on data-* attrs.
     document.querySelectorAll('[data-action-queue]').forEach((queue) => {
+      const sortBtns = queue.querySelectorAll('[data-sort]');
+      const list = queue.querySelector('.qrow-list');
+      function applySort(mode) {
+        if (!list) return;
+        const rows = Array.from(list.querySelectorAll('.qrow'));
+        const score = (r) => {
+          const heat = Number(r.getAttribute('data-heat-score') || '0');
+          let signals = {};
+          try { signals = JSON.parse(r.getAttribute('data-signals') || '{}'); } catch (e) {}
+          const lastView = signals.last_view ? new Date(signals.last_view).getTime() : 0;
+          if (mode === 'recent') return lastView;
+          if (mode === 'model') {
+            const hoursAgo = (Date.now() - lastView) / 3.6e6;
+            return heat - hoursAgo * 0.4;
+          }
+          return heat;
+        };
+        rows
+          .map((r) => [r, score(r)])
+          .sort((a, b) => b[1] - a[1])
+          .forEach(([r]) => list.appendChild(r));
+      }
+      sortBtns.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const mode = btn.getAttribute('data-sort') || 'heat';
+          sortBtns.forEach((b) => b.classList.toggle('active', b === btn));
+          applySort(mode);
+        });
+      });
+
       queue.querySelectorAll('[data-draft]').forEach((btn) => {
         btn.addEventListener('click', (ev) => {
           ev.preventDefault();
@@ -528,7 +565,36 @@ const heroReplay = heroLatest ? sessionReplayUrl(heroLatest.sid) : null;
 <style>
   /* ===== Direction A — Action Queue ===== */
   .aqv2 { margin-bottom: 2.5rem; }
-  .aqv2-head { margin: 0 0 16px; }
+  .aqv2-head {
+    margin: 0 0 16px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+  .aqv2-head-left { min-width: 0; }
+  .aqv2-sort {
+    display: inline-flex;
+    border: 1px solid var(--line-strong, rgba(14,26,44,0.28));
+  }
+  .sort-pill {
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    padding: 6px 12px;
+    background: transparent;
+    color: var(--ink-faint, #7A8597);
+    border: 0;
+    border-right: 1px solid var(--line-strong, rgba(14,26,44,0.28));
+    cursor: pointer;
+    transition: background 120ms, color 120ms;
+  }
+  .sort-pill:last-child { border-right: 0; }
+  .sort-pill:hover { background: var(--paper-2, #F4F2ED); color: var(--ink, #0E1A2C); }
+  .sort-pill.active { background: var(--ink, #0E1A2C); color: var(--paper, #FFFFFF); }
+  .sort-pill .star { color: var(--accent, #8FBF3F); }
   .aqv2-eyebrow {
     font-family: var(--mono, 'DM Mono', monospace);
     font-size: 10px;
