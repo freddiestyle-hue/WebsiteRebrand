@@ -110,6 +110,19 @@ if (isPOST && !memo) {
           Astro.response.headers.set('Retry-After', '10');
           runtimeError = 'Headless render failed twice; audit not written. Retry later when the lambda is warm.';
           console.error('[audit/v3] headless null for', norm.url, '- refusing to cache partial audit');
+          // Evict any stale cached memo for this slug. Otherwise a 503 response
+          // on POST silently leaves an OLD partial-audit in KV, and the bulk
+          // script's GET-the-slug fallback returns 200 with stale data and
+          // marks the prospect "success" - the exact bug we're fixing here.
+          try {
+            const staleSlug = v3SlugFromDomain(norm.hostname);
+            const redis = Redis.fromEnv();
+            redis
+              .del(`audit-v3:${staleSlug}`)
+              .catch((e) => console.error('[audit/v3] KV del on 503 failed', e));
+          } catch (e) {
+            console.error('[audit/v3] KV init for stale-evict failed', e);
+          }
         } else {
         audit = await runAudit(norm.url, {
           renderedHtml: headless?.renderedHtml,
