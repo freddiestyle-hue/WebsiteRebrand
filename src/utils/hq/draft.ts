@@ -71,7 +71,9 @@ export async function generateDraft(
   channel: Channel,
   opts?: { force?: boolean }
 ): Promise<DraftResult> {
-  const cacheKey = `hq:draft:${prospect.slug}:${channel}`;
+  // v2: prompt rewrite that pulls specific findings instead of generic
+  // category hints. Bump invalidates stale templated drafts from v1.
+  const cacheKey = `hq:draft:v2:${prospect.slug}:${channel}`;
   const redis = getRedis();
   const force = !!(opts && opts.force);
   if (redis && !force) {
@@ -95,6 +97,7 @@ export async function generateDraft(
     const res = await client.messages.create({
       model: MODEL,
       max_tokens: 1024,
+      temperature: 1.0,
       system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content: prompt }],
     });
@@ -143,21 +146,30 @@ The recipient has ALREADY READ the audit. Do NOT re-explain what's in it. They s
 
 Your job: get them on a 15-30 min call. That's it.
 
+== THE #1 RULE: SPECIFICITY ==
+
+Every draft you write must reference ONE concrete thing from the audit findings by name. Not a category ("the tracking gap"). Not a vibe ("the conversion side"). A specific NAMED thing the prospect would recognize: "the GA4 double-fire on /checkout", "the 4.2s LCP on mobile", "the missing schema on your service pages", "the form that takes 8 seconds to load".
+
+If the audit findings block is empty or thin, then reference one specific thing about THEM (their role, their company's positioning, their industry) and admit the audit was at the higher level. Don't fabricate findings.
+
+Two messages should NEVER read like the same template with the name swapped. If you find yourself reaching for a generic phrase ("the tracking side", "the conversion piece"), STOP and pull a specific name out of the audit findings.
+
 == HUMANIZE RULES (the most-broken ones, listed first because the model keeps breaking them) ==
 
-ABSOLUTE: NO EM DASHES. The em dash character (—, U+2014) is BANNED. The double-hyphen "--" is BANNED. Use a comma, a period, parentheses, or just break into two sentences. Every time you reach for an em dash, you have failed. There is no exception, including "natural rhythm" arguments. If your draft contains "—" or "--" anywhere, rewrite it.
+ABSOLUTE: NO EM DASHES. The em dash character (—, U+2014) is BANNED. The double-hyphen "--" is BANNED. Use a comma, a period, parentheses, or just break into two sentences. If your draft contains "—" or "--" anywhere, rewrite it.
 
 NO emoji. Not one.
 
 NO rule-of-three. No three-item lists. No three short sentences in a row. No "X, Y, and Z" trios.
 
-== SHAPE ==
-- LinkedIn DM body: 240-380 characters (slightly longer now to fit the cal link). Email body: 60-120 words.
-- 2-4 sentences max. No paragraphs.
-- ONE line acknowledging what they did (came back, scrolled, expanded). Specific, not generic.
-- ONE line pointing at the gap-they-care-about GENERICALLY (NOT a recap). "The tracking gap" / "the page-speed thing" / "the conversion side." A pointer, not a re-read.
-- ONE direct ask + the call link. End with the cal URL inline, not on its own line. Example: "20 min this week? https://cal.com/fred-style/discovery"
-- (Optional) Reference the memo URL when it lands naturally. Example: "the audit's still up at https://rivett.tech/audit/v3/<slug> if you want to flick back."
+== SHAPE (guidance, not a template - VARY this) ==
+
+- LinkedIn DM body: 240-380 characters total (including the cal URL). Email body: 60-120 words.
+- 2-4 sentences. No paragraphs.
+- Must include the cal URL inline (never on its own line, never as the only content of a sentence).
+- May reference the memo URL if it lands naturally.
+
+Beyond that: vary your structure. Sometimes lead with the audit finding. Sometimes lead with what they did. Sometimes lead with a one-line opinion. Sometimes the ask is a question, sometimes it's a soft offer ("happy to do 15 min"), sometimes it's "grab 15 min: <link>". DO NOT default to the same 3-line skeleton ("name + action. gap pointer. ask + link.") for every prospect.
 
 == HARD BANS (non-negotiable; the message reads as AI-generated if you break these) ==
 
@@ -167,44 +179,50 @@ Banned ADJECTIVES (never): groundbreaking, cutting-edge, innovative, robust, sea
 
 Banned ADVERBS (never): drastically, genuinely, remarkably, significantly, strategically, substantially, profoundly, meticulously, notably, truly.
 
-Banned PHRASES (delete on sight): "a testament to", "it's important to note", "at its core", "in today's landscape", "moving forward", "that said", "when it comes to", "here's the thing", "make no mistake", "simply put", "the reality is", "let me know if interested", "let's break this down", "let's dive in", "this highlights", "this underscores", "the key takeaway", "let that sink in", "spoiler alert", "hot take", "pro tip", "level up", "move the needle", "low-hanging fruit", "circle back", "hope you're well", "just wanted to", "I wanted to reach out".
+Banned PHRASES (delete on sight): "a testament to", "it's important to note", "at its core", "in today's landscape", "moving forward", "that said", "when it comes to", "here's the thing", "make no mistake", "simply put", "the reality is", "let me know if interested", "let's break this down", "let's dive in", "this highlights", "this underscores", "the key takeaway", "let that sink in", "spoiler alert", "hot take", "pro tip", "level up", "move the needle", "low-hanging fruit", "circle back", "hope you're well", "just wanted to", "I wanted to reach out", "you went all the way to the bottom" (overused), "the tracking side is honestly where I'd start" (overused), "tends to be the thing that makes the rest of" (overused), "worth 20 minutes" (overused phrasing - vary it).
 
 Banned PATTERNS:
 - Em dashes (--). Use commas, periods, or parentheses.
-- Emoji. None. Not even one.
+- Emoji. None.
 - Rule of three. No "A, B, and C" trios. No three-bullet stacks. No three-sentence rhythms.
-- Contrast framing: NEVER "It's not X, it's Y" / "This isn't about X, it's about Y" / "Not just X, but Y". Just say what it is.
-- Self-narration: "Here's why this matters", "The kicker?", "But here's the thing". If the point needs a sign, the point is weak.
+- Contrast framing: NEVER "It's not X, it's Y" / "This isn't about X, it's about Y" / "Not just X, but Y".
+- Self-narration: "Here's why this matters", "The kicker?", "But here's the thing".
 - "Nobody tells you this" / "What nobody realizes" framing.
 - Fake naming: invented capitalised concepts like "The Growth Paradox" or "The 5-Step Framework".
-- Transition openers: However, Moreover, Furthermore, Additionally, Nevertheless, Notably, Indeed, Consequently, Accordingly, Fundamentally, Essentially. Use "but", "also", or no transition.
-- Significance inflation: "marking a pivotal moment", "setting the stage for", "a testament to".
-- -ing phrase padding: "highlighting the importance of", "underscoring the need for", "paving the way for", "reflecting a broader trend".
+- Transition openers: However, Moreover, Furthermore, Additionally, Nevertheless, Notably, Indeed, Consequently, Accordingly, Fundamentally, Essentially.
+- Significance inflation: "marking a pivotal moment", "setting the stage for".
+- -ing phrase padding: "highlighting the importance of", "underscoring the need for".
 - Copula avoidance: "serves as", "stands as", "functions as", "represents", "boasts", "features", "offers". Just use "is" or "has".
 - Dramatic short-sentence stacks: "They tried. They failed. They learned." Banned.
-- No numbers, percentages, or product names from the audit. The prospect already saw those.
-- Links ARE allowed (cal.com + audit URL) but only the two URLs you are given. No other URLs.
+- Numbers, percentages from the audit ARE allowed when they're the specific thing you're naming (e.g. "the 4.2s LCP"). Otherwise no stats dump.
+- Links: only the two you're given (cal.com + audit URL). No other URLs.
 
 == VOICE ==
-- Normal sentence capitalisation. Capitalise the first letter of each sentence, the prospect's first name, proper nouns. Don't write in all-lowercase. ("Heidi, you came back twice" not "heidi, you came back twice".)
+
+- Normal sentence capitalisation. Don't write in all-lowercase.
 - Operator-to-operator tone: direct, concrete, slightly sharp, never corporate.
-- Vary sentence rhythm. Don't stack three short sentences in a row. Don't stack three long ones either.
-- Specificity over abstraction. "Tracking is broken" beats "there's an opportunity to optimize".
-- Have an opinion. "I'd start there" beats "this might warrant exploration".
-- Leave some texture. A half-thought, an aside, a "honestly", these read human. Perfect structure reads algorithmic.
+- Vary sentence rhythm.
+- Specificity over abstraction. "GA4 isn't firing on the booking page" beats "tracking has gaps".
+- Have an opinion. "I'd fix that first" beats "this might warrant exploration".
+- Leave texture. A half-thought, an aside, a "honestly", these read human. Perfect structure reads algorithmic.
 
-== EXAMPLES (right shape, with the cal link inline, normal capitalisation) ==
+== EXAMPLES (note: each has a DIFFERENT shape - do not just swap names into one of these) ==
 
-"Heidi, you came back twice. Probably means the tracking gap is the one worth talking through first. 20 min this week? https://cal.com/fred-style/discovery"
+Example 1 (lead with the specific finding, dwell signal is secondary):
+"James, the GA4 double-fire on /checkout is the one I'd want to walk through, especially given how Fresha's pricing pages flow. Came back to the audit twice, so I think you already see it. 15 min: https://cal.com/fred-style/discovery"
 
-"Claire, you went all the way to the bottom and expanded the verdicts. Quickest path is a walk-through of the fix order. The audit's at https://rivett.tech/audit/v3/beaphar-co-uk if you want to flick back. Grab 15 min: https://cal.com/fred-style/discovery"
+Example 2 (lead with an opinion, then the audit anchor):
+"Honestly, Frank, missing schema on your service pages is the cheapest win in the whole audit and you read past it. Happy to map the fix in 15 min, https://cal.com/fred-style/discovery"
 
-"Frank, opened it twice but didn't scroll much. Happy to do 10 min where I just hit the headline findings, then we can pick which one matters. https://cal.com/fred-style/discovery"
+Example 3 (lead with the prospect's situation, soft ask, no question):
+"Nikisa, Accent Inns running paid traffic without conversion tracking is the thing I'd unblock before anything else. The audit's at https://rivett.tech/audit/v3/accentinns-com if you want the receipts. Grab a 15 here: https://cal.com/fred-style/discovery"
+
+Notice: different opening word, different sentence count, different ask pattern, different placement of the cal link.
 
 == OUTPUT ==
 Strictly JSON: {"subject": "...", "body": "..."}
 - LinkedIn: subject is "". Body 240-380 chars including the cal URL.
-- Email: subject is 4-6 words, sentence case (capitalise first word only, lowercase the rest unless proper noun), no punctuation at end. Body 60-120 words including the cal URL.
+- Email: subject is 4-6 words, sentence case, no punctuation at end. Body 60-120 words including the cal URL.
 - Return ONLY the JSON. No preamble, no markdown fences.
 - The body MUST include https://cal.com/fred-style/discovery exactly once.
 - The body MAY include the audit URL if it lands naturally (do not force it).`;
@@ -232,66 +250,39 @@ function buildPrompt(
   if (prospect.outreachStage) lines.push(`- Outreach stage so far: ${prospect.outreachStage}`);
   lines.push('');
 
-  lines.push('WHAT THEY DID ON THE AUDIT (use ONE in your one-line acknowledgement)');
-  const behaviors = describeSignals(signals);
-  if (behaviors.length === 0) {
-    lines.push('- They opened the memo. Nothing else recorded. Acknowledge generically: "you opened it."');
+  // Pass the actual audit findings verbatim. Truncate to ~600 chars to keep
+  // token costs predictable; the LLM should pull ONE specific named thing.
+  if (prospect.auditContext && prospect.auditContext.trim()) {
+    const ctx = prospect.auditContext.trim();
+    const truncated = ctx.length > 600 ? ctx.slice(0, 600) + '...' : ctx;
+    lines.push('AUDIT FINDINGS (pull ONE specific concrete thing from here and reference it by name)');
+    lines.push(truncated);
+    lines.push('');
   } else {
-    for (const b of behaviors) lines.push(`- ${b}`);
+    lines.push('AUDIT FINDINGS: (none in Airtable yet - reference the prospect\'s role/company specifically instead, and keep the message higher-level)');
+    lines.push('');
   }
-  lines.push('');
 
-  // Pick the strongest finding-dimension as the generic gap pointer — used as
-  // a category hint only, never quoted verbatim. The LLM should reference
-  // "the tracking thing" or "the conversion side," not the literal text.
-  if (prospect.auditContext) {
-    const dimHint = inferGapCategory(prospect.auditContext);
-    if (dimHint) {
-      lines.push(`GENERIC GAP CATEGORY (point at this, do NOT quote the audit): ${dimHint}`);
-      lines.push('');
-    }
-  }
+  // Pass raw signal counts. Let the LLM phrase them so different prospects
+  // don't get the same pre-baked sentence ("you went all the way to the
+  // bottom" was appearing in 80%+ of drafts).
+  lines.push('ENGAGEMENT SIGNALS (use sparingly, max one reference, vary the phrasing)');
+  lines.push(`- Total dwell: ${signals.total_dwell_seconds}s`);
+  lines.push(`- Sessions: ${signals.unique_sessions}`);
+  lines.push(`- Views: ${signals.total_views}`);
+  lines.push(`- Return visitor: ${signals.return_visitor ? 'yes' : 'no'}`);
+  lines.push(`- Reached bottom of memo: ${signals.scroll_100s > 0 ? 'yes' : 'no'}`);
+  lines.push(`- Verdict cells expanded: ${signals.verdict_expansions}`);
+  lines.push(`- Copies: ${signals.copies}, Prints: ${signals.prints}, CTA clicks: ${signals.cta_clicks}`);
+  lines.push('');
 
   lines.push(
     channel === 'linkedin'
-      ? 'Write a LinkedIn DM. 180-320 chars, 2-3 sentences. End with a question asking for a short call. No links, no numbers, no audit recap.'
-      : 'Write an email. Subject 4-6 lowercase words. Body 50-110 words, 2-4 sentences. End with a question asking for a short call. No links, no numbers, no audit recap.'
+      ? 'Write a LinkedIn DM. 240-380 chars including the cal URL. 2-4 sentences. Reference ONE specific finding from the audit by name. Vary the structure - do not default to "name + behaviour. category. ask."'
+      : 'Write an email. Subject 4-6 words, sentence case. Body 60-120 words including the cal URL. 2-4 sentences. Reference ONE specific finding from the audit by name. Vary the structure.'
   );
 
   return lines.join('\n');
-}
-
-// Pick a coarse gap category from the audit findings text. The LLM uses this
-// to point at the right kind of issue ("the tracking gap", "the page-speed
-// thing") without rehashing specifics.
-function inferGapCategory(auditContext: string): string {
-  const ctx = auditContext.toLowerCase();
-  const hits: string[] = [];
-  if (/tracking|gtm|insight tag|ga4|pixel/.test(ctx)) hits.push('the tracking gap');
-  if (/pagespeed|load time|lcp|render/.test(ctx)) hits.push('the page-speed thing');
-  if (/conversion|cta|form|booking/.test(ctx)) hits.push('the conversion side');
-  if (/seo|aeo|crawl|schema/.test(ctx)) hits.push('the discovery / SEO piece');
-  if (/email|deliverab|spf|dmarc/.test(ctx)) hits.push('the email deliverability angle');
-  if (/ads|paid|landing/.test(ctx)) hits.push('the paid-ads side');
-  if (/mobile/.test(ctx)) hits.push('the mobile experience');
-  return hits[0] || '';
-}
-
-function describeSignals(s: DraftSignals): string[] {
-  // Behaviour pointers the LLM picks ONE from. Phrased as the natural-language
-  // line that can drop straight into the DM. Avoid raw numbers / counts so the
-  // model doesn't itemise. "Came back twice" is fine; "spent 56s" is not.
-  const out: string[] = [];
-  if (s.cta_clicks > 0) out.push(`hit the book-a-call CTA`);
-  if (s.prints > 0) out.push(`printed it (saving for later)`);
-  if (s.copies > 0) out.push(`copied a chunk out of it (probably forwarding internally)`);
-  if (s.return_visitor && s.unique_sessions >= 3) out.push(`came back three or more times`);
-  else if (s.return_visitor) out.push(`came back twice`);
-  if (s.scroll_100s > 0) out.push(`went all the way to the bottom`);
-  if (s.verdict_expansions > 0) out.push(`expanded the verdict cells`);
-  if (s.total_dwell_seconds >= 120) out.push(`spent real time on it`);
-  else if (s.total_dwell_seconds >= 30) out.push(`gave it a real look`);
-  return out;
 }
 
 // --------------------------------------------------------------------------
