@@ -73,10 +73,17 @@ const heroReplay = heroLatest ? sessionReplayUrl(heroLatest.sid) : null;
       <div class="aqv2-eyebrow">00 · ACTION QUEUE</div>
       <h2 class="aqv2-title">The queue. <span class="ital">{prospects.length} waiting for a follow-up.</span></h2>
     </div>
-    <div class="aqv2-sort" role="group" aria-label="Sort">
-      <button class="sort-pill active" type="button" data-sort="heat">Heat</button>
-      <button class="sort-pill" type="button" data-sort="recent">Recent</button>
-      <button class="sort-pill" type="button" data-sort="model">Model <span class="star">★</span></button>
+    <div class="aqv2-controls">
+      <div class="aqv2-sort" role="group" aria-label="Sort">
+        <button class="sort-pill active" type="button" data-sort="heat">Heat</button>
+        <button class="sort-pill" type="button" data-sort="recent">Recent</button>
+        <button class="sort-pill" type="button" data-sort="model">Model <span class="star">★</span></button>
+      </div>
+      {prospects.length > 0 && (
+        <button class="clear-queue" type="button" data-clear-queue title="Mark every visible row as Sent in Airtable, then reload.">
+          Clear queue ({prospects.length})
+        </button>
+      )}
     </div>
   </div>
 
@@ -624,6 +631,52 @@ const heroReplay = heroLatest ? sessionReplayUrl(heroLatest.sid) : null;
           }
         });
       });
+
+      // Clear queue: marks every visible slug as Sent in Airtable, in
+      // parallel, then reloads. Confirms first so a misclick doesn't
+      // wipe a real backlog.
+      const clearBtn = queue.querySelector('[data-clear-queue]');
+      if (clearBtn) {
+        clearBtn.addEventListener('click', async () => {
+          const rows = queue.querySelectorAll('[data-slug]');
+          const slugs = Array.from(rows)
+            .map((r) => r.getAttribute('data-slug'))
+            .filter(Boolean);
+          if (slugs.length === 0) return;
+          const yes = window.confirm(
+            'Mark ' + slugs.length + ' prospects as Sent in Airtable?\n\n' +
+            'They drop from the queue on next reload. Undo from Airtable if needed.'
+          );
+          if (!yes) return;
+          clearBtn.disabled = true;
+          const originalLabel = clearBtn.textContent;
+          clearBtn.textContent = 'Marking ' + slugs.length + '...';
+          try {
+            const results = await Promise.allSettled(slugs.map((slug) =>
+              fetch('/api/hq/mark-messaged', {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({ slug, action: 'mark' }),
+              })
+            ));
+            const failed = results.filter((r) =>
+              r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.ok)
+            ).length;
+            if (failed > 0) {
+              const ok = slugs.length - failed;
+              alert('Marked ' + ok + '/' + slugs.length + '. ' +
+                failed + ' failed (likely not in Airtable yet). Reloading anyway.');
+            }
+            window.location.reload();
+          } catch (e) {
+            console.error('[action queue] clear failed', e);
+            clearBtn.disabled = false;
+            clearBtn.textContent = originalLabel;
+            alert('Clear failed: ' + (e && e.message ? e.message : String(e)));
+          }
+        });
+      }
     });
   })();
 </script>
@@ -640,10 +693,35 @@ const heroReplay = heroLatest ? sessionReplayUrl(heroLatest.sid) : null;
     flex-wrap: wrap;
   }
   .aqv2-head-left { min-width: 0; }
+  .aqv2-controls {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
   .aqv2-sort {
     display: inline-flex;
     border: 1px solid var(--line-strong, rgba(14,26,44,0.28));
   }
+  .clear-queue {
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    padding: 7px 12px;
+    background: var(--paper, #FFFFFF);
+    color: var(--ink-dim, #3A4658);
+    border: 1px solid var(--line-strong, rgba(14,26,44,0.28));
+    cursor: pointer;
+    transition: background 120ms, color 120ms, border-color 120ms;
+    white-space: nowrap;
+  }
+  .clear-queue:hover {
+    background: #8a1f1f;
+    color: var(--paper, #FFFFFF);
+    border-color: #8a1f1f;
+  }
+  .clear-queue:disabled { opacity: 0.6; cursor: wait; }
   .sort-pill {
     font-family: var(--mono, 'DM Mono', monospace);
     font-size: 10px;
