@@ -261,8 +261,15 @@ function heatBadge(p: TopProspect): { label: string; cls: string } {
         const data = await fetchDraft(slug, channel, signals, opts && opts.force);
         modalSubject.value = data.subject || '';
         modalText.value = data.body || '';
-        modalStatus.textContent = data.cached ? 'Loaded cached draft. ↻ Regenerate for a fresh one.' : 'Drafted. Edit if needed, then copy + open.';
-        modalStatus.className = 'dm-status dm-status--ok';
+        const noAt = data.has_airtable_record === false;
+        if (data.cached) {
+          modalStatus.textContent = 'Loaded cached draft. ↻ Regenerate for a fresh one.';
+        } else if (noAt) {
+          modalStatus.textContent = 'Drafted from engagement signals only (no Airtable match for ' + slug + '). Add an Audit URL to a record so future drafts are richer.';
+        } else {
+          modalStatus.textContent = 'Drafted. Edit if needed, then copy + open.';
+        }
+        modalStatus.className = 'dm-status ' + (noAt && !data.cached ? 'dm-status--info' : 'dm-status--ok');
         modalGo.disabled = false;
         modalRegen.disabled = false;
       } catch (e) {

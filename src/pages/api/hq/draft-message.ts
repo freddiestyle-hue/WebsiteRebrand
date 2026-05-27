@@ -10,8 +10,9 @@
 // to keep re-clicks instant + cheap.
 
 import type { APIRoute } from 'astro';
-import { getProspectBySlug } from '../../../utils/hq/airtable';
+import { getProspectBySlug, type ProspectInfo } from '../../../utils/hq/airtable';
 import { generateDraft, type Channel, type DraftSignals } from '../../../utils/hq/draft';
+import { slugToDomain } from '../../../utils/hq/messaged';
 
 export const prerender = false;
 
@@ -74,15 +75,14 @@ export const POST: APIRoute = async ({ request }) => {
   const signals = normalizeSignals(body.signals);
   const force = Boolean((body as { force?: unknown }).force);
 
-  const prospect = await getProspectBySlug(slug);
+  // Prefer the rich Airtable record, but if the slug isn't in any prospecting
+  // table, draft from engagement signals + the slug-derived domain. Better to
+  // hand Fred a usable draft than a 404.
+  let prospect = await getProspectBySlug(slug);
+  const hasAirtableRecord = !!prospect;
   if (!prospect) {
-    return new Response(JSON.stringify({
-      error: 'prospect_not_found',
-      message: 'No Airtable record matches this slug. Add an Audit URL to the prospect record so HQ can find them.',
-    }), {
-      status: 404,
-      headers: { 'content-type': 'application/json' },
-    });
+    const domain = slugToDomain(slug);
+    prospect = minimalProspect(slug, domain);
   }
 
   const draft = await generateDraft(prospect, signals, channel, { force });
@@ -92,6 +92,7 @@ export const POST: APIRoute = async ({ request }) => {
     subject: draft.subject,
     body: draft.body,
     cached: draft.cached,
+    has_airtable_record: hasAirtableRecord,
     prospect: {
       firstName: prospect.firstName,
       title: prospect.title,
@@ -105,3 +106,30 @@ export const POST: APIRoute = async ({ request }) => {
     headers: { 'content-type': 'application/json' },
   });
 };
+
+/**
+ * Build a stub ProspectInfo from a slug alone, used when no Airtable record
+ * exists. Engagement signals + slug-derived domain become the only context
+ * the LLM has to work with, but that's still better than a 404.
+ */
+function minimalProspect(slug: string, domain: string): ProspectInfo {
+  return {
+    slug,
+    source: 'No Airtable record',
+    displayName: domain,
+    firstName: '',
+    title: '',
+    company: domain,
+    industry: '',
+    email: '',
+    linkedinUrl: '',
+    outreachStage: '',
+    linkedinDm: '',
+    linkedinFollowupDm: '',
+    emailSubject: '',
+    emailBody: '',
+    auditContext: '',
+    recordId: '',
+    tableName: '',
+  };
+}
