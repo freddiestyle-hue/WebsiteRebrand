@@ -3,6 +3,12 @@
 // design dropped in audit.zip. Form state mirrors landing.html, result state
 // mirrors audit.html. Score animation + scan overlay deferred to follow-up.
 export const prerender = false;
+// Vercel function timeout. The verified-reads pipeline includes a headless
+// pass (up to 60s) plus retries (up to 2 more) plus PSI/ads/landing/email
+// in parallel. Heavy enterprise sites need the full budget; without this
+// override Vercel cuts at 60s edge timeout and the audit returns 504
+// before our internal retries can rescue the prospect.
+export const maxDuration = 300;
 
 import { Redis } from '@upstash/redis';
 import PostHog from '../../components/PostHog.astro';
