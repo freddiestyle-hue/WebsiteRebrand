@@ -26,7 +26,10 @@ const POSTHOG_PROJECT_ID = 373899;
 // v5: heat_score gates return_visitor bonus on real engagement, dwell-only no
 //     longer crosses queue threshold. Stops scanner-fingerprint repeats and
 //     sub-second drive-bys from polluting Action Queue.
-const CACHE_VERSION = 'v5';
+// v6: behavioural human filter (session must contain a click/scroll/CTA/etc).
+//     Replaces the city-based datacenter filter, which was leaking Amsterdam/
+//     Dublin/Bristol/Frankfurt scanners and over-trusting Washington/San Jose.
+const CACHE_VERSION = 'v6';
 
 // Lazy redis client. Construction is cheap but we only need one instance.
 // Use KV_REST_API_* env vars (set by Vercel KV / Upstash integration) since
@@ -101,34 +104,78 @@ async function cached<T>(
   return fresh;
 }
 
-// Datacenter cities — these are headless link scanners, not humans. Same
-// list configured at the PostHog project level for insights.
+// Behavioural human filter.
+//
+// Previous version filtered by datacenter city alone. That over-trusted
+// scanners that don't live in datacenter cities (Microsoft Defender,
+// Mimecast and other email-security crawlers fan out across Amsterdam,
+// Dublin, Bristol, Frankfurt) and the queue ended up full of zero-click
+// zero-scroll sessions. New filter: a session counts as human only if it
+// fired at least one $autocapture click, scroll_depth, CTA, verdict expand,
+// copy, print, or tab_focus_time event. Real readers do at least one of
+// those. Scanners don't trigger the JS handlers meaningfully.
+//
+// We still exclude Fred's own home cities so he doesn't watch himself.
+
+// Fred's own traffic - exclude so HQ doesn't show him watching himself.
+const SELF_CITIES = ['Cape Town', 'Kleinmond'];
+
+// Datacenter cities — kept for LABELLING the visitors-by-city breakdown,
+// not for filtering. The behavioural filter does the real work now.
 const DATACENTER_CITIES = [
   'Boydton', 'Ashburn', 'Washington', 'Manassas', 'Des Moines',
   'San Jose', 'Council Bluffs', 'The Dalles', 'North Bergen',
   'Quincy', 'Cheyenne', 'Moncks Corner',
 ];
 
-// Fred's own traffic — exclude so HQ doesn't show him watching himself.
-const SELF_CITIES = ['Cape Town', 'Kleinmond'];
-
-const REAL_HUMAN_WHERE = `
-  AND NOT (properties.$geoip_city_name IN (${DATACENTER_CITIES.map((c) => `'${c}'`).join(', ')}))
-  AND NOT (properties.$geoip_city_name IN (${SELF_CITIES.map((c) => `'${c}'`).join(', ')}))
+const SELF_CITY_EXCLUSION = `
+  NOT (properties.$geoip_city_name IN (${SELF_CITIES.map((c) => `'${c}'`).join(', ')}))
 `;
 
-// As an inline boolean predicate (for use inside countIf etc.)
-const IS_HUMAN_EXPR = `(
-  NOT (properties.$geoip_city_name IN (${DATACENTER_CITIES.map((c) => `'${c}'`).join(', ')}))
-  AND NOT (properties.$geoip_city_name IN (${SELF_CITIES.map((c) => `'${c}'`).join(', ')}))
-)`;
+// Events that prove a session was driven by a human. A scanner that just
+// loads the page and fires $pageview/$pageleave won't appear here.
+const HUMAN_SIGNAL_EVENTS = `'$autocapture','scroll_depth','cta_clicked','audit_v3_verdict_expanded','content_copied','content_printed','tab_focus_time'`;
+
+/**
+ * Build a "this session interacted" subquery given a time-where clause.
+ * timeWhere should be a SQL fragment like "timestamp >= ..." (no leading
+ * AND) so the caller controls the exact bounds.
+ */
+function humanSessionsSubquery(timeWhere: string): string {
+  return `(
+    SELECT DISTINCT properties.$session_id
+    FROM events
+    WHERE ${timeWhere}
+      AND (properties.$pathname LIKE '/audit/v3/%' OR properties.$pathname LIKE '/audit/p/%')
+      AND event IN (${HUMAN_SIGNAL_EVENTS})
+  )`;
+}
+
+/** Inline boolean predicate (for use inside countIf etc.). */
+function humanExpr(range: DateRange): string {
+  return humanExprWithTime(hogqlRangeClause(range));
+}
+function humanExprWithTime(timeWhere: string): string {
+  return `(
+    properties.$session_id IN ${humanSessionsSubquery(timeWhere)}
+    AND ${SELF_CITY_EXCLUSION}
+  )`;
+}
+
+/** As a WHERE clause fragment (leading AND). */
+function humanWhere(range: DateRange): string {
+  return `
+    AND properties.$session_id IN ${humanSessionsSubquery(hogqlRangeClause(range))}
+    AND ${SELF_CITY_EXCLUSION}
+  `;
+}
 
 // Traffic mode controls whether queries apply the real-human filter or
 // show all traffic. /hq surfaces this via ?traffic=all|humans.
 export type TrafficMode = 'humans' | 'all';
 
-function humanWhereFor(mode: TrafficMode): string {
-  return mode === 'all' ? '' : REAL_HUMAN_WHERE;
+function humanWhereFor(mode: TrafficMode, range: DateRange): string {
+  return mode === 'all' ? '' : humanWhere(range);
 }
 
 export interface HogQLResult {
@@ -257,7 +304,7 @@ export async function getRecentReads(range: DateRange, mode: TrafficMode = 'huma
       FROM events
       WHERE ${hogqlRangeClause(range)}
         AND ${PROSPECT_PATH_FILTER}
-        ${humanWhereFor(mode)}
+        ${humanWhereFor(mode, range)}
       GROUP BY path, prospect, surface, session_id, distinct_id, city, country
       HAVING dwell_seconds >= ${minDwell}
       ORDER BY last_event DESC
@@ -365,7 +412,7 @@ export async function getTopProspects(range: DateRange, mode: TrafficMode = 'hum
       FROM events
       WHERE ${hogqlRangeClause(range)}
         AND ${PROSPECT_PATH_FILTER_TOP}
-        ${humanWhereFor(mode)}
+        ${humanWhereFor(mode, range)}
       GROUP BY prospect, surface, sid
     ) AS sessions
     WHERE prospect != ''
@@ -463,10 +510,10 @@ export async function getHeadlineMetrics(range: DateRange): Promise<HeadlineMetr
     const [currentRes, prevRes, dailyRes] = await Promise.all([
       runQuery(`
         SELECT
-          countIf(event = '$pageview' AND ${PROSPECT_PATH_FILTER} AND ${IS_HUMAN_EXPR}) AS memo_views,
-          uniq(if(event = '$pageview' AND ${PROSPECT_PATH_FILTER} AND ${IS_HUMAN_EXPR}, distinct_id, NULL)) AS unique_visitors,
-          uniq(if(event = 'scroll_depth' AND toInt(properties.depth) >= 50 AND ${PROSPECT_PATH_FILTER} AND ${IS_HUMAN_EXPR}, properties.$session_id, NULL)) AS engaged_reads,
-          countIf(event = 'cta_clicked' AND ${IS_HUMAN_EXPR}) AS cta_clicks,
+          countIf(event = '$pageview' AND ${PROSPECT_PATH_FILTER} AND ${humanExpr(range)}) AS memo_views,
+          uniq(if(event = '$pageview' AND ${PROSPECT_PATH_FILTER} AND ${humanExpr(range)}, distinct_id, NULL)) AS unique_visitors,
+          uniq(if(event = 'scroll_depth' AND toInt(properties.depth) >= 50 AND ${PROSPECT_PATH_FILTER} AND ${humanExpr(range)}, properties.$session_id, NULL)) AS engaged_reads,
+          countIf(event = 'cta_clicked' AND ${humanExpr(range)}) AS cta_clicks,
           countIf(event = '$pageview' AND ${PROSPECT_PATH_FILTER}) AS memo_views_raw,
           uniq(if(event = '$pageview' AND ${PROSPECT_PATH_FILTER}, distinct_id, NULL)) AS unique_visitors_raw,
           uniq(if(event = 'scroll_depth' AND toInt(properties.depth) >= 50 AND ${PROSPECT_PATH_FILTER}, properties.$session_id, NULL)) AS engaged_reads_raw,
@@ -474,22 +521,26 @@ export async function getHeadlineMetrics(range: DateRange): Promise<HeadlineMetr
         FROM events
         WHERE ${hogqlRangeClause(range)}
       `),
-      runQuery(`
+      runQuery((() => {
+        const prevTimeWhere = `timestamp >= toDateTime('${prevFromIso}') AND timestamp <= toDateTime('${prevToIso}')`;
+        const prevHuman = humanExprWithTime(prevTimeWhere);
+        return `
         SELECT
-          countIf(event = '$pageview' AND ${PROSPECT_PATH_FILTER} AND ${IS_HUMAN_EXPR}) AS memo_views,
-          uniq(if(event = '$pageview' AND ${PROSPECT_PATH_FILTER} AND ${IS_HUMAN_EXPR}, distinct_id, NULL)) AS unique_visitors,
-          uniq(if(event = 'scroll_depth' AND toInt(properties.depth) >= 50 AND ${PROSPECT_PATH_FILTER} AND ${IS_HUMAN_EXPR}, properties.$session_id, NULL)) AS engaged_reads,
-          countIf(event = 'cta_clicked' AND ${IS_HUMAN_EXPR}) AS cta_clicks
+          countIf(event = '$pageview' AND ${PROSPECT_PATH_FILTER} AND ${prevHuman}) AS memo_views,
+          uniq(if(event = '$pageview' AND ${PROSPECT_PATH_FILTER} AND ${prevHuman}, distinct_id, NULL)) AS unique_visitors,
+          uniq(if(event = 'scroll_depth' AND toInt(properties.depth) >= 50 AND ${PROSPECT_PATH_FILTER} AND ${prevHuman}, properties.$session_id, NULL)) AS engaged_reads,
+          countIf(event = 'cta_clicked' AND ${prevHuman}) AS cta_clicks
         FROM events
-        WHERE timestamp >= toDateTime('${prevFromIso}') AND timestamp <= toDateTime('${prevToIso}')
-      `),
+        WHERE ${prevTimeWhere}
+      `;
+      })()),
       runQuery(`
         SELECT
           toDate(timestamp) AS day,
-          countIf(event = '$pageview' AND ${PROSPECT_PATH_FILTER} AND ${IS_HUMAN_EXPR}) AS memo_views,
-          uniq(if(event = '$pageview' AND ${PROSPECT_PATH_FILTER} AND ${IS_HUMAN_EXPR}, distinct_id, NULL)) AS unique_visitors,
-          uniq(if(event = 'scroll_depth' AND toInt(properties.depth) >= 50 AND ${PROSPECT_PATH_FILTER} AND ${IS_HUMAN_EXPR}, properties.$session_id, NULL)) AS engaged_reads,
-          countIf(event = 'cta_clicked' AND ${IS_HUMAN_EXPR}) AS cta_clicks
+          countIf(event = '$pageview' AND ${PROSPECT_PATH_FILTER} AND ${humanExpr(range)}) AS memo_views,
+          uniq(if(event = '$pageview' AND ${PROSPECT_PATH_FILTER} AND ${humanExpr(range)}, distinct_id, NULL)) AS unique_visitors,
+          uniq(if(event = 'scroll_depth' AND toInt(properties.depth) >= 50 AND ${PROSPECT_PATH_FILTER} AND ${humanExpr(range)}, properties.$session_id, NULL)) AS engaged_reads,
+          countIf(event = 'cta_clicked' AND ${humanExpr(range)}) AS cta_clicks
         FROM events
         WHERE ${hogqlRangeClause(range)}
         GROUP BY day
@@ -578,7 +629,7 @@ export async function getActiveNow(): Promise<ActiveNow> {
       uniq(distinct_id) AS active_visitors
     FROM events
     WHERE timestamp >= now() - INTERVAL 30 MINUTE
-      ${REAL_HUMAN_WHERE}
+      ${humanWhere(range)}
   `);
   const head = rowsToObjects<{ active_sessions: number; active_visitors: number }>(r)[0] ?? {
     active_sessions: 0,
@@ -591,7 +642,7 @@ export async function getActiveNow(): Promise<ActiveNow> {
     FROM events
     WHERE event = '$pageview'
       AND timestamp >= now() - INTERVAL 30 MINUTE
-      ${REAL_HUMAN_WHERE}
+      ${humanWhere(range)}
     GROUP BY path
     ORDER BY count DESC
     LIMIT 5
@@ -633,7 +684,7 @@ export async function getCtaClicks(range: DateRange, mode: TrafficMode = 'humans
     FROM events
     WHERE event = 'cta_clicked'
       AND ${hogqlRangeClause(range)}
-      ${humanWhereFor(mode)}
+      ${humanWhereFor(mode, range)}
     ORDER BY timestamp DESC
     LIMIT 25
   `);
@@ -696,7 +747,7 @@ export async function getTopBlogPosts(range: DateRange): Promise<TopBlogPost[]> 
           dateDiff('second', min(timestamp), max(timestamp)) AS session_dwell,
           max(timestamp) AS last_event,
           /* session is human if any event was outside scanner+self cities */
-          max(${IS_HUMAN_EXPR}) AS session_is_human
+          max(${humanExpr(range)}) AS session_is_human
         FROM events
         WHERE ${hogqlRangeClause(range)}
           AND properties.$pathname ILIKE '/blog/%'
@@ -812,7 +863,7 @@ export async function getVisitorTech(range: DateRange, mode: TrafficMode = 'huma
       FROM events
       WHERE ${hogqlRangeClause(range)}
         AND properties.$browser IS NOT NULL
-        ${humanWhereFor(mode)}
+        ${humanWhereFor(mode, range)}
       GROUP BY device_type, browser, os
       ORDER BY visitors DESC
       LIMIT 20
@@ -840,7 +891,7 @@ export async function getTrafficSources(range: DateRange, mode: TrafficMode = 'h
         countIf(event = '$pageview') AS pageviews
       FROM events
       WHERE ${hogqlRangeClause(range)}
-        ${humanWhereFor(mode)}
+        ${humanWhereFor(mode, range)}
       GROUP BY source
       ORDER BY visitors DESC
       LIMIT 20
@@ -869,7 +920,7 @@ export async function getActivityTimeline(range: DateRange, mode: TrafficMode = 
       uniq(distinct_id) AS visitors
     FROM events
     WHERE ${hogqlRangeClause(range)}
-      ${humanWhereFor(mode)}
+      ${humanWhereFor(mode, range)}
     GROUP BY day
     ORDER BY day
   `);
