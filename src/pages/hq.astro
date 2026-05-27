@@ -144,14 +144,17 @@ if (authed) {
 }
 
 // --- Action queue: engaged prospects who need a follow-up ---
-// Every audit-URL visit is a person event — the slug IS the identifier and
-// joins to a name via Airtable. So the queue shows every visit that hasn't
-// been wrapped up yet (Replied/Booked/Won/Lost/Disqualified). The heat tag
-// communicates quality; Fred decides whether a BROWSED row is worth a
-// follow-up. We do NOT pre-filter by engagement signals — those gate which
-// tier the heat badge shows, but everyone visible is fair game.
+// Every audit-URL visit is a person event - the slug IS the identifier and
+// joins to a name via Airtable. The queue shows every visit that hasn't
+// been worked yet. Anything past "Not Sent" is removed:
+//   - Sent: already DM'd / emailed (auto-marked when Fred hits Copy+open
+//     in the draft modal, or manually via the Mark sent button).
+//   - Replied / Booked / Won / Lost / Disqualified: terminal stages.
+// The heat tag communicates quality; Fred decides whether a BROWSED row
+// is worth a follow-up. We do NOT pre-filter by engagement signals - those
+// gate which tier the heat badge shows, but everyone visible is fair game.
 const STAGES_DONE = new Set([
-  'Replied', 'Booked', 'Won', 'Lost', 'Disqualified',
+  'Sent', 'Replied', 'Booked', 'Won', 'Lost', 'Disqualified',
 ]);
 
 const actionQueue = top

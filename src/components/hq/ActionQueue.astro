@@ -170,7 +170,7 @@ const heroReplay = heroLatest ? sessionReplayUrl(heroLatest.sid) : null;
           {heroInfo?.email && (
             <button class="hq-btn pri" type="button" data-draft="email">Draft email</button>
           )}
-          <button class="hq-btn done" type="button" data-mark-messaged>✓ Messaged</button>
+          <button class="hq-btn" type="button" data-mark-messaged>Mark sent</button>
         </div>
       </aside>
     </article>
@@ -246,7 +246,7 @@ const heroReplay = heroLatest ? sessionReplayUrl(heroLatest.sid) : null;
               {info?.email && (
                 <button class="hq-btn sm" type="button" data-draft="email">Email</button>
               )}
-              <button class="hq-btn done sm" type="button" data-mark-messaged aria-label="Mark messaged">✓</button>
+              <button class="hq-btn sm" type="button" data-mark-messaged aria-label="Mark sent">Sent</button>
             </div>
           </article>
         );
@@ -477,6 +477,34 @@ const heroReplay = heroLatest ? sessionReplayUrl(heroLatest.sid) : null;
       catch { return false; }
     }
 
+    // Fire-and-forget: flip Airtable Outreach Stage to "Sent" for this slug,
+    // and dim the matching queue row so Fred sees it's been worked. On the
+    // next page load the row drops out of the queue entirely (Sent is in
+    // STAGES_DONE). Silent on failure - we don't want the modal to nag if
+    // there's no Airtable record for the slug.
+    async function markSentSilently(slug) {
+      if (!slug) return;
+      try {
+        const res = await fetch('/api/hq/mark-messaged', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ slug, action: 'mark' }),
+        });
+        if (!res.ok) return;
+        // Dim the matching row in the visible queue so Fred has feedback
+        // without forcing a reload mid-flow.
+        document.querySelectorAll('[data-slug="' + slug + '"]').forEach((row) => {
+          row.classList.add('done');
+          row.style.transition = 'opacity 200ms';
+          row.style.opacity = '0.45';
+        });
+      } catch (e) {
+        // Silent - don't break the send flow
+        console.warn('[action queue] auto-mark sent failed', e);
+      }
+    }
+
     modalRegen?.addEventListener('click', () => runDraft(true));
 
     modalGo?.addEventListener('click', async () => {
@@ -513,15 +541,17 @@ const heroReplay = heroLatest ? sessionReplayUrl(heroLatest.sid) : null;
           return;
         }
         await copyToClipboard(fullBody);
-        modalStatus.textContent = 'Opened Gmail compose. Body copied as backup.';
+        modalStatus.textContent = 'Opened Gmail compose. Body copied as backup. Marked Sent in Airtable.';
         modalStatus.className = 'dm-status dm-status--ok';
+        markSentSilently(ctx.slug);
       } else {
         const ok = await copyToClipboard(body);
         if (ctx.liUrl) window.open(ctx.liUrl, '_blank', 'noopener');
         modalStatus.textContent = ok
-          ? 'DM copied. LinkedIn opened — paste into Message.'
+          ? 'DM copied. LinkedIn opened, paste into Message. Marked Sent in Airtable.'
           : 'Could not copy. Select and copy manually.';
         modalStatus.className = 'dm-status ' + (ok ? 'dm-status--ok' : 'dm-status--err');
+        if (ok) markSentSilently(ctx.slug);
       }
     });
 
