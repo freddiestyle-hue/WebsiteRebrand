@@ -366,7 +366,7 @@ const heroReplay = heroLatest ? sessionReplayUrl(heroLatest.sid) : null;
           ? 'Message · 80–150 words'
           : 'Message · 600–900 chars';
       }
-      modalGo.textContent = channel === 'email' ? 'Open in mail' : 'Copy + open LinkedIn';
+      modalGo.textContent = channel === 'email' ? 'Open in Gmail' : 'Copy + open LinkedIn';
     }
     modalTabs?.forEach((tab) => {
       tab.addEventListener('click', () => {
@@ -484,13 +484,29 @@ const heroReplay = heroLatest ? sessionReplayUrl(heroLatest.sid) : null;
       const subject = modalSubject.value || '';
       const body = modalText.value || '';
       if (ctx.channel === 'email') {
-        const qs = [];
-        if (subject) qs.push('subject=' + encodeURIComponent(subject));
-        if (body) qs.push('body=' + encodeURIComponent(body));
-        await copyToClipboard(body);
-        const href = 'mailto:' + ctx.email + (qs.length ? '?' + qs.join('&') : '');
-        window.location.href = href;
-        modalStatus.textContent = 'Opened mail. Body copied as backup.';
+        const auditUrl = 'https://rivett.tech/audit/v3/' + ctx.slug;
+        const calUrl = 'https://cal.com/fred-style/discovery';
+        const footer = '\n\nthe memo, if you want to flick back: ' + auditUrl +
+                       '\ngrab 15 min: ' + calUrl +
+                       '\n\nFred';
+        const fullBody = body + footer;
+        const qs = ['view=cm', 'fs=1', 'to=' + encodeURIComponent(ctx.email)];
+        if (subject) qs.push('su=' + encodeURIComponent(subject));
+        qs.push('body=' + encodeURIComponent(fullBody));
+        // /u/0/ targets the first signed-in Google account. Open the window
+        // IMMEDIATELY while the click's user-gesture is still valid - any
+        // async work (clipboard, fetch) before window.open() trips Chrome's
+        // popup blocker and the tab silently fails to spawn.
+        const href = 'https://mail.google.com/mail/u/0/?' + qs.join('&');
+        const win = window.open(href, '_blank', 'noopener');
+        if (!win) {
+          await copyToClipboard(fullBody);
+          modalStatus.textContent = 'Popup was blocked. Body copied to clipboard - open Gmail manually and paste.';
+          modalStatus.className = 'dm-status dm-status--err';
+          return;
+        }
+        await copyToClipboard(fullBody);
+        modalStatus.textContent = 'Opened Gmail compose. Body copied as backup.';
         modalStatus.className = 'dm-status dm-status--ok';
       } else {
         const ok = await copyToClipboard(body);
