@@ -50,7 +50,6 @@ import DateRangeNav from '../components/hq/DateRangeNav.astro';
 import KpiCard from '../components/hq/KpiCard.astro';
 import ActiveNowBadge from '../components/hq/ActiveNow.astro';
 import ActionQueue from '../components/hq/ActionQueue.astro';
-import { getMessagedSlugs } from '../utils/hq/messaged';
 import { getProspectsBySlug, type ProspectInfo } from '../utils/hq/airtable';
 
 // --- Auth gating ---
@@ -107,13 +106,12 @@ let devices: DeviceRow[] = [];
 let sources: TrafficSource[] = [];
 let activity: ActivityDay[] = [];
 let activeNow: ActiveNow | null = null;
-let messagedSlugs: Set<string> = new Set();
 let prospectInfo: Map<string, ProspectInfo> = new Map();
 let fetchError: string | null = null;
 
 if (authed) {
   try {
-    const [h, r, t, c, b, co, ci, dv, sr, ac, an, ms, pi] = await Promise.all([
+    const [h, r, t, c, b, co, ci, dv, sr, ac, an, pi] = await Promise.all([
       getHeadlineMetrics(range),
       getRecentReads(range, trafficMode),
       getTopProspects(range, trafficMode),
@@ -125,7 +123,6 @@ if (authed) {
       getTrafficSources(range, trafficMode),
       getActivityTimeline(range, trafficMode),
       getActiveNow(),
-      getMessagedSlugs(),
       getProspectsBySlug(),
     ]);
     headline = h;
@@ -139,7 +136,6 @@ if (authed) {
     sources = sr;
     activity = ac;
     activeNow = an;
-    messagedSlugs = ms;
     prospectInfo = pi;
   } catch (e) {
     fetchError = e instanceof Error ? e.message : String(e);
@@ -148,13 +144,24 @@ if (authed) {
 }
 
 // --- Action queue: engaged prospects who haven't been marked messaged ---
-// To make the cut a prospect must EITHER have done one concrete thing
-// (CTA, print, copy, verdict expand, full scroll) OR spent >= 60s of real
-// focus time on a memo. Pure pageview-counts and 2-second return visits
-// (scanner fingerprint) no longer qualify.
-// Sort by heat_score (strongest signal first), then by recency to break ties.
+// Source of truth for "messaged" is the Outreach Stage field on the Airtable
+// Prospects record. If we have a record AND the stage means "moved on"
+// (Sent, Replied, Booked, Won, Lost, Disqualified), drop the row. Anyone
+// without an Airtable record stays visible regardless.
+//
+// To make the cut on engagement: at least one concrete action (CTA, print,
+// copy, verdict expand, full scroll) OR >= 60s of real focus time.
+const STAGES_DONE = new Set([
+  'Sent', 'Connection Sent', 'Connection Accepted',
+  'Bumped', 'Replied', 'Booked', 'Won', 'Lost', 'Disqualified',
+]);
+
 const actionQueue = top
-  .filter((p) => !messagedSlugs.has(p.prospect))
+  .filter((p) => {
+    const info = prospectInfo.get(p.prospect);
+    if (info && STAGES_DONE.has(info.outreachStage)) return false;
+    return true;
+  })
   .filter((p) => {
     const hasConcreteAction =
       p.cta_clicks > 0 ||

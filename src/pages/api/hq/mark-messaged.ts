@@ -1,14 +1,13 @@
-// POST endpoint that flips a prospect to "messaged" (or back).
+// POST endpoint that flips a prospect's Outreach Stage to "Sent" (or back to
+// "Not Sent"). Single source of truth is the Airtable Prospects table -
+// the legacy Redis "hq:messaged" hash is no longer consulted.
 //
 // Body: { slug: string, action: "mark" | "unmark" }
 // Auth: same rivett_hq_key cookie that gates /hq. Without it, returns 401.
-// Response: { ok: boolean, slug, action }
-//
-// Used by the Action Queue component on /hq. Click "✓ messaged" → POST here,
-// page is re-fetched, prospect drops off the queue on next render.
+// Response: { ok: boolean, slug, action, stage }
 
 import type { APIRoute } from 'astro';
-import { markMessaged, unmarkMessaged } from '../../../utils/hq/messaged';
+import { getProspectBySlug, setOutreachStage } from '../../../utils/hq/airtable';
 
 export const prerender = false;
 
@@ -48,9 +47,23 @@ export const POST: APIRoute = async ({ request }) => {
   }
 
   const action = body.action === 'unmark' ? 'unmark' : 'mark';
-  const ok = action === 'mark' ? await markMessaged(slug) : await unmarkMessaged(slug);
+  const stage = action === 'mark' ? 'Sent' : 'Not Sent';
 
-  return new Response(JSON.stringify({ ok, slug, action }), {
+  // Look up the Airtable record for this slug.
+  const prospect = await getProspectBySlug(slug);
+  if (!prospect || !prospect.recordId) {
+    return new Response(JSON.stringify({
+      error: 'no_airtable_record',
+      message: 'This slug isn\'t in the Prospects table, so there\'s no Outreach Stage to flip. Add the prospect to Airtable first.',
+    }), {
+      status: 404,
+      headers: { 'content-type': 'application/json' },
+    });
+  }
+
+  const ok = await setOutreachStage(prospect.recordId, stage);
+
+  return new Response(JSON.stringify({ ok, slug, action, stage }), {
     status: ok ? 200 : 500,
     headers: { 'content-type': 'application/json' },
   });

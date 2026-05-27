@@ -115,6 +115,7 @@ export const POST: APIRoute = async ({ request }) => {
 function minimalProspect(slug: string, domain: string): ProspectInfo {
   return {
     slug,
+    vertical: '',
     source: 'No Airtable record',
     displayName: domain,
     firstName: '',
@@ -129,7 +130,8 @@ function minimalProspect(slug: string, domain: string): ProspectInfo {
     emailSubject: '',
     emailBody: '',
     auditContext: '',
+    sentAt: '',
+    repliedAt: '',
     recordId: '',
-    tableName: '',
   };
 }

@@ -1,76 +1,82 @@
-// Airtable prospect lookup for HQ - multi-table, one canonical schema.
+// Airtable prospect lookup for HQ - one unified table.
 //
-// The base `appgYU8VToutChjSi` hosts every Rivett prospecting play in its
-// own table. As of the 2026-05-27 normalization, every prospecting table
-// conforms to one shared schema, so this module reads them all the same way.
+// As of 2026-05-27 there is a single `Prospects` table in base
+// `appgYU8VToutChjSi`. The Vertical singleSelect (Advertiser, Mental Health,
+// Homecare, Fractional Role) drives per-play context. Adding a new vertical
+// = add an option to the singleSelect, no schema or code change.
 //
-// Canonical fields each prospecting table must have:
-//   First Name, Title, Company, Industry, Email, LinkedIn URL, Audit URL,
-//   Outreach Stage, LinkedIn DM
-// Optional canonical fields (read if present, blank if absent):
-//   LinkedIn Follow-up DM, Email Subject, Email Body
-//
-// To add a new play: create the table with these field names. No code change.
+// Config: AIRTABLE_PAT env var. Base + table hardcoded. If PAT is missing
+// the map comes back empty and HQ degrades to slug-only.
 //
 // Caching: 30-min Redis TTL on the full prospect map.
 
 import { Redis } from '@upstash/redis';
 
 const BASE_ID = 'appgYU8VToutChjSi';
+const TABLE = 'Prospects';
 
-// Tables to read. Add new plays here.
-const TABLES: string[] = [
-  'Advertisers',
-  'Fractional Roles',
-  'Private pay homecare',
-  'Mental Health',
+// Field names match the unified schema. All are optional except Audit URL
+// (the slug join key); fields are pulled into ProspectInfo when present.
+const FIELDS = [
+  // Core
+  'Company', 'Domain', 'URL', 'First Name', 'Title', 'Industry',
+  'Email', 'LinkedIn URL', 'Audit URL', 'Audit Score',
+  'Outreach Stage', 'LinkedIn DM', 'LinkedIn Follow-up DM',
+  'Email Subject', 'Email Body', 'Sent At', 'Replied At', 'Notes',
+  // Vertical
+  'Vertical',
+  // Shared audit findings
+  'SEO Finding', 'AEO Finding', 'Pagespeed Finding', 'Tracking Finding',
+  'Ads Finding', 'Conversion Finding', 'Mobile Finding', 'Email Finding',
+  'Stack Finding',
+  // Advertiser-specific
+  'Total Ads', 'Meta Ads', 'Google Ads', 'LinkedIn Ads',
+  'Hero Dimension', 'Attack Wave', 'Priority', 'Score',
+  // Mental Health-specific
+  'Intake Tool', 'Path to Booking', 'Form Length', 'Mobile Experience',
+  'Response Promise', 'Booking Method', 'Cost Transparency',
+  'Trust Signals', 'Contact Options', 'Patient Matching', 'Lead Recovery',
+  // Fractional/Homecare-specific
+  'Role Title', 'Salary Min', 'Salary Max', 'Work Arrangement',
+  'Apply URL', 'Job URL', 'Fit Score', 'Job Description', 'Posted Date',
 ];
 
-// Canonical field names - same across every prospecting table.
-const FIELD = {
-  firstName: 'First Name',
-  title: 'Title',
-  company: 'Company',
-  industry: 'Industry',
-  email: 'Email',
-  linkedinUrl: 'LinkedIn URL',
-  auditUrl: 'Audit URL',
-  outreachStage: 'Outreach Stage',
-  linkedinDm: 'LinkedIn DM',
-  linkedinFollowupDm: 'LinkedIn Follow-up DM',
-  emailSubject: 'Email Subject',
-  emailBody: 'Email Body',
-} as const;
-
-// Play-specific audit-finding fields. These are not part of the canonical
-// schema since each play audits something different. We read them as freeform
-// context for the LLM to use as message hooks.
-const AUDIT_FINDING_FIELDS_BY_TABLE: Record<string, string[]> = {
-  'Advertisers': ['Hero One-Liner', 'Hero Dimension', 'Tech Stack Opportunity'],
-  'Fractional Roles': [
-    'Hero Gap', 'SEO Finding', 'AEO Finding', 'Pagespeed Finding',
-    'Tracking Finding', 'Ads Finding', 'Conversion Finding',
-    'Mobile Finding', 'Email Finding', 'Stack Finding',
-  ],
-  'Private pay homecare': [
-    'Hero Gap', 'SEO Finding', 'AEO Finding', 'Pagespeed Finding',
-    'Tracking Finding', 'Ads Finding', 'Conversion Finding',
-    'Mobile Finding', 'Email Finding', 'Stack Finding',
+// Per-vertical audit-finding field lists used to build the freeform
+// `auditContext` string that the LLM treats as a hook source.
+const FINDING_FIELDS_BY_VERTICAL: Record<string, string[]> = {
+  'Advertiser': [
+    'SEO Finding', 'AEO Finding', 'Pagespeed Finding', 'Tracking Finding',
+    'Ads Finding', 'Conversion Finding', 'Mobile Finding', 'Email Finding',
+    'Stack Finding', 'Hero Dimension', 'Attack Wave',
   ],
   'Mental Health': [
-    'Hero Gap', 'Summary', 'Path to Booking', 'Form Length',
-    'Mobile Experience', 'Response Promise', 'Booking Method',
-    'Cost Transparency', 'Trust Signals', 'Contact Options',
-    'Patient Matching', 'Lead Recovery',
+    'Path to Booking', 'Form Length', 'Mobile Experience',
+    'Response Promise', 'Booking Method', 'Cost Transparency',
+    'Trust Signals', 'Contact Options', 'Patient Matching',
+    'Lead Recovery', 'Intake Tool',
+  ],
+  'Fractional Role': [
+    'SEO Finding', 'AEO Finding', 'Pagespeed Finding', 'Tracking Finding',
+    'Ads Finding', 'Conversion Finding', 'Mobile Finding', 'Email Finding',
+    'Stack Finding', 'Role Title', 'Work Arrangement', 'Salary Min', 'Salary Max',
+  ],
+  'Homecare': [
+    'SEO Finding', 'AEO Finding', 'Pagespeed Finding', 'Tracking Finding',
+    'Ads Finding', 'Conversion Finding', 'Mobile Finding', 'Email Finding',
+    'Stack Finding', 'Role Title', 'Work Arrangement',
   ],
 };
 
-const CACHE_KEY = 'hq:airtable:prospects:v3';
+const CACHE_KEY = 'hq:airtable:prospects:v4';
 const CACHE_TTL_SECONDS = 1800;
+
+export type Vertical = 'Advertiser' | 'Mental Health' | 'Homecare' | 'Fractional Role';
 
 export interface ProspectInfo {
   slug: string;
-  source: string;       // which table they came from (the play name)
+  vertical: Vertical | '';
+  /** Display source — same as vertical for backward compatibility with old UI. */
+  source: string;
   displayName: string;
   firstName: string;
   title: string;
@@ -81,16 +87,19 @@ export interface ProspectInfo {
   outreachStage: string;
   /** Canned LinkedIn intro DM (style anchor for LLM). */
   linkedinDm: string;
-  /** Canned post-engagement LinkedIn follow-up DM. */
+  /** Canned post-engagement LinkedIn follow-up. */
   linkedinFollowupDm: string;
   /** Canned email subject. */
   emailSubject: string;
   /** Canned email body. */
   emailBody: string;
-  /** Play-specific audit findings concatenated as freeform context. */
+  /** Concatenated audit findings, freeform context for LLM hooks. */
   auditContext: string;
+  /** Convenience: when we sent them something. ISO date string or ''. */
+  sentAt: string;
+  /** When they replied, if at all. */
+  repliedAt: string;
   recordId: string;
-  tableName: string;
 }
 
 let _redis: Redis | null = null;
@@ -109,9 +118,8 @@ function getRedis(): Redis | null {
 }
 
 /**
- * Returns slug → ProspectInfo across every prospecting table in the base.
- * If two tables both contain a record for the same slug, the first match wins
- * (TABLES order determines priority).
+ * Returns slug → ProspectInfo from the unified Prospects table. First slug
+ * match wins if duplicates exist.
  */
 export async function getProspectsBySlug(): Promise<Map<string, ProspectInfo>> {
   const redis = getRedis();
@@ -127,36 +135,30 @@ export async function getProspectsBySlug(): Promise<Map<string, ProspectInfo>> {
   const pat = (process.env.AIRTABLE_PAT || '').trim();
   if (!pat) return new Map();
 
-  const allRecords: ProspectInfo[] = [];
+  let records: AirtableRecord[];
+  try {
+    records = await fetchAll(pat);
+  } catch (e) {
+    console.warn('[hq airtable] fetch failed', e);
+    return new Map();
+  }
 
-  // Read every table in parallel.
-  const results = await Promise.allSettled(
-    TABLES.map((tableName) => fetchTable(tableName, pat))
-  );
-
-  for (let i = 0; i < results.length; i++) {
-    const r = results[i];
-    const tableName = TABLES[i];
-    if (r.status === 'fulfilled') {
-      allRecords.push(...r.value);
-    } else {
-      console.warn(`[hq airtable] table ${tableName} failed`, r.reason);
-    }
+  const prospects: ProspectInfo[] = [];
+  for (const rec of records) {
+    const info = recordToInfo(rec);
+    if (info) prospects.push(info);
   }
 
   if (redis) {
-    redis.set(CACHE_KEY, allRecords, { ex: CACHE_TTL_SECONDS }).catch((e) => {
+    redis.set(CACHE_KEY, prospects, { ex: CACHE_TTL_SECONDS }).catch((e) => {
       console.warn('[hq airtable] cache write failed', e);
     });
   }
 
-  return mapByFirstSlug(allRecords);
+  return mapByFirstSlug(prospects);
 }
 
-/**
- * Get a single prospect's info by slug. Used by the LLM draft endpoint
- * when generating one message at a time.
- */
+/** Single-prospect lookup. Used by the LLM draft endpoint. */
 export async function getProspectBySlug(slug: string): Promise<ProspectInfo | null> {
   const map = await getProspectsBySlug();
   return map.get(slug) || null;
@@ -171,40 +173,15 @@ interface AirtableRecord {
   fields: Record<string, unknown>;
 }
 
-async function fetchTable(tableName: string, pat: string): Promise<ProspectInfo[]> {
-  // We request only the fields we'll read. Asking for a non-existent field
-  // makes Airtable return 0 records, so the canonical list is the safe set.
-  // Audit-finding fields vary per table - only request the ones we know exist
-  // for this specific table.
-  const wanted = new Set<string>([
-    FIELD.firstName, FIELD.title, FIELD.company, FIELD.industry, FIELD.email,
-    FIELD.linkedinUrl, FIELD.auditUrl, FIELD.outreachStage, FIELD.linkedinDm,
-  ]);
-  // Optional canonical fields - check the table schema before adding. For now,
-  // try to request them; if any are missing we'll get a 422 and retry without.
-  // Simpler: add them and let Airtable strip the absent ones from response.
-  // Actually Airtable errors on unknown fields, so we have to be precise.
-  // Mental Health has Follow-up + Email Subject + Email Body.
-  // Advertisers has only LinkedIn Follow-up DM.
-  // Fractional / Private pay has Email Subject + Email Body but no Follow-up.
-  // To avoid 0-record bugs, check per-table presence:
-  const OPTIONAL_BY_TABLE: Record<string, string[]> = {
-    'Advertisers': [FIELD.linkedinFollowupDm],
-    'Fractional Roles': [FIELD.emailSubject, FIELD.emailBody],
-    'Private pay homecare': [FIELD.emailSubject, FIELD.emailBody],
-    'Mental Health': [FIELD.linkedinFollowupDm, FIELD.emailSubject, FIELD.emailBody],
-  };
-  for (const f of OPTIONAL_BY_TABLE[tableName] || []) wanted.add(f);
-  for (const f of AUDIT_FINDING_FIELDS_BY_TABLE[tableName] || []) wanted.add(f);
-
+async function fetchAll(pat: string): Promise<AirtableRecord[]> {
   const records: AirtableRecord[] = [];
   let offset: string | undefined;
   let pages = 0;
-  const MAX_PAGES = 20;
+  const MAX_PAGES = 50; // 100 per page × 50 = 5000, comfortable headroom
 
   do {
-    const url = new URL(`https://api.airtable.com/v0/${BASE_ID}/${encodeURIComponent(tableName)}`);
-    for (const fn of wanted) url.searchParams.append('fields[]', fn);
+    const url = new URL(`https://api.airtable.com/v0/${BASE_ID}/${encodeURIComponent(TABLE)}`);
+    for (const fn of FIELDS) url.searchParams.append('fields[]', fn);
     url.searchParams.set('pageSize', '100');
     if (offset) url.searchParams.set('offset', offset);
 
@@ -212,7 +189,7 @@ async function fetchTable(tableName: string, pat: string): Promise<ProspectInfo[
       headers: { Authorization: `Bearer ${pat}` },
     });
     if (!res.ok) {
-      throw new Error(`Airtable ${tableName} ${res.status} ${res.statusText}`);
+      throw new Error(`Airtable ${TABLE} ${res.status} ${res.statusText}`);
     }
     const data = (await res.json()) as { records?: AirtableRecord[]; offset?: string };
     if (data.records) records.push(...data.records);
@@ -220,53 +197,94 @@ async function fetchTable(tableName: string, pat: string): Promise<ProspectInfo[
     pages += 1;
   } while (offset && pages < MAX_PAGES);
 
-  const out: ProspectInfo[] = [];
-  for (const rec of records) {
-    const info = recordToInfo(rec, tableName);
-    if (info) out.push(info);
-  }
-  return out;
+  return records;
 }
 
-function recordToInfo(rec: AirtableRecord, tableName: string): ProspectInfo | null {
+function recordToInfo(rec: AirtableRecord): ProspectInfo | null {
   const f = rec.fields || {};
-  const auditUrl = String(f[FIELD.auditUrl] || '').trim();
+  const auditUrl = String(f['Audit URL'] || '').trim();
   const slug = extractSlug(auditUrl);
   if (!slug) return null;
 
-  const firstName = String(f[FIELD.firstName] || '').trim();
-  const title = String(f[FIELD.title] || '').trim();
-  const company = String(f[FIELD.company] || '').trim();
+  const firstName = String(f['First Name'] || '').trim();
+  const title = String(f['Title'] || '').trim();
+  const company = String(f['Company'] || '').trim();
+  const vertical = (String(f['Vertical'] || '').trim() || '') as ProspectInfo['vertical'];
 
-  // Concatenate whichever audit-finding fields this table has.
+  // Build the audit context string. Pull per-vertical finding fields plus any
+  // value in Notes (which carries Hero One-Liner / Audit Teardown legacy data
+  // for migrated Advertiser records).
   const findings: string[] = [];
-  for (const fn of AUDIT_FINDING_FIELDS_BY_TABLE[tableName] || []) {
-    const v = String(f[fn] || '').trim();
-    if (v) findings.push(`${fn}: ${v}`);
+  const findingFields = vertical && FINDING_FIELDS_BY_VERTICAL[vertical] ? FINDING_FIELDS_BY_VERTICAL[vertical] : [];
+  for (const fn of findingFields) {
+    const v = f[fn];
+    if (v == null) continue;
+    const sv = String(v).trim();
+    if (sv) findings.push(`${fn}: ${sv}`);
   }
+  const notes = String(f['Notes'] || '').trim();
+  if (notes) findings.push(`Notes: ${notes}`);
   const auditContext = findings.join('\n\n');
 
   const displayName = firstName || (company ? `${company} (no contact)` : slug);
 
   return {
     slug,
-    source: tableName,
+    vertical: vertical,
+    source: vertical || 'Prospects',
     displayName,
     firstName,
     title,
     company,
-    industry: String(f[FIELD.industry] || '').trim(),
-    email: String(f[FIELD.email] || '').trim(),
-    linkedinUrl: String(f[FIELD.linkedinUrl] || '').trim(),
-    outreachStage: String(f[FIELD.outreachStage] || '').trim(),
-    linkedinDm: String(f[FIELD.linkedinDm] || '').trim(),
-    linkedinFollowupDm: String(f[FIELD.linkedinFollowupDm] || '').trim(),
-    emailSubject: String(f[FIELD.emailSubject] || '').trim(),
-    emailBody: String(f[FIELD.emailBody] || '').trim(),
+    industry: String(f['Industry'] || '').trim(),
+    email: String(f['Email'] || '').trim(),
+    linkedinUrl: String(f['LinkedIn URL'] || '').trim(),
+    outreachStage: String(f['Outreach Stage'] || '').trim(),
+    linkedinDm: String(f['LinkedIn DM'] || '').trim(),
+    linkedinFollowupDm: String(f['LinkedIn Follow-up DM'] || '').trim(),
+    emailSubject: String(f['Email Subject'] || '').trim(),
+    emailBody: String(f['Email Body'] || '').trim(),
     auditContext,
+    sentAt: String(f['Sent At'] || '').trim(),
+    repliedAt: String(f['Replied At'] || '').trim(),
     recordId: rec.id,
-    tableName,
   };
+}
+
+/**
+ * Update a single prospect's Outreach Stage. Used by /api/hq/mark-messaged
+ * so Airtable is the single source of truth for outreach state.
+ */
+export async function setOutreachStage(
+  recordId: string,
+  stage: string
+): Promise<boolean> {
+  const pat = (process.env.AIRTABLE_PAT || '').trim();
+  if (!pat || !recordId) return false;
+  try {
+    const url = `https://api.airtable.com/v0/${BASE_ID}/${encodeURIComponent(TABLE)}/${recordId}`;
+    const res = await fetch(url, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${pat}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ fields: { 'Outreach Stage': stage }, typecast: true }),
+    });
+    if (!res.ok) {
+      console.warn('[hq airtable] setOutreachStage failed', res.status, await res.text());
+      return false;
+    }
+    // Invalidate the cache so the next /hq render sees the change.
+    const redis = getRedis();
+    if (redis) {
+      redis.del(CACHE_KEY).catch(() => {});
+    }
+    return true;
+  } catch (e) {
+    console.warn('[hq airtable] setOutreachStage threw', e);
+    return false;
+  }
 }
 
 /**
