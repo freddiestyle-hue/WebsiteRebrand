@@ -1,4 +1,10 @@
 ---
+// Direction A — Action Queue.
+// Hero row for the top prospect (4px heat rail + body + 340px draft preview).
+// Compact rows for everyone else. Slug→Airtable join surfaces names. Heat
+// tag communicates quality; the queue surfaces every visit so Fred sees
+// the full picture and decides.
+
 import type { TopProspect } from '../../utils/posthog/query';
 import { sessionReplayUrl } from '../../utils/posthog/query';
 import type { ProspectInfo } from '../../utils/hq/airtable';
@@ -9,9 +15,7 @@ import {
 } from '../../utils/hq/messaged';
 
 interface Props {
-  /** Already filtered: engaged AND not yet messaged. Sorted by recency desc. */
   prospects: TopProspect[];
-  /** Slug → Airtable record (name, email, LinkedIn). Empty if PAT not configured. */
   prospectInfo?: Map<string, ProspectInfo>;
 }
 
@@ -36,64 +40,132 @@ function timeAgo(iso: string): string {
   return `${Math.round(hr / 24)}d ago`;
 }
 
-function heatBadge(p: TopProspect): { label: string; cls: string } {
-  // Order by strength of buying signal. CTA click / print / copy = top tier.
-  // RETURNED requires real engagement on the return - a scanner that hits
-  // the URL twice doesn't qualify. Verdict expansion + full read = engaged.
-  // Dwell-only with no signal = browsed (won't even pass queue filter).
-  if (p.cta_clicks > 0) return { label: 'CTA CLICK', cls: 'heat--hot' };
-  if (p.prints > 0) return { label: 'PRINTED', cls: 'heat--hot' };
-  if (p.copies > 0) return { label: 'COPIED', cls: 'heat--hot' };
-  const engagedReturn =
-    p.return_visitor &&
-    (p.scroll_100s > 0 ||
-      p.verdict_expansions > 0 ||
-      p.total_dwell_seconds >= 30 ||
-      p.focus_seconds_total >= 30);
-  if (engagedReturn) return { label: 'RETURNED', cls: 'heat--warm' };
-  if (p.verdict_expansions > 0) return { label: 'VERDICTS', cls: 'heat--warm' };
-  if (p.scroll_100s > 0) return { label: 'FULL READ', cls: 'heat--warm' };
-  if (p.total_dwell_seconds >= 60 || p.focus_seconds_total >= 60) return { label: 'DEEP READ', cls: 'heat--cool' };
-  if (p.total_dwell_seconds >= 30 || p.focus_seconds_total >= 30) return { label: 'ENGAGED', cls: 'heat--cool' };
-  return { label: 'BROWSED', cls: 'heat--cold' };
+type Temp = 'hot' | 'warm' | 'cool' | 'cold';
+function heatBadge(p: TopProspect): { label: string; temp: Temp } {
+  if (p.cta_clicks > 0) return { label: 'CTA CLICK', temp: 'hot' };
+  if (p.prints > 0) return { label: 'PRINTED', temp: 'hot' };
+  if (p.copies > 0) return { label: 'COPIED', temp: 'hot' };
+  const engagedReturn = p.return_visitor && (
+    p.scroll_100s > 0 || p.verdict_expansions > 0 ||
+    p.total_dwell_seconds >= 30 || p.focus_seconds_total >= 30
+  );
+  if (engagedReturn) return { label: 'RETURNED', temp: 'warm' };
+  if (p.verdict_expansions > 0) return { label: 'VERDICTS', temp: 'warm' };
+  if (p.scroll_100s > 0) return { label: 'FULL READ', temp: 'warm' };
+  if (p.total_dwell_seconds >= 60 || p.focus_seconds_total >= 60) return { label: 'DEEP READ', temp: 'cool' };
+  if (p.total_dwell_seconds >= 30 || p.focus_seconds_total >= 30) return { label: 'ENGAGED', temp: 'cool' };
+  return { label: 'BROWSED', temp: 'cold' };
 }
+
+const hero = prospects[0];
+const rest = prospects.slice(1);
+const heroHeat = hero ? heatBadge(hero) : null;
+const heroInfo = hero ? prospectInfo?.get(hero.prospect) : undefined;
+const heroDomain = hero ? slugToDomain(hero.prospect) : '';
+const heroLiHref = heroInfo?.linkedinUrl || (hero ? findOnLinkedinUrl(hero.prospect) : '#');
+const heroLatest = hero?.sessions[0] ?? null;
+const heroReplay = heroLatest ? sessionReplayUrl(heroLatest.sid) : null;
 ---
-<div class="aq" data-action-queue>
-  <header class="aq-head">
-    <div class="aq-title">
-      <span class="aq-num">{prospects.length}</span>
-      <div>
-        <div class="aq-h">Action queue</div>
-        <div class="aq-sub">
-          {prospects.length === 0
-            ? 'all caught up — send your next outreach batch to refill'
-            : prospects.length === 1
-              ? 'prospect waiting for follow-up'
-              : 'prospects waiting for follow-up'}
-        </div>
+<section class="aqv2" data-action-queue>
+  <div class="aqv2-head">
+    <div class="aqv2-eyebrow">00 · ACTION QUEUE</div>
+    <h2 class="aqv2-title">The queue. <span class="ital">{prospects.length} waiting for a follow-up.</span></h2>
+  </div>
+
+  {prospects.length === 0 && (
+    <div class="qhero qhero--empty">
+      <div class="heat-rail"></div>
+      <div class="hero-body">
+        <span class="stamp">All caught up</span>
+        <h3>Nothing in the queue. <span class="ital">Quiet morning.</span></h3>
+        <p class="empty-body">The feed is empty. Either today's distribution didn't land, or everyone's been worked. Send the next batch and watch this populate.</p>
       </div>
     </div>
-  </header>
+  )}
 
-  {prospects.length === 0 ? (
-    <div class="aq-empty">
-      <p>No follow-ups queued. Either you're caught up, or your outreach hasn't generated engagement signal yet.</p>
-    </div>
-  ) : (
-    <ol class="aq-list">
-      {prospects.map((p) => {
+  {hero && heroHeat && (
+    <article
+      class="qhero"
+      data-slug={hero.prospect}
+      data-signals={JSON.stringify({
+        total_dwell_seconds: hero.total_dwell_seconds,
+        unique_sessions: hero.unique_sessions,
+        total_views: hero.total_views,
+        cta_clicks: hero.cta_clicks,
+        verdict_expansions: hero.verdict_expansions,
+        scroll_100s: hero.scroll_100s,
+        copies: hero.copies,
+        prints: hero.prints,
+        return_visitor: hero.return_visitor,
+        last_view: hero.last_view,
+      })}
+      data-li-url={heroInfo?.linkedinUrl || heroLiHref}
+      data-email={heroInfo?.email || ''}
+      data-first-name={heroInfo?.firstName || ''}
+      data-company={heroInfo?.company || heroDomain}
+      data-source={heroInfo?.source || ''}
+    >
+      <div class={`heat-rail ${heroHeat.temp}`}></div>
+      <div class="hero-body">
+        <div class="head">
+          <span class={`heat ${heroHeat.temp}`}>{heroHeat.label}</span>
+          <span class="when">{timeAgo(hero.last_view)}</span>
+          {heroInfo?.source && <span class="src-pill">{heroInfo.source}</span>}
+          <span class="head-fill"></span>
+          <span class="heat-score">heat <b>{hero.heat_score}</b></span>
+        </div>
+        <h3 class="hero-name">{heroInfo?.firstName || heroDomain}</h3>
+        <div class="hero-ti">
+          {heroInfo?.title && <>{heroInfo.title}, </>}<b>{heroInfo?.company || heroDomain}</b>
+          {heroInfo?.industry && <span class="hero-ind"> {heroInfo.industry}</span>}
+        </div>
+        {(heroInfo?.email || heroInfo?.linkedinUrl) && (
+          <div class="hero-contact">
+            {heroInfo.email && <a href={`mailto:${heroInfo.email}`}>{heroInfo.email}</a>}
+            {heroInfo.linkedinUrl && <a href={heroInfo.linkedinUrl} target="_blank" rel="noopener">LinkedIn ↗</a>}
+            {heroInfo.outreachStage && <span class="hero-stage">{heroInfo.outreachStage.toLowerCase()}</span>}
+          </div>
+        )}
+        <div class="signal-row">
+          <span class="m"><b>{dwell(hero.total_dwell_seconds)}</b> dwell</span>
+          <span class="m"><b>{hero.unique_sessions}</b> sess</span>
+          <span class="m"><b>{hero.total_views}</b> views</span>
+          {hero.cta_clicks > 0 && <span class="m accent"><b>{hero.cta_clicks}</b> cta</span>}
+          {hero.verdict_expansions > 0 && <span class="m"><b>{hero.verdict_expansions}</b> verdict</span>}
+          {hero.scroll_100s > 0 && <span class="m"><b>{hero.scroll_100s}</b> full read</span>}
+          {hero.copies > 0 && <span class="m"><b>{hero.copies}</b> copy</span>}
+          {hero.prints > 0 && <span class="m"><b>{hero.prints}</b> print</span>}
+          <span class="head-fill"></span>
+          <a class="memo-link" href={`https://rivett.tech/audit/v3/${hero.prospect}`} target="_blank" rel="noopener">open memo ↗</a>
+          {heroReplay && <a class="memo-link" href={heroReplay} target="_blank" rel="noopener">↻ replay</a>}
+        </div>
+      </div>
+      <aside class="hero-side">
+        <div class="label">DRAFT · LINKEDIN DM</div>
+        <p class="preview">
+          {heroInfo?.firstName ? `${heroInfo.firstName}, ` : ''}referenced your engagement on the audit. Press <b>Draft DM</b> to generate a fresh, hyper-personalised follow-up.
+        </p>
+        <div class="actions">
+          <button class="hq-btn pri" type="button" data-draft="linkedin">Draft DM</button>
+          {heroInfo?.email && (
+            <button class="hq-btn pri" type="button" data-draft="email">Draft email</button>
+          )}
+          <button class="hq-btn done" type="button" data-mark-messaged>✓ Messaged</button>
+        </div>
+      </aside>
+    </article>
+  )}
+
+  {rest.length > 0 && (
+    <div class="qrow-list">
+      {rest.map((p) => {
         const heat = heatBadge(p);
-        const latestSession = p.sessions[0] ?? null;
-        const replay = latestSession ? sessionReplayUrl(latestSession.sid) : null;
-        const domain = slugToDomain(p.prospect);
         const info = prospectInfo?.get(p.prospect);
-        // Prefer the Airtable LinkedIn URL if we have one; fall back to Google search.
         const liHref = info?.linkedinUrl || findOnLinkedinUrl(p.prospect);
-        const liIsExact = !!info?.linkedinUrl;
-        const siteUrl = prospectWebsiteUrl(p.prospect);
+        const domain = slugToDomain(p.prospect);
         return (
-          <li
-            class="aq-row"
+          <article
+            class="qrow"
             data-slug={p.prospect}
             data-signals={JSON.stringify({
               total_dwell_seconds: p.total_dwell_seconds,
@@ -113,65 +185,46 @@ function heatBadge(p: TopProspect): { label: string; cls: string } {
             data-company={info?.company || domain}
             data-source={info?.source || ''}
           >
-            <div class="aq-left">
-              <span class={`aq-heat ${heat.cls}`}>{heat.label}</span>
-              <span class="aq-when">{timeAgo(p.last_view)}</span>
-              {info?.source && <span class="aq-source">{info.source}</span>}
+            <div class={`heat-rail ${heat.temp}`}></div>
+            <div class="meta-col">
+              <span class={`heat ${heat.temp}`}>{heat.label}</span>
+              {info?.source && <span class="src-pill">{info.source}</span>}
+              <span class="when">{timeAgo(p.last_view)}</span>
             </div>
-            <div class="aq-mid">
-              <div class="aq-prospect">
-                {info?.firstName ? (
-                  <>
-                    <span class="aq-person">{info.firstName}</span>
-                    {info.title && <span class="aq-title">, {info.title}</span>}
-                    <span class="aq-company">· {info.company || domain}</span>
-                  </>
-                ) : (
-                  <a href={`https://rivett.tech/audit/v3/${p.prospect}`} target="_blank" rel="noopener">{domain}</a>
-                )}
+            <div class="body-col">
+              <div class="name">
+                {info?.firstName || domain}
+                <span class="when">heat {p.heat_score}</span>
               </div>
-              {info && (info.email || info.linkedinUrl) && (
-                <div class="aq-contact">
-                  {info.email && (
-                    <a class="aq-link" href={`mailto:${info.email}`}>{info.email}</a>
-                  )}
-                  {info.email && info.linkedinUrl && <span class="aq-dot">·</span>}
-                  {info.linkedinUrl && (
-                    <a class="aq-link" href={info.linkedinUrl} target="_blank" rel="noopener">LinkedIn ↗</a>
-                  )}
-                  {info.outreachStage && <span class="aq-stage">· {info.outreachStage}</span>}
-                </div>
-              )}
-              <div class="aq-signal">
-                <a class="aq-memo" href={`https://rivett.tech/audit/v3/${p.prospect}`} target="_blank" rel="noopener">memo</a>
-                · <b>{dwell(p.total_dwell_seconds)}</b> dwell
-                · <b>{p.unique_sessions}</b> sess
-                · <b>{p.total_views}</b> view{p.total_views === 1 ? '' : 's'}
-                {p.cta_clicks > 0 && <span class="aq-cta">· {p.cta_clicks} CTA</span>}
-                {p.verdict_expansions > 0 && <span> · {p.verdict_expansions} verdict{p.verdict_expansions === 1 ? '' : 's'}</span>}
-                {p.copies > 0 && <span> · {p.copies} cop{p.copies === 1 ? 'y' : 'ies'}</span>}
-                {p.prints > 0 && <span> · {p.prints} print{p.prints === 1 ? '' : 's'}</span>}
+              <div class="ti">
+                {info?.title && <>{info.title}, </>}<b>{info?.company || domain}</b>
+              </div>
+              <div class="signals">
+                <span class="m"><b>{dwell(p.total_dwell_seconds)}</b> dwell</span>
+                <span class="m"><b>{p.unique_sessions}</b> sess</span>
+                <span class="m"><b>{p.total_views}</b> views</span>
+                {p.cta_clicks > 0 && <span class="m accent"><b>{p.cta_clicks}</b> cta</span>}
+                {p.verdict_expansions > 0 && <span class="m"><b>{p.verdict_expansions}</b> vrd</span>}
+                {p.scroll_100s > 0 && <span class="m"><b>full</b></span>}
+                {p.copies > 0 && <span class="m"><b>{p.copies}</b> cp</span>}
+                {p.prints > 0 && <span class="m"><b>{p.prints}</b> pr</span>}
               </div>
             </div>
-            <div class="aq-actions">
-              <button class="aq-btn aq-btn--primary" type="button" data-draft="linkedin" title="LLM-draft a LinkedIn DM referencing what they did on the memo">Draft DM</button>
+            <div class="act-col">
+              <button class="hq-btn pri sm" type="button" data-draft="linkedin">Draft</button>
               {info?.email && (
-                <button class="aq-btn aq-btn--primary" type="button" data-draft="email" title="LLM-draft an email referencing what they did on the memo">Draft Email</button>
+                <button class="hq-btn sm" type="button" data-draft="email">Email</button>
               )}
-              <a class="aq-btn" href={siteUrl} target="_blank" rel="noopener" title="Open the prospect's website">Site</a>
-              {replay && (
-                <a class="aq-btn" href={replay} target="_blank" rel="noopener">Replay</a>
-              )}
-              <button class="aq-btn aq-btn--done" type="button" data-mark-messaged>✓ Messaged</button>
+              <button class="hq-btn done sm" type="button" data-mark-messaged aria-label="Mark messaged">✓</button>
             </div>
-          </li>
+          </article>
         );
       })}
-    </ol>
+    </div>
   )}
-</div>
+</section>
 
-<!-- Draft preview modal — single instance, populated on each draft button click -->
+<!-- Draft preview modal — one instance, populated per click -->
 <div class="dm-modal" data-dm-modal hidden>
   <div class="dm-backdrop" data-dm-close></div>
   <div class="dm-card" role="dialog" aria-modal="true" aria-labelledby="dm-title">
@@ -192,7 +245,7 @@ function heatBadge(p: TopProspect): { label: string; cls: string } {
       <div class="dm-status" data-dm-status></div>
     </div>
     <footer class="dm-foot">
-      <button class="dm-btn" type="button" data-dm-regenerate title="Throw the draft away and ask the LLM for a fresh one">↻ Regenerate</button>
+      <button class="dm-btn" type="button" data-dm-regenerate>↻ Regenerate</button>
       <div class="dm-spacer"></div>
       <button class="dm-btn" type="button" data-dm-close>Cancel</button>
       <button class="dm-btn dm-btn--primary" type="button" data-dm-go>Copy + open</button>
@@ -211,14 +264,12 @@ function heatBadge(p: TopProspect): { label: string; cls: string } {
     const modalGo = modal?.querySelector('[data-dm-go]');
     const modalRegen = modal?.querySelector('[data-dm-regenerate]');
     const modalCloseEls = modal?.querySelectorAll('[data-dm-close]');
-
-    // Active context for the open modal.
-    let ctx = null;  // { slug, channel, signals, liUrl, email, firstName, company }
+    let ctx = null;
 
     function openModal() { modal && (modal.hidden = false); }
     function closeModal() { modal && (modal.hidden = true); ctx = null; }
-    modalCloseEls?.forEach(function (el) { el.addEventListener('click', closeModal); });
-    document.addEventListener('keydown', function (e) {
+    modalCloseEls?.forEach((el) => el.addEventListener('click', closeModal));
+    document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && modal && !modal.hidden) closeModal();
     });
 
@@ -229,14 +280,12 @@ function heatBadge(p: TopProspect): { label: string; cls: string } {
         credentials: 'same-origin',
         body: JSON.stringify({ slug, channel, signals, force: !!force }),
       });
-      const data = await res.json().catch(function () { return {}; });
-      if (!res.ok) {
-        throw new Error(data.message || data.error || ('http ' + res.status));
-      }
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || data.error || ('http ' + res.status));
       return data;
     }
 
-    async function startDraft(row, channel, opts) {
+    async function startDraft(row, channel) {
       const slug = row.getAttribute('data-slug');
       const liUrl = row.getAttribute('data-li-url') || '';
       const email = row.getAttribute('data-email') || '';
@@ -248,12 +297,7 @@ function heatBadge(p: TopProspect): { label: string; cls: string } {
 
       ctx = { slug, channel, signals, liUrl, email, firstName, company, source };
 
-      // Set up modal shell
-      if (channel === 'email') {
-        modalSubjectRow.hidden = false;
-      } else {
-        modalSubjectRow.hidden = true;
-      }
+      modalSubjectRow.hidden = channel !== 'email';
       modalSubject.value = '';
       modalText.value = '';
       modalStatus.textContent = 'Drafting with Claude...';
@@ -265,97 +309,85 @@ function heatBadge(p: TopProspect): { label: string; cls: string } {
       openModal();
 
       try {
-        const data = await fetchDraft(slug, channel, signals, opts && opts.force);
+        const data = await fetchDraft(slug, channel, signals, false);
         modalSubject.value = data.subject || '';
         modalText.value = data.body || '';
         const noAt = data.has_airtable_record === false;
-        if (data.cached) {
-          modalStatus.textContent = 'Loaded cached draft. ↻ Regenerate for a fresh one.';
-        } else if (noAt) {
-          modalStatus.textContent = 'Drafted from engagement signals only (no Airtable match for ' + slug + '). Add an Audit URL to a record so future drafts are richer.';
-        } else {
-          modalStatus.textContent = 'Drafted. Edit if needed, then copy + open.';
-        }
+        modalStatus.textContent = data.cached
+          ? 'Loaded cached draft. ↻ Regenerate for a fresh one.'
+          : noAt
+            ? 'Drafted from engagement signals only (no Airtable match for ' + slug + ').'
+            : 'Drafted. Edit if needed, then copy + open.';
         modalStatus.className = 'dm-status ' + (noAt && !data.cached ? 'dm-status--info' : 'dm-status--ok');
         modalGo.disabled = false;
         modalRegen.disabled = false;
       } catch (e) {
         modalStatus.textContent = 'Could not draft: ' + (e && e.message ? e.message : String(e));
         modalStatus.className = 'dm-status dm-status--err';
-        modalGo.disabled = true;
         modalRegen.disabled = false;
       }
     }
 
     async function copyToClipboard(text) {
-      try {
-        await navigator.clipboard.writeText(text);
-        return true;
-      } catch (e) {
-        return false;
-      }
+      try { await navigator.clipboard.writeText(text); return true; }
+      catch { return false; }
     }
 
-    modalRegen?.addEventListener('click', async function () {
+    modalRegen?.addEventListener('click', async () => {
       if (!ctx) return;
       modalStatus.textContent = 'Regenerating...';
       modalStatus.className = 'dm-status dm-status--info';
-      modalGo.disabled = true;
-      modalRegen.disabled = true;
+      modalGo.disabled = true; modalRegen.disabled = true;
       try {
         const data = await fetchDraft(ctx.slug, ctx.channel, ctx.signals, true);
         modalSubject.value = data.subject || '';
         modalText.value = data.body || '';
         modalStatus.textContent = 'Regenerated.';
         modalStatus.className = 'dm-status dm-status--ok';
-        modalGo.disabled = false;
-        modalRegen.disabled = false;
       } catch (e) {
         modalStatus.textContent = 'Regenerate failed: ' + (e && e.message ? e.message : String(e));
         modalStatus.className = 'dm-status dm-status--err';
+      } finally {
+        modalGo.disabled = false;
         modalRegen.disabled = false;
       }
     });
 
-    modalGo?.addEventListener('click', async function () {
+    modalGo?.addEventListener('click', async () => {
       if (!ctx) return;
       const subject = modalSubject.value || '';
       const body = modalText.value || '';
       if (ctx.channel === 'email') {
-        // mailto with subject + body. Cap length so browsers don't truncate.
         const params = new URLSearchParams();
         if (subject) params.set('subject', subject);
         if (body) params.set('body', body);
-        const href = 'mailto:' + encodeURIComponent(ctx.email) + '?' + params.toString();
-        await copyToClipboard(body);  // safety copy in case mailto fails
-        window.location.href = href;
-        modalStatus.textContent = 'Opened mail client. Body also copied to clipboard.';
+        await copyToClipboard(body);
+        window.location.href = 'mailto:' + encodeURIComponent(ctx.email) + '?' + params.toString();
+        modalStatus.textContent = 'Opened mail. Body copied as backup.';
         modalStatus.className = 'dm-status dm-status--ok';
       } else {
-        // LinkedIn can't deep-link to compose. Copy body, then open the profile.
         const ok = await copyToClipboard(body);
         if (ctx.liUrl) window.open(ctx.liUrl, '_blank', 'noopener');
         modalStatus.textContent = ok
-          ? 'DM copied to clipboard. LinkedIn opened in a new tab — paste into the Message box.'
-          : 'Could not copy to clipboard (browser blocked). Select and copy manually.';
-        modalStatus.className = ok ? 'dm-status dm-status--ok' : 'dm-status dm-status--err';
+          ? 'DM copied. LinkedIn opened — paste into Message.'
+          : 'Could not copy. Select and copy manually.';
+        modalStatus.className = 'dm-status ' + (ok ? 'dm-status--ok' : 'dm-status--err');
       }
     });
 
-    // Wire up the per-row buttons.
-    document.querySelectorAll('[data-action-queue]').forEach(function (queue) {
-      queue.querySelectorAll('[data-draft]').forEach(function (btn) {
-        btn.addEventListener('click', function (ev) {
+    // Wire per-row buttons
+    document.querySelectorAll('[data-action-queue]').forEach((queue) => {
+      queue.querySelectorAll('[data-draft]').forEach((btn) => {
+        btn.addEventListener('click', (ev) => {
           ev.preventDefault();
           const row = btn.closest('[data-slug]');
           if (!row) return;
           const channel = btn.getAttribute('data-draft') === 'email' ? 'email' : 'linkedin';
-          startDraft(row, channel, {});
+          startDraft(row, channel);
         });
       });
-
-      queue.querySelectorAll('[data-mark-messaged]').forEach(function (btn) {
-        btn.addEventListener('click', async function (ev) {
+      queue.querySelectorAll('[data-mark-messaged]').forEach((btn) => {
+        btn.addEventListener('click', async (ev) => {
           ev.preventDefault();
           const row = btn.closest('[data-slug]');
           if (!row) return;
@@ -373,13 +405,11 @@ function heatBadge(p: TopProspect): { label: string; cls: string } {
             if (!res.ok) throw new Error('mark failed: ' + res.status);
             row.style.transition = 'opacity 200ms';
             row.style.opacity = '0';
-            setTimeout(function () {
-              window.location.reload();
-            }, 220);
+            setTimeout(() => window.location.reload(), 220);
           } catch (e) {
             console.error('[action queue] mark failed', e);
             btn.disabled = false;
-            btn.textContent = '✓ Messaged';
+            btn.textContent = '✓';
             alert('Could not mark messaged. Try again.');
           }
         });
@@ -389,402 +419,343 @@ function heatBadge(p: TopProspect): { label: string; cls: string } {
 </script>
 
 <style>
-  .aq {
-    border: 1px solid var(--ink, #0E1A2C);
-    border-radius: 6px;
-    background: var(--paper, #FFFFFF);
-    overflow: hidden;
-    margin-bottom: 2.5rem;
+  /* ===== Direction A — Action Queue ===== */
+  .aqv2 { margin-bottom: 2.5rem; }
+  .aqv2-head { margin: 0 0 16px; }
+  .aqv2-eyebrow {
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-faint, #7A8597);
+    margin-bottom: 6px;
   }
-
-  .aq-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0.85rem 1rem;
-    background: var(--ink, #0E1A2C);
-    color: var(--paper, #FFFFFF);
-  }
-  .aq-title {
-    display: flex;
-    align-items: center;
-    gap: 0.85rem;
-  }
-  .aq-num {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 2.25rem;
-    height: 2.25rem;
-    padding: 0 0.5rem;
-    border-radius: 4px;
-    background: var(--accent, #8FBF3F);
-    color: var(--ink, #0E1A2C);
-    font-family: var(--grotesk, 'Inter Tight', system-ui);
+  .aqv2-title {
+    font-family: var(--grotesk, 'Inter Tight', system-ui, sans-serif);
     font-weight: 700;
-    font-size: 1.15rem;
-    letter-spacing: -0.02em;
-    font-variant-numeric: tabular-nums;
-  }
-  .aq-h {
-    font-size: 1rem;
-    font-weight: 600;
-    letter-spacing: -0.01em;
-  }
-  .aq-sub {
-    font-family: var(--mono, 'DM Mono', monospace);
-    font-size: 0.7rem;
-    color: rgba(255,255,255,0.7);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    margin-top: 0.1rem;
-  }
-
-  .aq-empty {
-    padding: 1.5rem 1rem;
-  }
-  .aq-empty p {
+    font-size: 26px;
+    line-height: 1.15;
+    letter-spacing: -0.03em;
+    color: var(--ink, #0E1A2C);
     margin: 0;
-    color: var(--ink-dim, #3A4658);
+  }
+  .aqv2-title .ital {
     font-family: var(--serif, 'Newsreader', Georgia, serif);
     font-style: italic;
+    font-weight: 400;
+    color: var(--ink-dim, #3A4658);
   }
 
-  .aq-list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-  }
-  .aq-row {
-    display: grid;
-    grid-template-columns: auto 1fr auto;
-    gap: 0.5rem 1rem;
-    padding: 0.85rem 1rem;
-    border-bottom: 1px solid var(--line, rgba(14,26,44,0.14));
-    align-items: center;
-  }
-  .aq-row:last-child { border-bottom: 0; }
-  .aq-row:hover { background: var(--paper-2, #F4F2ED); }
-
-  .aq-left {
-    display: flex;
-    flex-direction: column;
-    gap: 0.2rem;
+  /* ===== Heat chip ===== */
+  .heat {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+    padding: 3px 8px; border: 1px solid var(--line, rgba(14,26,44,0.14));
     white-space: nowrap;
   }
-  .aq-heat {
+  .heat::before {
+    content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 999px;
+    background: var(--ink-faint, #7A8597);
+  }
+  .heat.hot { background: #8FBF3F; color: var(--ink, #0E1A2C); border-color: #8FBF3F; font-weight: 600; }
+  .heat.hot::before { background: var(--ink, #0E1A2C); }
+  .heat.warm { background: #E8F0D9; color: #4A6E18; border-color: #4A6E18; }
+  .heat.warm::before { background: #4A6E18; }
+  .heat.cool { color: var(--ink-dim, #3A4658); border-color: var(--line-strong, rgba(14,26,44,0.28)); background: var(--paper, #FFFFFF); }
+  .heat.cold { color: var(--ink-faint, #7A8597); border-color: var(--line, rgba(14,26,44,0.14)); background: var(--paper, #FFFFFF); }
+
+  /* ===== Heat rail (4px leading edge) ===== */
+  .heat-rail { width: 4px; align-self: stretch; flex-shrink: 0; }
+  .heat-rail.hot  { background: #8FBF3F; }
+  .heat-rail.warm { background: #D5E3B7; }
+  .heat-rail.cool { background: var(--line-strong, rgba(14,26,44,0.28)); }
+  .heat-rail.cold { background: transparent; }
+
+  /* ===== Source pill ===== */
+  .src-pill {
     display: inline-block;
-    padding: 0.15rem 0.45rem;
-    border-radius: 3px;
     font-family: var(--mono, 'DM Mono', monospace);
-    font-size: 0.62rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    text-align: center;
-  }
-  .heat--hot { background: var(--accent-deep, #4A6E18); color: var(--paper, #FFFFFF); }
-  .heat--warm { background: var(--accent, #8FBF3F); color: var(--ink, #0E1A2C); }
-  .heat--cool { background: var(--paper-3, #EBE6DC); color: var(--ink-dim, #3A4658); }
-  .heat--cold { background: var(--paper-2, #F4F2ED); color: var(--ink-faint, #7A8597); }
-  .aq-when {
-    font-family: var(--mono, 'DM Mono', monospace);
-    font-size: 0.7rem;
-    color: var(--ink-faint, #7A8597);
-    text-align: center;
-  }
-
-  .aq-mid { min-width: 0; }
-  .aq-prospect {
-    display: flex;
-    align-items: baseline;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-  }
-  .aq-prospect a {
-    font-weight: 600;
-    color: var(--ink, #0E1A2C);
-    text-decoration: none;
-    border-bottom: 1px solid var(--line-strong, rgba(14,26,44,0.28));
-  }
-  .aq-prospect a:hover {
-    color: var(--accent-deep, #4A6E18);
-    border-bottom-color: var(--accent-deep, #4A6E18);
-  }
-  .aq-co {
-    font-family: var(--serif, 'Newsreader', Georgia, serif);
-    font-style: italic;
-    color: var(--ink-faint, #7A8597);
-    font-size: 0.85rem;
-  }
-  .aq-person {
-    font-weight: 600;
-    color: var(--ink, #0E1A2C);
-    font-size: 0.95rem;
-  }
-  .aq-title {
-    color: var(--ink-dim, #3A4658);
-    font-size: 0.85rem;
-    font-family: var(--serif, 'Newsreader', Georgia, serif);
-    font-style: italic;
-  }
-  .aq-company {
-    color: var(--ink-dim, #3A4658);
-    font-size: 0.85rem;
-  }
-  .aq-contact {
-    margin-top: 0.2rem;
-    font-family: var(--mono, 'DM Mono', monospace);
-    font-size: 0.75rem;
-    color: var(--ink-dim, #3A4658);
-    display: flex;
-    align-items: center;
-    gap: 0.35rem;
-    flex-wrap: wrap;
-  }
-  .aq-link {
-    color: var(--ink-dim, #3A4658);
-    text-decoration: none;
-    border-bottom: 1px dotted var(--line, rgba(14,26,44,0.14));
-  }
-  .aq-link:hover {
-    color: var(--accent-deep, #4A6E18);
-    border-bottom-color: var(--accent-deep, #4A6E18);
-  }
-  .aq-dot { color: var(--ink-faint, #7A8597); }
-  .aq-stage {
-    color: var(--ink-faint, #7A8597);
-    font-style: italic;
-  }
-  .aq-signal {
-    margin-top: 0.25rem;
-    font-family: var(--mono, 'DM Mono', monospace);
-    font-size: 0.75rem;
-    color: var(--ink-dim, #3A4658);
-  }
-  .aq-signal b { color: var(--ink, #0E1A2C); font-weight: 600; }
-  .aq-cta { color: var(--accent-deep, #4A6E18); font-weight: 500; }
-  .aq-memo {
-    color: var(--ink-dim, #3A4658);
-    text-decoration: none;
-    border-bottom: 1px dotted var(--line, rgba(14,26,44,0.14));
-  }
-  .aq-memo:hover {
-    color: var(--accent-deep, #4A6E18);
-    border-bottom-color: var(--accent-deep, #4A6E18);
-  }
-
-  .aq-actions {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-  }
-  .aq-btn {
-    display: inline-flex;
-    align-items: center;
-    padding: 0.35rem 0.7rem;
-    font-family: var(--mono, 'DM Mono', monospace);
-    font-size: 0.72rem;
-    color: var(--ink-dim, #3A4658);
-    text-decoration: none;
-    border: 1px solid var(--line-strong, rgba(14,26,44,0.28));
-    background: var(--paper, #FFFFFF);
-    border-radius: 3px;
-    cursor: pointer;
-    transition: background 80ms, color 80ms, border-color 80ms;
-    white-space: nowrap;
-  }
-  .aq-btn:hover {
-    border-color: var(--ink, #0E1A2C);
-    color: var(--ink, #0E1A2C);
-  }
-  .aq-btn--primary {
-    background: var(--ink, #0E1A2C);
-    color: var(--paper, #FFFFFF);
-    border-color: var(--ink, #0E1A2C);
-    font-weight: 500;
-  }
-  .aq-btn--primary:hover {
-    background: var(--accent-deep, #4A6E18);
-    border-color: var(--accent-deep, #4A6E18);
-    color: var(--paper, #FFFFFF);
-  }
-  .aq-btn--done {
-    background: var(--accent-bg, #F2F7E5);
-    border-color: var(--accent, #8FBF3F);
-    color: var(--accent-deep, #4A6E18);
-    font-weight: 500;
-  }
-  .aq-btn--done:hover {
-    background: var(--accent, #8FBF3F);
-    color: var(--ink, #0E1A2C);
-  }
-  .aq-btn:disabled { opacity: 0.5; cursor: wait; }
-
-  @media (max-width: 720px) {
-    .aq-row {
-      grid-template-columns: 1fr;
-      gap: 0.5rem;
-    }
-    .aq-left { flex-direction: row; gap: 0.5rem; align-items: center; }
-    .aq-actions { justify-content: flex-start; }
-  }
-
-  /* === Source tag (which play the prospect came from) === */
-  .aq-source {
-    font-family: var(--mono, 'DM Mono', monospace);
-    font-size: 0.6rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
+    font-size: 9.5px; letter-spacing: 0.1em; text-transform: uppercase;
     color: var(--ink-faint, #7A8597);
     border: 1px solid var(--line, rgba(14,26,44,0.14));
-    padding: 0.1rem 0.35rem;
-    border-radius: 3px;
-    margin-top: 0.25rem;
+    padding: 2px 6px;
+    background: var(--paper-2, #F4F2ED);
+  }
+  .when {
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 10px; letter-spacing: 0.06em;
+    color: var(--ink-faint, #7A8597);
   }
 
-  /* === Draft modal === */
-  .dm-modal[hidden] { display: none; }
-  .dm-modal {
-    position: fixed;
-    inset: 0;
-    z-index: 100;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .dm-backdrop {
-    position: absolute;
-    inset: 0;
-    background: rgba(14, 26, 44, 0.55);
-    backdrop-filter: blur(2px);
-  }
-  .dm-card {
-    position: relative;
-    background: var(--paper, #FFFFFF);
+  /* ===== Hero row ===== */
+  .qhero {
+    display: grid;
+    grid-template-columns: 4px 1fr 340px;
     border: 1px solid var(--ink, #0E1A2C);
-    border-radius: 6px;
-    width: min(680px, 92vw);
-    max-height: 92vh;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    box-shadow: 0 24px 48px rgba(14,26,44,0.35);
+    background: var(--paper, #FFFFFF);
+    margin-bottom: 24px;
+    align-items: stretch;
+  }
+  .qhero.qhero--empty {
+    grid-template-columns: 4px 1fr;
+    min-height: 180px;
+  }
+  .qhero .hero-body { padding: 22px 28px 22px 22px; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+  .qhero .head { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; flex-wrap: wrap; }
+  .qhero .head .head-fill { flex: 1; }
+  .qhero .heat-score {
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 11px; letter-spacing: 0.06em;
+    color: var(--ink-dim, #3A4658);
+  }
+  .qhero .heat-score b { color: #4A6E18; font-weight: 600; }
+  .qhero .hero-name {
+    font-family: var(--grotesk, 'Inter Tight', system-ui, sans-serif);
+    font-weight: 700; font-size: 26px; line-height: 1.1;
+    letter-spacing: -0.03em; color: var(--ink, #0E1A2C);
+    margin: 4px 0 0;
+  }
+  .qhero .hero-ti {
+    font-family: var(--serif, 'Newsreader', Georgia, serif);
+    font-style: italic; font-size: 16px; line-height: 1.4;
+    color: var(--ink-dim, #3A4658);
+  }
+  .qhero .hero-ti b {
+    color: var(--ink, #0E1A2C); font-style: normal;
+    font-family: var(--grotesk, 'Inter Tight', system-ui, sans-serif);
+    font-weight: 600;
+  }
+  .qhero .hero-ind {
+    color: var(--ink-faint, #7A8597); font-family: var(--mono, 'DM Mono', monospace);
+    font-style: normal; font-size: 11px; letter-spacing: 0.06em; margin-left: 6px;
+  }
+  .qhero .hero-contact {
+    display: flex; gap: 14px; flex-wrap: wrap;
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 11px; color: var(--ink-dim, #3A4658);
+  }
+  .qhero .hero-contact a {
+    color: var(--ink-dim, #3A4658); text-decoration: none;
+    border-bottom: 1px dotted var(--line-strong, rgba(14,26,44,0.28));
+  }
+  .qhero .hero-contact a:hover { color: #4A6E18; border-bottom-color: #4A6E18; }
+  .qhero .hero-stage { color: var(--ink-faint, #7A8597); }
+  .qhero .signal-row {
+    margin-top: 8px; padding-top: 12px;
+    border-top: 1px solid var(--line, rgba(14,26,44,0.14));
+    display: flex; gap: 14px; flex-wrap: wrap;
+    align-items: center;
+  }
+  .qhero .signal-row .head-fill { flex: 1; }
+  .qhero .signal-row .memo-link {
+    color: #4A6E18; text-decoration: none;
+    border-bottom: 1px dotted #4A6E18;
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 11px;
+  }
+  .qhero .signal-row .m { font-family: var(--mono, 'DM Mono', monospace); font-size: 11px; color: var(--ink-dim, #3A4658); }
+  .qhero .signal-row .m b { color: var(--ink, #0E1A2C); font-weight: 600; }
+  .qhero .signal-row .m.accent b { color: #4A6E18; }
+
+  /* Hero side panel */
+  .qhero .hero-side {
+    background: var(--paper-2, #F4F2ED);
+    border-left: 1px solid var(--line, rgba(14,26,44,0.14));
+    padding: 22px 24px;
+    display: flex; flex-direction: column;
+    gap: 14px;
+  }
+  .qhero .hero-side .label {
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 9.5px; letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-faint, #7A8597);
+  }
+  .qhero .hero-side .preview {
+    font-family: var(--serif, 'Newsreader', Georgia, serif);
+    font-style: italic; font-size: 13.5px; line-height: 1.5;
+    color: var(--ink-dim, #3A4658); margin: 0; flex: 1;
+  }
+  .qhero .hero-side .preview b { color: var(--ink, #0E1A2C); font-weight: 500; font-style: normal; font-family: var(--grotesk, 'Inter Tight', system-ui, sans-serif); }
+  .qhero .actions { display: flex; gap: 6px; flex-wrap: wrap; }
+  .qhero--empty .hero-body { justify-content: center; }
+  .qhero--empty .stamp {
+    display: inline-block;
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase;
+    color: #4A6E18; padding: 3px 8px; border: 1px solid #4A6E18;
+  }
+  .qhero--empty h3 {
+    font-family: var(--grotesk, 'Inter Tight', system-ui, sans-serif);
+    font-weight: 700; font-size: 24px; line-height: 1.1;
+    letter-spacing: -0.03em; color: var(--ink, #0E1A2C); margin: 12px 0 6px;
+  }
+  .qhero--empty h3 .ital {
+    font-family: var(--serif, 'Newsreader', Georgia, serif);
+    font-style: italic; font-weight: 400; color: var(--ink-dim, #3A4658);
+  }
+  .qhero--empty .empty-body {
+    font-family: var(--serif, 'Newsreader', Georgia, serif);
+    font-style: italic; color: var(--ink-dim, #3A4658); margin: 0;
+    max-width: 460px;
+  }
+
+  /* ===== Compact row ===== */
+  .qrow-list { border: 1px solid var(--ink, #0E1A2C); background: var(--paper, #FFFFFF); }
+  .qrow {
+    display: grid;
+    grid-template-columns: 4px 12rem 1fr auto;
+    align-items: stretch;
+    border-bottom: 1px solid var(--line, rgba(14,26,44,0.14));
+    transition: background 120ms;
+  }
+  .qrow:last-child { border-bottom: 0; }
+  .qrow:hover { background: var(--paper-2, #F4F2ED); }
+  .qrow > .meta-col {
+    padding: 14px 14px 14px 18px;
+    display: flex; flex-direction: column; gap: 6px;
+    align-items: flex-start;
+  }
+  .qrow > .body-col {
+    padding: 14px 16px;
+    display: flex; flex-direction: column; gap: 4px;
+    min-width: 0;
+  }
+  .qrow > .act-col {
+    padding: 14px 18px;
+    display: flex; gap: 6px; align-items: center;
+    flex-shrink: 0;
+  }
+  .qrow .name {
+    font-weight: 600; font-size: 14.5px; letter-spacing: -0.005em;
+    color: var(--ink, #0E1A2C);
+  }
+  .qrow .name .when {
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 9.5px; letter-spacing: 0.06em;
+    color: var(--ink-faint, #7A8597);
+    margin-left: 10px; font-weight: 400;
+  }
+  .qrow .ti {
+    font-family: var(--serif, 'Newsreader', Georgia, serif);
+    font-style: italic; font-size: 13.5px; line-height: 1.4;
+    color: var(--ink-dim, #3A4658);
+  }
+  .qrow .ti b {
+    color: var(--ink, #0E1A2C);
+    font-family: var(--grotesk, 'Inter Tight', system-ui, sans-serif);
+    font-style: normal; font-weight: 600;
+  }
+  .qrow .signals { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 4px; }
+  .qrow .signals .m { font-family: var(--mono, 'DM Mono', monospace); font-size: 11px; color: var(--ink-dim, #3A4658); }
+  .qrow .signals .m b { color: var(--ink, #0E1A2C); font-weight: 600; }
+  .qrow .signals .m.accent b { color: #4A6E18; }
+  .qrow.done { opacity: 0.45; }
+  .qrow.done .name { text-decoration: line-through; }
+
+  /* ===== Buttons ===== */
+  .hq-btn {
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 11px; letter-spacing: 0.06em;
+    padding: 7px 12px;
+    background: var(--paper, #FFFFFF);
+    color: var(--ink, #0E1A2C);
+    border: 1px solid var(--line-strong, rgba(14,26,44,0.28));
+    cursor: pointer;
+    transition: background 120ms, color 120ms, border-color 120ms;
+    white-space: nowrap;
+  }
+  .hq-btn:hover { background: var(--ink, #0E1A2C); color: var(--paper, #FFFFFF); border-color: var(--ink, #0E1A2C); }
+  .hq-btn.pri { background: var(--ink, #0E1A2C); color: var(--paper, #FFFFFF); border-color: var(--ink, #0E1A2C); }
+  .hq-btn.pri:hover { background: #4A6E18; border-color: #4A6E18; }
+  .hq-btn.done { background: #8FBF3F; color: var(--ink, #0E1A2C); border-color: #8FBF3F; }
+  .hq-btn.done:hover { background: #4A6E18; color: var(--paper, #FFFFFF); border-color: #4A6E18; }
+  .hq-btn.sm { padding: 5px 10px; font-size: 10px; }
+  .hq-btn:disabled { opacity: 0.5; cursor: wait; }
+
+  /* ===== Draft modal ===== */
+  .dm-modal[hidden] { display: none; }
+  .dm-modal { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; }
+  .dm-backdrop { position: absolute; inset: 0; background: rgba(14,26,44,0.55); backdrop-filter: blur(2px); }
+  .dm-card {
+    position: relative; background: var(--paper, #FFFFFF);
+    border: 1px solid var(--ink, #0E1A2C);
+    width: min(720px, 92vw); max-height: 92vh;
+    display: flex; flex-direction: column; overflow: hidden;
+    box-shadow: 0 8px 24px -10px rgba(14,26,44,0.18);
   }
   .dm-head {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    align-items: baseline;
-    gap: 0.5rem 1rem;
-    padding: 0.85rem 1.15rem;
-    background: var(--ink, #0E1A2C);
-    color: var(--paper, #FFFFFF);
+    display: grid; grid-template-columns: 1fr auto; gap: 0.5rem 1rem;
+    align-items: baseline; padding: 14px 20px;
+    background: var(--ink, #0E1A2C); color: var(--paper, #FFFFFF);
   }
-  .dm-h {
-    margin: 0;
-    font-size: 0.95rem;
-    font-weight: 600;
-    letter-spacing: -0.01em;
-  }
+  .dm-h { margin: 0; font-size: 14px; font-weight: 600; letter-spacing: -0.01em; }
   .dm-meta {
-    grid-column: 1 / 2;
-    font-family: var(--mono, 'DM Mono', monospace);
-    font-size: 0.72rem;
-    color: rgba(255,255,255,0.7);
-    letter-spacing: 0.04em;
+    grid-column: 1; font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 10.5px; color: rgba(255,255,255,0.7); letter-spacing: 0.04em;
   }
   .dm-x {
-    grid-row: 1 / span 2;
-    grid-column: 2 / 3;
-    background: transparent;
-    color: var(--paper, #FFFFFF);
-    border: 0;
-    font-size: 1.4rem;
-    line-height: 1;
-    padding: 0 0.2rem;
-    cursor: pointer;
-    opacity: 0.7;
+    grid-row: 1 / span 2; grid-column: 2; background: transparent; color: var(--paper, #FFFFFF);
+    border: 0; font-size: 22px; line-height: 1; padding: 0 4px; cursor: pointer; opacity: 0.7;
   }
   .dm-x:hover { opacity: 1; }
-
-  .dm-body {
-    padding: 1rem 1.15rem;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 0.85rem;
-  }
-  .dm-row { display: flex; flex-direction: column; gap: 0.35rem; }
+  .dm-body { padding: 16px 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
+  .dm-row { display: flex; flex-direction: column; gap: 5px; }
   .dm-lbl {
-    font-family: var(--mono, 'DM Mono', monospace);
-    font-size: 0.65rem;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
+    font-family: var(--mono, 'DM Mono', monospace); font-size: 10px;
+    letter-spacing: 0.18em; text-transform: uppercase;
     color: var(--ink-faint, #7A8597);
   }
-  .dm-input,
-  .dm-text {
-    width: 100%;
+  .dm-input, .dm-text {
+    width: 100%; padding: 8px 12px;
     border: 1px solid var(--line, rgba(14,26,44,0.14));
-    border-radius: 3px;
-    padding: 0.55rem 0.7rem;
+    background: var(--paper, #FFFFFF); color: var(--ink, #0E1A2C);
     font-family: var(--grotesk, 'Inter Tight', system-ui, sans-serif);
-    font-size: 0.9rem;
-    color: var(--ink, #0E1A2C);
-    background: var(--paper, #FFFFFF);
-    line-height: 1.45;
-    resize: vertical;
+    font-size: 14px; line-height: 1.45; resize: vertical;
   }
-  .dm-input:focus,
-  .dm-text:focus {
-    outline: none;
-    border-color: var(--accent-deep, #4A6E18);
-    box-shadow: 0 0 0 2px rgba(74,110,24,0.15);
-  }
-  .dm-text { min-height: 180px; font-family: var(--serif, 'Newsreader', Georgia, serif); font-size: 0.95rem; }
+  .dm-text { min-height: 200px; font-family: var(--serif, 'Newsreader', Georgia, serif); font-size: 15px; }
+  .dm-input:focus, .dm-text:focus { outline: 2px solid #4A6E18; outline-offset: 2px; }
   .dm-status {
-    font-family: var(--mono, 'DM Mono', monospace);
-    font-size: 0.72rem;
-    padding: 0.45rem 0.6rem;
-    border-radius: 3px;
-    border: 1px solid var(--line, rgba(14,26,44,0.14));
+    font-family: var(--mono, 'DM Mono', monospace); font-size: 11px;
+    padding: 7px 10px; border: 1px solid var(--line, rgba(14,26,44,0.14));
   }
-  .dm-status--info { color: var(--ink-dim, #3A4658); background: var(--paper-2, #F4F2ED); }
-  .dm-status--ok   { color: var(--accent-deep, #4A6E18); background: rgba(143,191,63,0.1); border-color: rgba(143,191,63,0.4); }
-  .dm-status--err  { color: #8a1f1f; background: rgba(138,31,31,0.06); border-color: rgba(138,31,31,0.3); }
-
+  .dm-status--info { background: var(--paper-2, #F4F2ED); color: var(--ink-dim, #3A4658); }
+  .dm-status--ok { background: rgba(143,191,63,0.1); color: #4A6E18; border-color: rgba(143,191,63,0.4); }
+  .dm-status--err { background: rgba(138,31,31,0.06); color: #8a1f1f; border-color: rgba(138,31,31,0.3); }
   .dm-foot {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.75rem 1.15rem;
-    border-top: 1px solid var(--line, rgba(14,26,44,0.14));
+    display: flex; align-items: center; gap: 6px;
+    padding: 12px 20px; border-top: 1px solid var(--line, rgba(14,26,44,0.14));
     background: var(--paper-2, #F4F2ED);
   }
   .dm-spacer { flex: 1; }
   .dm-btn {
-    background: var(--paper, #FFFFFF);
+    background: var(--paper, #FFFFFF); color: var(--ink, #0E1A2C);
     border: 1px solid var(--line-strong, rgba(14,26,44,0.28));
-    color: var(--ink, #0E1A2C);
-    padding: 0.45rem 0.85rem;
-    border-radius: 3px;
-    font-family: var(--mono, 'DM Mono', monospace);
-    font-size: 0.78rem;
-    cursor: pointer;
-    transition: background 80ms, color 80ms, border-color 80ms;
+    padding: 7px 14px; font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 11px; cursor: pointer;
   }
   .dm-btn:hover { background: var(--paper-3, #EBE6DC); }
-  .dm-btn--primary {
-    background: var(--ink, #0E1A2C);
-    color: var(--paper, #FFFFFF);
-    border-color: var(--ink, #0E1A2C);
-  }
-  .dm-btn--primary:hover { background: var(--accent-deep, #4A6E18); border-color: var(--accent-deep, #4A6E18); }
+  .dm-btn--primary { background: var(--ink, #0E1A2C); color: var(--paper, #FFFFFF); border-color: var(--ink, #0E1A2C); }
+  .dm-btn--primary:hover { background: #4A6E18; border-color: #4A6E18; }
   .dm-btn:disabled { opacity: 0.5; cursor: wait; }
 
-  @media (max-width: 640px) {
+  /* ===== Mobile ===== */
+  @media (max-width: 780px) {
+    .qhero { grid-template-columns: 4px 1fr; }
+    .qhero .hero-side {
+      grid-column: 1 / -1;
+      border-left: 0;
+      border-top: 1px solid var(--line, rgba(14,26,44,0.14));
+    }
+    .qrow {
+      grid-template-columns: 4px 1fr;
+      grid-template-rows: auto auto auto;
+    }
+    .qrow > .meta-col { grid-column: 2; grid-row: 1; padding: 10px 14px 4px; flex-direction: row; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .qrow > .body-col { grid-column: 2; grid-row: 2; padding: 0 14px 8px; }
+    .qrow > .act-col { grid-column: 1 / -1; grid-row: 3; padding: 0 14px 12px; flex-wrap: wrap; }
+    .qrow > .heat-rail { grid-row: 1 / span 3; }
     .dm-card { width: 96vw; max-height: 96vh; }
     .dm-foot { flex-wrap: wrap; }
     .dm-spacer { display: none; }
