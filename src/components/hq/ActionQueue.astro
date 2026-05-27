@@ -484,12 +484,19 @@ const heroReplay = heroLatest ? sessionReplayUrl(heroLatest.sid) : null;
       const subject = modalSubject.value || '';
       const body = modalText.value || '';
       if (ctx.channel === 'email') {
+        // The LLM body now includes the cal URL (required) and may include
+        // the audit URL. Only append what's missing, plus a sign-off.
         const auditUrl = 'https://rivett.tech/audit/v3/' + ctx.slug;
         const calUrl = 'https://cal.com/fred-style/discovery';
-        const footer = '\n\nthe memo, if you want to flick back: ' + auditUrl +
-                       '\ngrab 15 min: ' + calUrl +
-                       '\n\nFred';
-        const fullBody = body + footer;
+        let appended = body;
+        if (!body.includes(auditUrl)) {
+          appended += '\n\nthe memo, if you want to flick back: ' + auditUrl;
+        }
+        if (!body.includes(calUrl)) {
+          appended += '\ngrab 15 min: ' + calUrl;
+        }
+        appended += '\n\nFred';
+        const fullBody = appended;
         const qs = ['view=cm', 'fs=1', 'to=' + encodeURIComponent(ctx.email)];
         if (subject) qs.push('su=' + encodeURIComponent(subject));
         qs.push('body=' + encodeURIComponent(fullBody));

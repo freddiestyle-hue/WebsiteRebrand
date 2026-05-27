@@ -106,8 +106,14 @@ export async function generateDraft(
       .trim();
 
     const parsed = parseModelOutput(text, channel);
-    subject = parsed.subject;
-    body = parsed.body;
+    subject = humanize(parsed.subject);
+    body = humanize(parsed.body);
+    // Belt-and-braces: ensure the cal link is in the body. The model is
+    // told to include it; if it forgets, append a soft tail rather than
+    // ship a draft without an ask.
+    if (body && !body.includes(CAL_URL)) {
+      body = body.replace(/\s*$/, '') + `\n\n${CAL_URL}`;
+    }
   } catch (e) {
     console.error('[hq draft] LLM call failed', e);
     return {
@@ -137,12 +143,21 @@ The recipient has ALREADY READ the audit. Do NOT re-explain what's in it. They s
 
 Your job: get them on a 15-30 min call. That's it.
 
+== HUMANIZE RULES (the most-broken ones, listed first because the model keeps breaking them) ==
+
+ABSOLUTE: NO EM DASHES. The em dash character (—, U+2014) is BANNED. The double-hyphen "--" is BANNED. Use a comma, a period, parentheses, or just break into two sentences. Every time you reach for an em dash, you have failed. There is no exception, including "natural rhythm" arguments. If your draft contains "—" or "--" anywhere, rewrite it.
+
+NO emoji. Not one.
+
+NO rule-of-three. No three-item lists. No three short sentences in a row. No "X, Y, and Z" trios.
+
 == SHAPE ==
-- LinkedIn DM body: 180-320 characters. Email body: 50-110 words. Stay under.
-- 2-3 sentences max. No paragraphs.
-- ONE line acknowledging what they did (came back, scrolled, expanded, etc.). Specific, not generic.
-- ONE line that points at the gap-they-care-about GENERICALLY (NOT a recap of the audit's findings). Example: "the tracking gap" or "the page-speed thing" or "the conversion side." A pointer, not a re-read.
-- ONE direct ask. "Worth a quick call?" or "15 min?" or "Want to walk through it?" Always end on a question.
+- LinkedIn DM body: 240-380 characters (slightly longer now to fit the cal link). Email body: 60-120 words.
+- 2-4 sentences max. No paragraphs.
+- ONE line acknowledging what they did (came back, scrolled, expanded). Specific, not generic.
+- ONE line pointing at the gap-they-care-about GENERICALLY (NOT a recap). "The tracking gap" / "the page-speed thing" / "the conversion side." A pointer, not a re-read.
+- ONE direct ask + the call link. End with the cal URL inline, not on its own line. Example: "20 min this week? https://cal.com/fred-style/discovery"
+- (Optional) Reference the memo URL when it lands naturally. Example: "the audit's still up at https://rivett.tech/audit/v3/<slug> if you want to flick back."
 
 == HARD BANS (non-negotiable; the message reads as AI-generated if you break these) ==
 
@@ -167,29 +182,33 @@ Banned PATTERNS:
 - -ing phrase padding: "highlighting the importance of", "underscoring the need for", "paving the way for", "reflecting a broader trend".
 - Copula avoidance: "serves as", "stands as", "functions as", "represents", "boasts", "features", "offers". Just use "is" or "has".
 - Dramatic short-sentence stacks: "They tried. They failed. They learned." Banned.
-- No links. No URLs. No cal.com. No audit URL. Fred adds those by hand.
 - No numbers, percentages, or product names from the audit. The prospect already saw those.
+- Links ARE allowed (cal.com + audit URL) but only the two URLs you are given. No other URLs.
 
 == VOICE ==
 - Lowercase-conversational. Operator-to-operator tone: direct, concrete, slightly sharp, never corporate.
 - Vary sentence rhythm. Don't stack three short sentences in a row. Don't stack three long ones either.
 - Specificity over abstraction. "Tracking is broken" beats "there's an opportunity to optimize".
 - Have an opinion. "I'd start there" beats "this might warrant exploration".
-- Leave some texture. A half-thought, an aside, a "honestly" — these read human. Perfect structure reads algorithmic.
+- Leave some texture. A half-thought, an aside, a "honestly", these read human. Perfect structure reads algorithmic.
 
-== EXAMPLES (right shape) ==
+== EXAMPLES (right shape, with the cal link inline) ==
 
-"heidi, you came back twice. probably means the tracking gap is the one worth talking through first. 15 min this week?"
+"heidi, you came back twice. probably means the tracking gap is the one worth talking through first. 20 min this week? https://cal.com/fred-style/discovery"
 
-"claire, you went all the way to the bottom and expanded the verdicts. quickest path is a walk-through of the fix order. worth a call?"
+"claire, you went all the way to the bottom and expanded the verdicts. quickest path is a walk-through of the fix order. the audit's at https://rivett.tech/audit/v3/beaphar-co-uk if you want to flick back. grab 15 min: https://cal.com/fred-style/discovery"
 
-"frank, opened it twice but didn't scroll much. happy to do 10 min where I just hit the headline findings. interested?"
+"frank, opened it twice but didn't scroll much. happy to do 10 min where I just hit the headline findings, then we can pick which one matters. https://cal.com/fred-style/discovery"
 
 == OUTPUT ==
 Strictly JSON: {"subject": "...", "body": "..."}
-- LinkedIn: subject is "". Body 180-320 chars.
-- Email: subject is 4-6 lowercase words, no punctuation at end. Body 50-110 words.
-- Return ONLY the JSON. No preamble, no markdown fences.`;
+- LinkedIn: subject is "". Body 240-380 chars including the cal URL.
+- Email: subject is 4-6 lowercase words, no punctuation at end. Body 60-120 words including the cal URL.
+- Return ONLY the JSON. No preamble, no markdown fences.
+- The body MUST include https://cal.com/fred-style/discovery exactly once.
+- The body MAY include the audit URL if it lands naturally (do not force it).`;
+
+const CAL_URL = 'https://cal.com/fred-style/discovery';
 
 function buildPrompt(
   prospect: ProspectInfo,
@@ -198,6 +217,10 @@ function buildPrompt(
 ): string {
   const lines: string[] = [];
   lines.push(`Channel: ${channel}`);
+  lines.push('');
+  lines.push('LINKS YOU MUST USE');
+  lines.push(`- Cal link (REQUIRED, include verbatim in the body): ${CAL_URL}`);
+  lines.push(`- Audit URL (OPTIONAL, include if it lands naturally): https://rivett.tech/audit/v3/${prospect.slug}`);
   lines.push('');
   lines.push('PROSPECT');
   lines.push(`- Name: ${prospect.firstName || '(unknown - greet with title or company)'}`);
@@ -273,6 +296,23 @@ function describeSignals(s: DraftSignals): string[] {
 // --------------------------------------------------------------------------
 // Output parsing - the model should return JSON, but be defensive.
 // --------------------------------------------------------------------------
+
+/**
+ * Last-line defence against the worst AI-tells. The system prompt bans em
+ * dashes loudly but the model still emits them sometimes. Strip them here
+ * and replace with a comma + space so the rhythm survives.
+ */
+function humanize(text: string): string {
+  if (!text) return text;
+  return text
+    // U+2014 em dash, U+2013 en dash (used figuratively)
+    .replace(/\s*[—–]\s*/g, ', ')
+    // Double-hyphen as em-dash stand-in
+    .replace(/\s+--\s+/g, ', ')
+    // Common AI openers, silently strip
+    .replace(/^\s*(Hope you('re| are) well[.,]?\s*|I hope this finds you well[.,]?\s*|Just wanted to (reach out|follow up)[.,]?\s*)/i, '')
+    .trim();
+}
 
 function parseModelOutput(text: string, channel: Channel): { subject: string; body: string } {
   // Strip markdown code fences if the model added them.
