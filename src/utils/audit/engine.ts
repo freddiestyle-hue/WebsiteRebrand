@@ -729,11 +729,16 @@ export async function runAudit(rawUrl: string, opts?: RunAuditOptions): Promise<
   // names where it was found, and a signal that exists only off the homepage
   // is reported honestly as present-but-not-on-the-front-door.
   const homeSignals = detectConversionSignals(checkHtml);
+  // The 4 boolean conversion signals that go through conversionCheck. hasForm
+  // is handled separately below because it enriches its evidence with the
+  // form field count (Upgrade 9). formFieldCount/formRequiredCount are numbers,
+  // not check signals, so they are excluded from this union by design.
+  type BooleanSignal = 'hasTelLink' | 'hasScheduling' | 'hasChatWidget' | 'hasPromptCta';
   const conversionCheck = (
     id: string,
     label: string,
     weight: number,
-    signal: keyof ConversionSignals,
+    signal: BooleanSignal,
     copy: { homepage: string; elsewhere: (role: PageRole) => string; absent: string },
   ): DraftCheck => {
     const onHomepage = homeSignals[signal];
@@ -762,15 +767,49 @@ export async function runAudit(rawUrl: string, opts?: RunAuditOptions): Promise<
     };
   };
 
-  draft.push(
-    conversionCheck('conversion-form-on-page', 'Form available on the site', 1, 'hasForm', {
-      homepage: 'The homepage carries a form. A cold visitor can convert without an extra click.',
-      elsewhere: (role) =>
-        `A form sits on the ${role} page, but not the homepage. A cold visitor landing on the front door has to navigate to convert - that extra step costs roughly half the completions.`,
-      absent:
-        'No form for a cold visitor to convert through. Put a short form on the homepage - two extra clicks to find one costs roughly half the completions.',
-    }),
-  );
+  // Upgrade 9 - form check enriches evidence with field count so the cell
+  // surfaces "form on homepage (7 fields, 4 required)" instead of generic
+  // "form present". A 14-field beast reads very differently from a 2-field
+  // lead gate to a cold prospect.
+  {
+    const onHomepage = homeSignals.hasForm;
+    const onOther = onHomepage ? undefined : crawledPages.find((p) => p.ok && p.hasForm);
+    const others = crawledPages.filter((p) => p.ok).length;
+    const fieldsSource = onHomepage ? homeSignals : onOther;
+    const fieldCount = fieldsSource?.formFieldCount ?? 0;
+    const requiredCount = fieldsSource?.formRequiredCount ?? 0;
+    // Build the "(N fields, M required)" suffix only when we actually counted
+    // fields. Some forms render fields via JS post-load and the static parse
+    // sees a <form> with zero <input>s - in that case omit the suffix rather
+    // than reporting a misleading "0 fields".
+    const fieldNote =
+      fieldCount > 0
+        ? ` (${fieldCount} field${fieldCount === 1 ? '' : 's'}${
+            requiredCount > 0 ? `, ${requiredCount} required` : ''
+          })`
+        : '';
+    const evidence = onHomepage
+      ? `form on the homepage${fieldNote}`
+      : onOther
+        ? `form on the ${onOther.role} page${fieldNote}, not the homepage`
+        : others > 0
+          ? `no form on the homepage or ${others} other key page${others === 1 ? '' : 's'}`
+          : 'no form on the homepage';
+    const finding = onHomepage
+      ? `The homepage carries a form${fieldNote}. A cold visitor can convert without an extra click.`
+      : onOther
+        ? `A form sits on the ${onOther.role} page${fieldNote}, but not the homepage. A cold visitor landing on the front door has to navigate to convert - that extra step costs roughly half the completions.`
+        : 'No form for a cold visitor to convert through. Put a short form on the homepage - two extra clicks to find one costs roughly half the completions.';
+    draft.push({
+      id: 'conversion-form-on-page',
+      category: 'conversion',
+      label: 'Form available on the site',
+      passed: onHomepage || !!onOther,
+      weight: 1,
+      evidence,
+      finding,
+    });
+  }
   draft.push(
     conversionCheck('conversion-tel-link', 'Tappable phone number', 1, 'hasTelLink', {
       homepage: 'A tappable phone link is on the homepage. Mobile visitors can call without typing.',

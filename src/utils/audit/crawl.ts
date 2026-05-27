@@ -5,7 +5,7 @@
 // discoverKeyPages finds those from the homepage nav links and the sitemap.
 // It is pure (no I/O) so it is unit-testable; the fetching lives in crawlPages.
 
-export type PageRole = 'contact' | 'money' | 'about';
+export type PageRole = 'contact' | 'money' | 'about' | 'case-studies' | 'demo';
 
 export interface DiscoveredPage {
   url: string;
@@ -28,6 +28,18 @@ const ROLE_PATTERNS: Record<PageRole, { path: RegExp; text: RegExp }> = {
     path: /[/-](about|about-us|company|our-story|who-we-are|team|meet-the-team)([/-]|$)/i,
     text: /\b(about us|about|our story|who we are|our team)\b/i,
   },
+  // Upgrade 9 - lift page cap from 3 to 5. Case-studies and demo pages are the
+  // two highest-conversion-signal pages outside contact/money/about. Adding
+  // them lets the conversion-path check catch sites whose primary form lives
+  // on /case-studies/{name} or /book-a-demo instead of /contact.
+  'case-studies': {
+    path: /[/-](case-stud(y|ies)|customers?|success-stor(y|ies)|customer-stor(y|ies)|testimonials|stories)([/-]|$)/i,
+    text: /\b(case stud(y|ies)|customers?|success stories|customer stories|testimonials)\b/i,
+  },
+  demo: {
+    path: /[/-](demo|book(-a)?-demo|request(-a)?-demo|free-trial|trial|start-(free|trial)|get-started|book(-a)?-call)([/-]|$)/i,
+    text: /\b(book a demo|request a demo|free trial|start free|get started|book a call|see (a |it in )?action)\b/i,
+  },
 };
 
 // Hrefs that are never crawlable pages.
@@ -36,8 +48,9 @@ const ASSET_EXT =
   /\.(jpe?g|png|gif|svg|webp|avif|ico|css|js|mjs|json|xml|pdf|zip|mp4|webm|woff2?|ttf)$/i;
 
 // Roles are resolved money-first: the money page is the most valuable, so if
-// one URL could read as both money and about, money claims it.
-const ROLE_ORDER: PageRole[] = ['money', 'contact', 'about'];
+// one URL could read as both money and about, money claims it. Upgrade 9 -
+// demo claims early (conversion-bearing), case-studies later (proof-bearing).
+const ROLE_ORDER: PageRole[] = ['money', 'demo', 'contact', 'case-studies', 'about'];
 
 const MAX_SITEMAP_URLS = 300;
 
@@ -199,6 +212,40 @@ export interface ConversionSignals {
   hasScheduling: boolean;
   hasChatWidget: boolean;
   hasPromptCta: boolean;
+  // Upgrade 9 - field-count introspection on the first <form> found. Surfaced
+  // in the D-06 cell evidence so a prospect reads "form on homepage (7 fields,
+  // 4 required)" instead of just "form present". 14-field beasts read very
+  // differently from 2-field "name + email" lead gates.
+  formFieldCount: number;
+  formRequiredCount: number;
+}
+
+// Hidden-input or non-data input types that shouldn't count toward the
+// prospect-facing field count. Buttons, submits, hidden tokens, and
+// resets are plumbing the visitor never sees as "fields to fill".
+const NON_VISIBLE_INPUT_TYPE = /type\s*=\s*["'](hidden|submit|button|reset|image)["']/i;
+
+// Pure form-field counter. Inspects the FIRST <form> block in the HTML and
+// counts visible inputs + textareas + selects. Stable on minified HTML.
+// Returns {total: 0, required: 0} when no form is present.
+export function countFormFields(html: string): { total: number; required: number } {
+  const formMatch = html.match(/<form\b[^>]*>([\s\S]*?)<\/form>/i);
+  if (!formMatch) return { total: 0, required: 0 };
+  const body = formMatch[1];
+
+  const inputTags = body.match(/<input\b[^>]*>/gi) ?? [];
+  const visibleInputs = inputTags.filter((t) => !NON_VISIBLE_INPUT_TYPE.test(t));
+  const textareas = (body.match(/<textarea\b[^>]*>/gi) ?? []).length;
+  const selects = (body.match(/<select\b[^>]*>/gi) ?? []).length;
+  const total = visibleInputs.length + textareas + selects;
+
+  // Count `required` attribute occurrences within input/textarea/select tags.
+  // Bounded matcher: `required` must be a standalone attribute, not part of
+  // a longer word like `required-by` (rare but possible).
+  const fieldTags = body.match(/<(input|textarea|select)\b[^>]*>/gi) ?? [];
+  const required = fieldTags.filter((t) => /\brequired\b(\s|=|>|\/)/i.test(t)).length;
+
+  return { total, required };
 }
 
 // The conversion-path regexes, in one place. engine.ts checks these on the
@@ -206,6 +253,7 @@ export interface ConversionSignals {
 // /contact or a CTA on /pricing is no longer invisible to the audit.
 export function detectConversionSignals(html: string): ConversionSignals {
   const heroText = html.slice(0, 4000);
+  const fields = countFormFields(html);
   return {
     hasForm: /<form\b[^>]*>/i.test(html),
     hasTelLink: /\bhref=["']tel:/i.test(html),
@@ -224,6 +272,8 @@ export function detectConversionSignals(html: string): ConversionSignals {
       /<(a|button)[^>]*>([^<]*\b(get started|start free|book a (call|demo)|request (a )?(quote|demo)|schedule (a )?(call|demo)|talk to|contact us)\b)/i.test(
         heroText,
       ),
+    formFieldCount: fields.total,
+    formRequiredCount: fields.required,
   };
 }
 
@@ -245,6 +295,8 @@ const NO_SIGNALS: ConversionSignals = {
   hasScheduling: false,
   hasChatWidget: false,
   hasPromptCta: false,
+  formFieldCount: 0,
+  formRequiredCount: 0,
 };
 
 async function fetchPageHtml(
