@@ -811,12 +811,6 @@ const weekday = today.toLocaleString('en-US', { weekday: 'short', timeZone: 'UTC
         )}
 
         <section class="sec" id="action">
-          <SectionHeader
-            number="00"
-            title="Action queue."
-            italicTail="Who needs a follow-up today."
-            meta={`${actionQueue.length} prospect${actionQueue.length === 1 ? '' : 's'} · engaged & unmessaged · ${range.label.toLowerCase()}`}
-          />
           <ActionQueue prospects={actionQueue} prospectInfo={prospectInfo} />
         </section>
 

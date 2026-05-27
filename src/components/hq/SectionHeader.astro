@@ -1,48 +1,56 @@
 ---
+// Direction A section header. Mono eyebrow with the section number + label
+// in caps, then the editorial title beneath (with optional italic clause).
+//
+//   01 · RECENT READS
+//   Today's feed. Every session, newest first.
+//
+// The italic clause carries the second clause — never the first — and
+// uses --ink-dim per the brand voice rules.
+
 interface Props {
   number: string;
   title: string;
   italicTail?: string;
   meta?: string;
+  /** Optional uppercase label for the eyebrow. Defaults to the title upper-cased. */
+  eyebrowLabel?: string;
 }
 
-const { number, title, italicTail, meta } = Astro.props;
+const { number, title, italicTail, meta, eyebrowLabel } = Astro.props;
+const eyebrow = (eyebrowLabel ?? title).toUpperCase().replace(/\.$/, '');
 ---
-<header class="hd">
-  <div class="num">§ {number}</div>
-  <div class="t">
-    <h2>
-      {title}
-      {italicTail && <> <span class="ital">{italicTail}</span></>}
-    </h2>
-    {meta && <div class="meta">{meta}</div>}
-  </div>
+<header class="hq-sechead">
+  <div class="eyebrow">{number} · {eyebrow}</div>
+  <h2 class="head">
+    {title}
+    {italicTail && <> <span class="ital">{italicTail}</span></>}
+  </h2>
+  {meta && <div class="meta">{meta}</div>}
 </header>
 
 <style>
-  .hd {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    gap: 1rem 1.25rem;
-    align-items: baseline;
-    padding: 0 0 0.75rem;
+  .hq-sechead {
+    padding: 28px 0 14px;
     border-bottom: 1px solid var(--line, rgba(14,26,44,0.14));
-    margin-bottom: 1.25rem;
+    margin-bottom: 18px;
   }
-  .num {
+  .eyebrow {
     font-family: var(--mono, 'DM Mono', monospace);
-    font-size: 0.75rem;
-    letter-spacing: 0.04em;
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
     color: var(--ink-faint, #7A8597);
-    white-space: nowrap;
+    margin-bottom: 8px;
   }
-  h2 {
+  .head {
     margin: 0;
-    font-family: var(--grotesk, 'Inter Tight', system-ui);
-    font-size: clamp(1.25rem, 2vw, 1.75rem);
-    font-weight: 600;
+    font-family: var(--grotesk, 'Inter Tight', system-ui, sans-serif);
+    font-weight: 700;
+    font-size: 26px;
     line-height: 1.15;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.03em;
+    color: var(--ink, #0E1A2C);
   }
   .ital {
     font-family: var(--serif, 'Newsreader', Georgia, serif);
@@ -51,9 +59,10 @@ const { number, title, italicTail, meta } = Astro.props;
     color: var(--ink-dim, #3A4658);
   }
   .meta {
+    margin-top: 6px;
     font-family: var(--mono, 'DM Mono', monospace);
-    font-size: 0.75rem;
+    font-size: 11px;
+    letter-spacing: 0.04em;
     color: var(--ink-faint, #7A8597);
-    margin-top: 0.25rem;
   }
 </style>
