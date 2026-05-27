@@ -623,13 +623,25 @@ export interface ActiveNow {
 }
 
 export async function getActiveNow(): Promise<ActiveNow> {
+  // Active-now uses its own 30-minute window, not the page's DateRange. Build
+  // the human-session subquery against the same 30-minute bound.
+  const activeTimeWhere = `timestamp >= now() - INTERVAL 30 MINUTE`;
+  const activeHumanWhere = `
+    AND properties.$session_id IN (
+      SELECT DISTINCT properties.$session_id FROM events
+      WHERE ${activeTimeWhere}
+        AND (properties.$pathname LIKE '/audit/v3/%' OR properties.$pathname LIKE '/audit/p/%')
+        AND event IN (${HUMAN_SIGNAL_EVENTS})
+    )
+    AND ${SELF_CITY_EXCLUSION}
+  `;
   const r = await runQuery(`
     SELECT
       uniq(properties.$session_id) AS active_sessions,
       uniq(distinct_id) AS active_visitors
     FROM events
-    WHERE timestamp >= now() - INTERVAL 30 MINUTE
-      ${humanWhere(range)}
+    WHERE ${activeTimeWhere}
+      ${activeHumanWhere}
   `);
   const head = rowsToObjects<{ active_sessions: number; active_visitors: number }>(r)[0] ?? {
     active_sessions: 0,
@@ -641,8 +653,8 @@ export async function getActiveNow(): Promise<ActiveNow> {
       count() AS count
     FROM events
     WHERE event = '$pageview'
-      AND timestamp >= now() - INTERVAL 30 MINUTE
-      ${humanWhere(range)}
+      AND ${activeTimeWhere}
+      ${activeHumanWhere}
     GROUP BY path
     ORDER BY count DESC
     LIMIT 5
