@@ -1,6 +1,7 @@
 ---
 import type { TopProspect } from '../../utils/posthog/query';
 import { sessionReplayUrl } from '../../utils/posthog/query';
+import type { ProspectInfo } from '../../utils/hq/airtable';
 import {
   findOnLinkedinUrl,
   prospectWebsiteUrl,
@@ -10,9 +11,11 @@ import {
 interface Props {
   /** Already filtered: engaged AND not yet messaged. Sorted by recency desc. */
   prospects: TopProspect[];
+  /** Slug → Airtable record (name, email, LinkedIn). Empty if PAT not configured. */
+  prospectInfo?: Map<string, ProspectInfo>;
 }
 
-const { prospects } = Astro.props;
+const { prospects, prospectInfo } = Astro.props;
 
 function dwell(seconds: number): string {
   if (seconds < 60) return `${seconds}s`;
@@ -76,7 +79,10 @@ function heatBadge(p: TopProspect): { label: string; cls: string } {
         const latestSession = p.sessions[0] ?? null;
         const replay = latestSession ? sessionReplayUrl(latestSession.sid) : null;
         const domain = slugToDomain(p.prospect);
-        const liUrl = findOnLinkedinUrl(p.prospect);
+        const info = prospectInfo?.get(p.prospect);
+        // Prefer the Airtable LinkedIn URL if we have one; fall back to Google search.
+        const liHref = info?.linkedinUrl || findOnLinkedinUrl(p.prospect);
+        const liIsExact = !!info?.linkedinUrl;
         const siteUrl = prospectWebsiteUrl(p.prospect);
         return (
           <li class="aq-row" data-slug={p.prospect}>
@@ -86,17 +92,43 @@ function heatBadge(p: TopProspect): { label: string; cls: string } {
             </div>
             <div class="aq-mid">
               <div class="aq-prospect">
-                <a href={`https://rivett.tech/audit/v3/${p.prospect}`} target="_blank" rel="noopener">{domain}</a>
+                {info?.fullName ? (
+                  <>
+                    <span class="aq-person">{info.fullName}</span>
+                    <span class="aq-company">· {info.company || domain}</span>
+                  </>
+                ) : (
+                  <a href={`https://rivett.tech/audit/v3/${p.prospect}`} target="_blank" rel="noopener">{domain}</a>
+                )}
               </div>
+              {info && (info.email || info.linkedinUrl) && (
+                <div class="aq-contact">
+                  {info.email && (
+                    <a class="aq-link" href={`mailto:${info.email}?subject=${encodeURIComponent('Re ' + (info.company || domain))}`}>{info.email}</a>
+                  )}
+                  {info.email && info.linkedinUrl && <span class="aq-dot">·</span>}
+                  {info.linkedinUrl && (
+                    <a class="aq-link" href={info.linkedinUrl} target="_blank" rel="noopener">LinkedIn ↗</a>
+                  )}
+                  {info.outreachStage && <span class="aq-stage">· {info.outreachStage}</span>}
+                </div>
+              )}
               <div class="aq-signal">
-                <b>{dwell(p.total_dwell_seconds)}</b> dwell
-                · <b>{p.unique_sessions}</b> session{p.unique_sessions === 1 ? '' : 's'}
+                <a class="aq-memo" href={`https://rivett.tech/audit/v3/${p.prospect}`} target="_blank" rel="noopener">memo</a>
+                · <b>{dwell(p.total_dwell_seconds)}</b> dwell
+                · <b>{p.unique_sessions}</b> sess
                 · <b>{p.total_views}</b> view{p.total_views === 1 ? '' : 's'}
-                {p.cta_clicks > 0 && <span class="aq-cta">· {p.cta_clicks} CTA click{p.cta_clicks === 1 ? '' : 's'}</span>}
+                {p.cta_clicks > 0 && <span class="aq-cta">· {p.cta_clicks} CTA</span>}
+                {p.verdict_expansions > 0 && <span> · {p.verdict_expansions} verdict{p.verdict_expansions === 1 ? '' : 's'}</span>}
+                {p.copies > 0 && <span> · {p.copies} cop{p.copies === 1 ? 'y' : 'ies'}</span>}
+                {p.prints > 0 && <span> · {p.prints} print{p.prints === 1 ? '' : 's'}</span>}
               </div>
             </div>
             <div class="aq-actions">
-              <a class="aq-btn aq-btn--primary" href={liUrl} target="_blank" rel="noopener" title="Google site:linkedin.com for this domain — most reliable finder">→ LinkedIn</a>
+              <a class="aq-btn aq-btn--primary" href={liHref} target="_blank" rel="noopener" title={liIsExact ? "Open this prospect's LinkedIn profile" : "Google site:linkedin.com — Airtable LinkedIn URL not set for this slug"}>→ LinkedIn{liIsExact ? '' : ' (search)'}</a>
+              {info?.email && (
+                <a class="aq-btn" href={`mailto:${info.email}?subject=${encodeURIComponent('Re ' + (info.company || domain))}`} title="Compose email">Email</a>
+              )}
               <a class="aq-btn" href={siteUrl} target="_blank" rel="noopener" title="Open the prospect's website">Site</a>
               {replay && (
                 <a class="aq-btn" href={replay} target="_blank" rel="noopener">Replay</a>
@@ -277,6 +309,39 @@ function heatBadge(p: TopProspect): { label: string; cls: string } {
     color: var(--ink-faint, #7A8597);
     font-size: 0.85rem;
   }
+  .aq-person {
+    font-weight: 600;
+    color: var(--ink, #0E1A2C);
+    font-size: 0.95rem;
+  }
+  .aq-company {
+    color: var(--ink-dim, #3A4658);
+    font-size: 0.85rem;
+  }
+  .aq-contact {
+    margin-top: 0.2rem;
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 0.75rem;
+    color: var(--ink-dim, #3A4658);
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+  }
+  .aq-link {
+    color: var(--ink-dim, #3A4658);
+    text-decoration: none;
+    border-bottom: 1px dotted var(--line, rgba(14,26,44,0.14));
+  }
+  .aq-link:hover {
+    color: var(--accent-deep, #4A6E18);
+    border-bottom-color: var(--accent-deep, #4A6E18);
+  }
+  .aq-dot { color: var(--ink-faint, #7A8597); }
+  .aq-stage {
+    color: var(--ink-faint, #7A8597);
+    font-style: italic;
+  }
   .aq-signal {
     margin-top: 0.25rem;
     font-family: var(--mono, 'DM Mono', monospace);
@@ -285,6 +350,15 @@ function heatBadge(p: TopProspect): { label: string; cls: string } {
   }
   .aq-signal b { color: var(--ink, #0E1A2C); font-weight: 600; }
   .aq-cta { color: var(--accent-deep, #4A6E18); font-weight: 500; }
+  .aq-memo {
+    color: var(--ink-dim, #3A4658);
+    text-decoration: none;
+    border-bottom: 1px dotted var(--line, rgba(14,26,44,0.14));
+  }
+  .aq-memo:hover {
+    color: var(--accent-deep, #4A6E18);
+    border-bottom-color: var(--accent-deep, #4A6E18);
+  }
 
   .aq-actions {
     display: flex;

@@ -1,12 +1,14 @@
 ---
 import type { TopProspect } from '../../utils/posthog/query';
 import { sessionReplayUrl } from '../../utils/posthog/query';
+import type { ProspectInfo } from '../../utils/hq/airtable';
 
 interface Props {
   prospects: TopProspect[];
+  prospectInfo?: Map<string, ProspectInfo>;
 }
 
-const { prospects } = Astro.props;
+const { prospects, prospectInfo } = Astro.props;
 
 function dwell(seconds: number): string {
   if (seconds < 60) return `${seconds}s`;
@@ -26,22 +28,44 @@ function timeAgo(iso: string): string {
   if (hr < 48) return `${hr}h ago`;
   return `${Math.round(hr / 24)}d ago`;
 }
+
+function prospectUrl(slug: string, surface: 'audit' | 'intake-review' | undefined): string {
+  if (surface === 'intake-review') {
+    return `https://intake-reviews.vercel.app/intake-review/${slug}`;
+  }
+  return `https://rivett.tech/audit/v3/${slug}`;
+}
+
+function surfaceLabel(surface: 'audit' | 'intake-review' | undefined): string {
+  return surface === 'intake-review' ? 'Intake' : 'Audit';
+}
 ---
 {prospects.length === 0 ? (
   <p class="empty">No prospect engagement yet.</p>
 ) : (
   <div class="list" role="list">
-    {prospects.map((p, i) => (
+    {prospects.map((p, i) => {
+      const info = prospectInfo?.get(p.prospect);
+      return (
       <details role="listitem" class="row">
         <summary>
           <span class="rank">{String(i + 1).padStart(2, '0')}</span>
           <span class="prospect">
-            <a href={`https://rivett.tech/audit/v3/${p.prospect}`} target="_blank" rel="noopener">{p.prospect}</a>
+            <span class={`surface surface--${p.surface || 'audit'}`}>{surfaceLabel(p.surface)}</span>
+            {info?.fullName ? (
+              <span class="person">
+                <span class="person-name">{info.fullName}</span>
+                <span class="person-co">· {info.company || p.prospect}</span>
+              </span>
+            ) : (
+              <a href={prospectUrl(p.prospect, p.surface)} target="_blank" rel="noopener">{p.prospect}</a>
+            )}
           </span>
           <span class="metric"><b>{p.total_views}</b> <span class="lab">views</span></span>
           <span class="metric"><b>{p.unique_sessions}</b> <span class="lab">sess</span></span>
           <span class="metric"><b>{dwell(p.total_dwell_seconds)}</b> <span class="lab">dwell</span></span>
           <span class="metric"><b class={p.cta_clicks > 0 ? 'hot' : 'dim'}>{p.cta_clicks > 0 ? p.cta_clicks : '—'}</b> <span class="lab">cta</span></span>
+          <span class="metric"><b class={p.heat_score >= 50 ? 'hot' : p.heat_score >= 10 ? '' : 'dim'}>{p.heat_score}</b> <span class="lab">heat</span></span>
           <span class="chev" aria-hidden="true">↓</span>
         </summary>
         <div class="sessions">
@@ -69,7 +93,8 @@ function timeAgo(iso: string): string {
           )}
         </div>
       </details>
-    ))}
+      );
+    })}
   </div>
 )}
 
@@ -89,13 +114,27 @@ function timeAgo(iso: string): string {
 
   summary {
     display: grid;
-    grid-template-columns: 2rem 1fr repeat(4, auto) 1.25rem;
+    grid-template-columns: 2rem 1fr repeat(5, auto) 1.25rem;
     gap: 0.4rem 1rem;
     padding: 0.65rem 0.5rem;
     cursor: pointer;
     list-style: none;
     align-items: baseline;
     font-size: 0.9rem;
+  }
+  .person {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+  }
+  .person-name {
+    font-weight: 600;
+    color: var(--ink, #0E1A2C);
+  }
+  .person-co {
+    color: var(--ink-dim, #3A4658);
+    font-size: 0.85rem;
   }
   summary::-webkit-details-marker { display: none; }
   summary:hover { background: var(--paper-2, #F4F2ED); }

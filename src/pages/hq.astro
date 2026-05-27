@@ -51,6 +51,7 @@ import KpiCard from '../components/hq/KpiCard.astro';
 import ActiveNowBadge from '../components/hq/ActiveNow.astro';
 import ActionQueue from '../components/hq/ActionQueue.astro';
 import { getMessagedSlugs } from '../utils/hq/messaged';
+import { getProspectsBySlug, type ProspectInfo } from '../utils/hq/airtable';
 
 // --- Auth gating ---
 const HQ_KEY = (process.env.HQ_KEY || import.meta.env.HQ_KEY || '').trim();
@@ -107,11 +108,12 @@ let sources: TrafficSource[] = [];
 let activity: ActivityDay[] = [];
 let activeNow: ActiveNow | null = null;
 let messagedSlugs: Set<string> = new Set();
+let prospectInfo: Map<string, ProspectInfo> = new Map();
 let fetchError: string | null = null;
 
 if (authed) {
   try {
-    const [h, r, t, c, b, co, ci, dv, sr, ac, an, ms] = await Promise.all([
+    const [h, r, t, c, b, co, ci, dv, sr, ac, an, ms, pi] = await Promise.all([
       getHeadlineMetrics(range),
       getRecentReads(range, trafficMode),
       getTopProspects(range, trafficMode),
@@ -124,6 +126,7 @@ if (authed) {
       getActivityTimeline(range, trafficMode),
       getActiveNow(),
       getMessagedSlugs(),
+      getProspectsBySlug(),
     ]);
     headline = h;
     recent = r;
@@ -137,6 +140,7 @@ if (authed) {
     activity = ac;
     activeNow = an;
     messagedSlugs = ms;
+    prospectInfo = pi;
   } catch (e) {
     fetchError = e instanceof Error ? e.message : String(e);
     console.error('[hq] PostHog fetch failed', e);
@@ -687,7 +691,7 @@ const sections = [
             italicTail="Who needs a follow-up today."
             meta={`${actionQueue.length} prospect${actionQueue.length === 1 ? '' : 's'} · engaged & unmessaged · ${range.label.toLowerCase()}`}
           />
-          <ActionQueue prospects={actionQueue} />
+          <ActionQueue prospects={actionQueue} prospectInfo={prospectInfo} />
         </section>
 
         <section class="sec" id="recent">
@@ -707,7 +711,7 @@ const sections = [
             italicTail="Ranked by engagement."
             meta={`${top.length} prospect${top.length === 1 ? '' : 's'} · ${range.label.toLowerCase()} · click a row to expand sessions`}
           />
-          <TopProspectsTable prospects={top} />
+          <TopProspectsTable prospects={top} prospectInfo={prospectInfo} />
         </section>
 
         <section class="sec" id="ctas">
