@@ -767,10 +767,15 @@ export async function runAudit(rawUrl: string, opts?: RunAuditOptions): Promise<
     };
   };
 
-  // Upgrade 9 - form check enriches evidence with field count so the cell
-  // surfaces "form on homepage (7 fields, 4 required)" instead of generic
-  // "form present". A 14-field beast reads very differently from a 2-field
-  // lead gate to a cold prospect.
+  // Upgrade 9 - form check enriches the label with field count so the cell's
+  // check list surfaces "Form available on the site — 7 fields, 4 required"
+  // instead of generic "Form available on the site". A 14-field beast reads
+  // very differently from a 2-field lead gate to a cold prospect.
+  //
+  // The field count goes in the label, not the evidence: v3-synth.ts's
+  // checksFromCategory passes c.label through to the rendered VerdictCheck
+  // but drops c.evidence (the engine-layer audit trail). Surfacing in label
+  // is the path that actually reaches the user.
   {
     const onHomepage = homeSignals.hasForm;
     const onOther = onHomepage ? undefined : crawledPages.find((p) => p.ok && p.hasForm);
@@ -788,6 +793,10 @@ export async function runAudit(rawUrl: string, opts?: RunAuditOptions): Promise<
             requiredCount > 0 ? `, ${requiredCount} required` : ''
           })`
         : '';
+    // Label suffix only attaches when a form WAS found AND we counted fields.
+    // When no form is found the label stays clean ("Form available on the site")
+    // so the ranked-fix prose isn't littered with "(0 fields)".
+    const labelSuffix = (onHomepage || onOther) && fieldNote ? fieldNote : '';
     const evidence = onHomepage
       ? `form on the homepage${fieldNote}`
       : onOther
@@ -803,7 +812,7 @@ export async function runAudit(rawUrl: string, opts?: RunAuditOptions): Promise<
     draft.push({
       id: 'conversion-form-on-page',
       category: 'conversion',
-      label: 'Form available on the site',
+      label: `Form available on the site${labelSuffix}`,
       passed: onHomepage || !!onOther,
       weight: 1,
       evidence,
