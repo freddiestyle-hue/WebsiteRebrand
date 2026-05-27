@@ -144,17 +144,12 @@ if (authed) {
 }
 
 // --- Action queue: engaged prospects who need a follow-up ---
-// "Sent" doesn't mean "ignore." Sending the audit IS what starts the loop.
-// The queue surfaces anyone who engaged AFTER the initial send so Fred can
-// follow up on that engagement. We only drop prospects in a terminal /
-// conversation state where a follow-up makes no sense.
-//
-// Filter passes if: prospect has no Airtable record (still visible), OR
-// their stage is in early/active funnel (Not Sent / Drafted / Sent / Bumped
-// / Connection Sent / Connection Accepted).
-//
-// To make the cut on engagement: at least one concrete action (CTA, print,
-// copy, verdict expand, full scroll) OR >= 60s of real focus time.
+// Every audit-URL visit is a person event — the slug IS the identifier and
+// joins to a name via Airtable. So the queue shows every visit that hasn't
+// been wrapped up yet (Replied/Booked/Won/Lost/Disqualified). The heat tag
+// communicates quality; Fred decides whether a BROWSED row is worth a
+// follow-up. We do NOT pre-filter by engagement signals — those gate which
+// tier the heat badge shows, but everyone visible is fair game.
 const STAGES_DONE = new Set([
   'Replied', 'Booked', 'Won', 'Lost', 'Disqualified',
 ]);
@@ -164,17 +159,6 @@ const actionQueue = top
     const info = prospectInfo.get(p.prospect);
     if (info && STAGES_DONE.has(info.outreachStage)) return false;
     return true;
-  })
-  .filter((p) => {
-    const hasConcreteAction =
-      p.cta_clicks > 0 ||
-      p.prints > 0 ||
-      p.copies > 0 ||
-      p.verdict_expansions > 0 ||
-      p.scroll_100s > 0;
-    const hasRealDwell =
-      p.focus_seconds_total >= 60 || p.total_dwell_seconds >= 60;
-    return hasConcreteAction || hasRealDwell;
   })
   .sort((a, b) => {
     if (b.heat_score !== a.heat_score) return b.heat_score - a.heat_score;

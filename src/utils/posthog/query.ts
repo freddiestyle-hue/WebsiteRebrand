@@ -444,7 +444,7 @@ export async function getTopProspects(range: DateRange, mode: TrafficMode = 'hum
       FROM events
       WHERE ${hogqlRangeClause(range)}
         AND ${PROSPECT_PATH_FILTER_TOP}
-        ${humanWhereFor(mode, range)}
+        ${lightHumanWhereFor(mode)}
       GROUP BY prospect, surface, sid
     ) AS sessions
     WHERE prospect != ''
