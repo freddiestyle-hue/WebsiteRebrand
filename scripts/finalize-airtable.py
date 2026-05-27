@@ -135,7 +135,7 @@ def main():
             # A blank one-liner means the hero fetch failed; leave the DM unset
             # for a manual pass rather than ship a sentence with a hole in it.
             if one_liner:
-                update_fields['Follow-up DM'] = FOLLOWUP_TEMPLATE.format(
+                update_fields['LinkedIn Follow-up DM'] = FOLLOWUP_TEMPLATE.format(
                     first_name=first_name,
                     company=company,
                     one_liner=one_liner,

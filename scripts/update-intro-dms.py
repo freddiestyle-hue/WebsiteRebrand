@@ -111,7 +111,7 @@ def main() -> int:
         new_dm = NEW_INTRO_TEMPLATE.format(first_name=first_name, company=company)
         updates.append({
             "id": rec["id"],
-            "fields": {"Introduction DM": new_dm},
+            "fields": {"LinkedIn DM": new_dm},
         })
 
     print(f"Prepared {len(updates)} updates "

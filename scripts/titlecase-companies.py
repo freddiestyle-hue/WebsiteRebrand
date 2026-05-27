@@ -109,7 +109,7 @@ def main():
             'id': r['id'],
             'fields': {
                 'Company': new_company,
-                'Introduction DM': new_intro,
+                'LinkedIn DM': new_intro,
             },
         })
 

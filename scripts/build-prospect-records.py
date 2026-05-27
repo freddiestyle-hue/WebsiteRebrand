@@ -262,8 +262,8 @@ def main():
             "Audit URL": audit_url,
             "Hero Dimension": hero_dimension if hero_dimension else None,
             "Hero One-Liner": one_liner,
-            "Introduction DM": intro_dm,
-            "Follow-up DM": followup_dm,
+            "LinkedIn DM": intro_dm,
+            "LinkedIn Follow-up DM": followup_dm,
             "Outreach Stage": "Not Sent",
             "Audit Date": audit_date if audit_date else None,
         }

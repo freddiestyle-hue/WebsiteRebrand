@@ -85,10 +85,31 @@ function heatBadge(p: TopProspect): { label: string; cls: string } {
         const liIsExact = !!info?.linkedinUrl;
         const siteUrl = prospectWebsiteUrl(p.prospect);
         return (
-          <li class="aq-row" data-slug={p.prospect}>
+          <li
+            class="aq-row"
+            data-slug={p.prospect}
+            data-signals={JSON.stringify({
+              total_dwell_seconds: p.total_dwell_seconds,
+              unique_sessions: p.unique_sessions,
+              total_views: p.total_views,
+              cta_clicks: p.cta_clicks,
+              verdict_expansions: p.verdict_expansions,
+              scroll_100s: p.scroll_100s,
+              copies: p.copies,
+              prints: p.prints,
+              return_visitor: p.return_visitor,
+              last_view: p.last_view,
+            })}
+            data-li-url={info?.linkedinUrl || liHref}
+            data-email={info?.email || ''}
+            data-first-name={info?.firstName || ''}
+            data-company={info?.company || domain}
+            data-source={info?.source || ''}
+          >
             <div class="aq-left">
               <span class={`aq-heat ${heat.cls}`}>{heat.label}</span>
               <span class="aq-when">{timeAgo(p.last_view)}</span>
+              {info?.source && <span class="aq-source">{info.source}</span>}
             </div>
             <div class="aq-mid">
               <div class="aq-prospect">
@@ -105,7 +126,7 @@ function heatBadge(p: TopProspect): { label: string; cls: string } {
               {info && (info.email || info.linkedinUrl) && (
                 <div class="aq-contact">
                   {info.email && (
-                    <a class="aq-link" href={`mailto:${info.email}?subject=${encodeURIComponent('Re ' + (info.company || domain))}`}>{info.email}</a>
+                    <a class="aq-link" href={`mailto:${info.email}`}>{info.email}</a>
                   )}
                   {info.email && info.linkedinUrl && <span class="aq-dot">·</span>}
                   {info.linkedinUrl && (
@@ -126,9 +147,9 @@ function heatBadge(p: TopProspect): { label: string; cls: string } {
               </div>
             </div>
             <div class="aq-actions">
-              <a class="aq-btn aq-btn--primary" href={liHref} target="_blank" rel="noopener" title={liIsExact ? "Open this prospect's LinkedIn profile" : "Google site:linkedin.com — Airtable LinkedIn URL not set for this slug"}>→ LinkedIn{liIsExact ? '' : ' (search)'}</a>
+              <button class="aq-btn aq-btn--primary" type="button" data-draft="linkedin" title="LLM-draft a LinkedIn DM referencing what they did on the memo">Draft DM</button>
               {info?.email && (
-                <a class="aq-btn" href={`mailto:${info.email}?subject=${encodeURIComponent('Re ' + (info.company || domain))}`} title="Compose email">Email</a>
+                <button class="aq-btn aq-btn--primary" type="button" data-draft="email" title="LLM-draft an email referencing what they did on the memo">Draft Email</button>
               )}
               <a class="aq-btn" href={siteUrl} target="_blank" rel="noopener" title="Open the prospect's website">Site</a>
               {replay && (
@@ -143,9 +164,182 @@ function heatBadge(p: TopProspect): { label: string; cls: string } {
   )}
 </div>
 
+<!-- Draft preview modal — single instance, populated on each draft button click -->
+<div class="dm-modal" data-dm-modal hidden>
+  <div class="dm-backdrop" data-dm-close></div>
+  <div class="dm-card" role="dialog" aria-modal="true" aria-labelledby="dm-title">
+    <header class="dm-head">
+      <h3 id="dm-title" class="dm-h">Draft message</h3>
+      <div class="dm-meta" data-dm-meta></div>
+      <button class="dm-x" type="button" data-dm-close aria-label="Close">×</button>
+    </header>
+    <div class="dm-body">
+      <div class="dm-row" data-dm-subject-row hidden>
+        <label class="dm-lbl" for="dm-subject">Subject</label>
+        <input class="dm-input" id="dm-subject" type="text" data-dm-subject />
+      </div>
+      <div class="dm-row">
+        <label class="dm-lbl" for="dm-text">Message</label>
+        <textarea class="dm-text" id="dm-text" data-dm-text rows="10"></textarea>
+      </div>
+      <div class="dm-status" data-dm-status></div>
+    </div>
+    <footer class="dm-foot">
+      <button class="dm-btn" type="button" data-dm-regenerate title="Throw the draft away and ask the LLM for a fresh one">↻ Regenerate</button>
+      <div class="dm-spacer"></div>
+      <button class="dm-btn" type="button" data-dm-close>Cancel</button>
+      <button class="dm-btn dm-btn--primary" type="button" data-dm-go>Copy + open</button>
+    </footer>
+  </div>
+</div>
+
 <script is:inline>
   (function () {
+    const modal = document.querySelector('[data-dm-modal]');
+    const modalSubjectRow = modal?.querySelector('[data-dm-subject-row]');
+    const modalSubject = modal?.querySelector('[data-dm-subject]');
+    const modalText = modal?.querySelector('[data-dm-text]');
+    const modalStatus = modal?.querySelector('[data-dm-status]');
+    const modalMeta = modal?.querySelector('[data-dm-meta]');
+    const modalGo = modal?.querySelector('[data-dm-go]');
+    const modalRegen = modal?.querySelector('[data-dm-regenerate]');
+    const modalCloseEls = modal?.querySelectorAll('[data-dm-close]');
+
+    // Active context for the open modal.
+    let ctx = null;  // { slug, channel, signals, liUrl, email, firstName, company }
+
+    function openModal() { modal && (modal.hidden = false); }
+    function closeModal() { modal && (modal.hidden = true); ctx = null; }
+    modalCloseEls?.forEach(function (el) { el.addEventListener('click', closeModal); });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && modal && !modal.hidden) closeModal();
+    });
+
+    async function fetchDraft(slug, channel, signals, force) {
+      const res = await fetch('/api/hq/draft-message', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ slug, channel, signals, force: !!force }),
+      });
+      const data = await res.json().catch(function () { return {}; });
+      if (!res.ok) {
+        throw new Error(data.message || data.error || ('http ' + res.status));
+      }
+      return data;
+    }
+
+    async function startDraft(row, channel, opts) {
+      const slug = row.getAttribute('data-slug');
+      const liUrl = row.getAttribute('data-li-url') || '';
+      const email = row.getAttribute('data-email') || '';
+      const firstName = row.getAttribute('data-first-name') || '';
+      const company = row.getAttribute('data-company') || '';
+      const source = row.getAttribute('data-source') || '';
+      let signals = {};
+      try { signals = JSON.parse(row.getAttribute('data-signals') || '{}'); } catch (e) {}
+
+      ctx = { slug, channel, signals, liUrl, email, firstName, company, source };
+
+      // Set up modal shell
+      if (channel === 'email') {
+        modalSubjectRow.hidden = false;
+      } else {
+        modalSubjectRow.hidden = true;
+      }
+      modalSubject.value = '';
+      modalText.value = '';
+      modalStatus.textContent = 'Drafting with Claude...';
+      modalStatus.className = 'dm-status dm-status--info';
+      modalMeta.textContent = (firstName || slug) + (company ? ' · ' + company : '') + (source ? ' · ' + source : '') + ' · ' + (channel === 'email' ? 'Email' : 'LinkedIn DM');
+      modalGo.textContent = channel === 'email' ? 'Open in mail' : 'Copy + open LinkedIn';
+      modalGo.disabled = true;
+      modalRegen.disabled = true;
+      openModal();
+
+      try {
+        const data = await fetchDraft(slug, channel, signals, opts && opts.force);
+        modalSubject.value = data.subject || '';
+        modalText.value = data.body || '';
+        modalStatus.textContent = data.cached ? 'Loaded cached draft. ↻ Regenerate for a fresh one.' : 'Drafted. Edit if needed, then copy + open.';
+        modalStatus.className = 'dm-status dm-status--ok';
+        modalGo.disabled = false;
+        modalRegen.disabled = false;
+      } catch (e) {
+        modalStatus.textContent = 'Could not draft: ' + (e && e.message ? e.message : String(e));
+        modalStatus.className = 'dm-status dm-status--err';
+        modalGo.disabled = true;
+        modalRegen.disabled = false;
+      }
+    }
+
+    async function copyToClipboard(text) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch (e) {
+        return false;
+      }
+    }
+
+    modalRegen?.addEventListener('click', async function () {
+      if (!ctx) return;
+      modalStatus.textContent = 'Regenerating...';
+      modalStatus.className = 'dm-status dm-status--info';
+      modalGo.disabled = true;
+      modalRegen.disabled = true;
+      try {
+        const data = await fetchDraft(ctx.slug, ctx.channel, ctx.signals, true);
+        modalSubject.value = data.subject || '';
+        modalText.value = data.body || '';
+        modalStatus.textContent = 'Regenerated.';
+        modalStatus.className = 'dm-status dm-status--ok';
+        modalGo.disabled = false;
+        modalRegen.disabled = false;
+      } catch (e) {
+        modalStatus.textContent = 'Regenerate failed: ' + (e && e.message ? e.message : String(e));
+        modalStatus.className = 'dm-status dm-status--err';
+        modalRegen.disabled = false;
+      }
+    });
+
+    modalGo?.addEventListener('click', async function () {
+      if (!ctx) return;
+      const subject = modalSubject.value || '';
+      const body = modalText.value || '';
+      if (ctx.channel === 'email') {
+        // mailto with subject + body. Cap length so browsers don't truncate.
+        const params = new URLSearchParams();
+        if (subject) params.set('subject', subject);
+        if (body) params.set('body', body);
+        const href = 'mailto:' + encodeURIComponent(ctx.email) + '?' + params.toString();
+        await copyToClipboard(body);  // safety copy in case mailto fails
+        window.location.href = href;
+        modalStatus.textContent = 'Opened mail client. Body also copied to clipboard.';
+        modalStatus.className = 'dm-status dm-status--ok';
+      } else {
+        // LinkedIn can't deep-link to compose. Copy body, then open the profile.
+        const ok = await copyToClipboard(body);
+        if (ctx.liUrl) window.open(ctx.liUrl, '_blank', 'noopener');
+        modalStatus.textContent = ok
+          ? 'DM copied to clipboard. LinkedIn opened in a new tab — paste into the Message box.'
+          : 'Could not copy to clipboard (browser blocked). Select and copy manually.';
+        modalStatus.className = ok ? 'dm-status dm-status--ok' : 'dm-status dm-status--err';
+      }
+    });
+
+    // Wire up the per-row buttons.
     document.querySelectorAll('[data-action-queue]').forEach(function (queue) {
+      queue.querySelectorAll('[data-draft]').forEach(function (btn) {
+        btn.addEventListener('click', function (ev) {
+          ev.preventDefault();
+          const row = btn.closest('[data-slug]');
+          if (!row) return;
+          const channel = btn.getAttribute('data-draft') === 'email' ? 'email' : 'linkedin';
+          startDraft(row, channel, {});
+        });
+      });
+
       queue.querySelectorAll('[data-mark-messaged]').forEach(function (btn) {
         btn.addEventListener('click', async function (ev) {
           ev.preventDefault();
@@ -166,7 +360,6 @@ function heatBadge(p: TopProspect): { label: string; cls: string } {
             row.style.transition = 'opacity 200ms';
             row.style.opacity = '0';
             setTimeout(function () {
-              // Full reload to refresh the queue + dependent sections
               window.location.reload();
             }, 220);
           } catch (e) {
@@ -423,5 +616,164 @@ function heatBadge(p: TopProspect): { label: string; cls: string } {
     }
     .aq-left { flex-direction: row; gap: 0.5rem; align-items: center; }
     .aq-actions { justify-content: flex-start; }
+  }
+
+  /* === Source tag (which play the prospect came from) === */
+  .aq-source {
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-faint, #7A8597);
+    border: 1px solid var(--line, rgba(14,26,44,0.14));
+    padding: 0.1rem 0.35rem;
+    border-radius: 3px;
+    margin-top: 0.25rem;
+  }
+
+  /* === Draft modal === */
+  .dm-modal[hidden] { display: none; }
+  .dm-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .dm-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(14, 26, 44, 0.55);
+    backdrop-filter: blur(2px);
+  }
+  .dm-card {
+    position: relative;
+    background: var(--paper, #FFFFFF);
+    border: 1px solid var(--ink, #0E1A2C);
+    border-radius: 6px;
+    width: min(680px, 92vw);
+    max-height: 92vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 24px 48px rgba(14,26,44,0.35);
+  }
+  .dm-head {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: baseline;
+    gap: 0.5rem 1rem;
+    padding: 0.85rem 1.15rem;
+    background: var(--ink, #0E1A2C);
+    color: var(--paper, #FFFFFF);
+  }
+  .dm-h {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .dm-meta {
+    grid-column: 1 / 2;
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 0.72rem;
+    color: rgba(255,255,255,0.7);
+    letter-spacing: 0.04em;
+  }
+  .dm-x {
+    grid-row: 1 / span 2;
+    grid-column: 2 / 3;
+    background: transparent;
+    color: var(--paper, #FFFFFF);
+    border: 0;
+    font-size: 1.4rem;
+    line-height: 1;
+    padding: 0 0.2rem;
+    cursor: pointer;
+    opacity: 0.7;
+  }
+  .dm-x:hover { opacity: 1; }
+
+  .dm-body {
+    padding: 1rem 1.15rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+  .dm-row { display: flex; flex-direction: column; gap: 0.35rem; }
+  .dm-lbl {
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--ink-faint, #7A8597);
+  }
+  .dm-input,
+  .dm-text {
+    width: 100%;
+    border: 1px solid var(--line, rgba(14,26,44,0.14));
+    border-radius: 3px;
+    padding: 0.55rem 0.7rem;
+    font-family: var(--grotesk, 'Inter Tight', system-ui, sans-serif);
+    font-size: 0.9rem;
+    color: var(--ink, #0E1A2C);
+    background: var(--paper, #FFFFFF);
+    line-height: 1.45;
+    resize: vertical;
+  }
+  .dm-input:focus,
+  .dm-text:focus {
+    outline: none;
+    border-color: var(--accent-deep, #4A6E18);
+    box-shadow: 0 0 0 2px rgba(74,110,24,0.15);
+  }
+  .dm-text { min-height: 180px; font-family: var(--serif, 'Newsreader', Georgia, serif); font-size: 0.95rem; }
+  .dm-status {
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 0.72rem;
+    padding: 0.45rem 0.6rem;
+    border-radius: 3px;
+    border: 1px solid var(--line, rgba(14,26,44,0.14));
+  }
+  .dm-status--info { color: var(--ink-dim, #3A4658); background: var(--paper-2, #F4F2ED); }
+  .dm-status--ok   { color: var(--accent-deep, #4A6E18); background: rgba(143,191,63,0.1); border-color: rgba(143,191,63,0.4); }
+  .dm-status--err  { color: #8a1f1f; background: rgba(138,31,31,0.06); border-color: rgba(138,31,31,0.3); }
+
+  .dm-foot {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.15rem;
+    border-top: 1px solid var(--line, rgba(14,26,44,0.14));
+    background: var(--paper-2, #F4F2ED);
+  }
+  .dm-spacer { flex: 1; }
+  .dm-btn {
+    background: var(--paper, #FFFFFF);
+    border: 1px solid var(--line-strong, rgba(14,26,44,0.28));
+    color: var(--ink, #0E1A2C);
+    padding: 0.45rem 0.85rem;
+    border-radius: 3px;
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 0.78rem;
+    cursor: pointer;
+    transition: background 80ms, color 80ms, border-color 80ms;
+  }
+  .dm-btn:hover { background: var(--paper-3, #EBE6DC); }
+  .dm-btn--primary {
+    background: var(--ink, #0E1A2C);
+    color: var(--paper, #FFFFFF);
+    border-color: var(--ink, #0E1A2C);
+  }
+  .dm-btn--primary:hover { background: var(--accent-deep, #4A6E18); border-color: var(--accent-deep, #4A6E18); }
+  .dm-btn:disabled { opacity: 0.5; cursor: wait; }
+
+  @media (max-width: 640px) {
+    .dm-card { width: 96vw; max-height: 96vh; }
+    .dm-foot { flex-wrap: wrap; }
+    .dm-spacer { display: none; }
+    .dm-btn { flex: 1; min-width: 0; text-align: center; }
   }
 </style>
