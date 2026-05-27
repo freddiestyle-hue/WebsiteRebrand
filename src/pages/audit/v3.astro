@@ -106,19 +106,30 @@ if (isPOST && !memo) {
         // failed in a row - the operator can retry the audit later when the
         // lambda is warm.
         // Verified reads require headless. Also treat a degenerate headless
-        // result (no rendered HTML or a tiny page that suggests timeout) as
-        // a failure - the lambda technically returned but didn't capture the
-        // DOM, and the downstream synthesis quietly falls back to static-only
-        // mode. Real homepages have far more than 500 bytes of HTML, so the
-        // threshold is a sanity floor, not a quality bar.
+        // result (lambda returned but didn't actually capture the page) as
+        // failure. Multiple signals because each can lie individually:
+        //   - renderedHtml >= 5000 bytes: real homepages are 50KB+. A CMP
+        //     banner alone or a WAF challenge page is ~1-3KB.
+        //   - networkHosts >= 3: a real page in a real browser hits at least
+        //     the origin + a CDN + analytics. Zero means JS never ran.
+        //   - mobile.smallestTapTargetPx != null: confirms the page rendered
+        //     enough DOM for the viewport-measurement to find clickables.
+        // Any one missing = treat the whole pass as failed, evict, 503.
         const renderedHtmlLen = headless?.renderedHtml?.length ?? 0;
-        const headlessUsable = !!headless && renderedHtmlLen >= 500;
+        const networkHostsCount = headless?.networkHosts?.length ?? 0;
+        const mobileMeasured = headless?.mobile?.smallestTapTargetPx != null;
+        const headlessUsable =
+          !!headless && renderedHtmlLen >= 5000 && networkHostsCount >= 3 && mobileMeasured;
 
         if (!headlessUsable) {
           Astro.response.status = 503;
           Astro.response.headers.set('Retry-After', '10');
-          runtimeError = `Headless render failed (renderedHtml=${renderedHtmlLen}b). Audit not written.`;
-          console.error('[audit/v3] headless unusable for', norm.url, 'renderedHtml=', renderedHtmlLen);
+          runtimeError = `Headless render incomplete (renderedHtml=${renderedHtmlLen}b, hosts=${networkHostsCount}, mobileMeasured=${mobileMeasured}). Audit not written.`;
+          console.error('[audit/v3] headless unusable for', norm.url, {
+            renderedHtmlLen,
+            networkHostsCount,
+            mobileMeasured,
+          });
           // Evict any stale cached memo for this slug. Otherwise a 503 response
           // on POST silently leaves an OLD partial-audit in KV, and the bulk
           // script's GET-the-slug fallback returns 200 with stale data and
