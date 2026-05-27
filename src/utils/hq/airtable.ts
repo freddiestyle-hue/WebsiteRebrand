@@ -100,6 +100,12 @@ export interface ProspectInfo {
   /** When they replied, if at all. */
   repliedAt: string;
   recordId: string;
+  /** Attack Wave tag, e.g. "Wave 1 - This Week" / "Wave 2 - This Week". */
+  attackWave: string;
+  /** Priority tier string, e.g. "A+ #13" / "B #245". */
+  priority: string;
+  /** Audit URL, kept on the info so the outreach queue can render it directly. */
+  auditUrl: string;
 }
 
 let _redis: Redis | null = null;
@@ -248,7 +254,80 @@ function recordToInfo(rec: AirtableRecord): ProspectInfo | null {
     sentAt: String(f['Sent At'] || '').trim(),
     repliedAt: String(f['Replied At'] || '').trim(),
     recordId: rec.id,
+    attackWave: String(f['Attack Wave'] || '').trim(),
+    priority: String(f['Priority'] || '').trim(),
+    auditUrl,
   };
+}
+
+// --------------------------------------------------------------------------
+// Outreach queue — surfaced in the new HQ Send Queue component.
+// --------------------------------------------------------------------------
+
+export interface OutreachQueueRow {
+  recordId: string;
+  slug: string;
+  firstName: string;
+  displayName: string;
+  title: string;
+  company: string;
+  industry: string;
+  linkedinUrl: string;
+  linkedinDm: string;
+  auditUrl: string;
+  attackWave: string;
+  priority: string;
+  outreachStage: string;
+}
+
+/**
+ * Returns the prospects ready to send for a given Attack Wave - filtered to
+ * unsent rows with a LinkedIn URL and a populated LinkedIn DM. Ordered by
+ * Priority (A+ first, then A, B, C) and then by record id for stability.
+ *
+ * Reads from the same cached Prospects pull that getProspectsBySlug uses,
+ * so the queue stays in sync with the Action Queue / Top Prospects views.
+ */
+export async function getOutreachQueueByWave(wave: string): Promise<OutreachQueueRow[]> {
+  const all = await getProspectsBySlug();
+  const queue: OutreachQueueRow[] = [];
+  for (const info of all.values()) {
+    if (!info.attackWave) continue;
+    if (info.attackWave !== wave) continue;
+    // Only show prospects that haven't been actioned yet. Connection Sent /
+    // Sent / Replied / etc. should drop out of the queue automatically.
+    if (info.outreachStage && info.outreachStage !== 'Not Sent' && info.outreachStage !== 'Drafted') continue;
+    if (!info.linkedinUrl) continue;
+    if (!info.linkedinDm) continue;
+    queue.push({
+      recordId: info.recordId,
+      slug: info.slug,
+      firstName: info.firstName,
+      displayName: info.displayName,
+      title: info.title,
+      company: info.company,
+      industry: info.industry,
+      linkedinUrl: info.linkedinUrl,
+      linkedinDm: info.linkedinDm,
+      auditUrl: info.auditUrl,
+      attackWave: info.attackWave,
+      priority: info.priority,
+      outreachStage: info.outreachStage,
+    });
+  }
+  // Priority tier (A+ best, then A, B, C, D, anything else last) then record id.
+  const tierRank = (p: string): number => {
+    const m = p.match(/^(A\+|A|B|C|D)\b/);
+    if (!m) return 5;
+    return { 'A+': 0, A: 1, B: 2, C: 3, D: 4 }[m[1] as 'A+' | 'A' | 'B' | 'C' | 'D'];
+  };
+  queue.sort((a, b) => {
+    const ra = tierRank(a.priority);
+    const rb = tierRank(b.priority);
+    if (ra !== rb) return ra - rb;
+    return a.recordId.localeCompare(b.recordId);
+  });
+  return queue;
 }
 
 /**

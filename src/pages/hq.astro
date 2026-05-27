@@ -50,7 +50,8 @@ import DateRangeNav from '../components/hq/DateRangeNav.astro';
 import KpiCard from '../components/hq/KpiCard.astro';
 import ActiveNowBadge from '../components/hq/ActiveNow.astro';
 import ActionQueue from '../components/hq/ActionQueue.astro';
-import { getProspectsBySlug, type ProspectInfo } from '../utils/hq/airtable';
+import { getProspectsBySlug, getOutreachQueueByWave, type ProspectInfo, type OutreachQueueRow } from '../utils/hq/airtable';
+import OutreachQueue from '../components/hq/OutreachQueue.astro';
 
 // --- Auth gating ---
 const HQ_KEY = (process.env.HQ_KEY || import.meta.env.HQ_KEY || '').trim();
@@ -107,6 +108,12 @@ let sources: TrafficSource[] = [];
 let activity: ActivityDay[] = [];
 let activeNow: ActiveNow | null = null;
 let prospectInfo: Map<string, ProspectInfo> = new Map();
+// Outreach queue for the current active wave. The wave string is the literal
+// Attack Wave field value in Airtable; change CURRENT_WAVE when you roll to
+// the next batch (Wave 3, etc) and the queue tracks it without any code
+// changes elsewhere.
+const CURRENT_WAVE = 'Wave 2 - This Week';
+let outreachQueue: OutreachQueueRow[] = [];
 let fetchError: string | null = null;
 
 if (authed) {
@@ -140,6 +147,14 @@ if (authed) {
   } catch (e) {
     fetchError = e instanceof Error ? e.message : String(e);
     console.error('[hq] PostHog fetch failed', e);
+  }
+
+  // Outreach queue reads from the same Airtable cache the rest of HQ uses,
+  // so the second call hits the warm Redis entry and adds ~5ms total.
+  try {
+    outreachQueue = await getOutreachQueueByWave(CURRENT_WAVE);
+  } catch (e) {
+    console.error('[hq] outreach queue fetch failed', e);
   }
 }
 
@@ -811,6 +826,10 @@ const weekday = today.toLocaleString('en-US', { weekday: 'short', timeZone: 'UTC
 
         <section class="sec" id="action">
           <ActionQueue prospects={actionQueue} prospectInfo={prospectInfo} />
+        </section>
+
+        <section class="sec" id="send-queue">
+          <OutreachQueue queue={outreachQueue} wave={CURRENT_WAVE} />
         </section>
 
         <section class="sec" id="recent">

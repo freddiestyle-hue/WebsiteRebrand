@@ -1,8 +1,11 @@
-// POST endpoint that flips a prospect's Outreach Stage to "Sent" (or back to
-// "Not Sent"). Single source of truth is the Airtable Prospects table -
-// the legacy Redis "hq:messaged" hash is no longer consulted.
+// POST endpoint that flips a prospect's Outreach Stage. Single source of
+// truth is the Airtable Prospects table - the legacy Redis "hq:messaged"
+// hash is no longer consulted.
 //
-// Body: { slug: string, action: "mark" | "unmark" }
+// Body: { slug: string, action: "mark" | "unmark", stage?: string }
+//   - action=mark sets stage (default "Sent"; OutreachQueue sends "Connection Sent")
+//   - action=unmark sets stage to "Not Sent"
+//   - explicit stage param wins over the default for mark
 // Auth: same rivett_hq_key cookie that gates /hq. Without it, returns 401.
 // Response: { ok: boolean, slug, action, stage }
 
@@ -28,7 +31,7 @@ export const POST: APIRoute = async ({ request }) => {
     });
   }
 
-  let body: { slug?: string; action?: string };
+  let body: { slug?: string; action?: string; stage?: string };
   try {
     body = await request.json();
   } catch {
@@ -46,8 +49,19 @@ export const POST: APIRoute = async ({ request }) => {
     });
   }
 
+  // Allowlist of Outreach Stage values the API will set, matching the
+  // Prospects table's singleSelect choices. Anything else is silently
+  // coerced to the legacy default so a bad request can never write an
+  // unknown choice (which Airtable rejects with typecast=true off and
+  // creates a new option with typecast=true on).
+  const ALLOWED_STAGES = new Set([
+    'Not Sent', 'Drafted', 'Connection Sent', 'Connection Accepted',
+    'Sent', 'Bumped', 'Replied', 'Booked', 'Won', 'Lost', 'Disqualified',
+  ]);
   const action = body.action === 'unmark' ? 'unmark' : 'mark';
-  const stage = action === 'mark' ? 'Sent' : 'Not Sent';
+  const requestedStage = (body.stage ?? '').trim();
+  const defaultStage = action === 'mark' ? 'Sent' : 'Not Sent';
+  const stage = ALLOWED_STAGES.has(requestedStage) ? requestedStage : defaultStage;
 
   // Look up the Airtable record for this slug.
   const prospect = await getProspectBySlug(slug);
