@@ -96,6 +96,21 @@ if (isPOST && !memo) {
           runHeadlessCheck(norm.url),
           landingPromise,
         ]);
+
+        // Verified reads require the headless pass. Without it, every
+        // dimension that depends on rendered DOM (conversion, mobile, tracking,
+        // runtime tech stack) silently falls back to static-HTML inference and
+        // the audit pretends to be complete. Fail loud instead: return 503 so
+        // the bulk script's retry kicks in. runHeadlessCheck already retries
+        // once internally, so a null at this point means two cold starts
+        // failed in a row - the operator can retry the audit later when the
+        // lambda is warm.
+        if (!headless) {
+          Astro.response.status = 503;
+          Astro.response.headers.set('Retry-After', '10');
+          runtimeError = 'Headless render failed twice; audit not written. Retry later when the lambda is warm.';
+          console.error('[audit/v3] headless null for', norm.url, '- refusing to cache partial audit');
+        } else {
         audit = await runAudit(norm.url, {
           renderedHtml: headless?.renderedHtml,
           headlessTracking: headless?.tracking,
@@ -137,6 +152,7 @@ if (isPOST && !memo) {
           } catch (e) {
             console.error('[audit/v3] KV init failed', e);
           }
+        }
         }
       }
     }

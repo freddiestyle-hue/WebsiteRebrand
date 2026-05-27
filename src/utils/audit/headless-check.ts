@@ -298,10 +298,31 @@ async function tracePrimaryConversionPath(
   return homepage;
 }
 
+// Run the headless pass with a retry-once on failure. Cold-start Chromium on
+// Vercel can fail the first time (binary unmount, lambda CPU contention) and
+// succeed instantly on the second call because the binary is warm. Verified
+// reads require the headless pass, so we don't quietly skip it.
 export async function runHeadlessCheck(url: string): Promise<HeadlessResult | null> {
+  const first = await runHeadlessOnce(url);
+  if (first !== null) return first;
+  // Short backoff so a transient resource crunch has time to clear before
+  // we hit the lambda again. 1.5s is well under the bulk-audit per-request
+  // budget but enough for a stuck worker to free.
+  await new Promise((r) => setTimeout(r, 1500));
+  const second = await runHeadlessOnce(url);
+  if (second === null) {
+    // Surfaced in the logs so a deploy-wide regression is visible. The audit
+    // path checks for null and decides whether to fail the run; this is only
+    // a marker.
+    console.error('[audit/headless] both attempts returned null for', url);
+  }
+  return second;
+}
+
+async function runHeadlessOnce(url: string): Promise<HeadlessResult | null> {
   const started = Date.now();
 
-  // Hard outer cap: if the whole thing takes >20s, bail.
+  // Hard outer cap: if the whole thing takes >HEADLESS_TIMEOUT_MS, bail.
   const outerTimer = new Promise<null>((resolve) =>
     setTimeout(() => resolve(null), HEADLESS_TIMEOUT_MS),
   );
