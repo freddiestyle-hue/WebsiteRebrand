@@ -166,17 +166,21 @@ const actionQueue = top
   })
   .slice(0, 10);
 
-// Top-level (always visible) nav. Deep analytics (geography/devices/sources/
-// activity) are collapsed by default and not in the primary nav — they live
-// behind a "Deep analytics" disclosure at the bottom of the page.
+// Top-level nav. Each section gets a dynamic count and an icon name that
+// resolves to one of the SVG sprite symbols below.
 const sections = [
-  { id: 'action',    num: '00', label: 'Action queue' },
-  { id: 'recent',    num: '01', label: 'Recent reads' },
-  { id: 'prospects', num: '02', label: 'Prospects' },
-  { id: 'ctas',      num: '03', label: 'CTA clicks' },
-  { id: 'blog',      num: '04', label: 'Blog' },
-  { id: 'deep',      num: '05', label: 'Deep analytics' },
+  { id: 'action',    num: '00', label: 'Action queue',  icon: 'pipeline',   count: actionQueue.length },
+  { id: 'recent',    num: '01', label: 'Recent reads',  icon: 'memo',       count: recent.length },
+  { id: 'prospects', num: '02', label: 'Top prospects', icon: 'cohort',     count: top.length },
+  { id: 'ctas',      num: '03', label: 'CTA clicks',    icon: 'flag',       count: ctas.length },
+  { id: 'blog',      num: '04', label: 'Blog',          icon: 'field-note', count: blog.length },
+  { id: 'deep',      num: '05', label: 'Deep',          icon: 'curve',      count: null as number | null },
 ];
+
+// Today's date in middle-dot mono format for the topbar.
+const today = new Date();
+const todayDisplay = `${today.getUTCFullYear()}·${String(today.getUTCMonth()+1).padStart(2,'0')}·${String(today.getUTCDate()).padStart(2,'0')}`;
+const weekday = today.toLocaleString('en-US', { weekday: 'short', timeZone: 'UTC' }).toLowerCase();
 ---
 <!doctype html>
 <html lang="en">
@@ -193,17 +197,28 @@ const sections = [
     --paper: #FFFFFF;
     --paper-2: #F4F2ED;
     --paper-3: #EBE6DC;
+    --paper-4: #DDD7C9;
+    --sage: #E8F0D9;
+    --sage-2: #D5E3B7;
     --ink: #0E1A2C;
+    --ink-2: #1B2940;
     --ink-dim: #3A4658;
     --ink-faint: #7A8597;
+    --ink-soft: #B6BCC6;
+    --on-ink: #FFFFFF;
+    --on-ink-italic: rgba(255,255,255,0.62);
+    --on-ink-faint: rgba(255,255,255,0.55);
+    --on-ink-line: rgba(255,255,255,0.18);
     --line: rgba(14,26,44,0.14);
     --line-strong: rgba(14,26,44,0.28);
+    --line-soft: rgba(14,26,44,0.06);
     --accent: #8FBF3F;
     --accent-deep: #4A6E18;
     --accent-bg: #F2F7E5;
     --grotesk: 'Inter Tight', system-ui, sans-serif;
     --serif: 'Newsreader', Georgia, serif;
     --mono: 'DM Mono', ui-monospace, monospace;
+    --track-mono: 0.18em;
     --rail-w: 220px;
   }
   * { box-sizing: border-box; }
@@ -242,88 +257,167 @@ const sections = [
     min-width: 0;
   }
 
-  /* ============ RAIL ============ */
-  .rail-top {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 0.4rem;
-  }
-  .wordmark {
-    display: inline-flex;
-    align-items: baseline;
-    gap: 0.05em;
-    font-weight: 700;
-    font-size: 1.15rem;
-    letter-spacing: -0.04em;
+  /* ============ RAIL (Direction A) ============ */
+  .rail { padding: 22px 14px; gap: 14px; }
+  .rail-mark {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 8px;
     text-decoration: none;
     color: var(--ink);
   }
-  .wordmark .dot-mark {
+  .rail-wordmark {
+    font-family: var(--grotesk);
+    font-weight: 700;
+    font-size: 20px;
+    letter-spacing: -0.05em;
+    display: inline-flex; align-items: baseline; gap: 0.05em;
+  }
+  .rail-dot {
     display: inline-block;
-    width: 0.3em;
-    height: 0.3em;
+    width: 0.3em; height: 0.3em;
     border-radius: 999px;
     background: var(--accent);
   }
-  .rail-label {
+  .rail-tag {
     font-family: var(--mono);
-    font-size: 0.65rem;
+    font-size: 9.5px;
+    letter-spacing: 0.22em;
     text-transform: uppercase;
-    letter-spacing: 0.12em;
     color: var(--ink-faint);
-    padding: 0.15rem 0.4rem;
     border: 1px solid var(--line);
-    border-radius: 3px;
+    padding: 3px 7px;
+  }
+  .rail-sec-label {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    padding: 0 8px;
+    margin-top: 6px;
   }
 
   .sections-nav {
     display: flex;
     flex-direction: column;
-    gap: 0.05rem;
+    gap: 1px;
     flex: 1;
   }
   .sec-link {
     display: grid;
-    grid-template-columns: 2rem 1fr;
-    gap: 0.5rem;
+    grid-template-columns: 16px 16px 1fr auto;
+    gap: 10px;
     align-items: center;
-    padding: 0.4rem 0.5rem;
+    padding: 7px 22px 7px 6px;
     text-decoration: none;
-    border-radius: 3px;
     color: var(--ink-dim);
-    transition: background 80ms, color 80ms;
+    border-left: 2px solid transparent;
+    transition: background 120ms, color 120ms, border-color 120ms;
   }
   .sec-link:hover {
-    background: var(--paper-3);
+    background: var(--paper);
     color: var(--ink);
+  }
+  .sec-link.active {
+    background: var(--paper);
+    color: var(--ink);
+    border-left-color: var(--accent);
   }
   .sec-num {
     font-family: var(--mono);
-    font-size: 0.7rem;
+    font-size: 9.5px;
     color: var(--ink-faint);
-    letter-spacing: 0.05em;
+    letter-spacing: 0.06em;
+    text-align: right;
   }
+  .sec-ic { color: currentColor; opacity: 0.78; }
   .sec-name {
-    font-size: 0.85rem;
+    font-size: 13px;
     font-weight: 500;
+    letter-spacing: -0.005em;
+  }
+  .sec-count {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    color: var(--ink-faint);
+    letter-spacing: 0.06em;
   }
 
   .rail-foot {
-    padding: 0.5rem 0.4rem 0;
+    margin-top: auto;
+    padding: 14px 8px 0;
     border-top: 1px solid var(--line);
-    display: flex;
-    flex-direction: column;
-    gap: 0.3rem;
     font-family: var(--mono);
-    font-size: 0.7rem;
+    font-size: 9.5px;
+    line-height: 1.7;
+    color: var(--ink-faint);
+    letter-spacing: 0.04em;
   }
-  .rail-foot a {
+  .rail-foot-links {
+    display: flex; gap: 12px;
+    margin-top: 10px;
+  }
+  .rail-foot-links a {
     color: var(--ink-dim);
     text-decoration: none;
-    padding: 0.25rem 0.1rem;
   }
-  .rail-foot a:hover { color: var(--accent-deep); }
+  .rail-foot-links a:hover { color: var(--accent-deep); }
+
+  /* ============ TOPBAR (sticky 49px, single line) ============ */
+  .topbar {
+    position: sticky; top: 0; z-index: 6;
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 24px;
+    background: var(--paper);
+    border-bottom: 1px solid var(--line);
+    min-height: 49px;
+  }
+  .topbar-mark {
+    font-family: var(--grotesk);
+    font-weight: 700;
+    font-size: 20px;
+    letter-spacing: -0.05em;
+    text-decoration: none;
+    color: var(--ink);
+    display: inline-flex; align-items: baseline; gap: 0.05em;
+  }
+  .topbar-dot {
+    display: inline-block; width: 0.3em; height: 0.3em;
+    border-radius: 999px; background: var(--accent);
+  }
+  .topbar-crumb {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .topbar-fill { flex: 1; }
+  .topbar-date {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+    color: var(--ink-faint);
+  }
+  .topbar-live {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+    color: var(--accent-deep);
+    padding: 4px 10px;
+    border: 1px solid var(--accent);
+    background: var(--accent-bg);
+  }
+  .live-dot {
+    display: inline-block; width: 6px; height: 6px;
+    border-radius: 999px; background: var(--accent);
+    animation: hq-pulse 2s ease-in-out infinite;
+  }
+  @keyframes hq-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.45; transform: scale(0.7); }
+  }
 
   /* ============ APP BAR (top of main) ============ */
   .appbar {
@@ -589,47 +683,75 @@ const sections = [
 )}
 
 {authed && (
+  <>
+  <svg aria-hidden="true" focusable="false" style="position:absolute; width:0; height:0; overflow:hidden;" xmlns="http://www.w3.org/2000/svg">
+    <symbol id="ic-pipeline" viewBox="0 0 24 24"><path d="M3 7 H17 a3 3 0 0 1 0 6 H7 a3 3 0 0 0 0 6 H21" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square"/><circle cx="3" cy="7" r="1.6" fill="#8FBF3F"/></symbol>
+    <symbol id="ic-memo" viewBox="0 0 24 24"><path d="M5 3 H15 L19 7 V21 H5 Z M8 11 H16 M8 15 H16 M8 19 H13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square"/></symbol>
+    <symbol id="ic-cohort" viewBox="0 0 24 24"><path d="M4 4 H10 V10 H4 Z M14 4 H20 V10 H14 Z M4 14 H10 V20 H4 Z M14 14 H20 V20 H14 Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square"/></symbol>
+    <symbol id="ic-flag" viewBox="0 0 24 24"><path d="M4 20 L12 4 L20 20 Z M12 11 V15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square"/><circle cx="12" cy="17.5" r="0.8" fill="currentColor"/></symbol>
+    <symbol id="ic-field-note" viewBox="0 0 24 24"><path d="M6 4 H18 L20 6 V20 H4 V6 Z M8 10 H16 M8 14 H16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square"/><circle cx="6" cy="4" r="1.4" fill="#8FBF3F"/></symbol>
+    <symbol id="ic-curve" viewBox="0 0 24 24"><path d="M3 17 Q9 17 12 11 T21 5 M3 21 H21" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square"/><circle cx="21" cy="5" r="1.6" fill="#8FBF3F"/></symbol>
+  </svg>
   <div class="app">
     <aside class="rail" aria-label="HQ sections">
-      <div class="rail-top">
-        <a class="wordmark" href="/">rivett<span class="dot-mark" aria-hidden="true"></span></a>
-        <span class="rail-label">HQ</span>
-      </div>
+      <a class="rail-mark" href="/">
+        <span class="rail-wordmark">rivett<span class="rail-dot" aria-hidden="true"></span></span>
+        <span class="rail-tag">HQ</span>
+      </a>
+      <div class="rail-sec-label">SECTIONS</div>
       <nav class="sections-nav" aria-label="Section navigation">
         {sections.map((s) => (
           <a href={`#${s.id}`} class="sec-link">
             <span class="sec-num">{s.num}</span>
+            <svg class="sec-ic" width="16" height="16" aria-hidden="true"><use href={`#ic-${s.icon}`}></use></svg>
             <span class="sec-name">{s.label}</span>
+            {s.count !== null && <span class="sec-count">{s.count}</span>}
           </a>
         ))}
       </nav>
       <div class="rail-foot">
-        <a href="/hq">↻ Refresh</a>
-        <a href="https://us.posthog.com/project/373899" target="_blank" rel="noopener">PostHog console ↗</a>
+        Single-operator scope.<br/>
+        Fred · Cape Town<br/>
+        v1.0 · {todayDisplay.slice(0, 7)}
+        <div class="rail-foot-links">
+          <a href="/hq">↻ refresh</a>
+          <a href="https://us.posthog.com/project/373899" target="_blank" rel="noopener">PostHog ↗</a>
+        </div>
       </div>
     </aside>
 
     <main class="main">
+      <header class="topbar">
+        <a class="topbar-mark" href="/">rivett<span class="topbar-dot" aria-hidden="true"></span></a>
+        <span class="topbar-crumb">HQ · 00 Action queue</span>
+        <span class="topbar-fill"></span>
+        <div class="traffic-toggle" role="group" aria-label="Traffic filter">
+          <a
+            href={hrefWithTraffic('humans')}
+            class={`tt ${trafficMode === 'humans' ? 'tt--active' : ''}`}
+            aria-current={trafficMode === 'humans' ? 'true' : 'false'}
+          >Humans</a>
+          <a
+            href={hrefWithTraffic('all')}
+            class={`tt ${trafficMode === 'all' ? 'tt--active' : ''}`}
+            aria-current={trafficMode === 'all' ? 'true' : 'false'}
+          >All</a>
+        </div>
+        <span class="topbar-date">{todayDisplay} · {weekday}</span>
+        {activeNow && activeNow.active_sessions > 0 && (
+          <span class="topbar-live">
+            <span class="live-dot" aria-hidden="true"></span>
+            Live · {activeNow.active_sessions} now
+          </span>
+        )}
+      </header>
       <div class="appbar">
         <div class="appbar-title">
           <h1 class="appbar-h1">Audit engagement</h1>
           <span class="appbar-sub">{range.label}</span>
-          {activeNow && <ActiveNowBadge data={activeNow} />}
         </div>
         <div class="appbar-range">
           <DateRangeNav range={range} />
-          <div class="traffic-toggle" role="group" aria-label="Traffic filter">
-            <a
-              href={hrefWithTraffic('humans')}
-              class={`tt ${trafficMode === 'humans' ? 'tt--active' : ''}`}
-              aria-current={trafficMode === 'humans' ? 'true' : 'false'}
-            >Humans</a>
-            <a
-              href={hrefWithTraffic('all')}
-              class={`tt ${trafficMode === 'all' ? 'tt--active' : ''}`}
-              aria-current={trafficMode === 'all' ? 'true' : 'false'}
-            >All traffic</a>
-          </div>
         </div>
       </div>
 
@@ -803,6 +925,7 @@ const sections = [
       </div>
     </main>
   </div>
+  </>
 )}
 </body>
 </html>
