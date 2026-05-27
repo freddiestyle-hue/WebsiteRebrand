@@ -21,6 +21,7 @@ import { checkAds } from '../../utils/audit/ads-check';
 import { detectTechStack } from '../../utils/audit/tech-stack-check';
 import { runHeadlessCheck } from '../../utils/audit/headless-check';
 import { auditLandingPages } from '../../utils/audit/landing-check';
+import { checkIndexedPages } from '../../utils/audit/serp';
 import type { Memo, VerdictCell, VerdictIcon } from '../../utils/audit/memo-schema';
 import { sanitizeMemoHtml } from '../../utils/audit/safe-html';
 import { v3SlugFromDomain } from '../../utils/audit/slug';
@@ -95,12 +96,17 @@ if (isPOST && !memo) {
         const landingPromise = adsPromise.then((ads) =>
           ads ? auditLandingPages(ads.sampleLandingPages) : { pages: [], durationMs: 0 },
         );
-        const [deliverability, pageSpeed, ads, headless, landing] = await Promise.all([
+        // Upgrade 11 - SerpAPI Google site: query runs in parallel with the
+        // other hostname-only enrichments. Cached 7 days in Upstash so repeat
+        // audits of the same prospect hit cache instantly.
+        const serpPromise = checkIndexedPages(norm.hostname);
+        const [deliverability, pageSpeed, ads, headless, landing, serp] = await Promise.all([
           checkDeliverability(norm.hostname),
           checkPageSpeed(norm.url, 'mobile'),
           adsPromise,
           runHeadlessCheck(norm.url),
           landingPromise,
+          serpPromise,
         ]);
 
         // Verified reads require the headless pass. Without it, every
@@ -155,6 +161,7 @@ if (isPOST && !memo) {
           headlessTracking: headless?.tracking,
           conversionPath: headless?.conversionPath,
           crawl: true,
+          serp,
         });
         if (audit.error) {
           runtimeError = audit.error;

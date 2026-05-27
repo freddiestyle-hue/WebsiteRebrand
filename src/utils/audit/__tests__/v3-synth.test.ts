@@ -4,7 +4,7 @@ import type { AuditResult, CheckResult } from '../engine';
 import type { PageSpeedResult } from '../pagespeed';
 import type { AdsResult } from '../ads-check';
 import type { DeliverabilityResult } from '../dns-check';
-import { MemoSchema } from '../memo-schema';
+import { MemoSchema, AUDIT_ENGINE_VERSION } from '../memo-schema';
 
 function mkCheck(
   o: Partial<CheckResult> & { id: string; category: CheckResult['category']; passed: boolean },
@@ -333,6 +333,19 @@ describe('rollupReliability weight-aware cascade (Upgrade 8)', () => {
     const memo = buildMemoFromAudit(audit);
     const conv = memo.verdictCells.find((c) => c.icon === 'eye');
     expect(conv?.reliability).toBe('soft-absence');
+  });
+
+  it('memo carries auditVersion = AUDIT_ENGINE_VERSION on every new build (Upgrade 11)', () => {
+    // Every fresh memo built via buildMemoFromAudit tags itself with the
+    // current engine version so PostHog cohort filters can split 3.4 vs
+    // 3.5.x post-ship. Cached pre-Upgrade-11 memos remain valid (the field
+    // is optional) but won't carry the version - PostHog will see them
+    // as undefined which the filter treats as legacy.
+    const memo = buildMemoFromAudit(mkAudit([
+      mkCheck({ id: 'sitemap', category: 'crawl', passed: true }),
+    ]));
+    expect(memo.auditVersion).toBe(AUDIT_ENGINE_VERSION);
+    expect(MemoSchema.safeParse(memo).success).toBe(true);
   });
 
   it('cell with only weight-0 checks returns verified by default', () => {
