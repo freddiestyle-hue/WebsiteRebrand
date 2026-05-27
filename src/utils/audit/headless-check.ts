@@ -50,8 +50,11 @@ export interface HeadlessResult {
   durationMs: number;
 }
 
-const HEADLESS_TIMEOUT_MS = 45000;
-const NAV_TIMEOUT_MS = 15000;
+// Wave 2 audits exposed how thin 45s was for heavy enterprise / real-estate
+// sites - 60s lets the page actually finish settling before scroll simulation.
+// Vercel's default function timeout is 60s on Pro, so this is the hard ceiling.
+const HEADLESS_TIMEOUT_MS = 60000;
+const NAV_TIMEOUT_MS = 20000;
 // Trace budget covers homepage + up to 2 deep-page escalations.
 // Each trace = (enumerate + click + settle) ~3s; deep nav = ~2s. Worst case
 // 3 + 2 + 3 + 2 + 3 = 13s. Cap at 15s for headroom.
@@ -298,25 +301,25 @@ async function tracePrimaryConversionPath(
   return homepage;
 }
 
-// Run the headless pass with a retry-once on failure. Cold-start Chromium on
-// Vercel can fail the first time (binary unmount, lambda CPU contention) and
-// succeed instantly on the second call because the binary is warm. Verified
-// reads require the headless pass, so we don't quietly skip it.
+// Run the headless pass with up to two retries on failure. Cold-start Chromium
+// on Vercel can fail the first time (binary unmount, lambda CPU contention).
+// Wave 2 audits showed heavy enterprise/real-estate sites need more retries -
+// first call cold-starts and times out, second warms the binary, third does
+// the actual work. Verified reads require headless, so we don't quietly skip.
 export async function runHeadlessCheck(url: string): Promise<HeadlessResult | null> {
-  const first = await runHeadlessOnce(url);
-  if (first !== null) return first;
-  // Short backoff so a transient resource crunch has time to clear before
-  // we hit the lambda again. 1.5s is well under the bulk-audit per-request
-  // budget but enough for a stuck worker to free.
-  await new Promise((r) => setTimeout(r, 1500));
-  const second = await runHeadlessOnce(url);
-  if (second === null) {
+  const backoffsMs = [1500, 3000];
+  let last: HeadlessResult | null = await runHeadlessOnce(url);
+  for (let attempt = 0; attempt < backoffsMs.length && last === null; attempt++) {
+    await new Promise((r) => setTimeout(r, backoffsMs[attempt]));
+    last = await runHeadlessOnce(url);
+  }
+  if (last === null) {
     // Surfaced in the logs so a deploy-wide regression is visible. The audit
     // path checks for null and decides whether to fail the run; this is only
     // a marker.
-    console.error('[audit/headless] both attempts returned null for', url);
+    console.error('[audit/headless] all 3 attempts returned null for', url);
   }
-  return second;
+  return last;
 }
 
 async function runHeadlessOnce(url: string): Promise<HeadlessResult | null> {
