@@ -130,7 +130,12 @@ function verifiedNote(
 }
 
 function checksFromCategory(checks: CheckResult[]): VerdictCheck[] {
-  return checks.map((c) => ({ ok: c.passed, text: c.label, reliability: c.reliability }));
+  return checks.map((c) => ({
+    ok: c.passed,
+    text: c.label,
+    reliability: c.reliability,
+    weight: c.weight,
+  }));
 }
 
 function effortFor(check: CheckResult): 'low' | 'med' | 'high' {
@@ -585,6 +590,7 @@ function augmentTrackingChecks(
     ok: c.passed,
     text: c.measurement ? trackingRowText(c.label, c.measurement) : c.label,
     reliability: c.reliability,
+    weight: c.weight,
   }));
 
   if (!tech) return out;
@@ -603,8 +609,10 @@ function augmentTrackingChecks(
     const key = text.toLowerCase();
     if (!seenNames.has(key)) {
       // A fingerprinted advertising/analytics tag is a real detection - the
-      // tag's code is on the page. Presence is assertable.
-      out.push({ ok: true, text, reliability: 'verified' });
+      // tag's code is on the page. Presence is assertable. Weight 0 keeps
+      // these informational rows out of the rollupReliability cascade -
+      // they surface in the cell but never tip the headline reliability.
+      out.push({ ok: true, text, reliability: 'verified', weight: 0 });
       seenNames.add(key);
     }
   }
@@ -920,10 +928,25 @@ function placeholderStack(staticRan: boolean): VerdictCell {
 // Upgrade 7 - reliability calibration + cross-dimension synthesis
 // ============================================================
 
-// A cell is only as assertable as its softest finding.
+// A cell is only as assertable as its softest LOAD-BEARING finding.
+// Upgrade 8 - weight-aware cascade. Weight-0 checks are channel-specific
+// informational signals (LinkedIn Insight, TikTok Pixel, PostHog, plus the
+// tech-stack-augmented advertising/analytics rows). They surface in the cell
+// but never cascade their reliability into the headline tag. A site that
+// doesn't run LinkedIn ads shouldn't read Unconfirmed because we couldn't
+// confirm a tracker it never used.
+//
+// Back-compat: missing weight defaults to 1 (load-bearing). Cached memos
+// written before Upgrade 8 and enrichment cells (speed/mail/ads/stack)
+// that build VerdictCheck without going through CheckResult keep their
+// previous cascade behaviour.
+//
+// Strict equality to 0 keeps the 0.5-weight conversion-chat-widget
+// cascading - it's a smaller but still load-bearing signal.
 function rollupReliability(checks: VerdictCheck[]): Reliability {
   let hasInferred = false;
   for (const c of checks) {
+    if ((c.weight ?? 1) === 0) continue;
     if (c.reliability === 'soft-absence') return 'soft-absence';
     if (c.reliability === 'inferred') hasInferred = true;
   }

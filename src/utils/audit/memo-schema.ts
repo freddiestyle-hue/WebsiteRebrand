@@ -37,6 +37,14 @@ const VerdictCheckSchema = z.object({
   // Upgrade 7 - how far this row can be trusted. Optional for back-compat
   // with v2.0.0 memos written before the reliability pass existed.
   reliability: z.enum(RELIABILITY_VALUES).optional(),
+  // Upgrade 8 - the check's score weight. Used by rollupReliability to
+  // exclude weight-0 channel-specific signals (LinkedIn Insight, TikTok
+  // Pixel, PostHog) from the soft-absence cascade so a site that doesn't
+  // run those ad channels isn't tagged Unconfirmed for trackers it never
+  // used. Optional for back-compat with cached memos and enrichment cells
+  // (speed/mail/ads/stack) that build VerdictCheck without going through
+  // CheckResult. Missing weight defaults to 1 (load-bearing) at read time.
+  weight: z.number().optional(),
 });
 
 const VerdictCellSchema = z.object({
