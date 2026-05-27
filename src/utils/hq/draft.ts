@@ -131,23 +131,34 @@ export async function generateDraft(
 // Prompt
 // --------------------------------------------------------------------------
 
-const SYSTEM_PROMPT = `You write outbound sales messages on behalf of Fred Style at Rivett (rivett.tech).
+const SYSTEM_PROMPT = `You write SHORT, action-driving follow-up DMs for Fred Style at Rivett (rivett.tech).
 
-About Rivett: Fred builds automated pipeline systems (AI agents) for SMB operators. He used to run growth at Somewhere.com under Nick Huber. Rivett sells fractional embedded leadership, 3-4 clients max, $8-15k/month retainers. The wedge is a free 30-minute audit of the prospect's marketing stack.
+The recipient has ALREADY READ the audit. Do NOT re-explain what's in it. They saw it.
+
+Your job: get them on a 15-30 min call. That's it.
 
 Voice rules (non-negotiable):
-- No em dashes. Use commas, periods, sentence breaks, or hyphens instead.
-- No emoji.
-- Lowercase-conversational. No corporate fluff.
-- Skip openers like "Hope you're well" or "I hope this finds you well".
-- Reference ONE specific thing they did on the audit memo OR ONE specific audit finding. Not a list. Make it feel like you noticed them, not blasted them.
-- Sentences short. Vary length. Don't stack three short sentences in a row (that's an AI tell).
-- No rule-of-three patterns. No "we do X. we do Y. we do Z."
-- End with one specific small ask, not "let me know if interested."
+- LinkedIn DM body: 180-320 characters. Email body: 50-110 words. Stay under.
+- 2-3 sentences max. No paragraphs.
+- ONE line acknowledging what they did (came back, scrolled, expanded, etc.). Specific, not generic.
+- ONE line that names the gap-they-care-about generically (NOT a recap of the audit's findings). Example: "the tracking gap" or "the page-speed thing" or "the conversion side." A pointer, not a re-read.
+- ONE direct ask. "Worth a quick call?" or "15 min?" or "Want to walk through it?" Always end on a question.
+- No em dashes. No emoji. Lowercase-conversational.
+- Skip "hope you're well", "just wanted to", "I wanted to reach out".
+- Do NOT include the cal.com link, the audit URL, or any other links. Fred adds those by hand. The body is text only.
+- Do NOT list findings. Do NOT include numbers, percentages, or product names from the audit. The prospect already saw those.
+
+Examples of the right shape:
+
+"heidi, you came back twice. that probably means the tracking gap is the one worth talking through. 15 min this week?"
+
+"claire, you went all the way to the bottom of the memo and expanded the verdicts. quickest path is a quick walk-through of the fix order. worth a call?"
+
+"frank, you opened it twice but didn't scroll much. happy to do a 10 min call where I just hit the headline findings instead. interested?"
 
 Output strictly as JSON: {"subject": "...", "body": "..."}
-- For LinkedIn, subject is "". Body 600-900 characters.
-- For email, subject is 4-7 lowercase words, no punctuation at the end. Body 4-7 sentences, 80-150 words.
+- LinkedIn: subject is "". Body 180-320 chars.
+- Email: subject is 4-6 lowercase words, no punctuation at end. Body 50-110 words.
 - Return ONLY the JSON. No preamble, no markdown fences.`;
 
 function buildPrompt(
@@ -167,55 +178,65 @@ function buildPrompt(
   if (prospect.outreachStage) lines.push(`- Outreach stage so far: ${prospect.outreachStage}`);
   lines.push('');
 
-  lines.push('WHAT THEY DID ON THE AUDIT MEMO');
+  lines.push('WHAT THEY DID ON THE AUDIT (use ONE in your one-line acknowledgement)');
   const behaviors = describeSignals(signals);
   if (behaviors.length === 0) {
-    lines.push('- They opened it but signals are thin. Reference the audit you sent, do not invent behaviour.');
+    lines.push('- They opened the memo. Nothing else recorded. Acknowledge generically: "you opened it."');
   } else {
     for (const b of behaviors) lines.push(`- ${b}`);
   }
   lines.push('');
 
+  // Pick the strongest finding-dimension as the generic gap pointer — used as
+  // a category hint only, never quoted verbatim. The LLM should reference
+  // "the tracking thing" or "the conversion side," not the literal text.
   if (prospect.auditContext) {
-    lines.push('AUDIT FINDINGS (use one of these as a hook if relevant)');
-    // Trim auditContext to a sane size so we do not blow tokens
-    const ctx = prospect.auditContext.length > 1500
-      ? prospect.auditContext.slice(0, 1500) + '\n...'
-      : prospect.auditContext;
-    lines.push(ctx);
-    lines.push('');
-  }
-
-  // Show any existing canned message as a STYLE anchor, not content to copy.
-  const styleAnchor = prospect.linkedinDm || prospect.linkedinFollowupDm || prospect.emailBody;
-  if (styleAnchor) {
-    lines.push('STYLE ANCHOR (match this voice, do not copy the content)');
-    lines.push(styleAnchor.slice(0, 800));
-    lines.push('');
+    const dimHint = inferGapCategory(prospect.auditContext);
+    if (dimHint) {
+      lines.push(`GENERIC GAP CATEGORY (point at this, do NOT quote the audit): ${dimHint}`);
+      lines.push('');
+    }
   }
 
   lines.push(
     channel === 'linkedin'
-      ? 'Write a LinkedIn DM. They have already engaged with the audit, so this is a post-engagement nudge, not a cold connection request.'
-      : 'Write an email. Subject is short and lowercase. Body has a specific opening hook from their behaviour or an audit finding.'
+      ? 'Write a LinkedIn DM. 180-320 chars, 2-3 sentences. End with a question asking for a short call. No links, no numbers, no audit recap.'
+      : 'Write an email. Subject 4-6 lowercase words. Body 50-110 words, 2-4 sentences. End with a question asking for a short call. No links, no numbers, no audit recap.'
   );
 
   return lines.join('\n');
 }
 
+// Pick a coarse gap category from the audit findings text. The LLM uses this
+// to point at the right kind of issue ("the tracking gap", "the page-speed
+// thing") without rehashing specifics.
+function inferGapCategory(auditContext: string): string {
+  const ctx = auditContext.toLowerCase();
+  const hits: string[] = [];
+  if (/tracking|gtm|insight tag|ga4|pixel/.test(ctx)) hits.push('the tracking gap');
+  if (/pagespeed|load time|lcp|render/.test(ctx)) hits.push('the page-speed thing');
+  if (/conversion|cta|form|booking/.test(ctx)) hits.push('the conversion side');
+  if (/seo|aeo|crawl|schema/.test(ctx)) hits.push('the discovery / SEO piece');
+  if (/email|deliverab|spf|dmarc/.test(ctx)) hits.push('the email deliverability angle');
+  if (/ads|paid|landing/.test(ctx)) hits.push('the paid-ads side');
+  if (/mobile/.test(ctx)) hits.push('the mobile experience');
+  return hits[0] || '';
+}
+
 function describeSignals(s: DraftSignals): string[] {
+  // Behaviour pointers the LLM picks ONE from. Phrased as the natural-language
+  // line that can drop straight into the DM. Avoid raw numbers / counts so the
+  // model doesn't itemise. "Came back twice" is fine; "spent 56s" is not.
   const out: string[] = [];
-  if (s.return_visitor) out.push(`Came back: ${s.unique_sessions} separate sessions on the memo.`);
-  if (s.prints > 0) out.push(`Printed the memo ${s.prints} time(s). They are saving it.`);
-  if (s.copies > 0) out.push(`Copied text out of the memo ${s.copies} time(s). Probably sharing internally.`);
-  if (s.cta_clicks > 0) out.push(`Clicked the book-a-call CTA ${s.cta_clicks} time(s).`);
-  if (s.scroll_100s > 0) out.push(`Scrolled to the very bottom ${s.scroll_100s} time(s). Full read.`);
-  if (s.verdict_expansions > 0) out.push(`Expanded ${s.verdict_expansions} verdict cell(s). They wanted to know what we think.`);
-  if (s.total_dwell_seconds >= 60) {
-    out.push(`Spent ${Math.round(s.total_dwell_seconds / 60)} minutes total on the memo.`);
-  } else if (s.total_dwell_seconds >= 15) {
-    out.push(`Spent ${s.total_dwell_seconds}s on the memo.`);
-  }
+  if (s.cta_clicks > 0) out.push(`hit the book-a-call CTA`);
+  if (s.prints > 0) out.push(`printed it (saving for later)`);
+  if (s.copies > 0) out.push(`copied a chunk out of it (probably forwarding internally)`);
+  if (s.return_visitor && s.unique_sessions >= 3) out.push(`came back three or more times`);
+  else if (s.return_visitor) out.push(`came back twice`);
+  if (s.scroll_100s > 0) out.push(`went all the way to the bottom`);
+  if (s.verdict_expansions > 0) out.push(`expanded the verdict cells`);
+  if (s.total_dwell_seconds >= 120) out.push(`spent real time on it`);
+  else if (s.total_dwell_seconds >= 30) out.push(`gave it a real look`);
   return out;
 }
 
