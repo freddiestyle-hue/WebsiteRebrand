@@ -19,7 +19,7 @@ import type {
   Synthesis,
   CrossSignal,
 } from './memo-schema';
-import { MEMO_SCHEMA_VERSION } from './memo-schema';
+import { MEMO_SCHEMA_VERSION, AUDIT_ENGINE_VERSION } from './memo-schema';
 import { generateSlug } from './slug';
 import type { DeliverabilityResult } from './dns-check';
 import type { MobileRenderingResult } from './mobile-check';
@@ -1282,6 +1282,7 @@ export function buildMemoFromAudit(audit: AuditResult, enrich?: EnrichmentBundle
 
   const memo: Memo = {
     version: MEMO_SCHEMA_VERSION,
+    auditVersion: AUDIT_ENGINE_VERSION,
     slug,
     domain: audit.hostname,
     companyName: null,

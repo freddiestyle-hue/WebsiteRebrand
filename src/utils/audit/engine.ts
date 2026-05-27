@@ -16,6 +16,7 @@ import {
   type PageRole,
 } from './crawl';
 import type { ConversionPathResult } from './conversion-path';
+import type { SerpResult } from './serp';
 
 // Upgrade 7 - how far a finding can be trusted, especially a negative one.
 //   verified     - confirmed present, or a real measurement, or an
@@ -322,6 +323,11 @@ export function reliabilityFor(c: DraftCheck, headlessRan = false): ReliabilityT
     case 'robots':
     case 'robots-sitemap':
       return 'verified';
+    // Upgrade 11 - SerpAPI returns Google's own indexed count. Whether
+    // the count is high or low, it's the authoritative number for the
+    // signal we care about. Never soft.
+    case 'pages-indexed':
+      return 'verified';
     default:
       // Positive results are always verified (the parser found the thing).
       if (c.passed) return 'verified';
@@ -352,6 +358,10 @@ export interface RunAuditOptions {
   // Upgrade 4 - the headless conversion-path trace (HeadlessResult.conversionPath).
   // When supplied, runAudit reports it as a conversion-path check.
   conversionPath?: ConversionPathResult;
+  // Upgrade 11 - SerpAPI Google site: query result. When supplied, runAudit
+  // emits an authoritative `pages-indexed` check in the crawl category.
+  // Without it, that check is skipped (no false zero, no denominator bloat).
+  serp?: SerpResult | null;
 }
 
 export async function runAudit(rawUrl: string, opts?: RunAuditOptions): Promise<AuditResult> {
@@ -450,6 +460,29 @@ export async function runAudit(rawUrl: string, opts?: RunAuditOptions): Promise<
         : urlCount === 0
           ? `Sitemap is missing or empty. There are zero URLs for crawlers to walk.`
           : `Sitemap lists only ${urlCount} URLs. Below the threshold (5) that signals an actively-published site. Add more content URLs or include blog posts in the index.`,
+    });
+  }
+
+  // Upgrade 11 - authoritative pages-indexed count via SerpAPI (site:domain).
+  // Only emitted when opts.serp returned data - the sitemap-size heuristic
+  // above stays as the fallback when SerpAPI is unavailable. Weight 2 because
+  // a real Google indexed count is a stronger signal than a sitemap URL count
+  // (sitemap can list 200 pages while Google only indexed 30).
+  if (opts?.serp && opts.serp.totalIndexed !== null) {
+    const indexed = opts.serp.totalIndexed;
+    const ok = indexed >= 5;
+    draft.push({
+      id: 'pages-indexed',
+      category: 'crawl',
+      label: `Pages indexed by Google: ${indexed.toLocaleString()}`,
+      passed: ok,
+      weight: 2,
+      evidence: `site:${hostname} returned ${indexed.toLocaleString()} results (SerpAPI ${opts.serp.source})`,
+      finding: ok
+        ? `Google has ${indexed.toLocaleString()} pages from ${hostname} in its index. Real publishing site, real crawl footprint.`
+        : indexed === 0
+          ? `Google has zero pages from ${hostname} indexed. Either the site is brand new, blocked by robots.txt, manually deindexed, or hit a penalty. This is the highest-leverage fix in the audit.`
+          : `Google has only ${indexed.toLocaleString()} page${indexed === 1 ? '' : 's'} indexed for ${hostname}. AI engines that depend on Google's index find a thin footprint. Publish more discoverable content and ensure each page has a canonical, sitemap entry, and internal link from a known page.`,
     });
   }
   {

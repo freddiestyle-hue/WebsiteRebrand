@@ -2,6 +2,12 @@ import { z } from 'zod';
 
 export const MEMO_SCHEMA_VERSION = '2.0.0';
 
+// Upgrade 11 - the audit engine version that produced this memo. Bumped on
+// each shipped engine change (3.5.0 ships SerpAPI pages-indexed). Surfaces
+// in the memo so PostHog cohort filters can split 3.4 vs 3.5.x audit data
+// post-ship. Separate from MEMO_SCHEMA_VERSION which tracks the JSON shape.
+export const AUDIT_ENGINE_VERSION = '3.5.0';
+
 const CoverSchema = z.object({
   kicker: z.string().min(1),
   roman: z.string().min(1),
@@ -125,6 +131,10 @@ export const SynthesisSchema = z.object({
 
 export const MemoSchema = z.object({
   version: z.literal(MEMO_SCHEMA_VERSION),
+  // Upgrade 11 - the audit engine version that produced this memo. Optional
+  // for back-compat with cached memos written before 3.5 (treated as legacy
+  // /3.4 by analytics). New memos always carry it via buildMemoFromAudit.
+  auditVersion: z.string().optional(),
   slug: z.string().regex(/^[a-z0-9-]+-[a-z0-9]{16}$/, {
     message: 'Slug must match {normalized-domain}-{16-char-random}',
   }),
