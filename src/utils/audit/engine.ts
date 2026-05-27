@@ -301,8 +301,11 @@ function canonicalHref(html: string): string | null {
 // positive result (something found, a number measured) is assertable; a
 // negative result is only assertable when the method sees absence
 // authoritatively (a real network fetch - a 404 is a 404). HTML parsing,
-// regex, and allowlists false-negative, so their absences are soft.
-export function reliabilityFor(c: DraftCheck): ReliabilityTag {
+// regex, and allowlists false-negative on static HTML, so their absences are
+// soft UNLESS the headless pass rendered the DOM (post-JS, post-scroll,
+// post-settle) - then the rendered DOM IS what the prospect's visitors see
+// and an absence is real evidence, not a parser miss.
+export function reliabilityFor(c: DraftCheck, headlessRan = false): ReliabilityTag {
   // Tracking checks carry a measured state.
   if (c.measurement) {
     const s = c.measurement.state;
@@ -320,10 +323,12 @@ export function reliabilityFor(c: DraftCheck): ReliabilityTag {
     case 'robots-sitemap':
       return 'verified';
     default:
-      // Everything else - sitemap discovery, HTML-parsed schema/meta, regex
-      // conversion signals, the click-trace - reads a positive result
-      // reliably and false-negatives on absence.
-      return c.passed ? 'verified' : 'soft-absence';
+      // Positive results are always verified (the parser found the thing).
+      if (c.passed) return 'verified';
+      // Absence is verified when the headless pass rendered the full DOM -
+      // we saw what the visitor sees. Without headless, an absence might
+      // just be a JS-rendered element the static parser missed, so soft.
+      return headlessRan ? 'verified' : 'soft-absence';
   }
 }
 
@@ -852,10 +857,13 @@ export async function runAudit(rawUrl: string, opts?: RunAuditOptions): Promise<
   const endedAt = Date.now();
 
   // Upgrade 7 - finalize every draft check with its reliability tag, so a
-  // soft negative is never read downstream as a hard fact.
+  // soft negative is never read downstream as a hard fact. When the headless
+  // pass rendered the DOM we trust absences too - the parser saw what the
+  // visitor sees.
+  const headlessRan = rendered != null;
   const checks: CheckResult[] = draft.map((c) => ({
     ...c,
-    reliability: reliabilityFor(c),
+    reliability: reliabilityFor(c, headlessRan),
   }));
 
   const passedWeight = checks.reduce((s, c) => s + (c.passed ? c.weight : 0), 0);
