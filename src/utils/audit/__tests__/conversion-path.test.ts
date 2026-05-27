@@ -81,4 +81,44 @@ describe('pickPrimaryCta', () => {
     ]);
     expect(picked?.index).toBe(0);
   });
+
+  // The picker historically only recognised B2B service vocabulary - "book a
+  // demo", "talk to sales". That silently broke for ecommerce / D2C, lead-gen,
+  // and non-profit prospects whose primary CTA reads "Shop now", "Apply now",
+  // "Donate". Every prospect type in our list needs at least one recognised
+  // CTA verb or the conversion-path trace returns no-cta and the audit looks
+  // unverified.
+  describe('expanded vocabulary by prospect type', () => {
+    it.each([
+      ['Shop now', 'ecommerce'],
+      ['Shop the collection', 'ecommerce'],
+      ['Buy now', 'ecommerce'],
+      ['Add to cart', 'ecommerce'],
+      ['Browse our store', 'ecommerce'],
+      ['View products', 'ecommerce'],
+      ['Order now', 'ecommerce'],
+      ['Apply now', 'finance / lead-gen'],
+      ['Get a callback', 'finance / lead-gen'],
+      ['Request a callback', 'finance / lead-gen'],
+      ['See pricing', 'SaaS'],
+      ['View pricing', 'SaaS'],
+      ['Watch a demo', 'SaaS'],
+      ['Create your account', 'SaaS'],
+      ['Register', 'SaaS / event'],
+      ['Book a tour', 'real estate / hospitality'],
+      ['Reserve your spot', 'event / hospitality'],
+      ['Free consultation', 'services'],
+      ['Free estimate', 'services'],
+      ['Free audit', 'services'],
+      ['Donate now', 'non-profit'],
+      ['Join today', 'membership / community'],
+      ['Download', 'app / lead magnet'],
+    ])('"%s" is recognised as a primary CTA (%s prospect type)', (text) => {
+      const picked = pickPrimaryCta([
+        cand({ index: 0, text: 'Home', href: '/' }),
+        cand({ index: 1, text, tag: 'button' }),
+      ]);
+      expect(picked?.index).toBe(1);
+    });
+  });
 });

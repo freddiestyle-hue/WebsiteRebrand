@@ -55,9 +55,44 @@ function passCount(checks: CheckResult[]): { passed: number; total: number } {
   return { passed, total };
 }
 
+// Verified-only count. Soft-absence checks (HTML parses that false-negative,
+// scrapers a CMP gates, etc.) are excluded from the denominator entirely - they
+// are "unconfirmed", not gaps. Cell summaries lean on this so a prospect never
+// reads "4 of 5 gaps" when 3 of those 4 are just "couldn't determine".
+function verifiedCount(checks: CheckResult[]): {
+  passed: number;
+  failed: number;
+  unconfirmed: number;
+  verifiedTotal: number;
+} {
+  let passed = 0;
+  let failed = 0;
+  let unconfirmed = 0;
+  for (const c of checks) {
+    const rel = c.reliability ?? 'verified';
+    if (rel === 'soft-absence') {
+      unconfirmed++;
+    } else if (c.passed) {
+      passed++;
+    } else {
+      failed++;
+    }
+  }
+  return { passed, failed, unconfirmed, verifiedTotal: passed + failed };
+}
+
 function valueStr({ passed, total }: { passed: number; total: number }): string {
   if (total === 0) return 'n/a';
   return `${passed} of ${total}`;
+}
+
+// Headline value built from verified passes only. Soft-absence rows still show
+// in `checks` (rendered as "Unconfirmed") but never inflate the score.
+function verifiedValueStr(v: ReturnType<typeof verifiedCount>): string {
+  if (v.verifiedTotal === 0) {
+    return v.unconfirmed > 0 ? 'unconfirmed' : 'n/a';
+  }
+  return `${v.passed} of ${v.verifiedTotal} verified`;
 }
 
 function noteFor(
@@ -69,6 +104,29 @@ function noteFor(
   if (passed === total) return ifAll;
   const gap = total - passed;
   return `${gap} of ${total} ${label} ${gap === 1 ? 'gap' : 'gaps'}.`;
+}
+
+// Verified-aware note. Reports verified gaps as gaps; reports unconfirmed
+// separately so the prospect knows what we did and didn't measure.
+function verifiedNote(
+  label: string,
+  v: ReturnType<typeof verifiedCount>,
+  ifAllPass: string,
+): string {
+  if (v.verifiedTotal === 0 && v.unconfirmed === 0) return 'Not measured in this scan.';
+  if (v.verifiedTotal === 0) {
+    return `${v.unconfirmed} ${label} signal${v.unconfirmed === 1 ? '' : 's'} couldn't be confirmed in this scan.`;
+  }
+  if (v.failed === 0) {
+    return v.unconfirmed === 0
+      ? ifAllPass
+      : `${ifAllPass} ${v.unconfirmed} additional signal${v.unconfirmed === 1 ? '' : 's'} couldn't be confirmed.`;
+  }
+  const gapWord = v.failed === 1 ? 'gap' : 'gaps';
+  const base = `${v.failed} of ${v.verifiedTotal} ${label} ${gapWord} verified.`;
+  return v.unconfirmed === 0
+    ? base
+    : `${base} ${v.unconfirmed} other signal${v.unconfirmed === 1 ? '' : 's'} couldn't be confirmed.`;
 }
 
 function checksFromCategory(checks: CheckResult[]): VerdictCheck[] {
@@ -572,18 +630,22 @@ function buildSearchCell(searchBasics: CheckResult[]): VerdictCell {
       checks: [],
     };
   }
-  const sb = passCount(searchBasics);
-  const gaps = sb.total - sb.passed;
+  const v = verifiedCount(searchBasics);
   const robotsBlocked = searchBasics.some(
     (c) => c.id === 'robots' && !c.passed && /block/i.test(c.evidence),
   );
   return {
     icon: 'search' as VerdictIcon,
     heading: 'How Google sees you',
-    value: valueStr(sb),
-    note: noteFor('crawl-and-schema', sb, 'Crawlable, indexed, canonical, schema present.'),
+    value: verifiedValueStr(v),
+    note: verifiedNote('crawl-and-schema', v, 'Crawlable, indexed, canonical, schema present.'),
     benchmark: `Index · ${robotsBlocked ? 'blocked' : 'crawlable'}`,
-    benchmarkRight: gaps === 0 ? 'Clean' : `${gaps} gap${gaps === 1 ? '' : 's'}`,
+    benchmarkRight:
+      v.failed === 0
+        ? v.unconfirmed === 0
+          ? 'Clean'
+          : `${v.unconfirmed} unconfirmed`
+        : `${v.failed} verified gap${v.failed === 1 ? '' : 's'}`,
     checks: checksFromCategory(searchBasics),
   };
 }
@@ -600,25 +662,26 @@ function buildAEOCell(aeo: CheckResult[]): VerdictCell {
       checks: [],
     };
   }
-  const aeoPass = passCount(aeo);
-  const aeoGap = aeoPass.total - aeoPass.passed;
+  const v = verifiedCount(aeo);
   return {
     icon: 'spark' as VerdictIcon,
     heading: 'How AI engines cite you',
-    value: valueStr(aeoPass),
+    value: verifiedValueStr(v),
     note:
-      aeoPass.passed === aeoPass.total
-        ? 'Every AEO signal we look for is in place. ChatGPT, Claude, Perplexity can read this site.'
-        : aeoPass.passed === 0
-          ? 'No AEO signals detected. AI engines cannot connect this domain to its services or entity.'
-          : `${aeoGap} of ${aeoPass.total} AEO signals missing. Cited competitors fill the gap when prospects ask.`,
+      v.verifiedTotal > 0 && v.failed === 0
+        ? v.unconfirmed === 0
+          ? 'Every AEO signal we look for is in place. ChatGPT, Claude, Perplexity can read this site.'
+          : `Every AEO signal we verified is in place. ${v.unconfirmed} signal${v.unconfirmed === 1 ? '' : 's'} couldn't be confirmed.`
+        : verifiedNote('AEO', v, 'AI engines can read this site.'),
     benchmark: 'AEO · readiness',
     benchmarkRight:
-      aeoPass.passed === aeoPass.total
-        ? 'Ready'
-        : aeoPass.passed === 0
-          ? 'Not ready'
-          : `${aeoGap} of ${aeoPass.total} missing`,
+      v.verifiedTotal === 0
+        ? v.unconfirmed > 0
+          ? 'Unconfirmed'
+          : 'Unknown'
+        : v.failed === 0
+          ? 'Ready'
+          : `${v.failed} verified missing`,
     checks: checksFromCategory(aeo),
   };
 }
@@ -686,22 +749,39 @@ export function buildTrackingCell(
   }
 
   const idle = installed - firing;
-  const absent = total - installed;
+  const unconfirmedAbsent = total - installed;
+  // Headline counts only verified state (firing + idle = present on the page).
+  // Pixels we couldn't detect are tagged unconfirmed - they may be gated by
+  // consent, late-loaded, or genuinely absent. We never claim absent as fact.
   return {
     icon: 'target' as VerdictIcon,
     heading: 'What you measure',
-    value: `${firing} of ${total}`,
+    value: installed === 0 ? 'unconfirmed' : `${firing} of ${installed} verified`,
     note:
       firing === total
         ? withEvents > 0
           ? `Every tracker is firing; named events captured on ${withEvents}.`
           : 'Every tracker is firing.'
-        : `${firing} of ${total} trackers confirmed firing` +
-          (idle > 0 ? `, ${idle} installed but not observed firing` : '') +
-          (absent > 0 ? `, ${absent} absent` : '') +
-          '.',
+        : firing === installed
+          ? installed === 0
+            ? `No trackers detected on this render. ${unconfirmedAbsent} trackers couldn't be confirmed (may be consent-gated or late-loading).`
+            : `${firing} of ${installed} present trackers confirmed firing.` +
+              (unconfirmedAbsent > 0
+                ? ` ${unconfirmedAbsent} other tracker${unconfirmedAbsent === 1 ? '' : 's'} couldn't be confirmed (may be consent-gated or late-loading).`
+                : '')
+          : `${firing} of ${installed} present trackers confirmed firing` +
+            (idle > 0 ? `, ${idle} installed but not observed firing` : '') +
+            '.' +
+            (unconfirmedAbsent > 0
+              ? ` ${unconfirmedAbsent} other tracker${unconfirmedAbsent === 1 ? '' : 's'} couldn't be confirmed.`
+              : ''),
     benchmark: 'Pixels · measured live',
-    benchmarkRight: firing === total ? 'All firing' : `${total - firing} not firing`,
+    benchmarkRight:
+      installed === 0
+        ? 'Unconfirmed'
+        : firing === installed
+          ? 'All present firing'
+          : `${idle} not firing`,
     checks: augmentedChecks,
   };
 }
@@ -719,7 +799,10 @@ function placeholderAds(): VerdictCell {
   };
 }
 
-function buildConversionCell(conversion: CheckResult[]): VerdictCell {
+function buildConversionCell(
+  conversion: CheckResult[],
+  headless?: HeadlessResult | null,
+): VerdictCell {
   if (conversion.length === 0) {
     return {
       icon: 'eye' as VerdictIcon,
@@ -731,15 +814,66 @@ function buildConversionCell(conversion: CheckResult[]): VerdictCell {
       checks: [],
     };
   }
-  const cp = passCount(conversion);
-  const cgap = cp.total - cp.passed;
+
+  // The headless conversion-path trace is the strongest evidence we have - it
+  // simulates an actual visitor clicking the primary CTA and looking for a
+  // form. When it returns a definitive outcome we lean on it. The individual
+  // HTML-parsed checks (tel link, scheduling, chat, prominent CTA) become
+  // verifying details, not the headline.
+  const cp = headless?.conversionPath ?? null;
+  const traceOutcome = cp?.outcome;
+  const v = verifiedCount(conversion);
+
+  let headlineValue: string;
+  let headlineNote: string;
+  let benchmarkRight: string;
+  let benchmarkLeft: string;
+
+  if (traceOutcome === 'form-on-homepage') {
+    headlineValue = 'Verified path';
+    headlineNote = 'A visitor can submit a form directly on the homepage - zero clicks from landing.';
+    benchmarkLeft = 'Path · clear';
+    benchmarkRight = 'Form reachable on homepage';
+  } else if (traceOutcome === 'form-after-click') {
+    const cta = cp?.primaryCtaText ? `"${cp.primaryCtaText}"` : 'the primary CTA';
+    headlineValue = 'Verified path';
+    headlineNote = `Clicking ${cta} reaches a submittable form in one click.`;
+    benchmarkLeft = 'Path · clear';
+    benchmarkRight = 'Form 1 click from CTA';
+  } else if (traceOutcome === 'no-form-reached') {
+    const cta = cp?.primaryCtaText ? `"${cp.primaryCtaText}"` : 'the primary CTA';
+    headlineValue = 'Verified gap';
+    headlineNote = `Clicking ${cta} did not reach a submittable form within one click. A cold visitor following the obvious next step has no way to convert.`;
+    benchmarkLeft = 'Path · blocked';
+    benchmarkRight = 'No form within 1 click';
+  } else if (traceOutcome === 'no-cta') {
+    headlineValue = 'Verified gap';
+    headlineNote = 'No clear primary call-to-action on the homepage for a visitor to follow.';
+    benchmarkLeft = 'Path · blocked';
+    benchmarkRight = 'No primary CTA';
+  } else {
+    // Trace failed or didn't run - fall back to the verified individual checks.
+    headlineValue = verifiedValueStr(v);
+    headlineNote = verifiedNote('conversion', v, 'Clear path, strong CTAs, tappable contact.');
+    benchmarkLeft =
+      v.failed === 0 ? 'Path · clear' : v.failed >= v.verifiedTotal ? 'Path · blocked' : 'Path · partial';
+    benchmarkRight =
+      v.verifiedTotal === 0
+        ? v.unconfirmed > 0
+          ? 'Unconfirmed'
+          : 'Unknown'
+        : v.failed === 0
+          ? 'Clear'
+          : `${v.failed} verified gap${v.failed === 1 ? '' : 's'}`;
+  }
+
   return {
     icon: 'eye' as VerdictIcon,
     heading: 'How visitors convert',
-    value: valueStr(cp),
-    note: noteFor('conversion', cp, 'Clear path, strong CTAs, tappable contact.'),
-    benchmark: `Path · ${cgap === 0 ? 'clear' : cgap >= cp.total ? 'blocked' : 'partial'}`,
-    benchmarkRight: cgap === 0 ? 'Clear' : `${cgap} gap${cgap === 1 ? '' : 's'}`,
+    value: headlineValue,
+    note: headlineNote,
+    benchmark: benchmarkLeft,
+    benchmarkRight,
     checks: checksFromCategory(conversion),
   };
 }
@@ -974,7 +1108,7 @@ export function buildMemoFromAudit(audit: AuditResult, enrich?: EnrichmentBundle
     enrich?.ads
       ? adsCellFromResult(enrich.ads, enrich?.landing ?? null, enrich?.pageSpeed?.performanceScore ?? null)
       : placeholderAds(),
-    buildConversionCell(conversion),
+    buildConversionCell(conversion, enrich?.headless ?? null),
     enrich?.mobile
       ? mobileCellFromResult(enrich.mobile, enrich?.headless ?? null)
       : placeholderMobile(),

@@ -50,9 +50,12 @@ export interface HeadlessResult {
   durationMs: number;
 }
 
-const HEADLESS_TIMEOUT_MS = 34000;
+const HEADLESS_TIMEOUT_MS = 45000;
 const NAV_TIMEOUT_MS = 15000;
-const TRACE_TIMEOUT_MS = 8000;
+// Trace budget covers homepage + up to 2 deep-page escalations.
+// Each trace = (enumerate + click + settle) ~3s; deep nav = ~2s. Worst case
+// 3 + 2 + 3 + 2 + 3 = 13s. Cap at 15s for headroom.
+const TRACE_TIMEOUT_MS = 15000;
 
 // --- Upgrade 4: conversion-path trace -------------------------------------
 
@@ -139,6 +142,68 @@ async function dismissCookieBanner(page: Page): Promise<void> {
   }
 }
 
+// Path patterns for the deep-page escalation when the homepage trace returns
+// no usable signal. Money > contact > about by intent strength. Mirrors the
+// crawl module's discovery vocabulary so the two layers stay aligned.
+const DEEP_PAGE_PATTERNS: { role: 'money' | 'contact' | 'about'; re: RegExp }[] = [
+  {
+    role: 'money',
+    re: /[/-](pricing|plans|services|products|solutions|what-we-do|packages|shop|collections?)([/-]|$)/i,
+  },
+  {
+    role: 'contact',
+    re: /[/-](contact|contact-us|get-in-touch|reach-us|enquiries|inquiries|book)([/-]|$)/i,
+  },
+  {
+    role: 'about',
+    re: /[/-](about|about-us|company|our-story|who-we-are|team|meet-the-team)([/-]|$)/i,
+  },
+];
+
+// Discover deep pages on the currently-loaded page. Same-origin only, asset
+// extensions filtered, money > contact > about. Returns at most one URL per
+// role, in escalation priority order.
+async function discoverDeepPages(page: Page, origin: string): Promise<string[]> {
+  const hrefs = await page
+    .evaluate(() => {
+      const out: string[] = [];
+      const anchors = Array.from(document.querySelectorAll('a[href]')) as HTMLAnchorElement[];
+      for (const a of anchors) {
+        try {
+          out.push(new URL(a.href, location.href).toString());
+        } catch {
+          // unparseable href - skip
+        }
+      }
+      return out;
+    })
+    .catch(() => [] as string[]);
+
+  const ASSET_EXT = /\.(jpe?g|png|gif|svg|webp|avif|ico|css|js|mjs|json|xml|pdf|zip|mp4|webm|woff2?|ttf)$/i;
+  const seen = new Map<'money' | 'contact' | 'about', string>();
+  for (const href of hrefs) {
+    let u: URL;
+    try {
+      u = new URL(href);
+    } catch {
+      continue;
+    }
+    if (u.origin !== origin) continue;
+    if (ASSET_EXT.test(u.pathname)) continue;
+    const path = u.pathname.replace(/\/+$/, '');
+    if (path === '' || path === '/') continue;
+    for (const { role, re } of DEEP_PAGE_PATTERNS) {
+      if (seen.has(role)) continue;
+      if (re.test(path)) {
+        seen.set(role, u.toString());
+        break;
+      }
+    }
+    if (seen.size === DEEP_PAGE_PATTERNS.length) break;
+  }
+  return DEEP_PAGE_PATTERNS.map((p) => seen.get(p.role)).filter((x): x is string => !!x);
+}
+
 // Trace the conversion path: find the primary CTA, click it, and see how many
 // clicks it takes to reach a submittable form. Heavily guarded - interactive
 // automation on arbitrary sites fails in many ways, and an honest
@@ -176,6 +241,61 @@ async function traceConversionPath(page: Page): Promise<ConversionPathResult> {
   } catch {
     return { primaryCtaText: null, outcome: 'trace-failed', clicksToForm: null };
   }
+}
+
+// Multi-page conversion-path orchestration. The homepage answers the question
+// "does a cold visitor on the front door have a clear path" - but plenty of
+// sites route the conversion off the homepage: the contact page has the form,
+// the pricing page has the "Book a demo", the products listing is the funnel.
+// When the homepage trace returns no-cta or no-form-reached we escalate to
+// the money / contact / about pages (discovered from the current rendered nav)
+// and return the FIRST page that produces a verified form-reached outcome.
+// A homepage win stops escalation immediately; a deep-page win replaces the
+// homepage result and tags the primary CTA with the page it came from.
+async function tracePrimaryConversionPath(
+  page: Page,
+  origin: string,
+): Promise<ConversionPathResult> {
+  const homepage = await traceConversionPath(page);
+  if (homepage.outcome === 'form-on-homepage' || homepage.outcome === 'form-after-click') {
+    return homepage;
+  }
+  if (homepage.outcome !== 'no-cta' && homepage.outcome !== 'no-form-reached') {
+    // trace-failed - the click handler errored. Escalating won't fix that.
+    return homepage;
+  }
+
+  // Discover deep pages from the homepage we already loaded, before we navigate
+  // away. Cap escalation at 2 pages to stay inside the headless time budget.
+  const deepUrls = (await discoverDeepPages(page, origin)).slice(0, 2);
+  if (deepUrls.length === 0) return homepage;
+
+  for (const deepUrl of deepUrls) {
+    try {
+      const navigated = await page
+        .goto(deepUrl, { waitUntil: 'domcontentloaded', timeout: 8000 })
+        .then((r) => !!r && r.ok())
+        .catch(() => false);
+      if (!navigated) continue;
+      await page.waitForTimeout(700);
+      const deep = await traceConversionPath(page);
+      if (deep.outcome === 'form-on-homepage' || deep.outcome === 'form-after-click') {
+        // The "homepage" outcome name is preserved from the trace; the parent
+        // headless result documents that the trace ran across pages.
+        const where = new URL(deepUrl).pathname;
+        return {
+          ...deep,
+          primaryCtaText: deep.primaryCtaText
+            ? `${deep.primaryCtaText} (on ${where})`
+            : `(on ${where})`,
+        };
+      }
+    } catch {
+      // Continue to the next candidate; a navigation failure on one deep page
+      // shouldn't sink the whole escalation.
+    }
+  }
+  return homepage;
 }
 
 export async function runHeadlessCheck(url: string): Promise<HeadlessResult | null> {
@@ -324,10 +444,13 @@ export async function runHeadlessCheck(url: string): Promise<HeadlessResult | nu
         .catch(() => ({ dataLayerEvents: [], gtmContainerIds: [], ga4MeasurementIds: [] }));
 
       // Upgrade 4 — conversion-path trace. Runs LAST: it clicks the CTA, which
-      // can navigate away, so every other capture must already be done. Bounded
-      // by its own timeout so a slow trace cannot sink the whole headless pass.
+      // can navigate away, so every other capture must already be done. The
+      // wrapper escalates to deep pages (money / contact / about) when the
+      // homepage trace returns no-cta or no-form-reached, so a prospect whose
+      // funnel runs through /pricing or /contact is not silently miscalled.
+      const traceOrigin = new URL(url).origin;
       const conversionPath = await Promise.race<ConversionPathResult>([
-        traceConversionPath(page),
+        tracePrimaryConversionPath(page, traceOrigin),
         new Promise<ConversionPathResult>((resolve) =>
           setTimeout(
             () => resolve({ primaryCtaText: null, outcome: 'trace-failed', clicksToForm: null }),

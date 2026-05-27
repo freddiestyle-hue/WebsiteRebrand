@@ -39,8 +39,12 @@ export interface ConversionPathResult {
 }
 
 // High-intent CTA wording - the verbs a primary conversion button uses.
+// Three families covered: B2B SaaS / services ("book a demo"), ecommerce / D2C
+// ("shop now", "add to cart"), and lead-gen / finance ("apply now", "get a
+// callback"). The picker fails closed when nothing matches, so missing a
+// vocabulary means we silently skip a whole class of prospect.
 const HIGH_INTENT =
-  /\b(get started|start (free|now)|free trial|try (it )?free|book (a |your )?(call|demo|consult\w*|appointment)|request (a |your )?(quote|demo|call|consult\w*)|get (a |your )?(quote|estimate|demo)|schedule (a |your )?(call|demo|consult\w*|appointment)|talk to (us|sales|an expert)|contact us|get in touch|book now|enquire|claim your|sign up)\b/i;
+  /\b(get started|start (free|now)|free trial|try (it )?free|book (a |your )?(call|demo|consult\w*|appointment|tour|session|visit)|request (a |your )?(quote|demo|call|consult\w*|info|information|brochure|tour|callback)|get (a |your )?(quote|estimate|demo|callback|started|in touch)|schedule (a |your )?(call|demo|consult\w*|appointment|tour|visit)|talk to (us|sales|an expert|a specialist)|contact us|get in touch|book now|enquire|enquir(e|y)|inquire|claim your|sign up|join (now|today|free|the)|create (a |an |your )?account|register|apply (now|today|here)|see (our )?(pricing|plans|prices)|view (our )?(pricing|plans|prices)|get (the |a |our )?(app|free)|download|free (consultation|estimate|quote|assessment|audit)|find (out|your)|learn how|see how (it )?works|watch (a |the )?demo|shop( all| now| the| our)?|buy( now| it)?|add to (cart|bag)|order now|browse (our )?(collection|store|shop)|view (the |our |all )?(collection|products|store)|see (the |our )?(collection|catalog)|reserve (your |a )?(spot|seat|space|table)|donate( now| today)?|give (now|today)|volunteer|pledge)\b/i;
 
 // Class / id fragments that mark an element as a primary call-to-action.
 const CTA_CLASS = /\b(cta|btn-primary|primary-cta|hero-cta|btn-cta|action-btn|primary-button)\b/i;

@@ -213,13 +213,17 @@ describe('trackingRowText', () => {
 });
 
 describe('buildTrackingCell', () => {
-  it('with a headless pass, summarises trackers confirmed firing', () => {
+  it('with a headless pass, summarises verified firing trackers and reports absent ones as unconfirmed', () => {
+    // 1 events-observed + 1 firing + 1 present (verified installed) + 1 absent (unconfirmed)
+    // Headline counts only verified-present trackers in the denominator; absent
+    // pixels are reported separately because consent or late-fire can hide them.
     const cell = buildTrackingCell(
       trackingChecks(['events-observed', 'firing', 'present', 'absent']),
       enrichment({ headless: {} as HeadlessResult }),
     );
-    expect(cell.value).toBe('2 of 4');
-    expect(cell.note).toContain('2 of 4 trackers confirmed firing');
+    expect(cell.value).toBe('2 of 3 verified');
+    expect(cell.note).toContain('2 of 3 present trackers confirmed firing');
+    expect(cell.note).toContain("couldn't be confirmed");
     expect(cell.benchmark).toBe('Pixels · measured live');
   });
 

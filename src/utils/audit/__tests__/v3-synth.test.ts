@@ -157,6 +157,112 @@ describe('synthesizeDiagnosis', () => {
   });
 });
 
+describe('verified-only cell counting', () => {
+  it('search cell reports verified gaps, not soft-absence counts', () => {
+    // 2 verified pass, 1 verified fail, 2 soft-absence fails. Old behaviour
+    // would have shown "2 of 5" / "3 gaps". New behaviour: "2 of 3 verified"
+    // and "1 verified gap", with the 2 soft rows surfaced as unconfirmed.
+    const memo = buildMemoFromAudit(
+      mkAudit([
+        mkCheck({ id: 'sitemap', category: 'crawl', passed: true }),
+        mkCheck({ id: 'robots', category: 'crawl', passed: true }),
+        mkCheck({ id: 'org-schema', category: 'schema', passed: false, reliability: 'verified' }),
+        mkCheck({ id: 'website-schema', category: 'schema', passed: false, reliability: 'soft-absence' }),
+        mkCheck({ id: 'canonical', category: 'meta', passed: false, reliability: 'soft-absence' }),
+      ]),
+    );
+    const search = memo.verdictCells.find((c) => c.icon === 'search');
+    expect(search?.value).toBe('2 of 3 verified');
+    expect(search?.benchmarkRight).toBe('1 verified gap');
+    expect(search?.note).toContain('1 of 3 crawl-and-schema gap verified');
+    expect(search?.note).toContain("couldn't be confirmed");
+  });
+
+  it('AEO cell reports verified gaps, not soft-absence counts', () => {
+    const memo = buildMemoFromAudit(
+      mkAudit([
+        mkCheck({ id: 'llms-txt', category: 'aeo', passed: false, reliability: 'verified' }),
+        mkCheck({ id: 'llms-full', category: 'aeo', passed: true, reliability: 'verified' }),
+        mkCheck({ id: 'contact', category: 'aeo', passed: false, reliability: 'soft-absence' }),
+      ]),
+    );
+    const aeo = memo.verdictCells.find((c) => c.icon === 'spark');
+    expect(aeo?.value).toBe('1 of 2 verified');
+    expect(aeo?.benchmarkRight).toBe('1 verified missing');
+  });
+});
+
+describe('buildConversionCell with headless trace', () => {
+  it('form-on-homepage outcome is reported as a verified clear path', () => {
+    const memo = buildMemoFromAudit(
+      mkAudit([
+        mkCheck({ id: 'conversion-form-on-page', category: 'conversion', passed: false, reliability: 'soft-absence' }),
+      ]),
+      mkEnrich({
+        headless: {
+          conversionPath: { primaryCtaText: 'Book a call', outcome: 'form-on-homepage', clicksToForm: 0 },
+        } as never,
+      }),
+    );
+    const conv = memo.verdictCells.find((c) => c.icon === 'eye');
+    expect(conv?.value).toBe('Verified path');
+    expect(conv?.benchmark).toBe('Path · clear');
+    expect(conv?.note).toContain('directly on the homepage');
+  });
+
+  it('form-after-click outcome is reported as a verified clear path with the CTA', () => {
+    const memo = buildMemoFromAudit(
+      mkAudit([
+        mkCheck({ id: 'conversion-form-on-page', category: 'conversion', passed: false, reliability: 'soft-absence' }),
+      ]),
+      mkEnrich({
+        headless: {
+          conversionPath: { primaryCtaText: 'Get a quote', outcome: 'form-after-click', clicksToForm: 1 },
+        } as never,
+      }),
+    );
+    const conv = memo.verdictCells.find((c) => c.icon === 'eye');
+    expect(conv?.value).toBe('Verified path');
+    expect(conv?.note).toContain('"Get a quote"');
+    expect(conv?.benchmarkRight).toBe('Form 1 click from CTA');
+  });
+
+  it('no-form-reached outcome is reported as a verified gap', () => {
+    const memo = buildMemoFromAudit(
+      mkAudit([
+        mkCheck({ id: 'conversion-form-on-page', category: 'conversion', passed: true, reliability: 'verified' }),
+      ]),
+      mkEnrich({
+        headless: {
+          conversionPath: { primaryCtaText: 'Learn more', outcome: 'no-form-reached', clicksToForm: null },
+        } as never,
+      }),
+    );
+    const conv = memo.verdictCells.find((c) => c.icon === 'eye');
+    expect(conv?.value).toBe('Verified gap');
+    expect(conv?.benchmark).toBe('Path · blocked');
+    expect(conv?.benchmarkRight).toBe('No form within 1 click');
+  });
+
+  it('falls back to verified checks when trace did not run, ignoring soft-absences in gap count', () => {
+    const memo = buildMemoFromAudit(
+      mkAudit([
+        mkCheck({ id: 'conversion-form-on-page', category: 'conversion', passed: true, reliability: 'verified' }),
+        mkCheck({ id: 'conversion-tel-link', category: 'conversion', passed: true, reliability: 'verified' }),
+        mkCheck({ id: 'conversion-chat-widget', category: 'conversion', passed: false, reliability: 'soft-absence' }),
+        mkCheck({ id: 'conversion-scheduling-link', category: 'conversion', passed: false, reliability: 'soft-absence' }),
+      ]),
+      // No headless - trace did not run.
+    );
+    const conv = memo.verdictCells.find((c) => c.icon === 'eye');
+    // Two verified passes, zero verified fails, two unconfirmed - this is
+    // "clear path" with caveats, NOT "4 conversion gaps".
+    expect(conv?.value).toBe('2 of 2 verified');
+    expect(conv?.benchmarkRight).toBe('Clear');
+    expect(conv?.note).toContain("couldn't be confirmed");
+  });
+});
+
 describe('buildMemoFromAudit (Upgrade 7 wiring)', () => {
   const audit = mkAudit([
     mkCheck({ id: 'sitemap', category: 'crawl', passed: true }),
