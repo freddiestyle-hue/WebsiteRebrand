@@ -29,7 +29,13 @@ const POSTHOG_PROJECT_ID = 373899;
 // v6: behavioural human filter (session must contain a click/scroll/CTA/etc).
 //     Replaces the city-based datacenter filter, which was leaking Amsterdam/
 //     Dublin/Bristol/Frankfurt scanners and over-trusting Washington/San Jose.
-const CACHE_VERSION = 'v6';
+// v7: split filter for headline metrics vs prospects-grade signals. Memo
+//     Views / Unique Visitors / CTA Clicks use light filter (drop Fred
+//     only). Engaged Reads = sessions with scroll_depth>=50 (scroll is the
+//     signal). Top Prospects / Action Queue keep strict behavioural filter.
+//     Behavioural-only headline metrics under-counted brief readers who
+//     opened the memo but didn't scroll, plus dropped blog traffic entirely.
+const CACHE_VERSION = 'v7';
 
 // Lazy redis client. Construction is cheap but we only need one instance.
 // Use KV_REST_API_* env vars (set by Vercel KV / Upstash integration) since
@@ -140,15 +146,32 @@ const HUMAN_SIGNAL_EVENTS = `'$autocapture','scroll_depth','cta_clicked','audit_
  * Build a "this session interacted" subquery given a time-where clause.
  * timeWhere should be a SQL fragment like "timestamp >= ..." (no leading
  * AND) so the caller controls the exact bounds.
+ *
+ * Matches signal events on ANY path, not just audit pages. A blog visitor
+ * who scrolls a /blog/* post is still a human. This subquery is used by
+ * the STRICT filter (Top Prospects, Action Queue) - top-of-funnel
+ * counters use lightHumanWhere() instead.
  */
 function humanSessionsSubquery(timeWhere: string): string {
   return `(
     SELECT DISTINCT properties.$session_id
     FROM events
     WHERE ${timeWhere}
-      AND (properties.$pathname LIKE '/audit/v3/%' OR properties.$pathname LIKE '/audit/p/%')
       AND event IN (${HUMAN_SIGNAL_EVENTS})
   )`;
+}
+
+/**
+ * Light filter: just drop Fred's own home cities. Used for top-of-funnel
+ * counters (memo views, unique visitors, CTA clicks) where a brief reader
+ * who didn't scroll still counts as a real view. This metric is the
+ * volume number, not the quality number.
+ */
+function lightHumanWhere(): string {
+  return `AND ${SELF_CITY_EXCLUSION}`;
+}
+function lightHumanExpr(): string {
+  return `(${SELF_CITY_EXCLUSION})`;
 }
 
 /** Inline boolean predicate (for use inside countIf etc.). */
@@ -510,10 +533,10 @@ export async function getHeadlineMetrics(range: DateRange): Promise<HeadlineMetr
     const [currentRes, prevRes, dailyRes] = await Promise.all([
       runQuery(`
         SELECT
-          countIf(event = '$pageview' AND ${PROSPECT_PATH_FILTER} AND ${humanExpr(range)}) AS memo_views,
-          uniq(if(event = '$pageview' AND ${PROSPECT_PATH_FILTER} AND ${humanExpr(range)}, distinct_id, NULL)) AS unique_visitors,
-          uniq(if(event = 'scroll_depth' AND toInt(properties.depth) >= 50 AND ${PROSPECT_PATH_FILTER} AND ${humanExpr(range)}, properties.$session_id, NULL)) AS engaged_reads,
-          countIf(event = 'cta_clicked' AND ${humanExpr(range)}) AS cta_clicks,
+          countIf(event = '$pageview' AND ${PROSPECT_PATH_FILTER} AND ${lightHumanExpr()}) AS memo_views,
+          uniq(if(event = '$pageview' AND ${PROSPECT_PATH_FILTER} AND ${lightHumanExpr()}, distinct_id, NULL)) AS unique_visitors,
+          uniq(if(event = 'scroll_depth' AND toInt(properties.depth) >= 50 AND ${PROSPECT_PATH_FILTER} AND ${lightHumanExpr()}, properties.$session_id, NULL)) AS engaged_reads,
+          countIf(event = 'cta_clicked' AND ${lightHumanExpr()}) AS cta_clicks,
           countIf(event = '$pageview' AND ${PROSPECT_PATH_FILTER}) AS memo_views_raw,
           uniq(if(event = '$pageview' AND ${PROSPECT_PATH_FILTER}, distinct_id, NULL)) AS unique_visitors_raw,
           uniq(if(event = 'scroll_depth' AND toInt(properties.depth) >= 50 AND ${PROSPECT_PATH_FILTER}, properties.$session_id, NULL)) AS engaged_reads_raw,
@@ -523,13 +546,12 @@ export async function getHeadlineMetrics(range: DateRange): Promise<HeadlineMetr
       `),
       runQuery((() => {
         const prevTimeWhere = `timestamp >= toDateTime('${prevFromIso}') AND timestamp <= toDateTime('${prevToIso}')`;
-        const prevHuman = humanExprWithTime(prevTimeWhere);
         return `
         SELECT
-          countIf(event = '$pageview' AND ${PROSPECT_PATH_FILTER} AND ${prevHuman}) AS memo_views,
-          uniq(if(event = '$pageview' AND ${PROSPECT_PATH_FILTER} AND ${prevHuman}, distinct_id, NULL)) AS unique_visitors,
-          uniq(if(event = 'scroll_depth' AND toInt(properties.depth) >= 50 AND ${PROSPECT_PATH_FILTER} AND ${prevHuman}, properties.$session_id, NULL)) AS engaged_reads,
-          countIf(event = 'cta_clicked' AND ${prevHuman}) AS cta_clicks
+          countIf(event = '$pageview' AND ${PROSPECT_PATH_FILTER} AND ${lightHumanExpr()}) AS memo_views,
+          uniq(if(event = '$pageview' AND ${PROSPECT_PATH_FILTER} AND ${lightHumanExpr()}, distinct_id, NULL)) AS unique_visitors,
+          uniq(if(event = 'scroll_depth' AND toInt(properties.depth) >= 50 AND ${PROSPECT_PATH_FILTER} AND ${lightHumanExpr()}, properties.$session_id, NULL)) AS engaged_reads,
+          countIf(event = 'cta_clicked' AND ${lightHumanExpr()}) AS cta_clicks
         FROM events
         WHERE ${prevTimeWhere}
       `;
@@ -537,10 +559,10 @@ export async function getHeadlineMetrics(range: DateRange): Promise<HeadlineMetr
       runQuery(`
         SELECT
           toDate(timestamp) AS day,
-          countIf(event = '$pageview' AND ${PROSPECT_PATH_FILTER} AND ${humanExpr(range)}) AS memo_views,
-          uniq(if(event = '$pageview' AND ${PROSPECT_PATH_FILTER} AND ${humanExpr(range)}, distinct_id, NULL)) AS unique_visitors,
-          uniq(if(event = 'scroll_depth' AND toInt(properties.depth) >= 50 AND ${PROSPECT_PATH_FILTER} AND ${humanExpr(range)}, properties.$session_id, NULL)) AS engaged_reads,
-          countIf(event = 'cta_clicked' AND ${humanExpr(range)}) AS cta_clicks
+          countIf(event = '$pageview' AND ${PROSPECT_PATH_FILTER} AND ${lightHumanExpr()}) AS memo_views,
+          uniq(if(event = '$pageview' AND ${PROSPECT_PATH_FILTER} AND ${lightHumanExpr()}, distinct_id, NULL)) AS unique_visitors,
+          uniq(if(event = 'scroll_depth' AND toInt(properties.depth) >= 50 AND ${PROSPECT_PATH_FILTER} AND ${lightHumanExpr()}, properties.$session_id, NULL)) AS engaged_reads,
+          countIf(event = 'cta_clicked' AND ${lightHumanExpr()}) AS cta_clicks
         FROM events
         WHERE ${hogqlRangeClause(range)}
         GROUP BY day
