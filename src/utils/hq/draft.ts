@@ -17,7 +17,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { Redis } from '@upstash/redis';
 import type { ProspectInfo } from './airtable';
 
-const MODEL = 'claude-sonnet-4-7';
+const MODEL = 'claude-sonnet-4-6';
 const CACHE_TTL_SECONDS = 300; // 5 min
 
 export type Channel = 'linkedin' | 'email';
