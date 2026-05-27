@@ -3,6 +3,7 @@ import {
   discoverKeyPages,
   detectConversionSignals,
   crawlPages,
+  countFormFields,
   type DiscoveredPage,
   type PageRole,
 } from '../crawl';
@@ -86,6 +87,112 @@ describe('discoverKeyPages', () => {
     expect(discoverKeyPages('', '', ORIGIN)).toEqual([]);
     expect(discoverKeyPages(NAV_HTML, '', 'not-a-url')).toEqual([]);
   });
+
+  // Upgrade 9 - lift page cap from 3 to 5. Sites with case-studies and
+  // demo pages now get those checked too, surfacing forms and CTAs that
+  // live outside the contact/money/about triad.
+  it('discovers up to 5 key pages including case-studies and demo (Upgrade 9)', () => {
+    const fullNav = `<!doctype html><html><body>
+<nav>
+  <a href="/services">Our Services</a>
+  <a href="/about-us">About Us</a>
+  <a href="/contact">Contact</a>
+  <a href="/case-studies">Case Studies</a>
+  <a href="/book-a-demo">Book a Demo</a>
+</nav></body></html>`;
+    const pages = discoverKeyPages(fullNav, '', ORIGIN);
+    expect(pages).toHaveLength(5);
+    expect(byRole(pages, 'money')).toBe('https://acme.com/services');
+    expect(byRole(pages, 'about')).toBe('https://acme.com/about-us');
+    expect(byRole(pages, 'contact')).toBe('https://acme.com/contact');
+    expect(byRole(pages, 'case-studies')).toBe('https://acme.com/case-studies');
+    expect(byRole(pages, 'demo')).toBe('https://acme.com/book-a-demo');
+  });
+
+  it('matches case-studies variations (customers, success-stories, testimonials)', () => {
+    const nav = `<html><body>
+      <a href="/customers">Our Customers</a></body></html>`;
+    const pages = discoverKeyPages(nav, '', ORIGIN);
+    expect(byRole(pages, 'case-studies')).toBe('https://acme.com/customers');
+  });
+
+  it('matches demo variations (free-trial, get-started, request-demo)', () => {
+    const sitemap = `<urlset>
+      <url><loc>https://acme.com/free-trial</loc></url></urlset>`;
+    const pages = discoverKeyPages('<html></html>', sitemap, ORIGIN);
+    expect(byRole(pages, 'demo')).toBe('https://acme.com/free-trial');
+  });
+
+  it('roles compete money-first - /services-demo claims money, not demo', () => {
+    // Edge case: /services-demo matches money's "services" first. Order matters.
+    const nav = `<html><body>
+      <a href="/services-demo">Services Demo</a>
+      <a href="/book-a-call">Book a call</a></body></html>`;
+    const pages = discoverKeyPages(nav, '', ORIGIN);
+    expect(byRole(pages, 'money')).toBe('https://acme.com/services-demo');
+    expect(byRole(pages, 'demo')).toBe('https://acme.com/book-a-call');
+  });
+});
+
+describe('countFormFields (Upgrade 9)', () => {
+  it('returns zero counts when no form is present', () => {
+    expect(countFormFields('<html><body><p>no form here</p></body></html>')).toEqual({
+      total: 0,
+      required: 0,
+    });
+  });
+
+  it('counts visible inputs but skips hidden/submit/button/reset/image', () => {
+    const html = `<form>
+      <input type="text" name="name" />
+      <input type="email" name="email" />
+      <input type="hidden" name="csrf" value="abc" />
+      <input type="submit" value="Send" />
+      <input type="button" value="Cancel" />
+      <input type="reset" />
+      <input type="image" src="/x.png" />
+    </form>`;
+    expect(countFormFields(html)).toEqual({ total: 2, required: 0 });
+  });
+
+  it('counts textareas and selects alongside inputs', () => {
+    const html = `<form>
+      <input type="text" name="name" />
+      <select name="country"><option>UK</option></select>
+      <textarea name="message"></textarea>
+    </form>`;
+    expect(countFormFields(html)).toEqual({ total: 3, required: 0 });
+  });
+
+  it('counts required attribute on inputs, textareas, and selects', () => {
+    const html = `<form>
+      <input type="text" name="name" required />
+      <input type="email" name="email" required="required" />
+      <textarea name="message" required></textarea>
+      <select name="country"><option>UK</option></select>
+    </form>`;
+    expect(countFormFields(html)).toEqual({ total: 4, required: 3 });
+  });
+
+  it('only inspects the first form when multiple are present', () => {
+    const html = `
+      <form><input type="text" name="search" /></form>
+      <form>
+        <input type="email" name="email" required />
+        <input type="text" name="company" required />
+        <textarea name="message"></textarea>
+      </form>`;
+    // Only the first form (search box) is counted.
+    expect(countFormFields(html)).toEqual({ total: 1, required: 0 });
+  });
+
+  it('returns zero when a form has no fillable fields (post-JS render expected)', () => {
+    // Some sites render <form> with no inputs and inject fields via JS.
+    // Static parse should report 0 - the engine.ts evidence builder
+    // omits the "(N fields)" suffix to avoid misleading prospects.
+    const html = `<form action="/x"><button type="submit">Send</button></form>`;
+    expect(countFormFields(html)).toEqual({ total: 0, required: 0 });
+  });
 });
 
 describe('detectConversionSignals', () => {
@@ -115,6 +222,24 @@ describe('detectConversionSignals', () => {
     expect(s.hasForm || s.hasTelLink || s.hasScheduling || s.hasChatWidget || s.hasPromptCta).toBe(
       false,
     );
+  });
+  // Upgrade 9 - field counts surface in the conversion signals so the engine
+  // can enrich the D-06 cell evidence with "(N fields, M required)".
+  it('returns formFieldCount and formRequiredCount alongside boolean signals', () => {
+    const html = `<form>
+      <input type="text" name="name" required />
+      <input type="email" name="email" required />
+      <textarea name="message"></textarea>
+    </form>`;
+    const s = detectConversionSignals(html);
+    expect(s.hasForm).toBe(true);
+    expect(s.formFieldCount).toBe(3);
+    expect(s.formRequiredCount).toBe(2);
+  });
+  it('returns zero field counts when no form is present', () => {
+    const s = detectConversionSignals('<html><body><p>nothing</p></body></html>');
+    expect(s.formFieldCount).toBe(0);
+    expect(s.formRequiredCount).toBe(0);
   });
 });
 
