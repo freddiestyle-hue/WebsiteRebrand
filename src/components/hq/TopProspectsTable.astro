@@ -1,7 +1,12 @@
 ---
+// Direction A § 02 Top Prospects table.
+// Same .feed / .feed-row visual as the other section feeds, but each row
+// expands to show session history with replay links.
+
 import type { TopProspect } from '../../utils/posthog/query';
 import { sessionReplayUrl } from '../../utils/posthog/query';
 import type { ProspectInfo } from '../../utils/hq/airtable';
+import { slugToDomain } from '../../utils/hq/messaged';
 
 interface Props {
   prospects: TopProspect[];
@@ -16,11 +21,8 @@ function dwell(seconds: number): string {
   const s = seconds % 60;
   return `${m}m ${s}s`;
 }
-
 function timeAgo(iso: string): string {
-  const then = new Date(iso).getTime();
-  const now = Date.now();
-  const sec = Math.max(0, Math.round((now - then) / 1000));
+  const sec = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 1000));
   if (sec < 60) return `${sec}s ago`;
   const min = Math.round(sec / 60);
   if (min < 60) return `${min}m ago`;
@@ -28,72 +30,74 @@ function timeAgo(iso: string): string {
   if (hr < 48) return `${hr}h ago`;
   return `${Math.round(hr / 24)}d ago`;
 }
-
 function prospectUrl(slug: string, surface: 'audit' | 'intake-review' | undefined): string {
-  if (surface === 'intake-review') {
-    return `https://intake-reviews.vercel.app/intake-review/${slug}`;
-  }
+  if (surface === 'intake-review') return `https://intake-reviews.vercel.app/intake-review/${slug}`;
   return `https://rivett.tech/audit/v3/${slug}`;
 }
-
-function surfaceLabel(surface: 'audit' | 'intake-review' | undefined): string {
-  return surface === 'intake-review' ? 'Intake' : 'Audit';
+function heatClass(h: number): string {
+  if (h >= 50) return 'heat-hot';
+  if (h >= 25) return 'heat-warm';
+  if (h >= 10) return 'heat-cool';
+  return 'heat-cold';
 }
 ---
 {prospects.length === 0 ? (
   <p class="empty">No prospect engagement yet.</p>
 ) : (
-  <div class="list" role="list">
+  <div class="feed">
     {prospects.map((p, i) => {
       const info = prospectInfo?.get(p.prospect);
+      const displayName = info?.firstName || p.prospect;
+      const displayCo = info?.company || slugToDomain(p.prospect);
+      const noContact = !info?.firstName;
       return (
-      <details role="listitem" class="row">
-        <summary>
-          <span class="rank">{String(i + 1).padStart(2, '0')}</span>
-          <span class="prospect">
-            <span class={`surface surface--${p.surface || 'audit'}`}>{surfaceLabel(p.surface)}</span>
-            {info?.firstName ? (
-              <span class="person">
-                <span class="person-name">{info.firstName}</span>
-                {info.title && <span class="person-title">, {info.title}</span>}
-                <span class="person-co">· {info.company || p.prospect}</span>
-              </span>
+        <details class="row">
+          <summary>
+            <span class="rank">{String(i + 1).padStart(2, '0')}</span>
+            <div class="who">
+              <div class="line-1">
+                <a class="name" href={prospectUrl(p.prospect, p.surface)} target="_blank" rel="noopener">{displayName}</a>
+                {info?.title && <span class="title">, {info.title}</span>}
+              </div>
+              <div class="line-2">
+                <span class="co">{displayCo}</span>
+                {info?.source && <span class="src">· {info.source}</span>}
+                {noContact && <span class="src">· no Airtable record</span>}
+              </div>
+            </div>
+            <span class="m"><b>{p.total_views}</b> views</span>
+            <span class="m"><b>{p.unique_sessions}</b> sess</span>
+            <span class="m"><b>{dwell(p.total_dwell_seconds)}</b> dwell</span>
+            <span class="m"><b class={p.cta_clicks > 0 ? 'accent' : 'dim'}>{p.cta_clicks > 0 ? p.cta_clicks : '—'}</b> cta</span>
+            <span class={`heat-pill ${heatClass(p.heat_score)}`}><b>{p.heat_score}</b> heat</span>
+            <span class="chev" aria-hidden="true">↓</span>
+          </summary>
+          <div class="sessions">
+            {p.sessions.length === 0 ? (
+              <p class="empty">No session data.</p>
             ) : (
-              <a href={prospectUrl(p.prospect, p.surface)} target="_blank" rel="noopener">{p.prospect}</a>
+              <ol class="sess-list">
+                {p.sessions.map((s) => {
+                  const url = sessionReplayUrl(s.sid);
+                  return (
+                    <li>
+                      <span class="s-when">{timeAgo(s.last_event)}</span>
+                      <span class="s-mono">{dwell(s.dwell_seconds)} dwell</span>
+                      <span class="s-mono">{s.views} event{s.views === 1 ? '' : 's'}</span>
+                      {s.clicks > 0 && <span class="s-cta">{s.clicks} CTA click{s.clicks === 1 ? '' : 's'}</span>}
+                      <span class="s-fill"></span>
+                      {url ? (
+                        <a class="s-replay" href={url} target="_blank" rel="noopener">↻ replay</a>
+                      ) : (
+                        <span class="s-replay s-replay--miss">no replay</span>
+                      )}
+                    </li>
+                  );
+                })}
+              </ol>
             )}
-          </span>
-          <span class="metric"><b>{p.total_views}</b> <span class="lab">views</span></span>
-          <span class="metric"><b>{p.unique_sessions}</b> <span class="lab">sess</span></span>
-          <span class="metric"><b>{dwell(p.total_dwell_seconds)}</b> <span class="lab">dwell</span></span>
-          <span class="metric"><b class={p.cta_clicks > 0 ? 'hot' : 'dim'}>{p.cta_clicks > 0 ? p.cta_clicks : '—'}</b> <span class="lab">cta</span></span>
-          <span class="metric"><b class={p.heat_score >= 50 ? 'hot' : p.heat_score >= 10 ? '' : 'dim'}>{p.heat_score}</b> <span class="lab">heat</span></span>
-          <span class="chev" aria-hidden="true">↓</span>
-        </summary>
-        <div class="sessions">
-          {p.sessions.length === 0 ? (
-            <p class="empty">No session data.</p>
-          ) : (
-            <ol class="sess-list">
-              {p.sessions.map((s) => {
-                const url = sessionReplayUrl(s.sid);
-                return (
-                  <li>
-                    <span class="s-when">{timeAgo(s.last_event)}</span>
-                    <span class="s-dwell">{dwell(s.dwell_seconds)} dwell</span>
-                    <span class="s-views">{s.views} event{s.views === 1 ? '' : 's'}</span>
-                    {s.clicks > 0 && <span class="s-cta hot">{s.clicks} CTA click{s.clicks === 1 ? '' : 's'}</span>}
-                    {url ? (
-                      <a class="s-replay" href={url} target="_blank" rel="noopener">Watch replay →</a>
-                    ) : (
-                      <span class="s-replay s-replay--missing">No replay</span>
-                    )}
-                  </li>
-                );
-              })}
-            </ol>
-          )}
-        </div>
-      </details>
+          </div>
+        </details>
       );
     })}
   </div>
@@ -104,9 +108,13 @@ function surfaceLabel(surface: 'audit' | 'intake-review' | undefined): string {
     font-family: var(--serif, 'Newsreader', Georgia, serif);
     font-style: italic;
     color: var(--ink-faint, #7A8597);
-    padding: 1.5rem 0;
+    padding: 18px 0;
+    margin: 0;
   }
-  .list { display: flex; flex-direction: column; }
+  .feed {
+    border: 1px solid var(--ink, #0E1A2C);
+    background: var(--paper, #FFFFFF);
+  }
   .row {
     border-bottom: 1px solid var(--line, rgba(14,26,44,0.14));
   }
@@ -114,119 +122,152 @@ function surfaceLabel(surface: 'audit' | 'intake-review' | undefined): string {
   .row[open] { background: var(--paper-2, #F4F2ED); }
 
   summary {
-    display: grid;
-    grid-template-columns: 2rem 1fr repeat(5, auto) 1.25rem;
-    gap: 0.4rem 1rem;
-    padding: 0.65rem 0.5rem;
-    cursor: pointer;
     list-style: none;
-    align-items: baseline;
-    font-size: 0.9rem;
-  }
-  .person {
-    display: inline-flex;
-    align-items: baseline;
-    gap: 0.4rem;
-    flex-wrap: wrap;
-  }
-  .person-name {
-    font-weight: 600;
-    color: var(--ink, #0E1A2C);
-  }
-  .person-title {
-    color: var(--ink-dim, #3A4658);
-    font-size: 0.8rem;
-    font-family: var(--serif, 'Newsreader', Georgia, serif);
-    font-style: italic;
-  }
-  .person-co {
-    color: var(--ink-dim, #3A4658);
-    font-size: 0.85rem;
+    display: grid;
+    grid-template-columns: 28px 1fr 70px 60px 80px 50px 90px 18px;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 18px;
+    cursor: pointer;
+    transition: background 120ms;
   }
   summary::-webkit-details-marker { display: none; }
+  summary::marker { display: none; }
   summary:hover { background: var(--paper-2, #F4F2ED); }
   .row[open] summary { background: var(--paper-3, #EBE6DC); }
 
   .rank {
     font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 10px;
+    letter-spacing: 0.06em;
     color: var(--ink-faint, #7A8597);
-    font-size: 0.75rem;
+    text-align: right;
   }
-  .prospect a {
-    font-weight: 500;
+
+  .who { min-width: 0; }
+  .line-1 {
+    display: flex; align-items: baseline; gap: 4px; min-width: 0;
+  }
+  .name {
+    font-weight: 600;
     color: var(--ink, #0E1A2C);
     text-decoration: none;
     border-bottom: 1px solid var(--line-strong, rgba(14,26,44,0.28));
+    flex-shrink: 0;
   }
-  .prospect a:hover { color: var(--accent-deep, #4A6E18); border-bottom-color: var(--accent-deep, #4A6E18); }
-
-  .metric {
-    font-family: var(--mono, 'DM Mono', monospace);
-    font-size: 0.75rem;
+  .name:hover { color: var(--accent-deep, #4A6E18); border-bottom-color: var(--accent-deep, #4A6E18); }
+  .title {
+    font-family: var(--serif, 'Newsreader', Georgia, serif);
+    font-style: italic;
+    font-size: 13px;
     color: var(--ink-dim, #3A4658);
-    white-space: nowrap;
-    font-variant-numeric: tabular-nums;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
-  .metric b { color: var(--ink, #0E1A2C); font-weight: 600; }
-  .lab { color: var(--ink-faint, #7A8597); font-weight: 400; margin-left: 0.15rem; }
-  .hot { color: var(--accent-deep, #4A6E18); }
-  .dim { color: var(--ink-faint, #7A8597); font-weight: 400; }
+  .line-2 {
+    margin-top: 2px;
+    font-family: var(--serif, 'Newsreader', Georgia, serif);
+    font-style: italic;
+    font-size: 13px;
+    color: var(--ink-dim, #3A4658);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .co { color: var(--ink-dim, #3A4658); }
+  .src {
+    margin-left: 6px;
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-style: normal;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    color: var(--ink-faint, #7A8597);
+  }
+
+  .m {
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 11px;
+    color: var(--ink-faint, #7A8597);
+    letter-spacing: 0.04em;
+    text-align: right;
+    white-space: nowrap;
+  }
+  .m b {
+    color: var(--ink, #0E1A2C);
+    font-weight: 600;
+    margin-right: 4px;
+  }
+  .m .accent { color: var(--accent-deep, #4A6E18); }
+  .m .dim { color: var(--ink-faint, #7A8597); font-weight: 400; }
+
+  .heat-pill {
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: lowercase;
+    padding: 3px 8px;
+    border: 1px solid var(--line, rgba(14,26,44,0.14));
+    text-align: center;
+    white-space: nowrap;
+  }
+  .heat-pill b { font-weight: 600; margin-right: 4px; }
+  .heat-pill.heat-hot { background: var(--accent, #8FBF3F); color: var(--ink, #0E1A2C); border-color: var(--accent, #8FBF3F); }
+  .heat-pill.heat-hot b { color: var(--ink, #0E1A2C); }
+  .heat-pill.heat-warm { background: var(--sage, #E8F0D9); color: var(--accent-deep, #4A6E18); border-color: var(--accent-deep, #4A6E18); }
+  .heat-pill.heat-warm b { color: var(--accent-deep, #4A6E18); }
+  .heat-pill.heat-cool { color: var(--ink-dim, #3A4658); border-color: var(--line-strong, rgba(14,26,44,0.28)); }
+  .heat-pill.heat-cool b { color: var(--ink, #0E1A2C); }
+  .heat-pill.heat-cold { color: var(--ink-faint, #7A8597); }
+  .heat-pill.heat-cold b { color: var(--ink-dim, #3A4658); }
 
   .chev {
     font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 12px;
     color: var(--ink-faint, #7A8597);
-    font-size: 0.85rem;
     transition: transform 120ms;
+    text-align: center;
   }
   .row[open] .chev { transform: rotate(180deg); }
 
+  /* Sessions detail */
   .sessions {
-    padding: 0.75rem 0.5rem 1rem 2.4rem;
+    padding: 12px 18px 16px 50px;
     border-top: 1px solid var(--line, rgba(14,26,44,0.14));
   }
   .sess-list {
     list-style: none;
     margin: 0;
     padding: 0;
-    counter-reset: sess;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
   }
   .sess-list li {
     display: flex;
-    flex-wrap: wrap;
-    gap: 0.4rem 1.25rem;
-    padding: 0.5rem 0;
-    border-bottom: 1px dashed var(--line, rgba(14,26,44,0.14));
+    align-items: center;
+    gap: 16px;
+    padding: 6px 0;
     font-family: var(--mono, 'DM Mono', monospace);
-    font-size: 0.75rem;
-    align-items: baseline;
+    font-size: 11px;
+    color: var(--ink-dim, #3A4658);
+    border-bottom: 1px dotted var(--line, rgba(14,26,44,0.14));
   }
   .sess-list li:last-child { border-bottom: 0; }
-  .s-when { min-width: 5rem; color: var(--ink-faint, #7A8597); }
-  .s-dwell, .s-views { color: var(--ink-dim, #3A4658); }
-  .s-cta { color: var(--accent-deep, #4A6E18); font-weight: 500; }
+  .s-when { color: var(--ink, #0E1A2C); min-width: 70px; }
+  .s-mono { color: var(--ink-dim, #3A4658); }
+  .s-cta { color: var(--accent-deep, #4A6E18); font-weight: 600; }
+  .s-fill { flex: 1; }
   .s-replay {
-    margin-left: auto;
-    color: var(--ink, #0E1A2C);
-    text-decoration: underline;
-    text-decoration-color: var(--line-strong, rgba(14,26,44,0.28));
-    font-weight: 500;
+    color: var(--accent-deep, #4A6E18);
+    text-decoration: none;
+    border-bottom: 1px dotted var(--accent-deep, #4A6E18);
   }
-  .s-replay:hover { color: var(--accent-deep, #4A6E18); }
-  .s-replay--missing { color: var(--ink-faint, #7A8597); text-decoration: none; font-weight: 400; }
+  .s-replay:hover { color: var(--ink, #0E1A2C); border-bottom-color: var(--ink, #0E1A2C); }
+  .s-replay--miss { color: var(--ink-faint, #7A8597); border-bottom: 0; font-style: italic; }
 
-  /* Mobile: stack the row */
-  @media (max-width: 640px) {
+  @media (max-width: 780px) {
     summary {
-      grid-template-columns: 2rem 1fr 1.25rem;
-      grid-template-areas:
-        "rank prospect chev"
-        "rank metrics chev";
+      grid-template-columns: 28px 1fr 60px 90px 18px;
+      gap: 8px;
     }
-    .rank { grid-area: rank; }
-    .prospect { grid-area: prospect; }
-    .chev { grid-area: chev; align-self: center; }
-    summary .metric { grid-column: 2; }
-    summary .metric:nth-of-type(1) { grid-row: 2; grid-column: 2; }
-    summary { row-gap: 0.2rem; }
+    summary .m:nth-of-type(2), summary .m:nth-of-type(3) { display: none; }
+    .sessions { padding: 10px 14px 14px 14px; }
   }
 </style>
