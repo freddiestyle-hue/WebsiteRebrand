@@ -1,14 +1,19 @@
 ---
 // Direction A § 03 CTA clicks feed.
-// Grid columns: [1.5fr name] [1.2fr company italic] [1fr CTA hot chip] [110px time] [80px Open button]
+// Grid columns: [1.5fr name+title] [1.2fr company italic] [1fr CTA hot chip] [110px time] [80px Open button]
+//
+// Person info comes from the Airtable Prospects table via the slug join.
 
 import type { CtaClick } from '../../utils/posthog/query';
+import type { ProspectInfo } from '../../utils/hq/airtable';
+import { slugToDomain } from '../../utils/hq/messaged';
 
 interface Props {
   clicks: CtaClick[];
+  prospectInfo?: Map<string, ProspectInfo>;
 }
 
-const { clicks } = Astro.props;
+const { clicks, prospectInfo } = Astro.props;
 
 function timeAgo(iso: string): string {
   const sec = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 1000));
@@ -24,10 +29,21 @@ function timeAgo(iso: string): string {
   <p class="empty">No CTA clicks yet. Every Book-a-call click will land here when it happens.</p>
 ) : (
   <div class="feed">
-    {clicks.map((c) => (
+    {clicks.map((c) => {
+      const info = c.prospect ? prospectInfo?.get(c.prospect) : undefined;
+      const displayName = info?.firstName || c.prospect || '(no slug)';
+      const displayCo = info?.company || (c.prospect ? slugToDomain(c.prospect) : '');
+      const geo = [c.city, c.country].filter(Boolean).join(', ');
+      return (
       <div class="feed-row">
-        <div class="cell name"><strong>{c.prospect || '(no slug)'}</strong></div>
-        <div class="cell co">{[c.city, c.country].filter(Boolean).join(', ') || '—'}</div>
+        <div class="cell name">
+          <strong>{displayName}</strong>
+          {info?.title && <span class="title-ital">, {info.title}</span>}
+        </div>
+        <div class="cell co">
+          {displayCo}
+          {geo && <span class="geo"> · {geo}</span>}
+        </div>
         <div class="cell"><span class="mark mark--hot">{(c.cta || 'CTA').toUpperCase()}</span></div>
         <div class="cell mono">{timeAgo(c.when)}</div>
         <div class="cell">
@@ -38,7 +54,8 @@ function timeAgo(iso: string): string {
           )}
         </div>
       </div>
-    ))}
+      );
+    })}
   </div>
 )}
 
@@ -66,13 +83,28 @@ function timeAgo(iso: string): string {
   .feed-row:last-child { border-bottom: 0; }
   .feed-row:hover { background: var(--paper-2, #F4F2ED); }
   .cell { min-width: 0; }
-  .name strong { font-weight: 600; color: var(--ink, #0E1A2C); }
+  .name { display: flex; align-items: baseline; gap: 4px; min-width: 0; }
+  .name strong { font-weight: 600; color: var(--ink, #0E1A2C); flex-shrink: 0; }
+  .title-ital {
+    font-family: var(--serif, 'Newsreader', Georgia, serif);
+    font-style: italic;
+    font-size: 13px;
+    color: var(--ink-dim, #3A4658);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
   .co {
     font-family: var(--serif, 'Newsreader', Georgia, serif);
     font-style: italic;
     font-size: 13.5px;
     color: var(--ink-dim, #3A4658);
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .co .geo {
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-style: normal;
+    font-size: 10.5px;
+    letter-spacing: 0.04em;
+    color: var(--ink-faint, #7A8597);
   }
   .mono {
     font-family: var(--mono, 'DM Mono', monospace);

@@ -1,15 +1,21 @@
 ---
 // Direction A § 01 Recent Reads feed.
-// Grid columns: [1.5fr name] [1.2fr company italic] [90px time] [110px depth bar] [90px dwell] [80px event chip]
+// Grid columns: [1.5fr name+title] [1.2fr company italic] [90px time] [110px depth bar] [90px dwell] [80px event chip]
+//
+// Person info comes from the Airtable Prospects table via the slug join.
+// Falls back to slug/geo when there's no matching record.
 
 import type { RecentRead } from '../../utils/posthog/query';
 import { sessionReplayUrl } from '../../utils/posthog/query';
+import type { ProspectInfo } from '../../utils/hq/airtable';
+import { slugToDomain } from '../../utils/hq/messaged';
 
 interface Props {
   reads: RecentRead[];
+  prospectInfo?: Map<string, ProspectInfo>;
 }
 
-const { reads } = Astro.props;
+const { reads, prospectInfo } = Astro.props;
 
 function timeAgo(iso: string): string {
   const then = new Date(iso).getTime();
@@ -53,12 +59,20 @@ function fullUrl(path: string, surface: 'audit' | 'intake-review' | undefined): 
       const d = depthPct(r);
       const m = mark(r);
       const replay = sessionReplayUrl(r.session_id);
+      const info = r.prospect ? prospectInfo?.get(r.prospect) : undefined;
+      const displayName = info?.firstName || r.prospect || '(unknown)';
+      const displayCo = info?.company || (r.prospect ? slugToDomain(r.prospect) : '');
+      const geo = [r.city, r.country].filter(Boolean).join(', ');
       return (
         <div class="feed-row">
           <div class="cell name">
-            <a href={fullUrl(r.path, r.surface)} target="_blank" rel="noopener">{r.prospect || '(unknown)'}</a>
+            <a href={fullUrl(r.path, r.surface)} target="_blank" rel="noopener">{displayName}</a>
+            {info?.title && <span class="title-ital">, {info.title}</span>}
           </div>
-          <div class="cell co">{[r.city, r.country].filter(Boolean).join(', ') || '—'}</div>
+          <div class="cell co">
+            {displayCo}
+            {geo && <span class="geo"> · {geo}</span>}
+          </div>
           <div class="cell mono">{timeAgo(r.last_event)}</div>
           <div class="cell depth">
             <span class="depth-num">{d}%</span>
@@ -102,19 +116,37 @@ function fullUrl(path: string, surface: 'audit' | 'intake-review' | undefined): 
   .feed-row:last-child { border-bottom: 0; }
   .feed-row:hover { background: var(--paper-2, #F4F2ED); }
   .cell { min-width: 0; }
+  .name {
+    display: flex; align-items: baseline; gap: 4px; min-width: 0;
+  }
   .name a {
     font-weight: 600;
     color: var(--ink, #0E1A2C);
     text-decoration: none;
     border-bottom: 1px solid var(--line-strong, rgba(14,26,44,0.28));
+    flex-shrink: 0;
   }
   .name a:hover { color: var(--accent-deep, #4A6E18); border-bottom-color: var(--accent-deep, #4A6E18); }
+  .title-ital {
+    font-family: var(--serif, 'Newsreader', Georgia, serif);
+    font-style: italic;
+    font-size: 13px;
+    color: var(--ink-dim, #3A4658);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
   .co {
     font-family: var(--serif, 'Newsreader', Georgia, serif);
     font-style: italic;
     font-size: 13.5px;
     color: var(--ink-dim, #3A4658);
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .co .geo {
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-style: normal;
+    font-size: 10.5px;
+    letter-spacing: 0.04em;
+    color: var(--ink-faint, #7A8597);
   }
   .mono {
     font-family: var(--mono, 'DM Mono', monospace);
