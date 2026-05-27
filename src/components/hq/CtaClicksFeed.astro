@@ -1,4 +1,7 @@
 ---
+// Direction A § 03 CTA clicks feed.
+// Grid columns: [1.5fr name] [1.2fr company italic] [1fr CTA hot chip] [110px time] [80px Open button]
+
 import type { CtaClick } from '../../utils/posthog/query';
 
 interface Props {
@@ -8,9 +11,7 @@ interface Props {
 const { clicks } = Astro.props;
 
 function timeAgo(iso: string): string {
-  const then = new Date(iso).getTime();
-  const now = Date.now();
-  const sec = Math.max(0, Math.round((now - then) / 1000));
+  const sec = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 1000));
   if (sec < 60) return `${sec}s ago`;
   const min = Math.round(sec / 60);
   if (min < 60) return `${min}m ago`;
@@ -22,16 +23,23 @@ function timeAgo(iso: string): string {
 {clicks.length === 0 ? (
   <p class="empty">No CTA clicks yet. Every Book-a-call click will land here when it happens.</p>
 ) : (
-  <ul class="clicks">
+  <div class="feed">
     {clicks.map((c) => (
-      <li>
-        <span class="when">{timeAgo(c.when)}</span>
-        <span class="cta">{c.cta}</span>
-        <span class="prospect">{c.prospect || '(no slug)'}</span>
-        <span class="geo">{[c.city, c.country].filter(Boolean).join(', ') || '—'}</span>
-      </li>
+      <div class="feed-row">
+        <div class="cell name"><strong>{c.prospect || '(no slug)'}</strong></div>
+        <div class="cell co">{[c.city, c.country].filter(Boolean).join(', ') || '—'}</div>
+        <div class="cell"><span class="mark mark--hot">{(c.cta || 'CTA').toUpperCase()}</span></div>
+        <div class="cell mono">{timeAgo(c.when)}</div>
+        <div class="cell">
+          {c.href ? (
+            <a class="hq-btn-ghost" href={c.href} target="_blank" rel="noopener">Open ↗</a>
+          ) : (
+            <span class="dim">—</span>
+          )}
+        </div>
+      </div>
     ))}
-  </ul>
+  </div>
 )}
 
 <style>
@@ -39,38 +47,64 @@ function timeAgo(iso: string): string {
     font-family: var(--serif, 'Newsreader', Georgia, serif);
     font-style: italic;
     color: var(--ink-faint, #7A8597);
-    padding: 1.5rem 0;
-  }
-  .clicks {
-    list-style: none;
+    padding: 18px 0;
     margin: 0;
-    padding: 0;
   }
-  .clicks li {
+  .feed {
+    border: 1px solid var(--ink, #0E1A2C);
+    background: var(--paper, #FFFFFF);
+  }
+  .feed-row {
     display: grid;
-    grid-template-columns: 6rem 1fr 1fr 1fr;
-    gap: 1rem;
-    padding: 0.6rem 0;
+    grid-template-columns: 1.5fr 1.2fr 1fr 110px 80px;
+    gap: 16px;
+    padding: 12px 18px;
+    align-items: center;
     border-bottom: 1px solid var(--line, rgba(14,26,44,0.14));
-    font-size: 0.85rem;
+    transition: background 120ms;
   }
-  .clicks li:last-child { border-bottom: 0; }
-  .when {
+  .feed-row:last-child { border-bottom: 0; }
+  .feed-row:hover { background: var(--paper-2, #F4F2ED); }
+  .cell { min-width: 0; }
+  .name strong { font-weight: 600; color: var(--ink, #0E1A2C); }
+  .co {
+    font-family: var(--serif, 'Newsreader', Georgia, serif);
+    font-style: italic;
+    font-size: 13.5px;
+    color: var(--ink-dim, #3A4658);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .mono {
     font-family: var(--mono, 'DM Mono', monospace);
-    font-size: 0.75rem;
-    color: var(--ink-faint, #7A8597);
+    font-size: 11px;
+    color: var(--ink-dim, #3A4658);
+    letter-spacing: 0.06em;
   }
-  .cta {
+  .dim { color: var(--ink-faint, #7A8597); font-family: var(--mono); font-size: 11px; }
+  .mark {
+    display: inline-block;
     font-family: var(--mono, 'DM Mono', monospace);
-    font-size: 0.8rem;
-    color: var(--accent-deep, #4A6E18);
-    font-weight: 500;
+    font-size: 9.5px; letter-spacing: 0.12em; text-transform: uppercase;
+    padding: 3px 7px; border: 1px solid var(--accent, #8FBF3F);
+    background: var(--accent, #8FBF3F); color: var(--ink, #0E1A2C);
+    font-weight: 600;
   }
-  .prospect {
-    font-weight: 500;
-    color: var(--ink, #0E1A2C);
+  .hq-btn-ghost {
+    display: inline-block;
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 10px; letter-spacing: 0.06em;
+    padding: 5px 10px;
+    border: 1px solid var(--line-strong, rgba(14,26,44,0.28));
+    background: var(--paper, #FFFFFF); color: var(--ink, #0E1A2C);
+    text-decoration: none;
   }
-  .geo {
-    color: var(--ink-faint, #7A8597);
+  .hq-btn-ghost:hover { background: var(--ink, #0E1A2C); color: var(--paper, #FFFFFF); border-color: var(--ink, #0E1A2C); }
+
+  @media (max-width: 780px) {
+    .feed-row {
+      grid-template-columns: 1fr auto;
+      gap: 4px 12px;
+    }
+    .feed-row .co, .feed-row .mono { grid-column: 1; }
   }
 </style>

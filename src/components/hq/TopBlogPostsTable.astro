@@ -1,4 +1,7 @@
 ---
+// Direction A § 04 Blog feed.
+// Grid columns: [2fr title + slug] [1fr views mono] [1fr uniques mono] [90px Site button]
+
 import type { TopBlogPost } from '../../utils/posthog/query';
 
 interface Props {
@@ -7,31 +10,6 @@ interface Props {
 
 const { posts } = Astro.props;
 
-function dwell(seconds: number): string {
-  if (seconds < 60) return `${seconds}s`;
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${m}m ${s}s`;
-}
-
-function avgDwell(post: TopBlogPost): string {
-  if (post.visitors_humans === 0) return '—';
-  return dwell(Math.round(post.total_dwell_seconds_humans / post.visitors_humans));
-}
-
-function timeAgo(iso: string): string {
-  const then = new Date(iso).getTime();
-  const now = Date.now();
-  const sec = Math.max(0, Math.round((now - then) / 1000));
-  if (sec < 60) return `${sec}s ago`;
-  const min = Math.round(sec / 60);
-  if (min < 60) return `${min}m ago`;
-  const hr = Math.round(min / 60);
-  if (hr < 48) return `${hr}h ago`;
-  return `${Math.round(hr / 24)}d ago`;
-}
-
-// "Just published": last view within 48h AND raw view count <= 5 (newly out)
 function isFresh(post: TopBlogPost): boolean {
   const ageMs = Date.now() - new Date(post.last_view).getTime();
   return ageMs < 48 * 60 * 60 * 1000 && post.views_raw <= 10;
@@ -40,154 +18,91 @@ function isFresh(post: TopBlogPost): boolean {
 {posts.length === 0 ? (
   <p class="empty">No blog activity yet in this range.</p>
 ) : (
-  <table class="tbl">
-    <thead>
-      <tr>
-        <th class="th-rank">#</th>
-        <th>Post</th>
-        <th class="th-num">Views</th>
-        <th class="th-num">Uniques</th>
-        <th class="th-num">Engaged</th>
-        <th class="th-num">Avg dwell</th>
-        <th class="th-num">CTA</th>
-        <th class="th-last">Last view</th>
-      </tr>
-    </thead>
-    <tbody>
-      {posts.map((p, i) => (
-        <tr class={isFresh(p) ? 'row--fresh' : ''}>
-          <td class="td-rank">{String(i + 1).padStart(2, '0')}</td>
-          <td class="td-post">
-            <a href={p.path} target="_blank" rel="noopener">{p.slug}</a>
-            {isFresh(p) && <span class="tag tag--new">new</span>}
-          </td>
-          <td class="td-num">
-            <b class={p.views_humans > 0 ? 'humans-ok' : 'humans-zero'}>{p.views_humans}</b>
-            <span class="raw"> / {p.views_raw}</span>
-          </td>
-          <td class="td-num">
-            <b class={p.visitors_humans > 0 ? 'humans-ok' : 'humans-zero'}>{p.visitors_humans}</b>
-            <span class="raw"> / {p.visitors_raw}</span>
-          </td>
-          <td class="td-num">
-            {p.engaged_humans > 0
-              ? <b class="hot">{p.engaged_humans}</b>
-              : p.engaged_raw > 0
-                ? <><b class="humans-zero">0</b><span class="raw"> / {p.engaged_raw}</span></>
-                : <span class="dim">—</span>}
-          </td>
-          <td class="td-num">{avgDwell(p)}</td>
-          <td class="td-num">
-            {p.cta_clicks_humans > 0
-              ? <b class="hot">{p.cta_clicks_humans}</b>
-              : p.cta_clicks_raw > 0
-                ? <><b class="humans-zero">0</b><span class="raw"> / {p.cta_clicks_raw}</span></>
-                : <span class="dim">—</span>}
-          </td>
-          <td class="td-last">{timeAgo(p.last_view)}</td>
-        </tr>
-      ))}
-    </tbody>
-  </table>
+  <div class="feed">
+    {posts.map((p) => (
+      <div class="feed-row">
+        <div class="cell title">
+          <strong>{p.slug.replace(/-/g, ' ')}</strong>
+          <span class="slug">/notes/{p.slug}</span>
+          {isFresh(p) && <span class="tag-new">NEW</span>}
+        </div>
+        <div class="cell mono"><b>{p.views_humans}</b> views <span class="raw">/ {p.views_raw}</span></div>
+        <div class="cell mono"><b>{p.visitors_humans}</b> uniques <span class="raw">/ {p.visitors_raw}</span></div>
+        <div class="cell">
+          <a class="hq-btn-ghost" href={p.path} target="_blank" rel="noopener">Site ↗</a>
+        </div>
+      </div>
+    ))}
+  </div>
 )}
-
-<p class="legend">
-  Numbers shown as <b>humans</b> <span class="raw">/ total</span>. Total includes
-  scanner + self traffic; humans excludes both. A <span class="tag tag--new tag--inline">new</span>
-  tag means the post is &lt; 48h old.
-</p>
 
 <style>
   .empty {
     font-family: var(--serif, 'Newsreader', Georgia, serif);
     font-style: italic;
     color: var(--ink-faint, #7A8597);
-    padding: 1.5rem 0;
+    padding: 18px 0;
+    margin: 0;
   }
-  .tbl {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.9rem;
+  .feed {
+    border: 1px solid var(--ink, #0E1A2C);
+    background: var(--paper, #FFFFFF);
   }
-  .tbl th, .tbl td {
-    text-align: left;
-    padding: 0.6rem 0.5rem;
-    border-bottom: 1px solid var(--line, rgba(14,26,44,0.14));
-  }
-  .tbl thead th {
-    font-family: var(--mono, 'DM Mono', monospace);
-    font-size: 0.7rem;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    font-weight: 500;
-    color: var(--ink-faint, #7A8597);
-    border-bottom-color: var(--line-strong, rgba(14,26,44,0.28));
-  }
-  .th-rank, .td-rank {
-    font-family: var(--mono, 'DM Mono', monospace);
-    color: var(--ink-faint, #7A8597);
-    width: 3rem;
-  }
-  .th-num, .td-num {
-    text-align: right;
-    font-variant-numeric: tabular-nums;
-    white-space: nowrap;
-  }
-  .th-last, .td-last {
-    text-align: right;
-    font-family: var(--mono, 'DM Mono', monospace);
-    font-size: 0.75rem;
-    color: var(--ink-faint, #7A8597);
-    white-space: nowrap;
-  }
-  .td-post {
-    display: flex;
+  .feed-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 90px;
+    gap: 16px;
+    padding: 14px 18px;
     align-items: center;
-    gap: 0.5rem;
+    border-bottom: 1px solid var(--line, rgba(14,26,44,0.14));
+    transition: background 120ms;
   }
-  .td-post a {
-    color: var(--ink, #0E1A2C);
-    text-decoration: none;
-    font-weight: 500;
-    border-bottom: 1px solid var(--line-strong, rgba(14,26,44,0.28));
+  .feed-row:last-child { border-bottom: 0; }
+  .feed-row:hover { background: var(--paper-2, #F4F2ED); }
+  .cell { min-width: 0; }
+  .title {
+    display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
   }
-  .td-post a:hover { color: var(--accent-deep, #4A6E18); border-bottom-color: var(--accent-deep, #4A6E18); }
-  .row--fresh td { background: var(--accent-bg, #F2F7E5); }
-  .hot { color: var(--accent-deep, #4A6E18); }
-  .dim { color: var(--ink-faint, #7A8597); }
-  .humans-ok { color: var(--ink, #0E1A2C); }
-  .humans-zero { color: var(--ink-faint, #7A8597); }
-  .raw {
+  .title strong {
+    font-weight: 600; color: var(--ink, #0E1A2C);
+    text-transform: capitalize;
+  }
+  .slug {
     font-family: var(--mono, 'DM Mono', monospace);
-    font-size: 0.78rem;
+    font-size: 10px; letter-spacing: 0.06em;
     color: var(--ink-faint, #7A8597);
   }
-
-  .tag {
+  .mono {
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    color: var(--ink-dim, #3A4658);
+  }
+  .mono b { color: var(--ink, #0E1A2C); font-weight: 600; }
+  .raw { color: var(--ink-faint, #7A8597); }
+  .tag-new {
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 9px; letter-spacing: 0.18em;
+    padding: 2px 6px;
+    background: var(--accent, #8FBF3F); color: var(--ink, #0E1A2C);
+    font-weight: 600;
+  }
+  .hq-btn-ghost {
     display: inline-block;
-    padding: 0.1rem 0.4rem;
-    border-radius: 3px;
     font-family: var(--mono, 'DM Mono', monospace);
-    font-size: 0.62rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    font-weight: 500;
+    font-size: 10px; letter-spacing: 0.06em;
+    padding: 5px 10px;
+    border: 1px solid var(--line-strong, rgba(14,26,44,0.28));
+    background: var(--paper, #FFFFFF); color: var(--ink, #0E1A2C);
+    text-decoration: none;
   }
-  .tag--new {
-    background: var(--accent, #8FBF3F);
-    color: var(--ink, #0E1A2C);
-  }
-  .tag--inline { vertical-align: 0.05em; }
+  .hq-btn-ghost:hover { background: var(--ink, #0E1A2C); color: var(--paper, #FFFFFF); border-color: var(--ink, #0E1A2C); }
 
-  .legend {
-    margin: 0.75rem 0 0;
-    font-family: var(--mono, 'DM Mono', monospace);
-    font-size: 0.7rem;
-    color: var(--ink-faint, #7A8597);
-    line-height: 1.5;
-  }
-  .legend b {
-    color: var(--ink, #0E1A2C);
-    font-weight: 500;
+  @media (max-width: 780px) {
+    .feed-row {
+      grid-template-columns: 1fr auto;
+      gap: 6px 12px;
+    }
+    .feed-row .mono { grid-column: 1; }
   }
 </style>

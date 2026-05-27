@@ -1,4 +1,15 @@
 ---
+// Direction A KPI tile.
+//
+//   [icon · LABEL                                          ]
+//   [ 47                                          ↗︎ sparkline ]
+//   [ +52% · prev 31                                       ]
+//
+// Big numeral on the left, sparkline on the right. Mono label on top.
+// Delta in --accent-deep when up, --signal-halt when down, --ink-faint
+// flat. Engaged-reads tile uses the accent variant: numeral in
+// --accent-deep, sparkline filled with --accent.
+
 import Sparkline from './Sparkline.astro';
 
 interface Props {
@@ -11,6 +22,8 @@ interface Props {
   hint?: string;
   spark?: number[];
   sparkColor?: string;
+  /** Direction A icon name for the tile-inline glyph. */
+  icon?: 'memo' | 'operator' | 'vital' | 'flag';
   /** When true, render this card as a higher-affinity "money" metric (CTA / engaged). */
   emphasis?: 'standard' | 'accent';
 }
@@ -24,23 +37,27 @@ const {
   sub,
   hint,
   spark,
-  sparkColor = 'var(--ink)',
+  sparkColor,
+  icon,
   emphasis = 'standard',
 } = Astro.props;
+
+const isAccent = emphasis === 'accent';
+const effectiveSparkColor = sparkColor || (isAccent ? 'var(--accent-deep)' : 'var(--ink)');
 
 // Calculate % change vs previous period
 let deltaPct: number | null = null;
 let deltaSign: 'up' | 'down' | 'flat' = 'flat';
+let deltaAbs: number | null = null;
 if (typeof prevValue === 'number') {
   if (prevValue === 0 && value === 0) {
-    deltaSign = 'flat';
-    deltaPct = 0;
+    deltaSign = 'flat'; deltaPct = 0;
   } else if (prevValue === 0) {
-    deltaSign = 'up';
-    deltaPct = null; // ∞ — show as new
+    deltaSign = 'up'; deltaPct = null; deltaAbs = value;
   } else {
     const pct = ((value - prevValue) / prevValue) * 100;
     deltaPct = Math.abs(pct);
+    deltaAbs = value - prevValue;
     if (pct > 0.5) deltaSign = 'up';
     else if (pct < -0.5) deltaSign = 'down';
     else deltaSign = 'flat';
@@ -52,116 +69,113 @@ function fmtPct(n: number): string {
   if (n >= 10) return `${n.toFixed(0)}%`;
   return `${n.toFixed(1)}%`;
 }
+function deltaText(): string {
+  if (deltaPct === null) return `+${deltaAbs ?? value}`;
+  const sign = deltaSign === 'up' ? '+' : deltaSign === 'down' ? '-' : '·';
+  return `${sign}${fmtPct(deltaPct)}`;
+}
 ---
-<div class={`kpi ${emphasis === 'accent' ? 'kpi--accent' : ''}`}>
-  <div class="lab">{label}</div>
-  <div class="row">
+<div class={`kpi ${isAccent ? 'kpi--accent' : ''}`}>
+  <div class="lab-row">
+    {icon && (
+      <svg class="lab-ic" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true">
+        {icon === 'memo' && <path d="M5 3 H15 L19 7 V21 H5 Z M8 11 H16 M8 15 H16 M8 19 H13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square" />}
+        {icon === 'operator' && <><circle cx="12" cy="9" r="4" fill="none" stroke="currentColor" stroke-width="1.6" /><path d="M4 21 a8 8 0 0 1 16 0" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square" /></>}
+        {icon === 'vital' && <><path d="M3 12 H8 L10 6 L14 18 L16 12 H21" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square" /><circle cx="14" cy="18" r="1.4" fill="var(--accent)" /></>}
+        {icon === 'flag' && <><path d="M4 20 L12 4 L20 20 Z M12 11 V15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square" /><circle cx="12" cy="17.5" r="0.8" fill="currentColor" /></>}
+      </svg>
+    )}
+    <span class="lab">{label}</span>
+  </div>
+  <div class="mid">
     <div class="val">{value.toLocaleString()}</div>
-    {typeof prevValue === 'number' && (
-      <div class={`delta delta--${deltaSign}`} title={`Previous ${prevLabel}: ${prevValue.toLocaleString()}`}>
-        {deltaSign === 'up' && <span class="arrow">↑</span>}
-        {deltaSign === 'down' && <span class="arrow">↓</span>}
-        {deltaSign === 'flat' && <span class="arrow">·</span>}
-        <span class="delta-pct">{deltaPct === null ? 'new' : fmtPct(deltaPct)}</span>
+    {spark && spark.length > 0 && (
+      <div class="spark-wrap">
+        <Sparkline data={spark} color={effectiveSparkColor} ariaLabel={`${label} trend`} />
       </div>
     )}
   </div>
-  {spark && spark.length > 0 && (
-    <div class="spark-wrap">
-      <Sparkline data={spark} color={sparkColor} ariaLabel={`${label} trend`} />
-    </div>
-  )}
-  {(sub || typeof rawValue === 'number') && (
-    <div class="sub">
-      {sub}
-      {typeof rawValue === 'number' && (
-        <span class="raw"> · {rawValue.toLocaleString()} total</span>
-      )}
-    </div>
-  )}
+  <div class="foot">
+    {typeof prevValue === 'number' ? (
+      <span class={`delta delta--${deltaSign}`} title={`Previous ${prevLabel}: ${prevValue.toLocaleString()}`}>
+        <b>{deltaText()}</b>
+        <span class="prev"> · prev {prevValue.toLocaleString()}</span>
+      </span>
+    ) : (
+      sub && <span class="sub-only">{sub}</span>
+    )}
+  </div>
   {hint && <div class="hint">{hint}</div>}
 </div>
 
 <style>
   .kpi {
-    padding: 1rem 1.25rem;
+    padding: 16px 22px 14px;
     border-right: 1px solid var(--line, rgba(14,26,44,0.14));
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
-    min-height: 130px;
+    gap: 8px;
+    min-height: 92px;
+    background: var(--paper, #FFFFFF);
   }
-  .lab {
-    font-family: var(--mono, 'DM Mono', monospace);
-    font-size: 0.65rem;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
+  .lab-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
     color: var(--ink-faint, #7A8597);
   }
-  .row {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 0.5rem;
+  .lab-ic { color: currentColor; flex-shrink: 0; }
+  .lab {
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    color: var(--ink-faint, #7A8597);
+  }
+  .mid {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: end;
+    gap: 14px;
   }
   .val {
-    font-size: 1.85rem;
+    font-size: 36px;
     font-weight: 700;
     line-height: 1;
     letter-spacing: -0.03em;
     color: var(--ink, #0E1A2C);
     font-variant-numeric: tabular-nums;
   }
-  .delta {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.15rem;
-    padding: 0.15rem 0.4rem;
-    font-family: var(--mono, 'DM Mono', monospace);
-    font-size: 0.7rem;
-    font-weight: 500;
-    border-radius: 3px;
-    font-variant-numeric: tabular-nums;
-  }
-  .delta--up {
-    color: var(--accent-deep, #4A6E18);
-    background: var(--accent-bg, #F2F7E5);
-  }
-  .delta--down {
-    color: #9b2c2c;
-    background: #fbeaea;
-  }
-  .delta--flat {
-    color: var(--ink-faint, #7A8597);
-    background: var(--paper-2, #F4F2ED);
-  }
-  .arrow {
-    font-size: 0.8rem;
-    line-height: 1;
-  }
-
   .spark-wrap {
     color: var(--ink, #0E1A2C);
-    margin: -0.1rem -0.25rem 0;
-    height: 32px;
+    width: 84px;
+    height: 28px;
   }
-
-  .sub {
-    margin-top: auto;
+  .foot {
     font-family: var(--mono, 'DM Mono', monospace);
-    font-size: 0.7rem;
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
     color: var(--ink-faint, #7A8597);
+    margin-top: 2px;
   }
-  .raw {
-    opacity: 0.85;
+  .delta b {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
   }
+  .delta--up b { color: var(--accent-deep, #4A6E18); }
+  .delta--down b { color: #9A2B2B; }
+  .delta--flat b { color: var(--ink-faint, #7A8597); }
+  .prev { color: var(--ink-faint, #7A8597); }
+  .sub-only { color: var(--ink-faint, #7A8597); }
+
   .hint {
-    margin-top: 0.25rem;
+    margin-top: 4px;
     font-family: var(--serif, 'Newsreader', Georgia, serif);
     font-style: italic;
-    font-size: 0.78rem;
+    font-size: 12px;
     color: var(--ink-faint, #7A8597);
-    line-height: 1.3;
+    line-height: 1.4;
   }
 
   .kpi--accent .val { color: var(--accent-deep, #4A6E18); }

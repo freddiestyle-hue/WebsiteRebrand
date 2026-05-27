@@ -1,4 +1,7 @@
 ---
+// Direction A § 01 Recent Reads feed.
+// Grid columns: [1.5fr name] [1.2fr company italic] [90px time] [110px depth bar] [90px dwell] [80px event chip]
+
 import type { RecentRead } from '../../utils/posthog/query';
 import { sessionReplayUrl } from '../../utils/posthog/query';
 
@@ -10,57 +13,69 @@ const { reads } = Astro.props;
 
 function timeAgo(iso: string): string {
   const then = new Date(iso).getTime();
-  const now = Date.now();
-  const sec = Math.max(0, Math.round((now - then) / 1000));
+  const sec = Math.max(0, Math.round((Date.now() - then) / 1000));
   if (sec < 60) return `${sec}s ago`;
   const min = Math.round(sec / 60);
   if (min < 60) return `${min}m ago`;
   const hr = Math.round(min / 60);
   if (hr < 48) return `${hr}h ago`;
-  const day = Math.round(hr / 24);
-  return `${day}d ago`;
+  return `${Math.round(hr / 24)}d ago`;
 }
-
 function dwell(seconds: number): string {
   if (seconds < 60) return `${seconds}s`;
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
   return `${m}m ${s}s`;
 }
-
-function engagementClass(seconds: number, clicks: number): string {
-  if (clicks > 0) return 'eng--hot';
-  if (seconds >= 30) return 'eng--warm';
-  if (seconds >= 15) return 'eng--cool';
-  return 'eng--cold';
+// Estimate depth from cta/dwell heuristic if no scroll signal in this row
+function depthPct(r: RecentRead): number {
+  if (r.cta_clicks > 0) return 100;
+  if (r.dwell_seconds >= 60) return 75;
+  if (r.dwell_seconds >= 30) return 50;
+  if (r.dwell_seconds >= 10) return 25;
+  return 5;
+}
+function mark(r: RecentRead): { label: string; cls: string } {
+  if (r.cta_clicks > 0) return { label: 'CTA', cls: 'mark--hot' };
+  if (r.dwell_seconds >= 60) return { label: 'DEEP', cls: 'mark--warm' };
+  return { label: '–', cls: 'mark--cold' };
+}
+function fullUrl(path: string, surface: 'audit' | 'intake-review' | undefined): string {
+  if (surface === 'intake-review') return `https://intake-reviews.vercel.app${path}`;
+  return path;
 }
 ---
 {reads.length === 0 ? (
   <p class="empty">No engaged reads yet. Send the next batch and watch this populate.</p>
 ) : (
-  <ol class="feed">
+  <div class="feed">
     {reads.map((r) => {
+      const d = depthPct(r);
+      const m = mark(r);
       const replay = sessionReplayUrl(r.session_id);
       return (
-        <li class={`row ${engagementClass(r.dwell_seconds, r.cta_clicks)}`}>
-          <div class="when">{timeAgo(r.last_event)}</div>
-          <div class="who">
-            <div class="prospect">{r.prospect || '(unknown)'}</div>
-            <div class="geo">{[r.city, r.country].filter(Boolean).join(', ') || '—'}</div>
+        <div class="feed-row">
+          <div class="cell name">
+            <a href={fullUrl(r.path, r.surface)} target="_blank" rel="noopener">{r.prospect || '(unknown)'}</a>
           </div>
-          <div class="signals">
-            <span class="sig"><b>{dwell(r.dwell_seconds)}</b> dwell</span>
-            <span class="sig"><b>{r.events}</b> events</span>
-            {r.cta_clicks > 0 && <span class="sig sig--hot"><b>{r.cta_clicks}</b> CTA click{r.cta_clicks === 1 ? '' : 's'}</span>}
+          <div class="cell co">{[r.city, r.country].filter(Boolean).join(', ') || '—'}</div>
+          <div class="cell mono">{timeAgo(r.last_event)}</div>
+          <div class="cell depth">
+            <span class="depth-num">{d}%</span>
+            <span class="depth-bar"><i style={`width:${d}%`}></i></span>
           </div>
-          <div class="actions">
-            {replay && <a class="action" href={replay} target="_blank" rel="noopener">Watch replay →</a>}
-            <a class="action" href={r.path} target="_blank" rel="noopener">Open memo →</a>
+          <div class="cell mono">{dwell(r.dwell_seconds)}</div>
+          <div class="cell">
+            {replay ? (
+              <a class={`mark ${m.cls}`} href={replay} target="_blank" rel="noopener">{m.label}</a>
+            ) : (
+              <span class={`mark ${m.cls}`}>{m.label}</span>
+            )}
           </div>
-        </li>
+        </div>
       );
     })}
-  </ol>
+  </div>
 )}
 
 <style>
@@ -68,90 +83,77 @@ function engagementClass(seconds: number, clicks: number): string {
     font-family: var(--serif, 'Newsreader', Georgia, serif);
     font-style: italic;
     color: var(--ink-faint, #7A8597);
-    padding: 1.5rem 0;
+    padding: 18px 0;
+    margin: 0;
   }
   .feed {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    counter-reset: feed;
+    border: 1px solid var(--ink, #0E1A2C);
+    background: var(--paper, #FFFFFF);
   }
-  .row {
+  .feed-row {
     display: grid;
-    grid-template-columns: 7rem 1fr auto;
-    gap: 0.75rem 1.5rem;
-    padding: 1rem 0;
-    border-bottom: 1px solid var(--line, rgba(14,26,44,0.14));
+    grid-template-columns: 1.5fr 1.2fr 90px 110px 90px 80px;
+    gap: 16px;
+    padding: 12px 18px;
     align-items: center;
+    border-bottom: 1px solid var(--line, rgba(14,26,44,0.14));
+    transition: background 120ms;
   }
-  .row:last-child { border-bottom: 0; }
-  .when {
-    font-family: var(--mono, 'DM Mono', monospace);
-    font-size: 0.75rem;
-    color: var(--ink-faint, #7A8597);
-    white-space: nowrap;
-  }
-  .who { min-width: 0; }
-  .prospect {
+  .feed-row:last-child { border-bottom: 0; }
+  .feed-row:hover { background: var(--paper-2, #F4F2ED); }
+  .cell { min-width: 0; }
+  .name a {
     font-weight: 600;
     color: var(--ink, #0E1A2C);
+    text-decoration: none;
+    border-bottom: 1px solid var(--line-strong, rgba(14,26,44,0.28));
+  }
+  .name a:hover { color: var(--accent-deep, #4A6E18); border-bottom-color: var(--accent-deep, #4A6E18); }
+  .co {
+    font-family: var(--serif, 'Newsreader', Georgia, serif);
+    font-style: italic;
+    font-size: 13.5px;
+    color: var(--ink-dim, #3A4658);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .mono {
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    color: var(--ink-dim, #3A4658);
+  }
+  .depth { display: flex; align-items: center; gap: 8px; font-family: var(--mono, 'DM Mono', monospace); font-size: 11px; }
+  .depth-num { min-width: 30px; color: var(--ink-dim, #3A4658); }
+  .depth-bar {
+    flex: 1;
+    height: 4px;
+    background: var(--paper-3, #EBE6DC);
     overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
-  .geo {
-    font-size: 0.85rem;
-    color: var(--ink-faint, #7A8597);
+  .depth-bar i {
+    display: block; height: 100%;
+    background: var(--ink, #0E1A2C);
   }
-  .signals {
-    grid-column: 2 / -1;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem 1rem;
+  .mark {
+    display: inline-block;
     font-family: var(--mono, 'DM Mono', monospace);
-    font-size: 0.75rem;
-    color: var(--ink-dim, #3A4658);
+    font-size: 9.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 3px 7px;
+    border: 1px solid var(--line, rgba(14,26,44,0.14));
+    text-decoration: none;
   }
-  .sig b { color: var(--ink, #0E1A2C); font-weight: 600; }
-  .sig--hot { color: var(--accent-deep, #4A6E18); }
-  .sig--hot b { color: var(--accent-deep, #4A6E18); }
-  .actions {
-    grid-column: 2 / -1;
-    display: flex;
-    gap: 1rem;
-    flex-wrap: wrap;
-  }
-  .action {
-    font-family: var(--mono, 'DM Mono', monospace);
-    font-size: 0.75rem;
-    color: var(--ink-dim, #3A4658);
-    text-decoration: underline;
-    text-decoration-color: var(--line-strong, rgba(14,26,44,0.28));
-  }
-  .action:hover { color: var(--accent-deep, #4A6E18); }
+  .mark--hot { background: var(--accent, #8FBF3F); color: var(--ink, #0E1A2C); border-color: var(--accent, #8FBF3F); font-weight: 600; }
+  .mark--warm { background: var(--sage, #E8F0D9); color: var(--accent-deep, #4A6E18); border-color: var(--accent-deep, #4A6E18); }
+  .mark--cool { color: var(--ink-dim, #3A4658); border-color: var(--line-strong, rgba(14,26,44,0.28)); }
+  .mark--cold { color: var(--ink-faint, #7A8597); border-color: var(--line, rgba(14,26,44,0.14)); }
 
-  /* Engagement bands left rail accent */
-  .row { position: relative; padding-left: 1rem; }
-  .row::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 1rem;
-    bottom: 1rem;
-    width: 2px;
-    background: var(--line, rgba(14,26,44,0.14));
-  }
-  .eng--hot::before  { background: var(--accent-deep, #4A6E18); }
-  .eng--warm::before { background: var(--accent, #8FBF3F); }
-  .eng--cool::before { background: var(--ink-dim, #3A4658); }
-  .eng--cold::before { background: var(--line-strong, rgba(14,26,44,0.28)); }
-
-  @media (min-width: 720px) {
-    .row {
-      grid-template-columns: 7rem 1fr auto auto;
-      grid-template-rows: auto;
+  @media (max-width: 780px) {
+    .feed-row {
+      grid-template-columns: 1fr auto;
+      gap: 6px 12px;
     }
-    .signals { grid-column: auto; }
-    .actions { grid-column: auto; justify-content: flex-end; }
+    .feed-row .co, .feed-row .depth, .feed-row .mono:nth-of-type(2) { display: none; }
   }
 </style>

@@ -766,45 +766,41 @@ const weekday = today.toLocaleString('en-US', { weekday: 'short', timeZone: 'UTC
           <div class="kpis">
             <KpiCard
               label="Memo views"
+              icon="memo"
               value={headline.memo_views}
               rawValue={headline.memo_views_raw}
               prevValue={headline.memo_views_prev}
               prevLabel={`prev ${range.days}d`}
-              sub="humans"
               spark={headline.spark_memo_views}
-              sparkColor="var(--ink)"
             />
             <KpiCard
               label="Unique visitors"
+              icon="operator"
               value={headline.unique_visitors}
               rawValue={headline.unique_visitors_raw}
               prevValue={headline.unique_visitors_prev}
               prevLabel={`prev ${range.days}d`}
-              sub="humans"
               spark={headline.spark_unique_visitors}
-              sparkColor="var(--ink)"
             />
             <KpiCard
               label="Engaged reads"
+              icon="vital"
               value={headline.engaged_reads}
               rawValue={headline.engaged_reads_raw}
               prevValue={headline.engaged_reads_prev}
               prevLabel={`prev ${range.days}d`}
-              sub="past 50% scroll"
               hint={headline.engaged_reads === 0 && headline.memo_views > 0 ? 'Memos read but no 50% scrollers. Tighten the hook.' : undefined}
               spark={headline.spark_engaged_reads}
-              sparkColor="var(--accent-deep)"
               emphasis="accent"
             />
             <KpiCard
               label="CTA clicks"
+              icon="flag"
               value={headline.cta_clicks}
               rawValue={headline.cta_clicks_raw}
               prevValue={headline.cta_clicks_prev}
               prevLabel={`prev ${range.days}d`}
-              sub="Book a call etc."
               spark={headline.spark_cta_clicks}
-              sparkColor="var(--accent-deep)"
               emphasis="accent"
             />
           </div>
