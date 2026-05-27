@@ -35,7 +35,10 @@ const POSTHOG_PROJECT_ID = 373899;
 //     signal). Top Prospects / Action Queue keep strict behavioural filter.
 //     Behavioural-only headline metrics under-counted brief readers who
 //     opened the memo but didn't scroll, plus dropped blog traffic entirely.
-const CACHE_VERSION = 'v7';
+// v8: slug extraction strips trailing punctuation (signaturit-com. ->
+//     signaturit-com) so the Airtable join hits. Recent Reads filters out
+//     bare-page sessions where the slug extraction returns ''.
+const CACHE_VERSION = 'v8';
 
 // Lazy redis client. Construction is cheap but we only need one instance.
 // Use KV_REST_API_* env vars (set by Vercel KV / Upstash integration) since
@@ -282,8 +285,11 @@ const PROSPECT_PATH_FILTER_TOP = `(
 
 // Slug extraction: strip the leading surface path so the remainder is the
 // prospect identifier (a domain-like slug, e.g. "mindfulhealthsolutions-com").
+// Also strip any trailing dots/whitespace/slashes because email clients
+// sometimes append punctuation to URLs ("/audit/v3/signaturit-com." in
+// the wild — break the Airtable slug join unless we normalise here).
 const PROSPECT_SLUG_EXPR =
-  `replaceRegexpOne(properties.$pathname, '^/(audit/(v3|p)|intake-review)(/|$)', '')`;
+  `replaceRegexpOne(replaceRegexpOne(properties.$pathname, '^/(audit/(v3|p)|intake-review)(/|$)', ''), '[\\\\s./]+$', '')`;
 
 // Surface classification — inspect the path. Cheaper than reading the
 // PostHog super-property and works on historic events too.
@@ -338,7 +344,7 @@ export async function getRecentReads(range: DateRange, mode: TrafficMode = 'huma
         AND ${PROSPECT_PATH_FILTER}
         ${lightHumanWhereFor(mode)}
       GROUP BY path, prospect, surface, session_id, distinct_id, city, country
-      HAVING dwell_seconds >= ${minDwell}
+      HAVING dwell_seconds >= ${minDwell} AND prospect != ''
       ORDER BY last_event DESC
       LIMIT 50
     `);
