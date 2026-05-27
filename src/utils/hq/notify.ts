@@ -44,7 +44,13 @@ function timeAgo(iso: string): string {
 }
 
 function heatTag(p: TopProspect): string {
+  // Keep aligned with ActionQueue.astro heatBadge.
   if (p.cta_clicks > 0) return 'CTA CLICK';
+  if (p.prints > 0) return 'PRINTED';
+  if (p.copies > 0) return 'COPIED';
+  if (p.return_visitor) return 'RETURNED';
+  if (p.verdict_expansions > 0) return 'VERDICTS';
+  if (p.scroll_100s > 0) return 'FULL READ';
   if (p.total_dwell_seconds >= 120) return 'DEEP READ';
   if (p.total_dwell_seconds >= 30) return 'WARM';
   return 'ENGAGED';

@@ -130,14 +130,74 @@ const identifyPayload = identifyAs
   })();
 
   // CTA click tracking. Any element with [data-cta="<name>"] fires cta_clicked.
+  // send_instantly + sendBeacon transport so the event survives cross-origin
+  // navigation to cal.com / mailto: links. The previous plain capture() was
+  // being cancelled on page unload, leaving cta_clicked permanently at zero.
   document.addEventListener('click', function (e) {
     var el = e.target.closest('[data-cta]');
     if (!el) return;
-    window.rivett.track('cta_clicked', {
+    if (!window.posthog || !window.posthog.capture) return;
+    window.posthog.capture('cta_clicked', {
       cta: el.getAttribute('data-cta'),
       href: el.getAttribute('href') || null,
       text: (el.innerText || '').trim().slice(0, 80),
       path: window.location.pathname,
-    });
+    }, { send_instantly: true, transport: 'sendBeacon' });
   }, true);
+
+  // Copy event — someone selected and copied memo text. Strong sharing signal.
+  // Ignore tiny copies (UI button labels, accidental selects).
+  document.addEventListener('copy', function () {
+    var len = 0;
+    try {
+      var sel = window.getSelection && window.getSelection();
+      len = (sel && sel.toString && sel.toString().length) || 0;
+    } catch (e) {}
+    if (len < 20) return;
+    window.rivett.track('content_copied', {
+      path: window.location.pathname,
+      selection_length: len,
+    });
+  });
+
+  // Print event — they're saving the memo. Among the hottest signals.
+  window.addEventListener('beforeprint', function () {
+    if (!window.posthog || !window.posthog.capture) return;
+    window.posthog.capture('content_printed', {
+      path: window.location.pathname,
+    }, { send_instantly: true, transport: 'sendBeacon' });
+  });
+
+  // Tab focus time — separates "actually reading" from "open in background tab".
+  // Accumulates focused milliseconds and flushes on pagehide via sendBeacon.
+  (function () {
+    var totalFocusMs = 0;
+    var lastFocusStart = !document.hidden ? Date.now() : null;
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) {
+        if (lastFocusStart) {
+          totalFocusMs += Date.now() - lastFocusStart;
+          lastFocusStart = null;
+        }
+      } else if (!lastFocusStart) {
+        lastFocusStart = Date.now();
+      }
+    });
+    function flush() {
+      if (lastFocusStart) {
+        totalFocusMs += Date.now() - lastFocusStart;
+        lastFocusStart = null;
+      }
+      if (totalFocusMs < 1000) return;
+      if (!window.posthog || !window.posthog.capture) return;
+      window.posthog.capture('tab_focus_time', {
+        focus_seconds: Math.round(totalFocusMs / 1000),
+        path: window.location.pathname,
+      }, { send_instantly: true, transport: 'sendBeacon' });
+      totalFocusMs = 0;
+    }
+    window.addEventListener('pagehide', flush);
+    // Fallback for browsers that don't fire pagehide reliably.
+    window.addEventListener('beforeunload', flush);
+  })();
 </script>

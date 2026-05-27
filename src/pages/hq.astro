@@ -144,13 +144,18 @@ if (authed) {
 }
 
 // --- Action queue: engaged prospects who haven't been marked messaged ---
-// "Engaged" = real human signal: dwell >= 15s OR a CTA click. Sort by recency
-// so freshest signal floats to the top. Show at most 10 — anything beyond is
-// queue overflow that we surface in Top Prospects below.
+// "Engaged" = heat_score >= 10. That threshold catches anyone who did at
+// least one of: full read (scroll_100), verdict expand, copy, print, CTA
+// click, return visit, or 5+ minutes of focused dwell. Pure scrollers with
+// no other signal are excluded — they sit in Top Prospects below.
+// Sort by heat_score (strongest signal first), then by recency to break ties.
 const actionQueue = top
   .filter((p) => !messagedSlugs.has(p.prospect))
-  .filter((p) => p.total_dwell_seconds >= 15 || p.cta_clicks > 0)
-  .sort((a, b) => (a.last_view < b.last_view ? 1 : -1))
+  .filter((p) => p.heat_score >= 10)
+  .sort((a, b) => {
+    if (b.heat_score !== a.heat_score) return b.heat_score - a.heat_score;
+    return a.last_view < b.last_view ? 1 : -1;
+  })
   .slice(0, 10);
 
 // Top-level (always visible) nav. Deep analytics (geography/devices/sources/

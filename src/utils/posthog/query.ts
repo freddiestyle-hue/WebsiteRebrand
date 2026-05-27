@@ -21,7 +21,9 @@ const POSTHOG_PROJECT_ID = 373899;
 
 // Cache versioning lets us bust everything by bumping this string.
 // v3: added `surface` column to RecentRead/TopProspect for intake-review integration.
-const CACHE_VERSION = 'v3';
+// v4: added engagement signals (verdict_expansions, scroll_100s, copies, prints,
+//     focus_seconds_total, return_visitor) and computed heat_score on TopProspect.
+const CACHE_VERSION = 'v4';
 
 // Lazy redis client. Construction is cheap but we only need one instance.
 // Use KV_REST_API_* env vars (set by Vercel KV / Upstash integration) since
@@ -283,9 +285,42 @@ export interface TopProspect {
   unique_sessions: number;
   total_dwell_seconds: number;
   cta_clicks: number;
+  // v4 engagement signals
+  verdict_expansions: number;     // audit_v3_verdict_expanded events
+  scroll_100s: number;            // scroll_depth where depth=100 (full reads)
+  copies: number;                 // content_copied events (selection >= 20 chars)
+  prints: number;                 // content_printed events (saving as PDF)
+  focus_seconds_total: number;    // sum of tab_focus_time.focus_seconds across sessions
+  return_visitor: boolean;        // unique_sessions > 1 (came back at least once)
+  heat_score: number;             // weighted composite, see heatScoreSql below
   last_view: string;
   sessions: ProspectSession[];
 }
+
+// Heat score weights — tunable. Tuned for "is this prospect worth a follow-up
+// today" not "did they technically visit". Big jumps reward unique acts
+// (return visit, print, copy, CTA) and a softer slope rewards depth (focus
+// time, scroll-to-bottom, verdict expansion).
+//
+// Weights (per occurrence unless noted):
+//   return_visitor (bool):       +50
+//   prints:                      +40
+//   copies:                      +30
+//   cta_clicks:                  +25
+//   scroll_100s:                 +15
+//   verdict_expansions:          +10
+//   focus_seconds_total / 10:    +1, capped at +20
+//   total_dwell_seconds / 30:    +1, capped at +10  (only matters when no other signal)
+const HEAT_SCORE_SQL = `(
+  (if(unique_sessions > 1, 50, 0)) +
+  (prints * 40) +
+  (copies * 30) +
+  (cta_clicks * 25) +
+  (scroll_100s * 15) +
+  (verdict_expansions * 10) +
+  least(20, intDiv(focus_seconds_total, 10)) +
+  least(10, intDiv(total_dwell_seconds, 30))
+)`;
 
 export async function getTopProspects(range: DateRange, mode: TrafficMode = 'humans'): Promise<TopProspect[]> {
   return cached('topProspects', range, async () => {
@@ -300,6 +335,12 @@ export async function getTopProspects(range: DateRange, mode: TrafficMode = 'hum
       count() AS unique_sessions,
       sum(session_dwell) AS total_dwell_seconds,
       sum(session_clicks) AS cta_clicks,
+      sum(session_verdicts) AS verdict_expansions,
+      sum(session_scroll_100) AS scroll_100s,
+      sum(session_copies) AS copies,
+      sum(session_prints) AS prints,
+      sum(session_focus) AS focus_seconds_total,
+      ${HEAT_SCORE_SQL} AS heat_score,
       max(last_event) AS last_view,
       groupArray(tuple(sid, session_dwell, last_event, session_views, session_clicks)) AS sessions_raw
     FROM (
@@ -309,6 +350,11 @@ export async function getTopProspects(range: DateRange, mode: TrafficMode = 'hum
         properties.$session_id AS sid,
         count() AS session_views,
         countIf(event = 'cta_clicked') AS session_clicks,
+        countIf(event = 'audit_v3_verdict_expanded') AS session_verdicts,
+        countIf(event = 'scroll_depth' AND toInt(properties.depth) = 100) AS session_scroll_100,
+        countIf(event = 'content_copied') AS session_copies,
+        countIf(event = 'content_printed') AS session_prints,
+        sumIf(toInt(properties.focus_seconds), event = 'tab_focus_time') AS session_focus,
         dateDiff('second', min(timestamp), max(timestamp)) AS session_dwell,
         max(timestamp) AS last_event
       FROM events
@@ -319,7 +365,7 @@ export async function getTopProspects(range: DateRange, mode: TrafficMode = 'hum
     ) AS sessions
     WHERE prospect != ''
     GROUP BY prospect, surface
-    ORDER BY total_views DESC, last_view DESC
+    ORDER BY heat_score DESC, last_view DESC
     LIMIT 25
   `);
 
@@ -331,6 +377,12 @@ export async function getTopProspects(range: DateRange, mode: TrafficMode = 'hum
     unique_sessions: number;
     total_dwell_seconds: number;
     cta_clicks: number;
+    verdict_expansions: number;
+    scroll_100s: number;
+    copies: number;
+    prints: number;
+    focus_seconds_total: number;
+    heat_score: number;
     last_view: string;
     sessions_raw: Array<[string | null, number, string, number, number]>;
   }>(r);
@@ -342,6 +394,13 @@ export async function getTopProspects(range: DateRange, mode: TrafficMode = 'hum
     unique_sessions: row.unique_sessions,
     total_dwell_seconds: row.total_dwell_seconds,
     cta_clicks: row.cta_clicks,
+    verdict_expansions: row.verdict_expansions ?? 0,
+    scroll_100s: row.scroll_100s ?? 0,
+    copies: row.copies ?? 0,
+    prints: row.prints ?? 0,
+    focus_seconds_total: row.focus_seconds_total ?? 0,
+    return_visitor: row.unique_sessions > 1,
+    heat_score: row.heat_score ?? 0,
     last_view: row.last_view,
     sessions: (row.sessions_raw || [])
       .map(([sid, dwell, last_event, views, clicks]) => ({
