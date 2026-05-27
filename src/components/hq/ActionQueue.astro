@@ -38,16 +38,23 @@ function timeAgo(iso: string): string {
 
 function heatBadge(p: TopProspect): { label: string; cls: string } {
   // Order by strength of buying signal. CTA click / print / copy = top tier.
-  // Return visit = strong intent. Verdict expansion + full read = engaged.
-  // Dwell-only = browsed.
+  // RETURNED requires real engagement on the return - a scanner that hits
+  // the URL twice doesn't qualify. Verdict expansion + full read = engaged.
+  // Dwell-only with no signal = browsed (won't even pass queue filter).
   if (p.cta_clicks > 0) return { label: 'CTA CLICK', cls: 'heat--hot' };
   if (p.prints > 0) return { label: 'PRINTED', cls: 'heat--hot' };
   if (p.copies > 0) return { label: 'COPIED', cls: 'heat--hot' };
-  if (p.return_visitor) return { label: 'RETURNED', cls: 'heat--warm' };
+  const engagedReturn =
+    p.return_visitor &&
+    (p.scroll_100s > 0 ||
+      p.verdict_expansions > 0 ||
+      p.total_dwell_seconds >= 30 ||
+      p.focus_seconds_total >= 30);
+  if (engagedReturn) return { label: 'RETURNED', cls: 'heat--warm' };
   if (p.verdict_expansions > 0) return { label: 'VERDICTS', cls: 'heat--warm' };
   if (p.scroll_100s > 0) return { label: 'FULL READ', cls: 'heat--warm' };
-  if (p.total_dwell_seconds >= 30) return { label: 'DEEP READ', cls: 'heat--cool' };
-  if (p.total_dwell_seconds >= 15) return { label: 'ENGAGED', cls: 'heat--cool' };
+  if (p.total_dwell_seconds >= 60 || p.focus_seconds_total >= 60) return { label: 'DEEP READ', cls: 'heat--cool' };
+  if (p.total_dwell_seconds >= 30 || p.focus_seconds_total >= 30) return { label: 'ENGAGED', cls: 'heat--cool' };
   return { label: 'BROWSED', cls: 'heat--cold' };
 }
 ---

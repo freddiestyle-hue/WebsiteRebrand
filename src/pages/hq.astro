@@ -148,14 +148,24 @@ if (authed) {
 }
 
 // --- Action queue: engaged prospects who haven't been marked messaged ---
-// "Engaged" = heat_score >= 10. That threshold catches anyone who did at
-// least one of: full read (scroll_100), verdict expand, copy, print, CTA
-// click, return visit, or 5+ minutes of focused dwell. Pure scrollers with
-// no other signal are excluded — they sit in Top Prospects below.
+// To make the cut a prospect must EITHER have done one concrete thing
+// (CTA, print, copy, verdict expand, full scroll) OR spent >= 60s of real
+// focus time on a memo. Pure pageview-counts and 2-second return visits
+// (scanner fingerprint) no longer qualify.
 // Sort by heat_score (strongest signal first), then by recency to break ties.
 const actionQueue = top
   .filter((p) => !messagedSlugs.has(p.prospect))
-  .filter((p) => p.heat_score >= 10)
+  .filter((p) => {
+    const hasConcreteAction =
+      p.cta_clicks > 0 ||
+      p.prints > 0 ||
+      p.copies > 0 ||
+      p.verdict_expansions > 0 ||
+      p.scroll_100s > 0;
+    const hasRealDwell =
+      p.focus_seconds_total >= 60 || p.total_dwell_seconds >= 60;
+    return hasConcreteAction || hasRealDwell;
+  })
   .sort((a, b) => {
     if (b.heat_score !== a.heat_score) return b.heat_score - a.heat_score;
     return a.last_view < b.last_view ? 1 : -1;

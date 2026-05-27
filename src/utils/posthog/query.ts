@@ -23,7 +23,10 @@ const POSTHOG_PROJECT_ID = 373899;
 // v3: added `surface` column to RecentRead/TopProspect for intake-review integration.
 // v4: added engagement signals (verdict_expansions, scroll_100s, copies, prints,
 //     focus_seconds_total, return_visitor) and computed heat_score on TopProspect.
-const CACHE_VERSION = 'v4';
+// v5: heat_score gates return_visitor bonus on real engagement, dwell-only no
+//     longer crosses queue threshold. Stops scanner-fingerprint repeats and
+//     sub-second drive-bys from polluting Action Queue.
+const CACHE_VERSION = 'v5';
 
 // Lazy redis client. Construction is cheap but we only need one instance.
 // Use KV_REST_API_* env vars (set by Vercel KV / Upstash integration) since
@@ -297,27 +300,29 @@ export interface TopProspect {
   sessions: ProspectSession[];
 }
 
-// Heat score weights — tunable. Tuned for "is this prospect worth a follow-up
-// today" not "did they technically visit". Big jumps reward unique acts
-// (return visit, print, copy, CTA) and a softer slope rewards depth (focus
-// time, scroll-to-bottom, verdict expansion).
+// Heat score weights - tunable. Tuned for "is this prospect worth a follow-up
+// today" not "did they technically visit". The return-visitor bonus is gated
+// on real engagement: coming back twice means nothing if both sessions were
+// 2-second drive-bys (which is exactly what scanner traffic looks like after
+// the datacenter-city filter misses one). Bumping queue threshold to >=25 so
+// pure dwell never crosses on its own.
 //
 // Weights (per occurrence unless noted):
-//   return_visitor (bool):       +50
 //   prints:                      +40
 //   copies:                      +30
 //   cta_clicks:                  +25
 //   scroll_100s:                 +15
 //   verdict_expansions:          +10
+//   return_visitor (bool):       +30, ONLY if there is also real engagement
 //   focus_seconds_total / 10:    +1, capped at +20
-//   total_dwell_seconds / 30:    +1, capped at +10  (only matters when no other signal)
+//   total_dwell_seconds / 30:    +1, capped at +10
 const HEAT_SCORE_SQL = `(
-  (if(unique_sessions > 1, 50, 0)) +
   (prints * 40) +
   (copies * 30) +
   (cta_clicks * 25) +
   (scroll_100s * 15) +
   (verdict_expansions * 10) +
+  (if(unique_sessions > 1 AND (total_dwell_seconds >= 30 OR scroll_100s > 0 OR verdict_expansions > 0 OR cta_clicks > 0 OR copies > 0 OR prints > 0), 30, 0)) +
   least(20, intDiv(focus_seconds_total, 10)) +
   least(10, intDiv(total_dwell_seconds, 30))
 )`;
