@@ -195,7 +195,23 @@ function bandLabel(pct: number): string {
 <meta name="theme-color" content="#8FBF3F" />
 <link rel="stylesheet" href="/audit/tokens.css" />
 <link rel="stylesheet" href="/audit/audit-v3.css" />
-<PostHog />
+<PostHog
+  capturePageview={true}
+  identifyAs={memo && cached ? slug : undefined}
+  personProperties={memo && cached ? {
+    type: 'memo_v3_slug',
+    slug,
+    domain: cached.hostname,
+    company_name: memo.companyName ?? null,
+    industry: memo.industry ?? null,
+    score_numeric: cached.scoreNumeric,
+    score_max: cached.scoreMax,
+    score_percent: scorePercent,
+    first_viewed_at: new Date().toISOString(),
+  } : undefined}
+  groupKey={memo?.domain}
+  groupType="company"
+/>
 <style>
   body { font-family: var(--grotesk); background: var(--paper); color: var(--ink); margin: 0; }
   .page { max-width: 1200px; margin: 0 auto; padding: var(--sp-10) var(--sp-8); }
