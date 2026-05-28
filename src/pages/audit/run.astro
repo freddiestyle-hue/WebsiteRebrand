@@ -229,6 +229,145 @@ function splitDisplay(kicker: string): { roman: string; italic: string; dek: str
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&family=Newsreader:ital,wght@0,400;0,500;1,400;1,500&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="/audit/memo.css" />
+<style>
+  /* Soft gate on recommendations panel.
+     Visitor sees verdict cells above. The recommendations block stays
+     visually present (preview-shape) but blurred + non-interactive until
+     they submit an email. localStorage flag persists per-device. */
+  .rec-section { position: relative; }
+  .rec-section .rec-locked {
+    filter: blur(7px);
+    pointer-events: none;
+    user-select: none;
+    transition: filter 280ms ease;
+    min-height: 280px;
+  }
+  .rec-section.unlocked .rec-locked {
+    filter: none;
+    pointer-events: auto;
+    user-select: auto;
+  }
+  .rec-gate {
+    position: absolute;
+    inset: auto 0 0 0;
+    top: 220px; /* sits just below the section header */
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 24px 16px;
+    z-index: 3;
+  }
+  .rec-section.unlocked .rec-gate { display: none; }
+  .rec-gate-card {
+    max-width: 520px;
+    width: 100%;
+    background: var(--paper, #FFFFFF);
+    border: 1px solid var(--accent-deep, #4A6E18);
+    padding: 28px 28px 24px;
+    box-shadow: 0 16px 48px rgba(14, 26, 44, 0.18);
+  }
+  .rec-gate-eyebrow {
+    font-family: 'DM Mono', ui-monospace, monospace;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent-deep, #4A6E18);
+    margin-bottom: 12px;
+  }
+  .rec-gate-title {
+    font-family: 'Inter Tight', system-ui, sans-serif;
+    font-weight: 600;
+    font-size: 24px;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    margin: 0 0 12px;
+    color: var(--ink, #0E1A2C);
+  }
+  .rec-gate-title .ital {
+    font-family: 'Newsreader', Georgia, serif;
+    font-style: italic;
+    font-weight: 400;
+    color: var(--ink-dim, #3A4658);
+  }
+  .rec-gate-body {
+    font-family: 'Inter Tight', system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--ink-dim, #3A4658);
+    margin: 0 0 18px;
+  }
+  .rec-gate-form {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .rec-gate-form input[type="email"] {
+    flex: 1;
+    padding: 12px 14px;
+    font-family: 'Inter Tight', system-ui, sans-serif;
+    font-size: 15px;
+    color: var(--ink, #0E1A2C);
+    background: var(--paper-2, #F4F2ED);
+    border: 1px solid var(--line-strong, rgba(14,26,44,0.28));
+    outline: none;
+    transition: border-color 120ms, background 120ms;
+  }
+  .rec-gate-form input[type="email"]:focus {
+    border-color: var(--accent-deep, #4A6E18);
+    background: var(--paper, #FFFFFF);
+  }
+  .rec-gate-form button {
+    padding: 12px 20px;
+    font-family: 'DM Mono', ui-monospace, monospace;
+    font-size: 11px;
+    letter-spacing: 0.10em;
+    text-transform: uppercase;
+    font-weight: 500;
+    color: var(--paper, #FFFFFF);
+    background: var(--accent-deep, #4A6E18);
+    border: 1px solid var(--accent-deep, #4A6E18);
+    cursor: pointer;
+    transition: background 120ms, transform 80ms;
+    white-space: nowrap;
+  }
+  .rec-gate-form button:hover { background: var(--ink, #0E1A2C); border-color: var(--ink, #0E1A2C); }
+  .rec-gate-form button:active { transform: translateY(1px); }
+  .rec-gate-form button:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    transform: none;
+  }
+  .rec-gate-hp {
+    position: absolute;
+    left: -10000px;
+    top: auto;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+  }
+  .rec-gate-status {
+    font-family: 'DM Mono', ui-monospace, monospace;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    margin: 6px 0 12px;
+    min-height: 14px;
+  }
+  .rec-gate-status.err { color: #9A2B2B; }
+  .rec-gate-status.ok { color: var(--accent-deep, #4A6E18); }
+  .rec-gate-fine {
+    font-family: 'Newsreader', Georgia, serif;
+    font-style: italic;
+    font-size: 12.5px;
+    line-height: 1.55;
+    color: var(--ink-faint, #7A8597);
+    margin: 0;
+  }
+  @media (max-width: 640px) {
+    .rec-gate { top: 240px; }
+    .rec-gate-form { flex-direction: column; }
+    .rec-gate-form button { width: 100%; }
+  }
+</style>
 </head>
 <body>
 
@@ -442,7 +581,7 @@ function splitDisplay(kicker: string): { roman: string; italic: string; dek: str
       </section>
 
       {recommendations.length > 0 && (
-        <section class="sec">
+        <section class="sec rec-section" data-rec-section>
           <div class="sec-head">
             <div class="num">04 · Ranked recommendations</div>
             <div>
@@ -451,44 +590,74 @@ function splitDisplay(kicker: string): { roman: string; italic: string; dek: str
             </div>
           </div>
 
-          {topRecFix && (
-            <div class="ba">
-              <div class="b">
-                <div class="lab">As deployed</div>
-                <p class="h" set:html={topRecFix.before}></p>
-                <div class="note">{topRecFix.beforeNote}</div>
-              </div>
-              <div class="a">
-                <div class="lab">The fix</div>
-                <p class="h" set:html={topRecFix.after}></p>
-                <div class="note">{topRecFix.afterNote}</div>
-              </div>
-            </div>
-          )}
-
-          <div class="recs" style="margin-top:32px">
-            {recommendations.map(({ priority, check }) => {
-              const eff = effortFor(check);
-              const imp = impactFor(check);
-              return (
-                <div class="row">
-                  <div class="rank">{String(priority).padStart(2, '0')}</div>
-                  <div class="what">{check.label}.</div>
-                  <div class="effort">Effort<b class={eff.cls}>{eff.label}</b></div>
-                  <div class="impact">Impact<b class={imp.cls}>{imp.label}</b></div>
+          <div class="rec-locked" data-rec-locked>
+            {topRecFix && (
+              <div class="ba">
+                <div class="b">
+                  <div class="lab">As deployed</div>
+                  <p class="h" set:html={topRecFix.before}></p>
+                  <div class="note">{topRecFix.beforeNote}</div>
                 </div>
-              );
-            })}
+                <div class="a">
+                  <div class="lab">The fix</div>
+                  <p class="h" set:html={topRecFix.after}></p>
+                  <div class="note">{topRecFix.afterNote}</div>
+                </div>
+              </div>
+            )}
+
+            <div class="recs" style="margin-top:32px">
+              {recommendations.map(({ priority, check }) => {
+                const eff = effortFor(check);
+                const imp = impactFor(check);
+                return (
+                  <div class="row">
+                    <div class="rank">{String(priority).padStart(2, '0')}</div>
+                    <div class="what">{check.label}.</div>
+                    <div class="effort">Effort<b class={eff.cls}>{eff.label}</b></div>
+                    <div class="impact">Impact<b class={imp.cls}>{imp.label}</b></div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div class="fixkit">
+              <div class="lab">Closing</div>
+              <h3>The fixes are yours to keep. <span class="ital">No list, no drip.</span></h3>
+              <p>Run another audit anytime. I'll be in touch if your audit signals something worth a quick conversation.</p>
+            </div>
           </div>
 
-          <div class="fixkit">
-            <div class="lab">Optional</div>
-            <h3>Want the markdown fix-kit? <span class="ital">The exact code to drop in.</span></h3>
-            <p>I'll send you the markdown fix-kit for the recommendations above. The JSON-LD snippets, the meta tags, the llms.txt template, all copy-pasteable. One email, no list.</p>
-            <form method="post" action="https://formspree.io/f/your-form-id" target="_blank">
-              <input type="email" name="email" placeholder="your@email.com" required />
-              <button type="submit">Send fix-kit →</button>
-            </form>
+          <!-- Soft gate overlay — visitor sees verdict cells above, then trades
+               email for the recommendations below. localStorage flag persists
+               unlock per-device so re-running on a new URL skips the gate. -->
+          <div class="rec-gate" data-rec-gate aria-live="polite">
+            <div class="rec-gate-card">
+              <div class="rec-gate-eyebrow">UNLOCK THE RECOMMENDATIONS</div>
+              <h3 class="rec-gate-title">
+                You've seen the verdict. <span class="ital">Want the fix list?</span>
+              </h3>
+              <p class="rec-gate-body">
+                {recommendations.length} ranked recommendation{recommendations.length === 1 ? '' : 's'} for {result.hostname}, with the exact code-level fixes for the top one. Drop your email and the panel below unlocks. No list, no drip — just one notification to me so I can follow up if your audit signals something worth a conversation.
+              </p>
+              <form class="rec-gate-form" data-rec-gate-form novalidate>
+                <input
+                  type="email"
+                  name="email"
+                  required
+                  placeholder="you@company.com"
+                  autocomplete="email"
+                  data-rec-gate-input
+                />
+                {/* Honeypot — bots fill it, humans don't see it */}
+                <input type="text" name="website" tabindex="-1" autocomplete="off" class="rec-gate-hp" aria-hidden="true" />
+                <button type="submit" data-rec-gate-submit>Unlock fixes →</button>
+              </form>
+              <div class="rec-gate-status" data-rec-gate-status></div>
+              <p class="rec-gate-fine">
+                Your email comes to Fred Style directly. Not added to any list. Reply directly to start a conversation.
+              </p>
+            </div>
           </div>
         </section>
       )}
@@ -534,6 +703,85 @@ function splitDisplay(kicker: string): { roman: string; italic: string; dek: str
               setTimeout(function () { btn.innerHTML = orig; }, 2000);
             } catch (e) {
               // user cancelled or clipboard blocked, no-op
+            }
+          });
+        })();
+      </script>
+
+      <script is:inline define:vars={{ auditedHost: result.hostname, auditId, auditScorePercent: result.scorePercent, auditRunUrl: Astro.url.href }}>
+        (function () {
+          var STORAGE_KEY = 'rivett_audit_unlocked_v1';
+          var section = document.querySelector('[data-rec-section]');
+          if (!section) return;
+
+          // Already unlocked on this device — reveal immediately, skip the gate.
+          try {
+            if (window.localStorage && window.localStorage.getItem(STORAGE_KEY) === '1') {
+              section.classList.add('unlocked');
+              return;
+            }
+          } catch (e) {
+            // localStorage unavailable (private mode etc.) — gate still fires,
+            // just won't persist across reloads. That's an acceptable degrade.
+          }
+
+          var form = section.querySelector('[data-rec-gate-form]');
+          var input = section.querySelector('[data-rec-gate-input]');
+          var submit = section.querySelector('[data-rec-gate-submit]');
+          var status = section.querySelector('[data-rec-gate-status]');
+          if (!form || !input || !submit || !status) return;
+
+          function setStatus(text, cls) {
+            status.textContent = text || '';
+            status.className = 'rec-gate-status' + (cls ? ' ' + cls : '');
+          }
+
+          function isEmail(v) {
+            return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+          }
+
+          form.addEventListener('submit', async function (ev) {
+            ev.preventDefault();
+            var email = (input.value || '').trim();
+            if (!isEmail(email)) {
+              setStatus('Enter a valid email.', 'err');
+              input.focus();
+              return;
+            }
+            submit.disabled = true;
+            setStatus('Sending…', '');
+            try {
+              var res = await fetch('/api/audit/lead-capture', {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({
+                  email: email,
+                  audited_url: auditedHost,
+                  audit_id: auditId || '',
+                  score_percent: typeof auditScorePercent === 'number' ? auditScorePercent : null,
+                  audit_run_url: auditRunUrl,
+                  website: form.querySelector('input[name="website"]') ? form.querySelector('input[name="website"]').value : '',
+                }),
+              });
+              var data = {};
+              try { data = await res.json(); } catch (e) {}
+              // Endpoint returns ok:true even when backend isn't configured
+              // (visitor shouldn't be punished for misconfig). Only treat
+              // hard HTTP errors as failures.
+              if (!res.ok && res.status >= 400 && res.status < 500) {
+                setStatus(data.error || 'Could not unlock. Try again.', 'err');
+                submit.disabled = false;
+                return;
+              }
+              // Persist + unlock
+              try { window.localStorage && window.localStorage.setItem(STORAGE_KEY, '1'); } catch (e) {}
+              setStatus('Thanks. Recommendations unlocked.', 'ok');
+              setTimeout(function () {
+                section.classList.add('unlocked');
+              }, 200);
+            } catch (e) {
+              setStatus('Network hiccup. Try again.', 'err');
+              submit.disabled = false;
             }
           });
         })();
