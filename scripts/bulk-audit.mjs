@@ -29,20 +29,26 @@
 //   so do NOT use it for a post-deploy regeneration batch.
 //
 // Behavior:
-// - Concurrency 3 by default (matches the design doc / Vercel function limits).
+// - Concurrency 1 by default. Each audit spawns headless Chrome inside the
+//   Vercel function, and the platform throttles parallel headless invocations
+//   at the edge (5xx before the function runs). At concurrency 1, success rate
+//   is ~95%+ first pass; at concurrency 3, dropped to ~40-60% on the 2026-05-27
+//   batch. Override with --concurrency N if you have lighter-weight audits or
+//   are running against a different backend that handles concurrent headless.
 // - One retry per domain on 5xx / network errors. KV silent failures are
 //   detected by GET-ing /audit/v3/{slug} and checking for a non-200.
 // - Aborts if the first MAX_CONSECUTIVE_FAILURES prospects fail back to back
 //   (endpoint down or misconfigured); results so far are saved, exit code 1.
-// - 90s per-request timeout.
+// - 240s per-request timeout (matches the v3.astro maxDuration of 300s
+//   with headroom for network round-trip).
 
 import { readFile, writeFile, rename } from 'node:fs/promises';
 import { argv, exit } from 'node:process';
 import { pathToFileURL } from 'node:url';
 
 const DEFAULT_BASE = 'https://rivett.tech';
-const DEFAULT_CONCURRENCY = 3;
-const REQUEST_TIMEOUT_MS = 90_000;
+const DEFAULT_CONCURRENCY = 1;
+const REQUEST_TIMEOUT_MS = 240_000;
 const RETRY_BACKOFF_MS = 5_000;
 
 // Conservative per-prospect cost ceiling for a freshly-run audit: a headless
@@ -354,6 +360,16 @@ async function auditOne(base, domain, company, opts) {
         }
       } catch (e) {
         lastError = e.name === 'AbortError' ? 'timeout' : e.message;
+      }
+      // Vercel's gateway returns 504 at 60s, but the audit function keeps
+      // running and writes to KV ~30-90s later. Always verify the cache
+      // before declaring failure - we may have a successful audit even when
+      // the POST appeared to error out.
+      if (!auditOk && await verifySlugCached(base, slug)) {
+        auditOk = true;
+        row.http_status = lastStatus ? String(lastStatus) : '504';
+        lastError = '';
+        break;
       }
       if (attempt < 2) await new Promise((r) => setTimeout(r, RETRY_BACKOFF_MS));
     }
