@@ -446,7 +446,11 @@ async function runHeadlessOnce(url: string): Promise<HeadlessResult | null> {
       // if BROWSERLESS_TOKEN is missing or the service is having an outage.
       const browserlessToken = process.env.BROWSERLESS_TOKEN;
       if (browserlessToken) {
-        const wsUrl = `wss://chrome.browserless.io/?token=${encodeURIComponent(browserlessToken)}`;
+        // v2 endpoint - the legacy chrome.browserless.io was deprecated for
+        // new accounts. Regional pinning to SFO since rivett.tech is on
+        // Vercel's iad1 region (East Coast US) - production-sfo gives the
+        // shortest RTT among current Browserless regions for Vercel iad1.
+        const wsUrl = `wss://production-sfo.browserless.io?token=${encodeURIComponent(browserlessToken)}`;
         browser = await playwright.connectOverCDP(wsUrl, {
           // Longer timeout than local launch because Browserless cold-start
           // can take 1-3s on first session of a billing period.
