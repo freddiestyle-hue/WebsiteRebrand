@@ -446,17 +446,16 @@ async function runHeadlessOnce(url: string): Promise<HeadlessResult | null> {
       // if BROWSERLESS_TOKEN is missing or the service is having an outage.
       const browserlessToken = process.env.BROWSERLESS_TOKEN;
       if (browserlessToken) {
-        // v2 endpoint - the legacy chrome.browserless.io was deprecated for
-        // new accounts. Regional pinning to SFO since rivett.tech is on
-        // Vercel's iad1 region (East Coast US) - production-sfo gives the
-        // shortest RTT among current Browserless regions for Vercel iad1.
-        // Browserless v2 requires a path-suffixed CDP endpoint. `/chromium`
-        // is the default; legacy `/` works but routes through an older path
-        // that doesn't honour newer Browserless features. Without ANY path
-        // (just `wss://host?token=...`) the WebSocket connects but lands on
-        // an undefined route and `connectOverCDP` hangs / fails.
-        const wsUrl = `wss://production-sfo.browserless.io/chromium?token=${encodeURIComponent(browserlessToken)}`;
-        browser = await playwright.connectOverCDP(wsUrl, {
+        // Browserless v2 via Playwright's native protocol (not CDP). The CDP
+        // path (`connectOverCDP` against /chromium) was hanging on Vercel
+        // functions despite working locally - Vercel's serverless network
+        // model appears to mishandle the CDP WebSocket handshake. The
+        // /playwright endpoint speaks Playwright's own ws protocol via
+        // chromium.connect() which has a more forgiving connection
+        // negotiation. Returns a proper Browser instance so all downstream
+        // newContext / page logic stays unchanged.
+        const wsUrl = `wss://production-sfo.browserless.io/playwright/chromium?token=${encodeURIComponent(browserlessToken)}`;
+        browser = await playwright.connect(wsUrl, {
           // Longer timeout than local launch because Browserless cold-start
           // can take 1-3s on first session of a billing period.
           timeout: 30000,
