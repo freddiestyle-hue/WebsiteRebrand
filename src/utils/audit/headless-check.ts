@@ -1,26 +1,27 @@
-// Headless browser pass via Playwright + Sparticuz Chromium.
+// Headless browser pass via Playwright.
+//
+// In production: connects to Browserless.io's hosted Chromium via CDP
+// (BROWSERLESS_TOKEN env var). Renders happen on Browserless's servers,
+// not in the Vercel function, which:
+//   1. Eliminates the @sparticuz/chromium cold-start (~2-5s saved)
+//   2. Lets heavy sites use the FULL Browserless render time without
+//      eating into the Vercel 60s edge cap (the Vercel function just
+//      waits on a WebSocket, doesn't run a browser)
+//   3. Bulk-regen of 100+ prospects becomes reliable instead of capped
+//      at 8% truly-fresh writes (the 2026-05-28 Wave 2 failure mode)
+//
+// In local dev: falls back to system Chrome via Playwright's `channel: 'chrome'`.
+//
+// Why Browserless and not Cloudflare Browser Rendering: this file is 620
+// lines of Playwright-specific interactive logic (CMP dismissal, scroll,
+// CTA tracing, multi-page navigation). Browserless is a drop-in for
+// Playwright's connectOverCDP. Cloudflare BR's REST API would require
+// porting all that logic to JS-in-payload form. The cost difference is
+// ~$30-45/mo for ~3 days of porting work avoided.
 //
 // Loads the page in a real Chromium instance, captures every network
 // request, snapshots the fully-rendered HTML (post-GTM injection, post-JS
-// hydration), and probes real viewport behavior. Returns the data needed
-// for the v3 grid to upgrade from "what's in the HTML" to "what actually
-// runs in a browser."
-//
-// What this fixes that static fingerprinting misses:
-//   - Pixels GTM injects at runtime (Meta, X, LinkedIn, TikTok loaded after
-//     gtm.js executes — invisible to a one-shot HTML fetch)
-//   - HubSpot Forms / Drift / Intercom widgets that mount after DOM ready
-//   - JS-injected schema (some sites push JSON-LD into the document via
-//     React/Vue render, not server-side)
-//   - Real horizontal-scroll detection on a 390px viewport
-//   - Real smallest-tap-target measurement via actual element rects
-//
-// Cost: ~5-10 seconds of added latency. Function instances on Vercel
-// reuse the warm Chromium binary across requests, so only the first
-// scan per cold-started function pays the launch cost (~2 sec).
-//
-// Set BROWSERLESS_API_KEY env var to use Browserless.io's hosted Chromium
-// instead of bundled binary (skips function cold-start, slightly faster).
+// hydration), and probes real viewport behavior.
 
 import chromium from '@sparticuz/chromium';
 import { chromium as playwright, type Page } from 'playwright-core';
@@ -431,18 +432,40 @@ async function runHeadlessOnce(url: string): Promise<HeadlessResult | null> {
   const work = (async (): Promise<HeadlessResult | null> => {
     let browser: Awaited<ReturnType<typeof playwright.launch>> | null = null;
     try {
-      // Production (Vercel/Linux) uses the bundled serverless Chromium. That
-      // binary cannot exec on local macOS dev, so fall back to the system-
-      // installed Chrome there - lets the audit run end-to-end in local dev.
-      try {
-        const executablePath = await chromium.executablePath();
-        browser = await playwright.launch({
-          args: chromium.args,
-          executablePath,
-          headless: true,
+      // Preferred path: Browserless.io hosted Chromium via CDP. The Vercel
+      // function holds a WebSocket connection and waits while Browserless
+      // does the actual render on their infrastructure. This sidesteps the
+      // @sparticuz/chromium cold-start AND lets heavy enterprise sites
+      // (banks, real estate, anti-bot defenses) use their full render budget
+      // without burning Vercel function CPU/memory. The 60s Vercel edge cap
+      // still applies to OUR function, but Browserless's render runs in
+      // parallel and we just await the result.
+      //
+      // Fallback path: local Chromium via @sparticuz on Vercel (legacy) or
+      // system Chrome on macOS dev. Kept so the audit endpoint still works
+      // if BROWSERLESS_TOKEN is missing or the service is having an outage.
+      const browserlessToken = process.env.BROWSERLESS_TOKEN;
+      if (browserlessToken) {
+        const wsUrl = `wss://chrome.browserless.io/?token=${encodeURIComponent(browserlessToken)}`;
+        browser = await playwright.connectOverCDP(wsUrl, {
+          // Longer timeout than local launch because Browserless cold-start
+          // can take 1-3s on first session of a billing period.
+          timeout: 30000,
         });
-      } catch {
-        browser = await playwright.launch({ channel: 'chrome', headless: true });
+      } else {
+        // Production (Vercel/Linux) uses the bundled serverless Chromium. That
+        // binary cannot exec on local macOS dev, so fall back to the system-
+        // installed Chrome there - lets the audit run end-to-end in local dev.
+        try {
+          const executablePath = await chromium.executablePath();
+          browser = await playwright.launch({
+            args: chromium.args,
+            executablePath,
+            headless: true,
+          });
+        } catch {
+          browser = await playwright.launch({ channel: 'chrome', headless: true });
+        }
       }
 
       const context = await browser.newContext({
