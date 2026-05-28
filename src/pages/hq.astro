@@ -889,6 +889,17 @@ const weekday = today.toLocaleString('en-US', { weekday: 'short', timeZone: 'UTC
           <OutreachQueue queue={outreachQueue} wave={CURRENT_WAVE} />
         </section>
 
+        <details class="deep" id="engagement-context">
+          <summary>
+            <div>
+              <div class="deep-num">§ 01</div>
+              <div class="deep-title">Engagement context. <span class="ital">Who's reading, where it's clicking.</span></div>
+              <div class="deep-meta">recent reads · top prospects · CTA clicks · blog</div>
+            </div>
+            <span class="deep-chev" aria-hidden="true">↓</span>
+          </summary>
+
+          <div class="deep-body">
         <section class="sec" id="recent">
           <SectionHeader
             number="01"
@@ -928,6 +939,8 @@ const weekday = today.toLocaleString('en-US', { weekday: 'short', timeZone: 'UTC
           />
           <TopBlogPostsTable posts={blog} />
         </section>
+          </div>
+        </details>
 
         <details class="deep" id="deep">
           <summary>
