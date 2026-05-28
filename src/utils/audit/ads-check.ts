@@ -70,6 +70,12 @@ function countResults(resp: SCResponse): number | null {
   if (!resp.ok) return null;
   const json = resp.body;
   if (!json) return 0;
+  // Prefer the API's own total over array length: each endpoint caps the
+  // returned array at one page (Google=40, Meta=30, LinkedIn=24), so
+  // counting array length silently truncates anyone running more than a page.
+  if (typeof json.number_of_ads_estimate === 'number') return json.number_of_ads_estimate;
+  if (typeof json.searchResultsCount === 'number') return json.searchResultsCount;
+  if (typeof json.totalAds === 'number') return json.totalAds;
   if (Array.isArray(json.results)) return json.results.length;
   if (Array.isArray(json.ads)) return json.ads.length;
   return 0;

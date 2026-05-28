@@ -30,3 +30,12 @@ Thumbs.db
 
 # Script artifacts
 scripts/.teardown-shots/
+
+# Audit-run data outputs (inputs + results CSVs from scripts/bulk-audit.mjs
+# and related batch tooling). These are wave/batch-specific data, not source,
+# and change every run.
+/batch-*.csv
+/dry-run-*.csv
+/wave*.csv
+/*_audit_results.csv
+/*_audit_summary.csv

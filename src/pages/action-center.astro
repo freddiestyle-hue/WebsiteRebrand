@@ -1,0 +1,290 @@
+---
+// /action-center — the workflow surface for cold outreach.
+//
+// Split out of /hq on 2026-05-28 (Variant C card-stack direction picked via
+// /design-shotgun). /hq stays the curiosity/data surface; this page is one
+// job: show prospects with signal worth a DM, get Fred into the draft
+// composer, mark Sent. Nothing else.
+//
+// Auth model: identical to /hq (HQ_KEY env + rivett_hq_key cookie + 404 on
+// failure). Same data fetch path (getTopProspects, getProspectsBySlug)
+// because /action-center is a filtered view of /hq's data, not a separate
+// query. Single source of truth via isActionableProspect from signal-filter.
+
+export const prerender = false;
+
+import {
+  getTopProspects,
+  type TopProspect,
+  type TrafficMode,
+} from '../utils/posthog/query';
+import { parseDateRange } from '../utils/posthog/dateRange';
+import { getProspectsBySlug, type ProspectInfo } from '../utils/hq/airtable';
+import { isActionableProspect } from '../utils/hq/signal-filter';
+import ActionQueue from '../components/hq/ActionQueue.astro';
+
+// --- Auth gating (same as /hq) ---
+const HQ_KEY = (process.env.HQ_KEY || import.meta.env.HQ_KEY || '').trim();
+
+const url = new URL(Astro.request.url);
+const providedKey = (url.searchParams.get('key') || '').trim();
+const cookieHeader = Astro.request.headers.get('cookie') || '';
+const cookieKey = (cookieHeader.match(/(?:^|;\s*)rivett_hq_key=([^;]+)/)?.[1] ?? '').trim();
+
+let authed = false;
+let setCookie = false;
+if (HQ_KEY && providedKey && providedKey === HQ_KEY) {
+  authed = true;
+  setCookie = true;
+} else if (HQ_KEY && cookieKey && cookieKey === HQ_KEY) {
+  authed = true;
+}
+
+if (setCookie) {
+  Astro.response.headers.set(
+    'Set-Cookie',
+    `rivett_hq_key=${HQ_KEY}; Path=/; Max-Age=31536000; HttpOnly; SameSite=Lax; Secure`
+  );
+}
+
+if (!authed) {
+  Astro.response.status = 404;
+}
+
+// --- Range + traffic mode (mirrors /hq so links between pages preserve state) ---
+const range = parseDateRange(url.searchParams);
+const trafficParam = url.searchParams.get('traffic');
+const trafficMode: TrafficMode = trafficParam === 'all' ? 'all' : 'humans';
+
+// --- Data fetch (only when authed) ---
+let allTop: TopProspect[] = [];
+let prospectInfo: Map<string, ProspectInfo> = new Map();
+let fetchError: string | null = null;
+
+if (authed) {
+  try {
+    const [t, pi] = await Promise.all([
+      getTopProspects(range, trafficMode),
+      getProspectsBySlug(),
+    ]);
+    allTop = t;
+    prospectInfo = pi;
+  } catch (e) {
+    fetchError = e instanceof Error ? e.message : String(e);
+    console.error('[action-center] data fetch failed', e);
+  }
+}
+
+// --- Apply the signal filter and rank ---
+// The filter is the only place "is this prospect worth a row" is decided.
+// /hq's full action queue uses heat_score gating only (broader). This page
+// is the tighter set: prospect must be actionable per isActionableProspect
+// AND not already messaged. Cap at 5 - if more than 5 are signal-bearing,
+// raise the bar in signal-filter.ts; don't show more.
+const STAGES_DONE = new Set([
+  'Sent', 'Replied', 'Booked', 'Won', 'Lost', 'Disqualified',
+]);
+
+const actionable = allTop
+  .filter((p) => {
+    const info = prospectInfo.get(p.prospect);
+    if (info && STAGES_DONE.has(info.outreachStage)) return false;
+    return isActionableProspect(p).actionable;
+  })
+  .sort((a, b) => {
+    if (b.heat_score !== a.heat_score) return b.heat_score - a.heat_score;
+    return a.last_view < b.last_view ? 1 : -1;
+  })
+  .slice(0, 5);
+
+// Build the "why each row is here" annotation for the page header.
+const verdicts = actionable.map((p) => ({
+  prospect: p.prospect,
+  ...isActionableProspect(p),
+}));
+
+const today = new Date();
+const todayDisplay = `${today.getUTCFullYear()}·${String(today.getUTCMonth()+1).padStart(2,'0')}·${String(today.getUTCDate()).padStart(2,'0')}`;
+---
+
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>{authed ? 'Action Center · rivett' : 'Not Found'}</title>
+<link rel="stylesheet" href="/rivett-ds/tokens.css">
+<style>
+:root {
+  --paper: #F4F2ED;
+  --paper-w: #FFFFFF;
+  --ink: #0E1A2C;
+  --ink-dim: #3A4658;
+  --ink-faint: #7A8597;
+  --sage: #E8F0D9;
+  --accent: #8FBF3F;
+  --accent-deep: #4A6E18;
+  --line: rgba(14,26,44,0.14);
+  --line-strong: rgba(14,26,44,0.28);
+  --grotesk: 'Inter Tight', system-ui, sans-serif;
+  --serif: 'Newsreader', Georgia, serif;
+  --mono: 'DM Mono', ui-monospace, Menlo, monospace;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--grotesk);
+  font-size: 15px;
+  -webkit-font-smoothing: antialiased;
+}
+.ac-page { max-width: 780px; margin: 0 auto; padding: 32px 24px 96px; }
+.ac-head {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: baseline;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 8px;
+}
+.ac-wordmark {
+  font-family: var(--grotesk);
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: -0.04em;
+  color: var(--ink);
+  text-decoration: none;
+}
+.ac-wordmark .dot { color: var(--accent); }
+.ac-title {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--ink);
+  text-align: center;
+}
+.ac-meta {
+  font-family: var(--mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--ink-faint);
+  text-align: right;
+}
+.ac-directive {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 18px;
+  line-height: 1.45;
+  color: var(--ink-dim);
+  margin: 24px 0 32px;
+  text-align: center;
+}
+.ac-banner-link {
+  display: inline-block;
+  margin-top: 16px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  text-decoration: none;
+}
+.ac-banner-link:hover { color: var(--ink); }
+.ac-empty {
+  background: var(--paper-w);
+  border: 1px solid var(--line);
+  padding: 48px 32px;
+  text-align: center;
+}
+.ac-empty-eyebrow {
+  font-family: var(--mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--ink-faint);
+  margin-bottom: 12px;
+}
+.ac-empty-title {
+  font-family: var(--grotesk);
+  font-weight: 600;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+  margin: 0 0 12px;
+  color: var(--ink);
+}
+.ac-empty-body {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 16px;
+  color: var(--ink-dim);
+  margin: 0;
+  max-width: 48ch;
+  margin-left: auto;
+  margin-right: auto;
+}
+.ac-err {
+  background: var(--paper-w);
+  border: 1px solid var(--line-strong);
+  padding: 18px 22px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: #9A2B2B;
+}
+.ac-notfound { padding: 96px 24px; text-align: center; font-family: var(--mono); color: var(--ink-faint); }
+</style>
+</head>
+<body>
+
+{!authed && (
+  <div class="ac-notfound">Not Found</div>
+)}
+
+{authed && (
+  <div class="ac-page">
+
+    <header class="ac-head">
+      <a class="ac-wordmark" href="/hq">rivett<span class="dot">·</span></a>
+      <div class="ac-title">ACTION CENTER · {actionable.length} {actionable.length === 1 ? 'PROSPECT' : 'PROSPECTS'}</div>
+      <div class="ac-meta">{todayDisplay}</div>
+    </header>
+
+    {actionable.length > 0 ? (
+      <p class="ac-directive">{actionable.length === 1 ? 'One prospect deserves a DM today.' : `${actionable.length} prospects deserve a DM today.`}</p>
+    ) : (
+      <p class="ac-directive">All quiet. No real signals today.</p>
+    )}
+
+    {fetchError && (
+      <div class="ac-err">Could not load prospects: {fetchError}</div>
+    )}
+
+    {!fetchError && actionable.length === 0 && (
+      <div class="ac-empty">
+        <div class="ac-empty-eyebrow">EMPTY QUEUE</div>
+        <h2 class="ac-empty-title">No actionable signal today.</h2>
+        <p class="ac-empty-body">No prospect crossed the multi-viewer, returning-engaged, or CTA-plus threshold. Send more outreach and check back.</p>
+        <a class="ac-banner-link" href="/hq">← Back to /hq</a>
+      </div>
+    )}
+
+    {!fetchError && actionable.length > 0 && (
+      <ActionQueue prospects={actionable} prospectInfo={prospectInfo} />
+    )}
+
+    {actionable.length > 0 && (
+      <div style="text-align:center; margin-top: 32px;">
+        <a class="ac-banner-link" href="/hq">← Open /hq for full data</a>
+      </div>
+    )}
+
+  </div>
+)}
+
+</body>
+</html>

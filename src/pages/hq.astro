@@ -36,6 +36,7 @@ import {
   type ActiveNow,
 } from '../utils/posthog/query';
 import { parseDateRange } from '../utils/posthog/dateRange';
+import { isActionableProspect } from '../utils/hq/signal-filter';
 import SectionHeader from '../components/hq/SectionHeader.astro';
 import RecentReadsFeed from '../components/hq/RecentReadsFeed.astro';
 import TopProspectsTable from '../components/hq/TopProspectsTable.astro';
@@ -183,6 +184,18 @@ const actionQueue = top
     return a.last_view < b.last_view ? 1 : -1;
   })
   .slice(0, 10);
+
+// Count for the /action-center banner. Same filter and stage gate as
+// action-center.astro so the count is honest - clicking through shows
+// exactly this many cards (capped at 5 there). We don't slice here:
+// the badge tells Fred "N waiting" so he can see the full pressure.
+const actionableCount = top
+  .filter((p) => {
+    const info = prospectInfo.get(p.prospect);
+    if (info && STAGES_DONE.has(info.outreachStage)) return false;
+    return isActionableProspect(p).actionable;
+  })
+  .length;
 
 // Top-level nav. Each section gets a dynamic count and an icon name that
 // resolves to one of the SVG sprite symbols below.
@@ -608,6 +621,42 @@ const weekday = today.toLocaleString('en-US', { weekday: 'short', timeZone: 'UTC
   }
   .err b { color: var(--ink); }
 
+  /* Action Center bridge banner */
+  .ac-bridge {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 1rem 0 1.5rem;
+    padding: 14px 18px;
+    background: var(--sage, #E8F0D9);
+    border: 1px solid var(--accent-deep, #4A6E18);
+    color: var(--accent-deep, #4A6E18);
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-decoration: none;
+    transition: background 100ms;
+  }
+  .ac-bridge:hover { background: var(--sage-2, #D5E3B7); }
+  .ac-bridge-arrow {
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .ac-bridge-count {
+    font-weight: 600;
+    color: var(--ink, #0E1A2C);
+    background: var(--paper-w, #FFFFFF);
+    padding: 2px 8px;
+    border: 1px solid var(--accent-deep, #4A6E18);
+  }
+  .ac-bridge-text { letter-spacing: 0.10em; }
+  .ac-bridge-go {
+    margin-left: auto;
+    font-weight: 600;
+    color: var(--accent-deep, #4A6E18);
+  }
+
   /* 404 */
   .nf {
     max-width: 480px;
@@ -774,6 +823,14 @@ const weekday = today.toLocaleString('en-US', { weekday: 'short', timeZone: 'UTC
       </div>
 
       <div class="content">
+        {actionableCount > 0 && (
+          <a class="ac-bridge" href="/action-center">
+            <span class="ac-bridge-arrow" aria-hidden="true">→</span>
+            <span class="ac-bridge-count">{actionableCount}</span>
+            <span class="ac-bridge-text">{actionableCount === 1 ? 'prospect' : 'prospects'} waiting in Action Center</span>
+            <span class="ac-bridge-go" aria-hidden="true">Open ↗</span>
+          </a>
+        )}
         {fetchError && (
           <div class="err">
             <b>Could not load live data.</b> {fetchError}

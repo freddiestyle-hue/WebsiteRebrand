@@ -322,6 +322,12 @@ export interface RecentRead {
   cta_clicks: number;
   dwell_seconds: number;
   last_event: string;
+  // True if the session fired any real human-engagement event on THIS path:
+  // scroll_depth, cta_clicked, content_copied, content_printed, or
+  // audit_v3_verdict_expanded. False = pageview/web_vitals/tab_focus_time
+  // only (the email-scanner fingerprint). Used by RecentReadsFeed to badge
+  // "raw" rows so Fred can see signal vs noise at a glance — never hides.
+  is_engaged: boolean;
 }
 
 export async function getRecentReads(range: DateRange, mode: TrafficMode = 'humans'): Promise<RecentRead[]> {
@@ -341,7 +347,16 @@ export async function getRecentReads(range: DateRange, mode: TrafficMode = 'huma
         count() AS events,
         countIf(event = 'cta_clicked') AS cta_clicks,
         dateDiff('second', min(timestamp), max(timestamp)) AS dwell_seconds,
-        max(timestamp) AS last_event
+        max(timestamp) AS last_event,
+        -- v3.5 raw-vs-engaged flag. Scanners (SafeLinks/Mimecast/etc.) fire
+        -- pageview + web_vitals + tab_focus_time + pageleave but never any
+        -- of these. Real humans fire at least one. Used as a UI label, not
+        -- as a filter, so a real prospect who briefly lands and bounces is
+        -- not hidden.
+        countIf(event IN (
+          'scroll_depth','cta_clicked','content_copied',
+          'content_printed','audit_v3_verdict_expanded'
+        )) > 0 AS is_engaged
       FROM events
       WHERE ${hogqlRangeClause(range)}
         AND ${PROSPECT_PATH_FILTER}
@@ -351,7 +366,12 @@ export async function getRecentReads(range: DateRange, mode: TrafficMode = 'huma
       ORDER BY last_event DESC
       LIMIT 50
     `);
-    return rowsToObjects<RecentRead>(r);
+    const raw = rowsToObjects<Omit<RecentRead, 'is_engaged'> & { is_engaged: boolean | number }>(r);
+    // HogQL returns the boolean as 0/1 in some serializations — coerce.
+    return raw.map((row) => ({
+      ...row,
+      is_engaged: Boolean(row.is_engaged),
+    }));
   }, mode);
 }
 
