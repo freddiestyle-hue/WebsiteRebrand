@@ -450,7 +450,12 @@ async function runHeadlessOnce(url: string): Promise<HeadlessResult | null> {
         // new accounts. Regional pinning to SFO since rivett.tech is on
         // Vercel's iad1 region (East Coast US) - production-sfo gives the
         // shortest RTT among current Browserless regions for Vercel iad1.
-        const wsUrl = `wss://production-sfo.browserless.io?token=${encodeURIComponent(browserlessToken)}`;
+        // Browserless v2 requires a path-suffixed CDP endpoint. `/chromium`
+        // is the default; legacy `/` works but routes through an older path
+        // that doesn't honour newer Browserless features. Without ANY path
+        // (just `wss://host?token=...`) the WebSocket connects but lands on
+        // an undefined route and `connectOverCDP` hangs / fails.
+        const wsUrl = `wss://production-sfo.browserless.io/chromium?token=${encodeURIComponent(browserlessToken)}`;
         browser = await playwright.connectOverCDP(wsUrl, {
           // Longer timeout than local launch because Browserless cold-start
           // can take 1-3s on first session of a billing period.
