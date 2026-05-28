@@ -637,7 +637,10 @@ async function runHeadlessOnce(url: string): Promise<HeadlessResult | null> {
         durationMs: Date.now() - started,
       };
     } catch (e) {
-      console.error('[audit/headless] failed', e);
+      const errInfo = e instanceof Error
+        ? { name: e.name, message: e.message, stack: e.stack?.split('\n').slice(0, 5).join(' | ') }
+        : { message: String(e) };
+      console.error('[audit/headless] failed', JSON.stringify(errInfo), 'browserless=', !!process.env.BROWSERLESS_TOKEN);
       return null;
     } finally {
       if (browser) {
