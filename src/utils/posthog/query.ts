@@ -374,6 +374,9 @@ export interface TopProspect {
   surface: 'audit' | 'intake-review';
   total_views: number;
   unique_sessions: number;
+  // Distinct people (resolved person_id) across all sessions in the range.
+  // The strongest cold-outreach signal: N>=2 = "they forwarded it internally".
+  distinct_visitors: number;
   total_dwell_seconds: number;
   cta_clicks: number;
   // v4 engagement signals
@@ -385,6 +388,10 @@ export interface TopProspect {
   return_visitor: boolean;        // unique_sessions > 1 (came back at least once)
   // v9 stickiness signal
   related_clicks: number;         // cta_clicked with cta=memo_related (blog read-next) or memo_to_mri
+  // v3.5 per-cell drill-down signal (which dimensions did they expand on the audit)
+  // Each entry is the dimension icon key (e.g. 'search', 'spark', 'mail'),
+  // distinct, ordered by first-click time within the time window.
+  expanded_dimensions: string[];
   heat_score: number;             // weighted composite, see heatScoreSql below
   last_view: string;
   sessions: ProspectSession[];
@@ -400,6 +407,9 @@ export interface TopProspect {
 // Weights (per occurrence unless noted):
 //   prints:                      +40
 //   copies:                      +30
+//   distinct_visitors >= 2:      +35  (internal-share signal — exec forwarded)
+//   distinct_visitors >= 3:      +25  (additive — team is reviewing)
+//   distinct_visitors >= 4:      +25  (additive — many stakeholders, buy signal)
 //   cta_clicks:                  +25
 //   related_clicks:              +20  (memo_related / memo_to_mri — sticky signal)
 //   scroll_100s:                 +15
@@ -410,6 +420,9 @@ export interface TopProspect {
 const HEAT_SCORE_SQL = `(
   (prints * 40) +
   (copies * 30) +
+  (if(distinct_visitors >= 2, 35, 0)) +
+  (if(distinct_visitors >= 3, 25, 0)) +
+  (if(distinct_visitors >= 4, 25, 0)) +
   (cta_clicks * 25) +
   (related_clicks * 20) +
   (scroll_100s * 15) +
@@ -430,6 +443,7 @@ export async function getTopProspects(range: DateRange, mode: TrafficMode = 'hum
       surface,
       sum(session_views) AS total_views,
       count() AS unique_sessions,
+      uniqIf(session_person_id, session_person_id != '') AS distinct_visitors,
       sum(session_dwell) AS total_dwell_seconds,
       sum(session_clicks) AS cta_clicks,
       sum(session_verdicts) AS verdict_expansions,
@@ -438,6 +452,7 @@ export async function getTopProspects(range: DateRange, mode: TrafficMode = 'hum
       sum(session_prints) AS prints,
       sum(session_focus) AS focus_seconds_total,
       sum(session_related) AS related_clicks,
+      arrayDistinct(arrayFlatten(groupArray(session_expanded_dims))) AS expanded_dimensions,
       ${HEAT_SCORE_SQL} AS heat_score,
       max(last_event) AS last_view,
       groupArray(tuple(sid, session_dwell, last_event, session_views, session_clicks)) AS sessions_raw
@@ -446,6 +461,7 @@ export async function getTopProspects(range: DateRange, mode: TrafficMode = 'hum
         ${PROSPECT_SLUG_EXPR} AS prospect,
         ${PROSPECT_SURFACE_EXPR} AS surface,
         properties.$session_id AS sid,
+        toString(any(person_id)) AS session_person_id,
         count() AS session_views,
         countIf(event = 'cta_clicked') AS session_clicks,
         countIf(event = 'audit_v3_verdict_expanded') AS session_verdicts,
@@ -454,6 +470,11 @@ export async function getTopProspects(range: DateRange, mode: TrafficMode = 'hum
         countIf(event = 'content_printed') AS session_prints,
         sumIf(toInt(properties.focus_seconds), event = 'tab_focus_time') AS session_focus,
         countIf(event = 'cta_clicked' AND (properties.cta = 'memo_related' OR properties.cta = 'memo_to_mri')) AS session_related,
+        -- v3.5 per-cell drill-down: collect distinct dimension icon keys this
+        -- session expanded. cta is 'cell_expand_search', 'cell_expand_spark',
+        -- etc. — strip the prefix client-side. Order preserved by first click
+        -- within the session, deduped at the outer layer.
+        arrayDistinct(groupArrayIf(replaceOne(properties.cta, 'cell_expand_', ''), event = 'cta_clicked' AND properties.cta LIKE 'cell_expand_%')) AS session_expanded_dims,
         dateDiff('second', min(timestamp), max(timestamp)) AS session_dwell,
         max(timestamp) AS last_event
       FROM events
@@ -474,6 +495,7 @@ export async function getTopProspects(range: DateRange, mode: TrafficMode = 'hum
     surface: 'audit' | 'intake-review';
     total_views: number;
     unique_sessions: number;
+    distinct_visitors: number;
     total_dwell_seconds: number;
     cta_clicks: number;
     verdict_expansions: number;
@@ -482,6 +504,7 @@ export async function getTopProspects(range: DateRange, mode: TrafficMode = 'hum
     prints: number;
     focus_seconds_total: number;
     related_clicks: number;
+    expanded_dimensions: string[];
     heat_score: number;
     last_view: string;
     sessions_raw: Array<[string | null, number, string, number, number]>;
@@ -492,6 +515,7 @@ export async function getTopProspects(range: DateRange, mode: TrafficMode = 'hum
     surface: row.surface,
     total_views: row.total_views,
     unique_sessions: row.unique_sessions,
+    distinct_visitors: row.distinct_visitors ?? row.unique_sessions,
     total_dwell_seconds: row.total_dwell_seconds,
     cta_clicks: row.cta_clicks,
     verdict_expansions: row.verdict_expansions ?? 0,
@@ -500,6 +524,7 @@ export async function getTopProspects(range: DateRange, mode: TrafficMode = 'hum
     prints: row.prints ?? 0,
     focus_seconds_total: row.focus_seconds_total ?? 0,
     related_clicks: row.related_clicks ?? 0,
+    expanded_dimensions: (row.expanded_dimensions ?? []).filter((d) => d && d !== ''),
     return_visitor: row.unique_sessions > 1,
     heat_score: row.heat_score ?? 0,
     last_view: row.last_view,
@@ -1005,6 +1030,60 @@ export async function getActivityTimeline(range: DateRange, mode: TrafficMode = 
 
 // --------------------------------------------------------------------------
 // Session recording deep link — generates the PostHog URL to watch a session.
+// --------------------------------------------------------------------------
+
+// --------------------------------------------------------------------------
+// Query: when do memos actually get opened?
+// Buckets pageviews on audit pages by hour-of-day (0-23) and day-of-week
+// (1-7, where 1=Monday per ClickHouse toDayOfWeek). Used by the timing
+// panel to surface when to send so opens land in office hours.
+// --------------------------------------------------------------------------
+
+export interface OpenTiming {
+  by_hour: { hour: number; opens: number }[];
+  by_dow: { dow: number; opens: number }[];
+}
+
+export async function getOpenTimingDistribution(range: DateRange): Promise<OpenTiming> {
+  return cached('openTiming', range, async () => {
+    const [hourRes, dowRes] = await Promise.all([
+      runQuery(`
+        SELECT
+          toHour(timestamp) AS hour,
+          count() AS opens
+        FROM events
+        WHERE ${hogqlRangeClause(range)}
+          AND event = '$pageview'
+          AND ${PROSPECT_PATH_FILTER}
+          AND ${lightHumanExpr()}
+        GROUP BY hour
+        ORDER BY hour
+      `),
+      runQuery(`
+        SELECT
+          toDayOfWeek(timestamp) AS dow,
+          count() AS opens
+        FROM events
+        WHERE ${hogqlRangeClause(range)}
+          AND event = '$pageview'
+          AND ${PROSPECT_PATH_FILTER}
+          AND ${lightHumanExpr()}
+        GROUP BY dow
+        ORDER BY dow
+      `),
+    ]);
+    const by_hour = rowsToObjects<{ hour: number; opens: number }>(hourRes);
+    const by_dow = rowsToObjects<{ dow: number; opens: number }>(dowRes);
+    // Pad missing buckets with 0 so the chart always has full axes.
+    const hourMap = new Map(by_hour.map((r) => [Number(r.hour), Number(r.opens)]));
+    const dowMap = new Map(by_dow.map((r) => [Number(r.dow), Number(r.opens)]));
+    return {
+      by_hour: Array.from({ length: 24 }, (_, h) => ({ hour: h, opens: hourMap.get(h) ?? 0 })),
+      by_dow: Array.from({ length: 7 }, (_, i) => ({ dow: i + 1, opens: dowMap.get(i + 1) ?? 0 })),
+    };
+  });
+}
+
 // --------------------------------------------------------------------------
 
 export function sessionReplayUrl(sessionId: string | null): string | null {

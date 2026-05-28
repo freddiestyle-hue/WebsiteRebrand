@@ -40,6 +40,27 @@ function heatClass(h: number): string {
   if (h >= 10) return 'heat-cool';
   return 'heat-cold';
 }
+
+// Map dimension icon keys (as emitted by /audit/v3/[slug].astro's cell_expand_*
+// data-cta) to short human labels. Mirrors src/utils/audit/locked-observation
+// shortLabel without taking a runtime dep on it (this is UI concern, not
+// audit-engine concern).
+const DIM_LABEL: Record<string, string> = {
+  search:    'Search visibility',
+  spark:     'AI citation',
+  bolt:      'Page speed',
+  target:    'Measurement',
+  megaphone: 'Ads in flight',
+  eye:       'Conversion path',
+  phone:     'Mobile',
+  mail:      'Email reputation',
+  flag:      'Stack',
+  bar:       'Ranking',
+  clock:     'Cadence',
+};
+function dimLabel(key: string): string {
+  return DIM_LABEL[key] ?? key;
+}
 ---
 {prospects.length === 0 ? (
   <p class="empty">No prospect engagement yet.</p>
@@ -69,12 +90,23 @@ function heatClass(h: number): string {
             </div>
             <span class="m"><b>{p.total_views}</b> views</span>
             <span class="m"><b>{p.unique_sessions}</b> sess</span>
+            <span class="m" title={p.distinct_visitors >= 2 ? 'Multi-viewer: forwarded internally or returned from another device' : 'Single viewer'}><b class={p.distinct_visitors >= 2 ? 'accent' : 'dim'}>{p.distinct_visitors}</b> ppl</span>
             <span class="m"><b>{dwell(p.total_dwell_seconds)}</b> dwell</span>
             <span class="m"><b class={p.cta_clicks > 0 ? 'accent' : 'dim'}>{p.cta_clicks > 0 ? p.cta_clicks : '—'}</b> cta</span>
             <span class={`heat-pill ${heatClass(p.heat_score)}`}><b>{p.heat_score}</b> heat</span>
             <span class="chev" aria-hidden="true">↓</span>
           </summary>
           <div class="sessions">
+            {p.expanded_dimensions && p.expanded_dimensions.length > 0 && (
+              <div class="dim-row">
+                <span class="dim-label">Drilled into</span>
+                <ul class="dim-chips">
+                  {p.expanded_dimensions.map((d) => (
+                    <li class="dim-chip" title={`cell_expand_${d}`}>{dimLabel(d)}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
             {p.sessions.length === 0 ? (
               <p class="empty">No session data.</p>
             ) : (
@@ -251,6 +283,44 @@ function heatClass(h: number): string {
     padding: 12px 18px 16px 50px;
     border-top: 1px solid var(--line, rgba(14,26,44,0.14));
   }
+
+  /* Drilled-into dimensions chip row (v3.5 per-cell expand signal) */
+  .dim-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px dotted var(--line, rgba(14,26,44,0.14));
+  }
+  .dim-label {
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-faint, #7A8597);
+    flex-shrink: 0;
+    margin-top: 3px;
+  }
+  .dim-chips {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .dim-chip {
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 10.5px;
+    letter-spacing: 0.04em;
+    padding: 3px 8px;
+    background: var(--sage, #E8F0D9);
+    color: var(--accent-deep, #4A6E18);
+    border: 1px solid var(--accent-deep, #4A6E18);
+    white-space: nowrap;
+  }
+
   .sess-list {
     list-style: none;
     margin: 0;

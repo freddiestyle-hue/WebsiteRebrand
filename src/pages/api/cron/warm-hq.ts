@@ -9,6 +9,7 @@
 // This protects the endpoint from random visitors triggering the heavy fetch.
 
 import type { APIRoute } from 'astro';
+import { Redis } from '@upstash/redis';
 import {
   getRecentReads,
   getTopProspects,
@@ -23,7 +24,7 @@ import {
 } from '../../../utils/posthog/query';
 import { parseDateRange, PRESETS } from '../../../utils/posthog/dateRange';
 import { getMessagedSlugs } from '../../../utils/hq/messaged';
-import { sendDigestEmail } from '../../../utils/hq/notify';
+import { sendDigestEmail, sendHotAlertEmail } from '../../../utils/hq/notify';
 
 export const prerender = false;
 
@@ -51,6 +52,61 @@ async function warmRange(rangeKey: string) {
 // duration at 10s, and warming all 6 presets sequentially blows past that.
 // Other ranges warm on first real visit (one slow load, then cached).
 const DEFAULT_WARM = ['today', '7d', '14d'];
+
+// 24h dedupe so a sustained-multi-viewer audit doesn't email Fred every
+// time the cron runs. Distinct from the 30-min dedupe used by realtime
+// CTA-click alerts — multi-viewer signal accumulates, it doesn't burst.
+const MULTI_VIEWER_DEDUPE_TTL = 24 * 60 * 60;
+
+// Threshold matched to the heat_score weights: 2 distinct people on a single
+// audit is the inflection point where "drive-by" becomes "internal forward".
+const MULTI_VIEWER_THRESHOLD = 2;
+
+// Only fire if there's been activity in the last 24h. Audits whose multi-viewer
+// status accumulated days ago and went quiet aren't actionable today.
+const MULTI_VIEWER_RECENCY_HOURS = 24;
+
+async function fireMultiViewerAlerts(prospects: import('../../../utils/posthog/query').TopProspect[]): Promise<void> {
+  const url = process.env.KV_REST_API_URL;
+  const token = process.env.KV_REST_API_TOKEN;
+  const redis = url && token ? new Redis({ url, token }) : null;
+
+  const recencyCutoff = Date.now() - MULTI_VIEWER_RECENCY_HOURS * 60 * 60 * 1000;
+
+  for (const p of prospects) {
+    if (p.distinct_visitors < MULTI_VIEWER_THRESHOLD) continue;
+    if (new Date(p.last_view).getTime() < recencyCutoff) continue;
+
+    // Dedupe via Redis SET NX. If redis is unconfigured, fire every run —
+    // operator can disable digest cron if that's too chatty (it shouldn't be).
+    if (redis) {
+      const key = `hq:notify:dedupe:multi_viewer:${p.prospect}`;
+      try {
+        const set = await redis.set(key, '1', { ex: MULTI_VIEWER_DEDUPE_TTL, nx: true });
+        if (set !== 'OK') continue; // already fired within the window
+      } catch (e) {
+        console.warn('[warm-hq] redis dedupe check failed, firing anyway', e);
+      }
+    }
+
+    const memoUrl = p.surface === 'intake-review'
+      ? `https://intake-reviews.vercel.app/intake-review/${p.prospect}`
+      : `https://rivett.tech/audit/v3/${p.prospect}`;
+
+    const dwellHuman = p.total_dwell_seconds < 60
+      ? `${p.total_dwell_seconds}s`
+      : `${Math.floor(p.total_dwell_seconds / 60)}m ${p.total_dwell_seconds % 60}s`;
+
+    await sendHotAlertEmail({
+      prospect: p.prospect,
+      signal: `Multi-viewer · ${p.distinct_visitors} people read this`,
+      detail: `${p.distinct_visitors} distinct people, ${p.unique_sessions} session${p.unique_sessions === 1 ? '' : 's'}, ${p.total_views} view${p.total_views === 1 ? '' : 's'}, ${dwellHuman} total dwell. Internal-forward shape — reach out today.`,
+      memoUrl,
+      hqUrl: 'https://rivett.tech/hq',
+      whenIso: p.last_view,
+    });
+  }
+}
 
 export const GET: APIRoute = async ({ request, url }) => {
   const expected = process.env.CRON_SECRET;
@@ -121,10 +177,29 @@ export const GET: APIRoute = async ({ request, url }) => {
         getMessagedSlugs(),
       ]);
 
+      // Action Queue: include multi-viewer audits even if dwell/cta thresholds
+      // are unmet. distinct_visitors>=2 = "they forwarded it internally", the
+      // strongest cold-outreach signal we have. Sort by heat_score so the
+      // multi-viewer ranking landed via HEAT_SCORE_SQL gets used here too —
+      // last_view tie-break only.
       const actionQueue = fourteenTop
         .filter((p) => !messaged.has(p.prospect))
-        .filter((p) => p.total_dwell_seconds >= 15 || p.cta_clicks > 0)
-        .sort((a, b) => (a.last_view < b.last_view ? 1 : -1));
+        .filter((p) => p.total_dwell_seconds >= 15 || p.cta_clicks > 0 || p.distinct_visitors >= 2)
+        .sort((a, b) => {
+          if (b.heat_score !== a.heat_score) return b.heat_score - a.heat_score;
+          return a.last_view < b.last_view ? 1 : -1;
+        });
+
+      // Multi-viewer HOT alert: any audit that crossed 2+ distinct visitors
+      // in the last 24h and we haven't already alerted on within the dedupe
+      // window. Daily-cron firing latency is fine — the "internal forward"
+      // pattern accumulates over hours/days, not seconds.
+      try {
+        await fireMultiViewerAlerts(fourteenTop);
+      } catch (e) {
+        // Don't let alert failures break the digest path.
+        console.error('[warm-hq] multi-viewer alert pass failed', e);
+      }
 
       const digest = await sendDigestEmail({
         actionQueue,
