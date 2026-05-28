@@ -25,6 +25,7 @@ import {
 import { parseDateRange, PRESETS } from '../../../utils/posthog/dateRange';
 import { getMessagedSlugs } from '../../../utils/hq/messaged';
 import { sendDigestEmail, sendHotAlertEmail } from '../../../utils/hq/notify';
+import { isActionableProspect } from '../../../utils/hq/signal-filter';
 
 export const prerender = false;
 
@@ -53,55 +54,77 @@ async function warmRange(rangeKey: string) {
 // Other ranges warm on first real visit (one slow load, then cached).
 const DEFAULT_WARM = ['today', '7d', '14d'];
 
-// 24h dedupe so a sustained-multi-viewer audit doesn't email Fred every
+// 24h dedupe so a sustained actionable prospect doesn't email Fred every
 // time the cron runs. Distinct from the 30-min dedupe used by realtime
-// CTA-click alerts — multi-viewer signal accumulates, it doesn't burst.
-const MULTI_VIEWER_DEDUPE_TTL = 24 * 60 * 60;
+// CTA-click alerts — these signals accumulate, they don't burst.
+const SIGNAL_DEDUPE_TTL = 24 * 60 * 60;
 
-// Threshold matched to the heat_score weights: 2 distinct people on a single
-// audit is the inflection point where "drive-by" becomes "internal forward".
-const MULTI_VIEWER_THRESHOLD = 2;
+// Only fire if there's been activity in the last 24h. Prospects whose
+// actionable status was earned days ago and have since gone quiet aren't
+// actionable today.
+const SIGNAL_RECENCY_HOURS = 24;
 
-// Only fire if there's been activity in the last 24h. Audits whose multi-viewer
-// status accumulated days ago and went quiet aren't actionable today.
-const MULTI_VIEWER_RECENCY_HOURS = 24;
+function dwellHuman(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`;
+  return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
+}
 
-async function fireMultiViewerAlerts(prospects: import('../../../utils/posthog/query').TopProspect[]): Promise<void> {
+function memoUrlFor(p: import('../../../utils/posthog/query').TopProspect): string {
+  return p.surface === 'intake-review'
+    ? `https://intake-reviews.vercel.app/intake-review/${p.prospect}`
+    : `https://rivett.tech/audit/v3/${p.prospect}`;
+}
+
+// Fire HOT alerts for any prospect newly crossing an actionable threshold
+// in the last 24h. Uses isActionableProspect from signal-filter so the
+// alert criteria match every other surface (Action Center page, /hq
+// banner, daily digest). One dedupe key per (signal type, prospect) so a
+// prospect that drifts between signal types gets one alert per type.
+async function fireSignalAlerts(
+  prospects: import('../../../utils/posthog/query').TopProspect[]
+): Promise<void> {
   const url = process.env.KV_REST_API_URL;
   const token = process.env.KV_REST_API_TOKEN;
   const redis = url && token ? new Redis({ url, token }) : null;
 
-  const recencyCutoff = Date.now() - MULTI_VIEWER_RECENCY_HOURS * 60 * 60 * 1000;
+  const recencyCutoff = Date.now() - SIGNAL_RECENCY_HOURS * 60 * 60 * 1000;
 
   for (const p of prospects) {
-    if (p.distinct_visitors < MULTI_VIEWER_THRESHOLD) continue;
+    const v = isActionableProspect(p);
+    if (!v.actionable || !v.signal) continue;
     if (new Date(p.last_view).getTime() < recencyCutoff) continue;
 
-    // Dedupe via Redis SET NX. If redis is unconfigured, fire every run —
-    // operator can disable digest cron if that's too chatty (it shouldn't be).
     if (redis) {
-      const key = `hq:notify:dedupe:multi_viewer:${p.prospect}`;
+      const key = `hq:notify:dedupe:${v.signal}:${p.prospect}`;
       try {
-        const set = await redis.set(key, '1', { ex: MULTI_VIEWER_DEDUPE_TTL, nx: true });
-        if (set !== 'OK') continue; // already fired within the window
+        const set = await redis.set(key, '1', { ex: SIGNAL_DEDUPE_TTL, nx: true });
+        if (set !== 'OK') continue;
       } catch (e) {
         console.warn('[warm-hq] redis dedupe check failed, firing anyway', e);
       }
     }
 
-    const memoUrl = p.surface === 'intake-review'
-      ? `https://intake-reviews.vercel.app/intake-review/${p.prospect}`
-      : `https://rivett.tech/audit/v3/${p.prospect}`;
-
-    const dwellHuman = p.total_dwell_seconds < 60
-      ? `${p.total_dwell_seconds}s`
-      : `${Math.floor(p.total_dwell_seconds / 60)}m ${p.total_dwell_seconds % 60}s`;
+    let signalLabel = '';
+    let detail = '';
+    if (v.signal === 'multi_viewer') {
+      signalLabel = `Multi-viewer · ${p.distinct_visitors} people read this`;
+      detail = `${p.distinct_visitors} distinct people, ${p.unique_sessions} session${p.unique_sessions === 1 ? '' : 's'}, ${p.total_views} view${p.total_views === 1 ? '' : 's'}, ${dwellHuman(p.total_dwell_seconds)} total dwell. Internal-forward shape — reach out today.`;
+    } else if (v.signal === 'returning_engaged') {
+      signalLabel = `Returning + engaged · ${p.unique_sessions} sessions`;
+      detail = `Came back ${p.unique_sessions} times, ${dwellHuman(p.total_dwell_seconds)} total dwell${p.scroll_100s > 0 ? `, scrolled to bottom ${p.scroll_100s}×` : ''}${p.verdict_expansions > 0 ? `, expanded ${p.verdict_expansions} verdicts` : ''}. Sticky interest — worth a personalized DM.`;
+    } else if (v.signal === 'cta_plus_engaged') {
+      signalLabel = `CTA click + engaged · ${p.cta_clicks} click${p.cta_clicks === 1 ? '' : 's'}`;
+      detail = `Clicked Book a call alongside ${dwellHuman(p.total_dwell_seconds)} dwell${p.scroll_100s > 0 ? ` and a full read` : ''}. Declared intent — follow up today.`;
+    } else {
+      // Unknown signal — skip rather than send a vague alert.
+      continue;
+    }
 
     await sendHotAlertEmail({
       prospect: p.prospect,
-      signal: `Multi-viewer · ${p.distinct_visitors} people read this`,
-      detail: `${p.distinct_visitors} distinct people, ${p.unique_sessions} session${p.unique_sessions === 1 ? '' : 's'}, ${p.total_views} view${p.total_views === 1 ? '' : 's'}, ${dwellHuman} total dwell. Internal-forward shape — reach out today.`,
-      memoUrl,
+      signal: signalLabel,
+      detail,
+      memoUrl: memoUrlFor(p),
       hqUrl: 'https://rivett.tech/hq',
       whenIso: p.last_view,
     });
@@ -177,40 +200,47 @@ export const GET: APIRoute = async ({ request, url }) => {
         getMessagedSlugs(),
       ]);
 
-      // Action Queue: include multi-viewer audits even if dwell/cta thresholds
-      // are unmet. distinct_visitors>=2 = "they forwarded it internally", the
-      // strongest cold-outreach signal we have. Sort by heat_score so the
-      // multi-viewer ranking landed via HEAT_SCORE_SQL gets used here too —
-      // last_view tie-break only.
+      // Action Queue for the digest: every prospect that's actionable per
+      // signal-filter AND hasn't been messaged. Same definition as
+      // /action-center page so the email count matches the page count.
+      // heat_score sort keeps multi-viewer + returning prospects above
+      // bare CTA-plus rows.
       const actionQueue = fourteenTop
         .filter((p) => !messaged.has(p.prospect))
-        .filter((p) => p.total_dwell_seconds >= 15 || p.cta_clicks > 0 || p.distinct_visitors >= 2)
+        .filter((p) => isActionableProspect(p).actionable)
         .sort((a, b) => {
           if (b.heat_score !== a.heat_score) return b.heat_score - a.heat_score;
           return a.last_view < b.last_view ? 1 : -1;
         });
 
-      // Multi-viewer HOT alert: any audit that crossed 2+ distinct visitors
-      // in the last 24h and we haven't already alerted on within the dedupe
-      // window. Daily-cron firing latency is fine — the "internal forward"
-      // pattern accumulates over hours/days, not seconds.
+      // HOT alerts: fire for any prospect crossing an actionable threshold
+      // in the last 24h, deduped 24h per (signal-type, prospect). Same
+      // criteria as the Action Center filter — one source of truth.
       try {
-        await fireMultiViewerAlerts(fourteenTop);
+        await fireSignalAlerts(fourteenTop);
       } catch (e) {
         // Don't let alert failures break the digest path.
-        console.error('[warm-hq] multi-viewer alert pass failed', e);
+        console.error('[warm-hq] signal alert pass failed', e);
       }
 
-      const digest = await sendDigestEmail({
-        actionQueue,
-        totalEngagedToday: todayHeadline.engaged_reads,
-        ctaClicksToday: todayHeadline.cta_clicks,
-        ctaClicks7d: sevenHeadline.cta_clicks,
-        memoViewsToday: todayHeadline.memo_views,
-        memoViews7d: sevenHeadline.memo_views,
-        hqUrl: 'https://rivett.tech/hq',
-      });
-      digestResult = digest.ok ? { sent: true } : { sent: false, error: digest.error };
+      // Quiet-day skip: no signal = no email. Reduces inbox noise; aligns
+      // with the "only act on signals that matter" principle. The HOT alert
+      // path above is the real-time channel for unmissable events; this
+      // daily digest is for "here's what's accumulated overnight."
+      if (actionQueue.length === 0 && !url.searchParams.get('force_digest')) {
+        digestResult = { sent: false, error: 'skipped: quiet day (no actionable signal)' };
+      } else {
+        const digest = await sendDigestEmail({
+          actionQueue,
+          totalEngagedToday: todayHeadline.engaged_reads,
+          ctaClicksToday: todayHeadline.cta_clicks,
+          ctaClicks7d: sevenHeadline.cta_clicks,
+          memoViewsToday: todayHeadline.memo_views,
+          memoViews7d: sevenHeadline.memo_views,
+          hqUrl: 'https://rivett.tech/action-center',
+        });
+        digestResult = digest.ok ? { sent: true } : { sent: false, error: digest.error };
+      }
     } catch (e) {
       digestResult = { sent: false, error: e instanceof Error ? e.message : String(e) };
     }

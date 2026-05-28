@@ -126,6 +126,25 @@ export const POST: APIRoute = async ({ request }) => {
     });
   }
 
+  // Action Center cutover (2026-05-28): suppress bare 'cta_click' realtime
+  // alerts. Fred's call: a single CTA click is too noisy on its own (browser
+  // prefetch, accidental taps, scanners following CTAs). The cron-driven
+  // signal alert pass (warm-hq.ts fireSignalAlerts) catches actionable CTA
+  // events within 24h via isActionableProspect, which requires a co-signal
+  // (scroll, dwell, verdict expansion). Other realtime signals (deep_read,
+  // long_dwell, return_visit) keep their immediate alerting because they
+  // already imply engagement.
+  if (signal === 'cta_click') {
+    return new Response(
+      JSON.stringify({
+        ok: true,
+        skipped: 'cta_click_routed_to_signal_filter',
+        note: 'Realtime cta_click alerts disabled. The daily warm-hq cron fires HOT alerts for CTA+engagement combos via isActionableProspect.',
+      }),
+      { status: 200, headers: { 'content-type': 'application/json' } }
+    );
+  }
+
   const fire = await shouldFire(prospect, signal);
   if (!fire) {
     return new Response(JSON.stringify({ ok: true, deduped: true }), {

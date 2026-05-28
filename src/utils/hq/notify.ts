@@ -80,11 +80,14 @@ export async function sendDigestEmail(input: DigestInput): Promise<{ ok: boolean
   const topN = input.actionQueue.slice(0, 5);
   const qCount = input.actionQueue.length;
 
-  const subjectParts: string[] = [];
-  if (input.ctaClicksToday > 0) subjectParts.push(`${input.ctaClicksToday} CTA click${input.ctaClicksToday === 1 ? '' : 's'}`);
-  if (qCount > 0) subjectParts.push(`${qCount} in queue`);
-  if (subjectParts.length === 0) subjectParts.push('quiet day');
-  const subject = `Rivett HQ · ${subjectParts.join(' · ')}`;
+  // Subject reframed for Action Center cutover (2026-05-28). Lead with
+  // the actionable count — that's the number Fred acts on. CTA click count
+  // and engagement metrics live in the body, not the subject. Quiet-day
+  // digests are now skipped entirely upstream, so this fallback rarely
+  // fires.
+  const subject = qCount > 0
+    ? `Rivett Action Center · ${qCount} ${qCount === 1 ? 'prospect' : 'prospects'} waiting`
+    : `Rivett Action Center · quiet day`;
 
   const text = buildDigestText(input, topN);
   const html = buildDigestHtml(input, topN);
