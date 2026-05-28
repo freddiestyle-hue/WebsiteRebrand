@@ -280,6 +280,57 @@ function safeUrl(u: string): string {
     else status.removeAttribute('data-err');
   }
 
+  // Upgrade 13 - auto-shorten rivett.tech audit URLs in the DM body before
+  // copy. Each Send click mints a fresh shortlink scoped to this recipient
+  // and the current outreach wave, so per-recipient attribution works end
+  // to end (shortlink click → audit pageview → /hq Action Queue).
+  //
+  // Detected URL shapes:
+  //   - https://rivett.tech/audit/v3/{slug}
+  //   - http://rivett.tech/audit/v3/{slug}
+  //
+  // Failure mode: if minting fails (KV down, network), the long URL stays
+  // in the DM unmodified - send still works, just loses the per-recipient
+  // shortlink signal for this one row.
+  const AUDIT_URL_RE = /https?:\/\/rivett\.tech\/audit\/v3\/[a-zA-Z0-9-]+\.?/g;
+  async function mintShortlink(targetUrl: string, recipient: string): Promise<string | null> {
+    try {
+      const res = await fetch('/api/r/create', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({
+          target_url: targetUrl.replace(/[.,;:!?)]+$/, ''),
+          campaign: 'wave1',
+          recipient,
+          channel: 'linkedin_dm',
+          created_by: 'hq_outreach_queue',
+        }),
+      });
+      if (!res.ok) return null;
+      const data = (await res.json()) as { short_url?: string };
+      return data.short_url ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  async function shortenAuditUrlsIn(dm: string, recipient: string): Promise<string> {
+    const matches = Array.from(dm.matchAll(AUDIT_URL_RE));
+    if (matches.length === 0) return dm;
+    let out = dm;
+    for (const m of matches) {
+      const long = m[0];
+      const cleanLong = long.replace(/[.,;:!?)]+$/, '');
+      const trailingPunct = long.slice(cleanLong.length);
+      const short = await mintShortlink(cleanLong, recipient);
+      if (short) {
+        out = out.replace(long, short + trailingPunct);
+      }
+    }
+    return out;
+  }
+
   document.querySelectorAll<HTMLElement>('[data-outreach-queue] .sq-row').forEach((row) => {
     const btn = row.querySelector<HTMLButtonElement>('.sq-send[data-action="send"]');
     if (!btn) return;
@@ -294,10 +345,16 @@ function safeUrl(u: string): string {
         return;
       }
 
+      // Upgrade 13 - shorten audit URLs in the DM body first. Synchronous
+      // enough to keep the user gesture alive for the clipboard + window.open
+      // calls below (the mint is a single fetch that resolves in <300ms on
+      // warm KV; user gesture timing is forgiving in modern Chrome/Safari).
+      const dmToCopy = await shortenAuditUrlsIn(dm, slug);
+
       // Order matters: clipboard + window.open must run while we still have
       // the user gesture. Both are synchronous-ish (clipboard returns a
       // Promise but the call itself happens inside the gesture).
-      const copyPromise = copyToClipboard(dm);
+      const copyPromise = copyToClipboard(dmToCopy);
       const opened = window.open(linkedin, '_blank', 'noopener,noreferrer');
       const copied = await copyPromise;
 
