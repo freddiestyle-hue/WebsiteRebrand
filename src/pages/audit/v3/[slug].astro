@@ -435,6 +435,78 @@ function bandLabel(pct: number): string {
   }
   .v3-lock .rel-tag.rel-verified { color: var(--ink); }
   .v3-lock .rel-tag.rel-soft-absence { color: var(--ink-faint); }
+  /* Upgrade 12 - per-cell expand toggle. Subtle until hovered or focused.
+     Sits at the bottom of each card under the reliability tag. */
+  .v3-lock-expand-toggle {
+    appearance: none;
+    background: transparent;
+    border: none;
+    border-top: 1px dashed var(--line);
+    padding: var(--sp-3) 0 0;
+    margin-top: var(--sp-3);
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: var(--track-mono);
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--sp-2);
+    width: 100%;
+    transition: color var(--dur-1) var(--ease);
+  }
+  .v3-lock-expand-toggle:hover,
+  .v3-lock-expand-toggle:focus-visible { color: var(--accent-deep); outline: none; }
+  .v3-lock-expand-toggle .toggle-icon {
+    font-family: var(--grotesk);
+    font-weight: 700;
+    font-size: 16px;
+    line-height: 1;
+    color: var(--accent-deep);
+    transition: transform var(--dur-2) var(--ease);
+    display: inline-block;
+  }
+  .v3-lock-expand-toggle[aria-expanded="true"] .toggle-icon { transform: rotate(45deg); }
+  .v3-lock-checks {
+    margin-top: var(--sp-3);
+    padding-top: var(--sp-3);
+    border-top: 1px solid var(--line);
+  }
+  .v3-lock-checks ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .v3-lock-checks .check {
+    display: grid;
+    grid-template-columns: 18px 1fr;
+    gap: var(--sp-2);
+    padding: 7px 0;
+    font-size: 12.5px;
+    line-height: 1.45;
+    color: var(--ink-dim);
+    border-bottom: 1px solid var(--line-soft);
+    align-items: baseline;
+  }
+  .v3-lock-checks .check:last-child { border-bottom: 0; }
+  .v3-lock-checks .check .check-marker {
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 13px;
+    line-height: 1;
+  }
+  .v3-lock-checks .check.check-ok .check-marker { color: var(--accent-deep); }
+  .v3-lock-checks .check.check-fail .check-marker { color: var(--signal-halt); }
+  /* Soft-absence rows are quieter - they're not failures, they're "could not
+     confirm". Italic + muted matches the locked-observation tone elsewhere. */
+  .v3-lock-checks .check.rel-soft-absence { color: var(--ink-faint); font-style: italic; }
+  .v3-lock-checks .check.rel-soft-absence .check-marker { color: var(--ink-faint); }
+  .v3-lock-checks .check.rel-inferred { font-style: italic; }
+  /* Bolded fragments inside the check label (used for highlighting tracker
+     names, fields, etc.) stay readable in the muted context. */
+  .v3-lock-checks .check :global(b) { font-weight: 600; color: var(--ink); }
   .v3-lock .rel-tag.rel-inferred {
     font-family: var(--serif); font-style: italic;
     text-transform: none; letter-spacing: 0;
@@ -786,6 +858,36 @@ function bandLabel(pct: number): string {
               {cell.reliability ? (
                 <div class={`rel-tag rel-${cell.reliability}`}>{REL_LABEL[cell.reliability] ?? cell.reliability}</div>
               ) : null}
+              {/* Upgrade 12 - per-cell expand. Reveals the underlying check list
+                  so prospects can verify what was measured without breaking the
+                  locked-observation interpretation up top. data-cta lets PostHog
+                  track which dimensions each prospect drilled into - the only
+                  signal we have for "which findings do they care about". */}
+              {cell.checks && cell.checks.length > 0 ? (
+                <Fragment>
+                  <button
+                    type="button"
+                    class="v3-lock-expand-toggle"
+                    data-cta={`cell_expand_${cell.icon}`}
+                    data-cta-location="memo_cell"
+                    aria-expanded="false"
+                    aria-controls={`cell-checks-${cell.icon}`}
+                  >
+                    <span class="toggle-text">Show {cell.checks.length} signal{cell.checks.length === 1 ? '' : 's'}</span>
+                    <span class="toggle-icon" aria-hidden="true">+</span>
+                  </button>
+                  <div class="v3-lock-checks" id={`cell-checks-${cell.icon}`} hidden>
+                    <ul>
+                      {cell.checks.map((check) => (
+                        <li class={`check ${check.ok ? 'check-ok' : 'check-fail'} rel-${check.reliability ?? 'verified'}`}>
+                          <span class="check-marker" aria-hidden="true">{check.ok ? '✓' : '×'}</span>
+                          <span class="check-text" set:html={check.text} />
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </Fragment>
+              ) : null}
             </article>
           );
         })}
@@ -876,5 +978,36 @@ function bandLabel(pct: number): string {
     </div>
   </div>
 )}
+
+{/* Upgrade 12 - per-cell expand toggle. Vanilla JS, no framework. Each toggle
+    flips its own aria-expanded + the controlled element's hidden state. The
+    PostHog autocapture layer picks up the click via data-cta so we can see
+    which dimensions prospects drill into. Cells are independent (no
+    auto-collapse) - prospects often want to compare two dimensions side by
+    side. If clutter becomes a problem in practice we can add accordion later. */}
+<script is:inline>
+  (function() {
+    document.querySelectorAll('.v3-lock-expand-toggle').forEach(function(btn) {
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var expanded = btn.getAttribute('aria-expanded') === 'true';
+        var targetId = btn.getAttribute('aria-controls');
+        var target = targetId ? document.getElementById(targetId) : null;
+        if (!target) return;
+        var nextExpanded = !expanded;
+        btn.setAttribute('aria-expanded', String(nextExpanded));
+        target.hidden = !nextExpanded;
+        var textEl = btn.querySelector('.toggle-text');
+        if (textEl) {
+          var count = target.querySelectorAll('li').length;
+          textEl.textContent = nextExpanded
+            ? 'Hide'
+            : 'Show ' + count + ' signal' + (count === 1 ? '' : 's');
+        }
+      });
+    });
+  })();
+</script>
+
 </body>
 </html>
