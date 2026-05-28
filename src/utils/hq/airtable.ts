@@ -67,7 +67,7 @@ const FINDING_FIELDS_BY_VERTICAL: Record<string, string[]> = {
   ],
 };
 
-const CACHE_KEY = 'hq:airtable:prospects:v4';
+const CACHE_KEY = 'hq:airtable:prospects:v5';
 const CACHE_TTL_SECONDS = 1800;
 
 export type Vertical = 'Advertiser' | 'Mental Health' | 'Homecare' | 'Fractional Role';
@@ -367,16 +367,20 @@ export async function setOutreachStage(
 }
 
 /**
- * Extract the prospect slug from an audit URL.
+ * Extract the prospect slug from an audit URL. Must match PROSPECT_SLUG_EXPR
+ * in posthog/query.ts so the slug-join lines up with what PostHog stores as
+ * the prospect identifier for visitor traffic.
  *   https://rivett.tech/audit/v3/<slug>
  *   https://rivett.tech/audit/p/<slug>
+ *   https://intake-reviews.vercel.app/intake-review/<slug>
  *   /audit/v3/<slug>
+ *   /intake-review/<slug>
  *   <slug>  (already bare)
  */
 function extractSlug(auditUrl: string): string | null {
   if (!auditUrl) return null;
-  const m = auditUrl.match(/\/audit\/(?:v3|p)\/([^/?#]+)/);
-  if (m) return m[1];
+  const m = auditUrl.match(/\/(?:audit\/(?:v3|p)|intake-review)\/([^/?#]+)/);
+  if (m) return m[1].replace(/[\s./]+$/, '');
   if (!auditUrl.includes('/') && auditUrl.includes('-')) return auditUrl;
   return null;
 }

@@ -142,19 +142,11 @@ if (isPOST && !memo) {
             networkHostsCount,
             mobileMeasured,
           });
-          // Evict any stale cached memo for this slug. Otherwise a 503 response
-          // on POST silently leaves an OLD partial-audit in KV, and the bulk
-          // script's GET-the-slug fallback returns 200 with stale data and
-          // marks the prospect "success". MUST await so the del completes
-          // before we return - otherwise the script's immediate GET races
-          // against the async delete.
-          try {
-            const staleSlug = v3SlugFromDomain(norm.hostname);
-            const redis = Redis.fromEnv();
-            await redis.del(`audit-v3:${staleSlug}`);
-          } catch (e) {
-            console.error('[audit/v3] KV del on 503 failed', e);
-          }
+          // Do NOT evict the existing cached memo on 503. Eviction here means
+          // a failed regen destroys the prior good audit, which is worse than
+          // serving stale-but-decent data to a prospect. The bulk-audit
+          // script's GET-fallback is responsible for distinguishing fresh
+          // writes from stale cache (via audit_version on the memo).
         } else {
         audit = await runAudit(norm.url, {
           renderedHtml: headless?.renderedHtml,
