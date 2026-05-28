@@ -19,7 +19,7 @@ import { checkMobileFromHtml } from '../../utils/audit/mobile-check';
 import { checkPageSpeed } from '../../utils/audit/pagespeed';
 import { checkAds } from '../../utils/audit/ads-check';
 import { detectTechStack } from '../../utils/audit/tech-stack-check';
-import { runHeadlessCheck } from '../../utils/audit/headless-check';
+import { runHeadlessCheck, getLastHeadlessError } from '../../utils/audit/headless-check';
 import { auditLandingPages } from '../../utils/audit/landing-check';
 import { checkIndexedPages } from '../../utils/audit/serp';
 import type { Memo, VerdictCell, VerdictIcon } from '../../utils/audit/memo-schema';
@@ -137,7 +137,9 @@ if (isPOST && !memo) {
         if (!headlessUsable) {
           Astro.response.status = 503;
           Astro.response.headers.set('Retry-After', '10');
-          runtimeError = `Headless render incomplete (renderedHtml=${renderedHtmlLen}b, hosts=${networkHostsCount}, mobileMeasured=${mobileMeasured}). Audit not written.`;
+          const lastErr = getLastHeadlessError();
+          runtimeError = `Headless render incomplete (renderedHtml=${renderedHtmlLen}b, hosts=${networkHostsCount}, mobileMeasured=${mobileMeasured}). Audit not written.${lastErr ? ' Cause: ' + lastErr : ''}`;
+          Astro.response.headers.set('X-Audit-Error', lastErr ? lastErr.slice(0, 500) : 'no-error-recorded');
           console.error('[audit/v3] headless unusable for', norm.url, {
             renderedHtmlLen,
             networkHostsCount,

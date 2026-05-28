@@ -399,7 +399,15 @@ async function tracePrimaryConversionPath(
 // regression.
 const HEADLESS_BUDGET_MS = 150_000;
 
+// Last error encountered during runHeadlessOnce - module-scope so v3.astro
+// can surface it in the 503 response when Vercel logs hide the detail.
+let _lastHeadlessError: string | null = null;
+export function getLastHeadlessError(): string | null {
+  return _lastHeadlessError;
+}
+
 export async function runHeadlessCheck(url: string): Promise<HeadlessResult | null> {
+  _lastHeadlessError = null;
   const started = Date.now();
   const backoffsMs = [2000];
   let last: HeadlessResult | null = await runHeadlessOnce(url);
@@ -644,6 +652,7 @@ async function runHeadlessOnce(url: string): Promise<HeadlessResult | null> {
       const errInfo = e instanceof Error
         ? { name: e.name, message: e.message, stack: e.stack?.split('\n').slice(0, 5).join(' | ') }
         : { message: String(e) };
+      _lastHeadlessError = `${errInfo.name || 'Error'}: ${errInfo.message}`;
       console.error('[audit/headless] failed', JSON.stringify(errInfo), 'browserless=', !!process.env.BROWSERLESS_TOKEN);
       return null;
     } finally {
