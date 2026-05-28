@@ -41,10 +41,14 @@ function depthPct(r: RecentRead): number {
   if (r.dwell_seconds >= 10) return 25;
   return 5;
 }
-function mark(r: RecentRead): { label: string; cls: string } {
-  if (r.cta_clicks > 0) return { label: 'CTA', cls: 'mark--hot' };
-  if (r.dwell_seconds >= 60) return { label: 'DEEP', cls: 'mark--warm' };
-  return { label: '–', cls: 'mark--cold' };
+function mark(r: RecentRead): { label: string; cls: string; title: string } {
+  if (r.cta_clicks > 0) return { label: 'CTA', cls: 'mark--hot', title: 'Clicked a CTA on this audit' };
+  if (r.dwell_seconds >= 60) return { label: 'DEEP', cls: 'mark--warm', title: 'Read for ≥60s' };
+  if (r.is_engaged) return { label: 'READ', cls: 'mark--cool', title: 'Fired a scroll/click/copy event but didn\'t dwell long' };
+  // No real engagement events — likely a SafeLinks / Mimecast / Proofpoint
+  // scanner doing email-gateway link prefetch. Shown but flagged so you
+  // don't follow up on a non-read.
+  return { label: 'RAW', cls: 'mark--raw', title: 'No engagement events — likely an email-security scanner, not a real read. Wait for a second hit from a non-datacenter IP.' };
 }
 function fullUrl(path: string, surface: 'audit' | 'intake-review' | undefined): string {
   if (surface === 'intake-review') return `https://intake-reviews.vercel.app${path}`;
@@ -86,9 +90,9 @@ function fullUrl(path: string, surface: 'audit' | 'intake-review' | undefined): 
           <div class="cell mono">{dwell(r.dwell_seconds)}</div>
           <div class="cell">
             {replay ? (
-              <a class={`mark ${m.cls}`} href={replay} target="_blank" rel="noopener">{m.label}</a>
+              <a class={`mark ${m.cls}`} href={replay} target="_blank" rel="noopener" title={m.title}>{m.label}</a>
             ) : (
-              <span class={`mark ${m.cls}`}>{m.label}</span>
+              <span class={`mark ${m.cls}`} title={m.title}>{m.label}</span>
             )}
           </div>
         </div>
@@ -192,6 +196,20 @@ function fullUrl(path: string, surface: 'audit' | 'intake-review' | undefined): 
   .mark--warm { background: var(--sage, #E8F0D9); color: var(--accent-deep, #4A6E18); border-color: var(--accent-deep, #4A6E18); }
   .mark--cool { color: var(--ink-dim, #3A4658); border-color: var(--line-strong, rgba(14,26,44,0.28)); }
   .mark--cold { color: var(--ink-faint, #7A8597); border-color: var(--line, rgba(14,26,44,0.14)); }
+  /* RAW = no engagement events. Likely email-security scanner. Visible
+     enough to read but visually quiet so it never demands attention. */
+  .mark--raw {
+    color: var(--ink-faint, #7A8597);
+    border-color: var(--line, rgba(14,26,44,0.14));
+    background: repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 3px,
+      rgba(14,26,44,0.04) 3px,
+      rgba(14,26,44,0.04) 6px
+    );
+    font-style: italic;
+  }
 
   @media (max-width: 780px) {
     .feed-row {
