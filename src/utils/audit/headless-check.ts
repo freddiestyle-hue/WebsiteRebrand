@@ -384,15 +384,29 @@ async function tracePrimaryConversionPath(
   return homepage;
 }
 
-// Run the headless pass with up to two retries on failure. Cold-start Chromium
+// Run the headless pass with up to one retry on failure. Cold-start Chromium
 // on Vercel can fail the first time (binary unmount, lambda CPU contention).
-// Wave 2 audits showed heavy enterprise/real-estate sites need more retries -
-// first call cold-starts and times out, second warms the binary, third does
-// the actual work. Verified reads require headless, so we don't quietly skip.
+// 2026-05-28 fix: was 3 attempts (60s each + 4.5s backoffs = ~185s worst case),
+// which combined with Phase 2 (runAudit + memo build) could blow the 300s
+// function cap and return a 504 instead of a graceful error. Cut to 2 attempts
+// (max ~122s) so a slow render still leaves >175s for the rest of the audit.
+// Verified reads require headless, so a real failure still surfaces — the
+// visitor just sees the audit fail cleanly instead of a Vercel 504.
+//
+// HARD WALL-CLOCK BUDGET: also bail out of the retry loop if we've already
+// burned past HEADLESS_BUDGET_MS. Belt and suspenders against the timeout
+// regression.
+const HEADLESS_BUDGET_MS = 150_000;
+
 export async function runHeadlessCheck(url: string): Promise<HeadlessResult | null> {
-  const backoffsMs = [1500, 3000];
+  const started = Date.now();
+  const backoffsMs = [2000];
   let last: HeadlessResult | null = await runHeadlessOnce(url);
   for (let attempt = 0; attempt < backoffsMs.length && last === null; attempt++) {
+    if (Date.now() - started > HEADLESS_BUDGET_MS) {
+      console.warn('[audit/headless] budget exhausted, abandoning retries for', url);
+      break;
+    }
     await new Promise((r) => setTimeout(r, backoffsMs[attempt]));
     last = await runHeadlessOnce(url);
   }
@@ -400,7 +414,8 @@ export async function runHeadlessCheck(url: string): Promise<HeadlessResult | nu
     // Surfaced in the logs so a deploy-wide regression is visible. The audit
     // path checks for null and decides whether to fail the run; this is only
     // a marker.
-    console.error('[audit/headless] all 3 attempts returned null for', url);
+    const elapsed = Date.now() - started;
+    console.error(`[audit/headless] attempts returned null for ${url} (${elapsed}ms elapsed)`);
   }
   return last;
 }
