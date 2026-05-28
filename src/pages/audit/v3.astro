@@ -120,10 +120,11 @@ if (isPOST && !memo) {
         // Verified reads require headless. Also treat a degenerate headless
         // result (lambda returned but didn't actually capture the page) as
         // failure. Multiple signals because each can lie individually:
-        //   - renderedHtml >= 5000 bytes: real homepages are 50KB+. A CMP
-        //     banner alone or a WAF challenge page is ~1-3KB.
-        //   - networkHosts >= 3: a real page in a real browser hits at least
-        //     the origin + a CDN + analytics. Zero means JS never ran.
+        //   - renderedHtml >= 2000 bytes: relaxed from 5000 because heavy
+        //     enterprise sites with anti-bot or slow render were tripping
+        //     the threshold even though they captured usable DOM. 2KB still
+        //     catches the CMP-banner-only or WAF-challenge case.
+        //   - networkHosts >= 2: relaxed from 3 for the same reason.
         //   - mobile.smallestTapTargetPx != null: confirms the page rendered
         //     enough DOM for the viewport-measurement to find clickables.
         // Any one missing = treat the whole pass as failed, evict, 503.
@@ -131,7 +132,7 @@ if (isPOST && !memo) {
         const networkHostsCount = headless?.networkHosts?.length ?? 0;
         const mobileMeasured = headless?.mobile?.smallestTapTargetPx != null;
         const headlessUsable =
-          !!headless && renderedHtmlLen >= 5000 && networkHostsCount >= 3 && mobileMeasured;
+          !!headless && renderedHtmlLen >= 2000 && networkHostsCount >= 2 && mobileMeasured;
 
         if (!headlessUsable) {
           Astro.response.status = 503;
