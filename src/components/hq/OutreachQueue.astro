@@ -218,6 +218,9 @@ function safeUrl(u: string): string {
     .sq-actions { padding: 0 var(--sp-3) var(--sp-3); flex-direction: row; }
     .sq-send { flex: 1; }
     .sq-aux { flex: 0 0 auto; }
+    /* Touch has no :hover, so the desktop hover-to-expand never fires. Show
+       the full DM on mobile - you can't send what you can't read. */
+    .sq-dm { white-space: normal; max-height: none; }
   }
 </style>
 
