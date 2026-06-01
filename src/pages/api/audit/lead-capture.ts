@@ -1,10 +1,10 @@
 // Lead capture endpoint for the /audit/run soft gate.
 //
-// Flow: visitor runs the public audit, sees the verdict cells, hits the
-// "Enter email to unlock the fixes" form, POSTs here. We send Fred a
-// real-time notification email with the visitor's email + the audited
-// domain + audit ID. No list, no Airtable, no Resend audience — Fred's
-// explicit choice. If he later wants persistence, add it then.
+// Flow: visitor runs a public audit preview, sees a gated/redacted section,
+// and submits contact details. We send Fred a real-time notification email
+// with the visitor's email + the audited domain + audit ID/context. No list,
+// no Airtable, no Resend audience — Fred's explicit choice. If he later wants
+// persistence, add it then.
 //
 // Pattern mirrors src/pages/api/mri-lead.ts (Resend + QUALIFY_FROM_EMAIL
 // + NOTIFICATION_EMAIL env vars + honeypot field + isEmail validation).
@@ -12,6 +12,8 @@
 // Body shape:
 //   {
 //     email: string,
+//     name?: string,
+//     context?: string,
 //     audited_url: string,       // the URL they ran the audit on
 //     audit_id?: string,         // optional audit identifier
 //     score_percent?: number,    // optional audit score
@@ -26,6 +28,8 @@ export const prerender = false;
 
 type LeadPayload = {
   email?: string;
+  name?: string;
+  context?: string;
   audited_url?: string;
   audit_id?: string;
   score_percent?: number;
@@ -49,6 +53,8 @@ export const POST: APIRoute = async ({ request }) => {
   }
 
   const email = typeof payload.email === 'string' ? payload.email.trim().toLowerCase() : '';
+  const name = typeof payload.name === 'string' ? payload.name.trim() : '';
+  const context = typeof payload.context === 'string' ? payload.context.trim().slice(0, 2000) : '';
   const auditedUrl = typeof payload.audited_url === 'string' ? payload.audited_url.trim() : '';
   const auditId = typeof payload.audit_id === 'string' ? payload.audit_id.trim() : '';
   const scorePercent = Number.isFinite(payload.score_percent as number) ? Number(payload.score_percent) : null;
@@ -80,6 +86,8 @@ export const POST: APIRoute = async ({ request }) => {
 
   const html = buildHtmlEmail({
     email,
+    name,
+    context,
     auditedUrl,
     auditId,
     scorePercent,
@@ -88,6 +96,8 @@ export const POST: APIRoute = async ({ request }) => {
   });
   const text = buildTextEmail({
     email,
+    name,
+    context,
     auditedUrl,
     auditId,
     scorePercent,
@@ -142,6 +152,8 @@ function escapeHtml(value: string) {
 
 interface EmailContext {
   email: string;
+  name: string;
+  context: string;
   auditedUrl: string;
   auditId: string;
   scorePercent: number | null;
@@ -154,6 +166,10 @@ function buildHtmlEmail(c: EmailContext) {
     ? `<strong>Score:</strong> ${c.scorePercent}%<br />`
     : '';
   const auditIdLine = c.auditId ? `<strong>Audit ID:</strong> ${escapeHtml(c.auditId)}<br />` : '';
+  const nameLine = c.name ? `<strong>Name:</strong> ${escapeHtml(c.name)}<br />` : '';
+  const contextBlock = c.context
+    ? `<div style="margin:18px 0 0;padding:14px 16px;background:#F4F2ED;border-left:3px solid #8FBF3F;font-family:'Inter Tight',Inter,Arial,sans-serif;font-size:14px;line-height:1.55;color:#3A4658;"><strong style="color:#0E1A2C;">Context:</strong><br />${escapeHtml(c.context).replace(/\n/g, '<br />')}</div>`
+    : '';
   const linkLine = c.auditRunUrl
     ? `<a href="${escapeHtml(c.auditRunUrl)}" style="color:#4A6E18;text-decoration:underline;">Open the audit they saw →</a>`
     : '';
@@ -171,13 +187,15 @@ function buildHtmlEmail(c: EmailContext) {
           </h1>
           <p style="font-family:'Inter Tight',Inter,Arial,sans-serif;font-size:15px;line-height:1.6;margin:0 0 24px;color:#3A4658;">
             <strong>Email:</strong> <a href="mailto:${escapeHtml(c.email)}" style="color:#4A6E18;">${escapeHtml(c.email)}</a><br />
+            ${nameLine}
             ${scoreLine}
             ${auditIdLine}
             <strong>Submitted:</strong> ${escapeHtml(c.submittedAt)}
           </p>
+          ${contextBlock}
           ${linkLine ? `<div style="padding:14px 0;border-top:1px solid rgba(14,26,44,0.14);font-family:'DM Mono',ui-monospace,monospace;font-size:13px;">${linkLine}</div>` : ''}
           <p style="margin-top:24px;font-family:'Newsreader',Georgia,serif;font-style:italic;font-size:14px;color:#7A8597;">
-            They unlocked the recommendations panel on the audit. Reply directly to start the conversation.
+            They submitted the audit gate form. Reply directly to start the conversation.
           </p>
         </main>
       </body>
@@ -190,14 +208,16 @@ function buildTextEmail(c: EmailContext) {
     'Rivett audit · new lead',
     '',
     `Email: ${c.email}`,
+    c.name ? `Name: ${c.name}` : '',
     `Audited URL: ${c.auditedUrl}`,
     c.scorePercent != null ? `Score: ${c.scorePercent}%` : '',
     c.auditId ? `Audit ID: ${c.auditId}` : '',
     `Submitted: ${c.submittedAt}`,
+    c.context ? `Context:\n${c.context}` : '',
     '',
     c.auditRunUrl ? `Audit they saw: ${c.auditRunUrl}` : '',
     '',
-    'They unlocked the recommendations panel. Reply directly to start the conversation.',
+    'They submitted the audit gate form. Reply directly to start the conversation.',
   ]
     .filter((line) => line !== null && line !== undefined)
     .join('\n');

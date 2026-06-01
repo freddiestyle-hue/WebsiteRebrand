@@ -3,7 +3,7 @@ import Base from '../layouts/Base.astro';
 ---
 <Base
   title="Rivett · I find where revenue leaks. Then I fix the system."
-  description="A senior growth practice for profitable US operators. Run the live audit, diagnose the leaks, and rebuild the system between demand and revenue."
+  description="A senior growth practice for profitable US operators. Request the gated audit, diagnose the leaks, and rebuild the system between demand and revenue."
   fontWeights="Inter+Tight:wght@400;500;600;700;800"
   currentNav="home"
 >
@@ -28,28 +28,25 @@ import Base from '../layouts/Base.astro';
       <form class="audit-form" method="POST" action="/audit/v3" id="homeAuditForm">
         <span class="prefix">https://</span>
         <input class="domain" type="text" name="url" inputmode="url" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="enter the site you want read" required aria-label="Domain" />
-        <button class="btn btn--solid" type="submit">Run audit <span aria-hidden="true">→</span></button>
+        <input type="hidden" name="source" value="home_preview" />
+        <button class="btn btn--solid" type="submit">Run preview <span aria-hidden="true">→</span></button>
       </form>
 
-      <p class="sub-dek">60-sec self-serve. The diagnostic ($3.5k) picks up where the audit ends. <span class="ital">One earns the right to the other.</span></p>
+      <p class="sub-dek">The preview shows the shape of the leak. The detailed checks, fix list, and field note are redacted until you get in touch. <span class="ital">The audit is not a freebie.</span></p>
 
       <div class="audit-meta">
-        <span><b>~30s</b> median run</span>
+        <span><b>Preview</b> first</span>
         <span class="sep">/</span>
-        <span>public APIs only</span>
+        <span>details redacted</span>
         <span class="sep">/</span>
-        <span>no login</span>
+        <span>request full read</span>
         <span class="sep">/</span>
         <span><b>9</b> dimensions</span>
       </div>
 
       <div class="audit-sample">
-        <span class="stamp stamp--neutral">Or read a sample</span>
-        <a class="sample-link" href="/audit/v3/pellaofcolumbus-com">
-          <span class="sample-domain">pellaofcolumbus.com</span>
-          <span class="sample-arrow">read this →</span>
-        </a>
-        <span class="sample-note">Real domain. Real numbers.</span>
+        <span class="stamp stamp--neutral">What unlocks after contact</span>
+        <span class="sample-note">The actual check list, ranked fixes, and operator read. Enough to know if there is a real issue. Not enough to walk off with the work.</span>
       </div>
     </header>
 
@@ -260,17 +257,17 @@ import Base from '../layouts/Base.astro';
 
     <!-- Pull quote -->
     <div class="pull">
-      <blockquote>"Run the audit first. If it points at a real leak, the diagnostic turns that signal into a written fix list. Two weeks. $3.5k, fixed. Credited to the build if you continue."</blockquote>
+      <blockquote>"Run the preview first. If it points at a real leak, fill the request form and I will send the full read. The diagnostic turns that signal into a written fix list. Two weeks. $3.5k, fixed."</blockquote>
       <cite>— Section 06 · next step</cite>
     </div>
 
     <!-- End CTA · dark closer -->
     <div class="end-cta" id="contact">
-      <h3>Start with the audit. <span class="ital">It earns the right to the diagnostic.</span></h3>
+      <h3>Want the full audit? <span class="ital">Get in touch after the preview.</span></h3>
       <div class="right">
-        <span class="stamp stamp--on-ink">60 sec · in-browser · no login</span>
-        <p>Nine reads against your live domain. If it surfaces a leak worth fixing, the diagnostic turns the signal into a written fix list.</p>
-        <a class="btn btn--inv" href="/audit/v3">Run the audit <span aria-hidden="true">→</span></a>
+        <span class="stamp stamp--on-ink">Preview first · details redacted · real context</span>
+        <p>The form gives you a partial read. If it looks worth discussing, the result page asks for your work email and context so I can send the full audit.</p>
+        <a class="btn btn--inv" data-cta="home_closer_run_preview" href="#homeAuditForm">Run preview <span aria-hidden="true">→</span></a>
       </div>
     </div>
 
@@ -290,7 +287,7 @@ import Base from '../layouts/Base.astro';
           <a href="#work">Diagnostic</a>
           <a href="#work">Build</a>
           <a href="#work">Run</a>
-          <a href="/audit/v3">Live audit</a>
+          <a href="#homeAuditForm">Audit preview</a>
         </div>
         <div class="col">
           <span class="col-h">Field notes</span>
@@ -333,13 +330,21 @@ import Base from '../layouts/Base.astro';
   /* Tighten the audit-hero top padding since our site Nav already sits above
      the page (the mock's .page has its own Nav inside). */
   .audit-first-home .audit-hero { padding-top: var(--sp-10, 48px); }
+
+  .audit-first-home .audit-sample {
+    align-items: flex-start;
+  }
+  .audit-first-home .audit-sample .sample-note {
+    max-width: 780px;
+    line-height: 1.5;
+  }
 </style>
 
 <script is:inline>
   (function () {
     var form = document.getElementById('homeAuditForm');
     if (!form) return;
-    form.addEventListener('submit', function (e) {
+    form.addEventListener('submit', function () {
       var input = form.querySelector('input[name="url"]');
       if (input) {
         input.value = input.value.trim().replace(/^https?:\/\//, '').replace(/\/$/, '');

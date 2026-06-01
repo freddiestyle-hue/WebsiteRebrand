@@ -7,6 +7,7 @@ const path = Astro.url.pathname;
 const mriActive = current === 'mri' || path.startsWith('/revenue-leak-mri');
 const vanishActive = path.startsWith('/30-day-vanish-test');
 const toolsActive = mriActive || vanishActive;
+const auditPreviewHref = '/#homeAuditForm';
 ---
 <header class="site-header" data-scrolled="false">
   <nav class="header-inner" aria-label="Primary">
@@ -20,9 +21,9 @@ const toolsActive = mriActive || vanishActive;
         <details class="tools-menu">
           <summary class={toolsActive ? 'current' : ''}>Tools</summary>
           <div class="tools-panel" aria-label="Tools">
-            <a href="/audit/v3">
-              <span>Live audit</span>
-              <small>09 readings against your live domain. ~30s.</small>
+            <a href={auditPreviewHref}>
+              <span>Audit preview</span>
+              <small>Run the scan. Detailed findings are redacted.</small>
             </a>
             <a href="/30-day-vanish-test" class={vanishActive ? 'current' : ''}>
               <span>30-Day Vanish Test</span>
@@ -38,7 +39,7 @@ const toolsActive = mriActive || vanishActive;
       <li class={current === 'blog' ? 'current-li' : ''}>
         <a href="/blog" class={current === 'blog' ? 'current' : ''}>Notes</a>
       </li>
-      <li><a href="/audit/v3" class="cta">Run audit →</a></li>
+      <li><a href={auditPreviewHref} class="cta">Run preview →</a></li>
     </ul>
     <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="mobile-menu" aria-label="Open menu">
       <span class="menu-bar"></span>
@@ -58,13 +59,13 @@ const toolsActive = mriActive || vanishActive;
     <li class="mobile-tools">
       <span>Tools</span>
       <ul>
-        <li><a href="/audit/v3">Live audit</a></li>
+        <li><a href={auditPreviewHref}>Audit preview</a></li>
         <li><a href="/30-day-vanish-test">30-Day Vanish Test</a></li>
         <li><a href="/revenue-leak-mri">Revenue MRI</a></li>
       </ul>
     </li>
     <li><a href="/blog">Notes</a></li>
-    <li><a href="/audit/v3" class="mobile-cta">Run audit →</a></li>
+    <li><a href={auditPreviewHref} class="mobile-cta">Run preview →</a></li>
   </ul>
   <div class="mobile-foot">fred@rivett.tech</div>
 </div>

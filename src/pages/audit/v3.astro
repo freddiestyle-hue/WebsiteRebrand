@@ -310,10 +310,11 @@ const statusBadge = (ok: boolean, cellSev: 'r' | 'a' | 'g' | ''): { cls: string;
 const verdictItalic = memo?.cover.italic ?? '';
 const headerDate = fmtDate(memo?.generatedAt);
 const headerTime = memo ? fmtTime(memo.generatedAt) : '';
+const shouldGateResult = !!memo && !!audit && !fromCache;
 
 const pageTitle = memo
-  ? `${memo.domain} · ${compositeScore} of 100 · Teardown memo · rivett`
-  : 'Live audit · rivett';
+  ? `${memo.domain} · ${compositeScore} of 100 · ${shouldGateResult ? 'Audit preview' : 'Teardown memo'} · rivett`
+  : 'Audit preview · rivett';
 
 const splitHeading = (heading: string): { lead: string; tail: string } => {
   // "How Google sees you" → lead="How Google", tail="sees you."
@@ -513,6 +514,59 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
   .teaser p { margin: 0; color: var(--ink-dim); font-size: 14.5px; line-height: 1.5; max-width: 560px; }
   .teaser .stack { display: flex; gap: var(--sp-3); flex-wrap: wrap; }
 
+  .preview-lock { margin-top: var(--sp-6); border: var(--bw-hair) solid var(--line-strong); background: var(--accent-bg); padding: var(--sp-5) var(--sp-6); max-width: 720px; }
+  .preview-lock .lock-label,
+  .locked-detail .lock-label,
+  .full-audit-form .lock-label {
+    display: block;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: var(--track-mono);
+    text-transform: uppercase;
+    color: var(--accent-deep);
+    margin-bottom: 8px;
+  }
+  .preview-lock p { margin: 0; font-size: 15px; line-height: 1.5; color: var(--ink-dim); }
+  .locked-detail { border-top: var(--bw-hair) solid var(--line); background: var(--paper-2); padding: var(--sp-4) var(--sp-6); }
+  .locked-detail p { margin: 0; font-size: 13.5px; line-height: 1.45; color: var(--ink-dim); }
+  .fix--locked .why,
+  .fix--locked .meta-col { position: relative; overflow: hidden; }
+  .redacted-line {
+    display: inline-block;
+    width: 100%;
+    min-height: 1.2em;
+    border-radius: 2px;
+    color: transparent !important;
+    background: repeating-linear-gradient(90deg, rgba(14,26,44,0.22) 0 18px, rgba(14,26,44,0.09) 18px 30px);
+  }
+  .redacted-copy { margin: 0; color: var(--ink-faint); font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono-tight); line-height: 1.6; text-transform: uppercase; }
+  .full-audit-form { margin-top: var(--sp-10); border: var(--bw-hair) solid var(--ink); background: var(--paper); padding: var(--sp-7); display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1fr); gap: var(--sp-8); align-items: start; }
+  @media (max-width: 860px) { .full-audit-form { grid-template-columns: 1fr; } }
+  .full-audit-form h4 { margin: 0 0 var(--sp-3); font-family: var(--grotesk); font-size: clamp(24px, 2.8vw, 34px); line-height: 1.08; letter-spacing: var(--track-h-md); text-wrap: balance; }
+  .full-audit-form h4 .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); }
+  .full-audit-form p { margin: 0; color: var(--ink-dim); font-size: 15px; line-height: 1.55; max-width: 520px; }
+  .unlock-fields { display: grid; gap: var(--sp-3); }
+  .unlock-fields input,
+  .unlock-fields textarea {
+    width: 100%;
+    border: var(--bw-hair) solid var(--line-strong);
+    background: var(--paper-2);
+    color: var(--ink);
+    font: inherit;
+    padding: 13px 14px;
+    min-height: 46px;
+  }
+  .unlock-fields textarea { min-height: 104px; resize: vertical; line-height: 1.45; }
+  .unlock-fields input:focus,
+  .unlock-fields textarea:focus { outline: 2px solid var(--accent-deep); outline-offset: 1px; }
+  .unlock-fields input::placeholder,
+  .unlock-fields textarea::placeholder { color: var(--ink-faint); }
+  .unlock-fields .hp { left: -100vw; position: absolute; top: auto; }
+  .unlock-status { min-height: 1.4em; margin: 0; font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono-tight); text-transform: uppercase; color: var(--ink-faint); }
+  .unlock-status.ok { color: var(--accent-deep); }
+  .unlock-status.err { color: var(--signal-halt); }
+  .full-audit-form[data-sent="true"] { border-color: var(--accent-deep); background: var(--accent-bg); }
+
   /* -------- live scan overlay -------- */
   /* The fullscreen scan overlay. Use #scanOverlay (ID) to win the cascade
      against the mock's audit.css `.scan { max-width: 1040px; ... }` rule,
@@ -586,7 +640,7 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
           <img src="/img/marks/wordmark.svg" alt="Rivett" width="96" height="24" decoding="async" />
         </a>
         <span style="color: var(--ink-faint);">·</span>
-        <span><b>Teardown memo</b> · Live audit</span>
+        <span><b>{shouldGateResult ? 'Audit preview' : 'Teardown memo'}</b> · Live audit</span>
       </div>
       <div class="right">
         <span>By <b>Fred Style</b> · <a href="https://www.linkedin.com/in/fredstyle/" target="_blank" rel="noopener" style="border-bottom: 1px solid var(--line-strong);">LinkedIn</a></span>
@@ -603,14 +657,14 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
 
   {!memo && (
     <header class="audit-hero">
-      <span class="stamp">Live audit · in-browser scan · v3.4</span>
+      <span class="stamp">Audit preview · in-browser scan · v3.4</span>
       <h1>What does the open web <br/>actually <span class="ital">say about you.</span></h1>
-      <p class="dek">Paste a domain. 09 teardowns run live in your browser. Page speed against the real Lighthouse numbers, schema, mail authentication, the ads you have running today, the pixels you forgot to remove. One memo. No login.</p>
+      <p class="dek">Paste a domain. The scan shows the shape of the read: score, visible signals, and enough evidence to know whether there is something real. The detailed checks, ranked fixes, and field note are redacted until you get in touch.</p>
 
       <form class="audit-form" method="POST" action="/audit/v3" id="auditForm">
         <span class="prefix">https://</span>
         <input class="domain" type="text" name="url" id="auditDomainInput" inputmode="url" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="enter the site you want read" value={submittedUrl} required autofocus aria-label="Domain" />
-        <button class="btn btn--solid" type="submit">Run audit <span aria-hidden="true">→</span></button>
+        <button class="btn btn--solid" type="submit">Run preview <span aria-hidden="true">→</span></button>
       </form>
       {inputError && <div class="form-error" style="margin-top: var(--sp-4); padding: var(--sp-3) var(--sp-4); border: 1px solid var(--signal-halt); color: var(--signal-halt); font-family: var(--mono); font-size: 12.5px;">{inputError}</div>}
       {runtimeError && <div class="form-error" style="margin-top: var(--sp-4); padding: var(--sp-3) var(--sp-4); border: 1px solid var(--signal-halt); color: var(--signal-halt); font-family: var(--mono); font-size: 12.5px;">{runtimeError}</div>}
@@ -618,20 +672,16 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
       <div class="audit-meta">
         <span><b>~30s</b> median run</span>
         <span class="sep">/</span>
-        <span>public APIs only</span>
+        <span>details redacted</span>
         <span class="sep">/</span>
-        <span>no login</span>
+        <span>work email for full read</span>
         <span class="sep">/</span>
         <span><b>09</b> dimensions</span>
       </div>
 
       <div class="audit-sample">
-        <span class="stamp stamp--neutral">Or read a sample</span>
-        <a class="sample-link" href="/audit/v3/pellaofcolumbus-com">
-          <span class="sample-domain">pellaofcolumbus.com</span>
-          <span class="sample-arrow">read this →</span>
-        </a>
-        <span class="sample-note">Real domain. Real numbers.</span>
+        <span class="stamp stamp--neutral">What unlocks after contact</span>
+        <span class="sample-note">The actual check list, ranked fixes, and operator read. Enough to know if there is a real issue. Not enough to walk off with the work.</span>
       </div>
     </header>
   )}
@@ -772,19 +822,27 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
     <>
       <section class="hook">
         <div>
-          <span class="kicker">{fromCache ? `Cached · ${memo.domain}` : `Live audit · ${memo.domain}`}</span>
+          <span class="kicker">{shouldGateResult ? `Preview audit · ${memo.domain}` : fromCache ? `Cached · ${memo.domain}` : `Live audit · ${memo.domain}`}</span>
           <h1>
             Your site scores <span id="scoreNum">{compositeScore}</span> of 100.
             {verdictItalic && <> <span class="ital">{verdictItalic}</span></>}
           </h1>
-          {memo.cover.dek && <p class="dek">{memo.cover.dek}</p>}
+          {shouldGateResult
+            ? <p class="dek">This is the public preview. The scan ran, but the detailed checks, ranked fixes, and operator field note are redacted. Fill the form below if you want the full read.</p>
+            : memo.cover.dek && <p class="dek">{memo.cover.dek}</p>}
           <div class="meta-row">
             <span>Domain · <b>{memo.domain}</b></span>
             <span>Run · <b>{headerDate}{headerTime ? ` · ${headerTime}` : ''}</b></span>
             <span>Duration · <b>{audit.durationMs} ms</b></span>
-            <span>Scan · <b>{memo.verdictCells.length} of 9</b></span>
+            <span>Scan · <b>{shouldGateResult ? 'preview' : `${memo.verdictCells.length} of 9`}</b></span>
           </div>
-          {v3Slug && (
+          {shouldGateResult && (
+            <div class="preview-lock">
+              <span class="lock-label">Redacted public result</span>
+              <p>You get the score and the shape of the read here. The useful parts are withheld: exact checks, ranked fixes, and what I would do next.</p>
+            </div>
+          )}
+          {!shouldGateResult && v3Slug && (
             <div class="share-link" style="margin-top: var(--sp-5); font-family: var(--mono); font-size: var(--t-meta); letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint);">
               <span>Share · </span>
               <a href={`/audit/v3/${v3Slug}`} style="color: var(--ink); border-bottom: 1px solid var(--line-strong);">rivett.tech/audit/v3/{v3Slug}</a>
@@ -824,11 +882,12 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
             <h2>{memo.verdictCells.length === 9 ? '09 reads,' : `${memo.verdictCells.length} reads,`} <span class="ital">in one frame.</span></h2>
           </div>
           <div class="vgrid">
-        {memo.verdictCells.map((cell) => {
+        {memo.verdictCells.map((cell, index) => {
           const dim = dimFor(cell.icon);
           const sev = cellSeverity(cell);
           const sv = splitValue(cell.value);
           const hd = splitHeading(cell.heading);
+          const hideDetails = shouldGateResult && index > 2;
           return (
             <div class="vcell">
               <div class="vtop">
@@ -838,7 +897,7 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
                 </div>
                 <h3>{hd.lead}{hd.tail && <> <span class="ital">{hd.tail}</span></>}</h3>
                 <div class={`big ${sev}`}>{sv.num}{sv.denom && <span class="denom">{sv.denom}</span>}</div>
-                <p class="note" set:html={sanitizeMemoHtml(cell.note)} />
+                <p class="note" set:html={sanitizeMemoHtml(hideDetails ? 'Preview only. The detailed observation for this dimension is included in the full audit.' : cell.note)} />
                 {(cell.benchmark || cell.benchmarkRight) && (
                   <div class="bench">
                     <span class="bench-l" set:html={sanitizeMemoHtml(cell.benchmark ?? '')} />
@@ -846,7 +905,12 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
                   </div>
                 )}
               </div>
-              {cell.checks.length > 0 ? (
+              {shouldGateResult ? (
+                <div class="locked-detail">
+                  <span class="lock-label">Check list redacted</span>
+                  <p>{index < 3 ? 'The public preview shows this headline read. The underlying checks are held back for the full audit.' : 'This dimension is visible in the full audit once you send your context below.'}</p>
+                </div>
+              ) : cell.checks.length > 0 ? (
                 <details>
                   <summary>+ {cell.checks.length} checks <span class="marker">+</span></summary>
                   <div class="checks">
@@ -878,18 +942,37 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
           </div>
           <div class="fixes">
             {memo.rankedFixes.map((fix) => (
-              <div class="fix">
-                <div class="rank"><span class="k">Rank</span>F·{String(fix.rank).padStart(2, '0')}</div>
-                <div class="what">
-                  <h4 set:html={sanitizeMemoHtml(fix.what)} />
-                  <span class="src">Source · <b>{memo.domain}</b> · audit</span>
+              shouldGateResult ? (
+                <div class="fix fix--locked">
+                  <div class="rank"><span class="k">Rank</span>F·{String(fix.rank).padStart(2, '0')}</div>
+                  <div class="what">
+                    <h4>Fix redacted. <span class="ital">This is the paid part.</span></h4>
+                    <span class="src">Source · <b>{memo.domain}</b> · audit preview</span>
+                  </div>
+                  <div class="why">
+                    <p class="redacted-copy">Why this matters and the exact next move are included in the full audit.</p>
+                    <span class="redacted-line" aria-hidden="true">Redacted recommendation</span>
+                    <span class="redacted-line" aria-hidden="true" style="width: 76%; margin-top: 8px;">Redacted recommendation</span>
+                  </div>
+                  <div class="meta-col">
+                    <div class="meta-row"><span class="k">Effort</span><span class="pill med">Redacted</span></div>
+                    <div class="meta-row"><span class="k">Impact</span><span class="pill high">Redacted</span></div>
+                  </div>
                 </div>
-                <div class="why" set:html={sanitizeMemoHtml(fix.why)} />
-                <div class="meta-col">
-                  <div class="meta-row"><span class="k">Effort</span><span class={`pill ${fix.effort}`}>{fix.effort === 'low' ? 'Low' : fix.effort === 'med' ? 'Medium' : 'High'}</span></div>
-                  <div class="meta-row"><span class="k">Impact</span><span class={`pill ${fix.impact}`}>{fix.impact === 'low' ? 'Low' : fix.impact === 'med' ? 'Medium' : 'High'}</span></div>
+              ) : (
+                <div class="fix">
+                  <div class="rank"><span class="k">Rank</span>F·{String(fix.rank).padStart(2, '0')}</div>
+                  <div class="what">
+                    <h4 set:html={sanitizeMemoHtml(fix.what)} />
+                    <span class="src">Source · <b>{memo.domain}</b> · audit</span>
+                  </div>
+                  <div class="why" set:html={sanitizeMemoHtml(fix.why)} />
+                  <div class="meta-col">
+                    <div class="meta-row"><span class="k">Effort</span><span class={`pill ${fix.effort}`}>{fix.effort === 'low' ? 'Low' : fix.effort === 'med' ? 'Medium' : 'High'}</span></div>
+                    <div class="meta-row"><span class="k">Impact</span><span class={`pill ${fix.impact}`}>{fix.impact === 'low' ? 'Low' : fix.impact === 'med' ? 'Medium' : 'High'}</span></div>
+                  </div>
                 </div>
-              </div>
+              )
             ))}
           </div>
         </section>
@@ -899,11 +982,37 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
             <span class="lbl">Field note<span class="num">05</span></span>
             <div>
               <blockquote>
-                <b style="font-style: normal; font-family: var(--grotesk); font-weight: 600; color: var(--ink);">{memo.domain}</b> <span set:html={sanitizeMemoHtml(memo.personalObservation.text)} />
+                {shouldGateResult ? (
+                  <>
+                    <b style="font-style: normal; font-family: var(--grotesk); font-weight: 600; color: var(--ink);">{memo.domain}</b> field note redacted. The public preview has enough to prove the scan ran; the actual operator read is what you request below.
+                  </>
+                ) : (
+                  <>
+                    <b style="font-style: normal; font-family: var(--grotesk); font-weight: 600; color: var(--ink);">{memo.domain}</b> <span set:html={sanitizeMemoHtml(memo.personalObservation.text)} />
+                  </>
+                )}
               </blockquote>
-              <div class="author">· <b>Fred Style</b>, written for {memo.domain} · {headerDate} · Cape Town &amp; remote</div>
+              <div class="author">· <b>Fred Style</b>, {shouldGateResult ? 'preview generated' : `written for ${memo.domain}`} · {headerDate} · Cape Town &amp; remote</div>
 
-              <div class="teaser">
+              {shouldGateResult && (
+                <form class="full-audit-form" id="full-audit-form" data-full-audit-form novalidate>
+                  <div>
+                    <span class="lock-label">Request the full audit</span>
+                    <h4>Want the unredacted read? <span class="ital">Fill this in.</span></h4>
+                    <p>Send your work email and the context. Fred gets this audit, your score, and your note. No list, no drip, no pretend PDF giveaway.</p>
+                  </div>
+                  <div class="unlock-fields">
+                    <input name="name" type="text" autocomplete="name" placeholder="Name" />
+                    <input name="email" type="email" autocomplete="email" placeholder="Work email" required />
+                    <textarea name="context" placeholder="What should I know before I read this properly?"></textarea>
+                    <input class="hp" name="website" autocomplete="off" tabindex="-1" aria-hidden="true" />
+                    <button class="btn btn--solid" type="submit">Request full audit <span aria-hidden="true">→</span></button>
+                    <p class="unlock-status" data-unlock-status aria-live="polite"></p>
+                  </div>
+                </form>
+              )}
+
+              {!shouldGateResult && <div class="teaser">
                 <div>
                   <h4 class="lh">What the full report adds. <span class="ital">The things this browser can't reach.</span></h4>
                   <p>AI citation probe across eight category prompts. Benchmark percentile against tracked competitors in your set. Live deliverability test against a seeded inbox. Twelve-week instrumentation plan.</p>
@@ -911,7 +1020,7 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
                 <div class="stack">
                   <a class="btn btn--pri" data-cta="v3_book_call_primary" href="https://cal.com/fred-style/discovery?overlayCalendar=true">Book a call <span aria-hidden="true">→</span></a>
                 </div>
-              </div>
+              </div>}
             </div>
           </div>
         </section>
@@ -921,11 +1030,13 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
   {memo && (
     <section class="end-cta on-ink">
       <div>
-        <span class="lab">20 min · no deck</span>
-        <h2>Pick a time. Twenty minutes. <span class="ital">I'll bring the rest of the read.</span></h2>
-        <p>AI citation probe, benchmark percentile, deliverability against a live mailbox. The numbers the in-browser scan can't reach.</p>
+        <span class="lab">{shouldGateResult ? 'Preview complete · details redacted' : '20 min · no deck'}</span>
+        <h2>{shouldGateResult ? 'The useful part is redacted.' : 'Pick a time. Twenty minutes.'} <span class="ital">{shouldGateResult ? 'Send the form to get the full audit.' : "I'll bring the rest of the read."}</span></h2>
+        <p>{shouldGateResult ? 'Use the request form above if you want the actual checks, ranked fixes, and field note. That is the work.' : "AI citation probe, benchmark percentile, deliverability against a live mailbox. The numbers the in-browser scan can't reach."}</p>
         <div class="end-actions">
-          <a class="btn btn--inv" data-cta="v3_book_call" href="https://cal.com/fred-style/discovery?overlayCalendar=true">Book a call <span aria-hidden="true">→</span></a>
+          {shouldGateResult
+            ? <a class="btn btn--inv" data-cta="v3_jump_to_full_audit_form" href="#full-audit-form">Fill the form <span aria-hidden="true">→</span></a>
+            : <a class="btn btn--inv" data-cta="v3_book_call" href="https://cal.com/fred-style/discovery?overlayCalendar=true">Book a call <span aria-hidden="true">→</span></a>}
           <a class="btn btn--sec" href="/audit/v3" style="border-color: var(--on-ink-line-2); color: var(--on-ink);">Audit another domain</a>
         </div>
       </div>
@@ -1127,9 +1238,11 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
     define:vars={{
       target: compositeScore,
       domain: memo.domain,
+      auditId: v3Slug ?? '',
       durationMs: audit?.durationMs ?? null,
       verdictCellCount: memo.verdictCells.length,
       rankedFixCount: memo.rankedFixes.length,
+      resultIsGated: shouldGateResult,
     }}
   >
     (function () {
@@ -1163,6 +1276,79 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
             }
           });
         });
+      }
+
+      if (resultIsGated) {
+        var gateForm = document.querySelector('[data-full-audit-form]');
+        var gateStatus = gateForm && gateForm.querySelector('[data-unlock-status]');
+        var gateButton = gateForm && gateForm.querySelector('button[type="submit"]');
+
+        function setGateStatus(text, cls) {
+          if (!gateStatus) return;
+          gateStatus.textContent = text || '';
+          gateStatus.className = 'unlock-status' + (cls ? ' ' + cls : '');
+        }
+
+        function isEmail(value) {
+          return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+        }
+
+        if (gateForm) {
+          gateForm.addEventListener('submit', async function (event) {
+            event.preventDefault();
+            var data = new FormData(gateForm);
+            var email = String(data.get('email') || '').trim().toLowerCase();
+            if (!isEmail(email)) {
+              setGateStatus('Use a valid work email.', 'err');
+              var emailInput = gateForm.querySelector('input[name="email"]');
+              if (emailInput) emailInput.focus();
+              return;
+            }
+
+            if (gateButton) gateButton.disabled = true;
+            setGateStatus('Sending...', '');
+
+            try {
+              var response = await fetch('/api/audit/lead-capture', {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({
+                  name: String(data.get('name') || '').trim(),
+                  email: email,
+                  context: String(data.get('context') || '').trim(),
+                  audited_url: domain,
+                  audit_id: auditId || '',
+                  score_percent: target,
+                  audit_run_url: window.location.href,
+                  website: String(data.get('website') || ''),
+                }),
+              });
+              var payload = {};
+              try { payload = await response.json(); } catch (e) {}
+              if (!response.ok && response.status >= 400 && response.status < 500) {
+                setGateStatus(payload.error || 'Could not send this yet.', 'err');
+                if (gateButton) gateButton.disabled = false;
+                return;
+              }
+              gateForm.dataset.sent = 'true';
+              setGateStatus('Got it. Fred has the audit and your context.', 'ok');
+              window.posthog?.identify?.(email, {
+                email: email,
+                audit_domain: domain,
+                audit_score: target,
+                source: 'audit_v3_preview_gate',
+              });
+              window.posthog?.capture?.('audit_v3_full_audit_requested', {
+                domain: domain,
+                scoreNumeric: target,
+                auditId: auditId || null,
+              });
+            } catch (e) {
+              setGateStatus('Network hiccup. Try again.', 'err');
+              if (gateButton) gateButton.disabled = false;
+            }
+          });
+        }
       }
     })();
   </script>
