@@ -860,7 +860,7 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
           )}
         </div>
 
-        <aside class="score-panel">
+        <aside class="score-panel" data-track-section="score">
           <span class="lab">Composite read · v3.4</span>
           <div class="read"><span id="scoreBig">{compositeScore}</span><span class="denom">/ 100</span></div>
           <div class="scale">
@@ -886,7 +886,7 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
         </aside>
       </section>
 
-        <section class="sec">
+        <section class="sec" data-track-section="verdict-cells">
           <div class="sec-head">
             <span class="lbl">The verdict<span class="num">03</span></span>
             <h2>{memo.verdictCells.length === 9 ? '09 reads,' : `${memo.verdictCells.length} reads,`} <span class="ital">in one frame.</span></h2>
@@ -961,7 +961,7 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
             <span class="lbl">Top three fixes<span class="num">04</span></span>
             <h2>Ranked by leverage. <span class="ital">Highest first.</span></h2>
           </div>
-          <div class="fixes">
+          <div class="fixes" data-track-section="fixes">
             {memo.rankedFixes.map((fix) => (
               shouldGateResult ? (
                 <div class="fix fix--locked">
@@ -998,7 +998,7 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
           </div>
         </section>
 
-        <section class="obs">
+        <section class="obs" data-track-section="field-note">
           <div class="wrap">
             <span class="lbl">Field note<span class="num">05</span></span>
             <div>
@@ -1049,7 +1049,7 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
   )}
 
   {memo && (
-    <section class="end-cta on-ink">
+    <section class="end-cta on-ink" data-track-section="closer-cta">
       <div>
         <span class="lab">{shouldGateResult ? 'Preview complete · details redacted' : '20 min · no deck'}</span>
         <h2>{shouldGateResult ? 'The useful part is redacted.' : 'Pick a time. Twenty minutes.'} <span class="ital">{shouldGateResult ? 'Send the form to get the full audit.' : "I'll bring the rest of the read."}</span></h2>
@@ -1298,6 +1298,72 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
           });
         });
       }
+
+      // --- Engagement signals: scroll depth, dwell time, section reads, copy/print ---
+      // These feed the /hq Action Queue so Fred can see who actually cares.
+      (function () {
+        var ph = window.posthog;
+        if (!ph || !ph.capture) return;
+
+        // Scroll depth milestones (fire once per threshold)
+        var scrollFired = {};
+        var thresholds = [25, 50, 75, 100];
+        function checkScroll() {
+          var docH = document.documentElement.scrollHeight - window.innerHeight;
+          if (docH <= 0) return;
+          var pct = Math.round((window.scrollY / docH) * 100);
+          for (var i = 0; i < thresholds.length; i++) {
+            var t = thresholds[i];
+            if (pct >= t && !scrollFired[t]) {
+              scrollFired[t] = true;
+              ph.capture('audit_v3_scroll_depth', { domain: domain, depth: t });
+            }
+          }
+        }
+        window.addEventListener('scroll', checkScroll, { passive: true });
+
+        // Dwell time: fire at 30s, 60s, 120s
+        var dwellFired = {};
+        var dwellMarks = [30, 60, 120];
+        var pageStart = Date.now();
+        var dwellTimer = setInterval(function () {
+          var elapsed = Math.floor((Date.now() - pageStart) / 1000);
+          for (var i = 0; i < dwellMarks.length; i++) {
+            var mark = dwellMarks[i];
+            if (elapsed >= mark && !dwellFired[mark]) {
+              dwellFired[mark] = true;
+              ph.capture('audit_v3_dwell', { domain: domain, seconds: mark });
+            }
+          }
+          if (dwellFired[120]) clearInterval(dwellTimer);
+        }, 5000);
+
+        // Section visibility: observe key memo sections entering the viewport
+        if (typeof IntersectionObserver !== 'undefined') {
+          var sectionsFired = {};
+          var obs = new IntersectionObserver(function (entries) {
+            entries.forEach(function (e) {
+              if (!e.isIntersecting) return;
+              var id = e.target.getAttribute('data-track-section');
+              if (id && !sectionsFired[id]) {
+                sectionsFired[id] = true;
+                ph.capture('audit_v3_section_viewed', { domain: domain, section: id });
+              }
+            });
+          }, { threshold: 0.3 });
+          document.querySelectorAll('[data-track-section]').forEach(function (el) {
+            obs.observe(el);
+          });
+        }
+
+        // Copy and print detection
+        document.addEventListener('copy', function () {
+          ph.capture('audit_v3_content_copied', { domain: domain });
+        });
+        window.addEventListener('beforeprint', function () {
+          ph.capture('audit_v3_print', { domain: domain });
+        });
+      })();
 
       if (resultIsGated) {
         var gateForm = document.querySelector('[data-full-audit-form]');

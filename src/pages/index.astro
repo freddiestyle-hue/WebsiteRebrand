@@ -28,25 +28,18 @@ import Base from '../layouts/Base.astro';
       <form class="audit-form" method="POST" action="/audit/v3" id="homeAuditForm">
         <span class="prefix">https://</span>
         <input class="domain" type="text" name="url" inputmode="url" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="enter the site you want read" required aria-label="Domain" />
-        <input type="hidden" name="source" value="home_preview" />
-        <button class="btn btn--solid" type="submit">Run preview <span aria-hidden="true">→</span></button>
+        <input type="hidden" name="source" value="home" />
+        <button class="btn btn--solid" type="submit">Run audit <span aria-hidden="true">→</span></button>
       </form>
 
-      <p class="sub-dek">The preview shows the shape of the leak. The detailed checks, fix list, and field note are redacted until you get in touch. <span class="ital">The audit is not a freebie.</span></p>
-
       <div class="audit-meta">
-        <span><b>Preview</b> first</span>
-        <span class="sep">/</span>
-        <span>details redacted</span>
-        <span class="sep">/</span>
-        <span>request full read</span>
+        <span><b>~30s</b> to run</span>
         <span class="sep">/</span>
         <span><b>9</b> dimensions</span>
-      </div>
-
-      <div class="audit-sample">
-        <span class="stamp stamp--neutral">What unlocks after contact</span>
-        <span class="sample-note">The actual check list, ranked fixes, and operator read. Enough to know if there is a real issue. Not enough to walk off with the work.</span>
+        <span class="sep">/</span>
+        <span>ranked fix list</span>
+        <span class="sep">/</span>
+        <span>operator field note</span>
       </div>
     </header>
 
@@ -257,17 +250,17 @@ import Base from '../layouts/Base.astro';
 
     <!-- Pull quote -->
     <div class="pull">
-      <blockquote>"Run the preview first. If it points at a real leak, fill the request form and I will send the full read. The diagnostic turns that signal into a written fix list. Two weeks. $3.5k, fixed."</blockquote>
+      <blockquote>"Run the audit. If it finds a real leak, book a call and I will walk you through the full read. The diagnostic turns that signal into a written fix list. Two weeks. $3.5k, fixed."</blockquote>
       <cite>— Section 06 · next step</cite>
     </div>
 
     <!-- End CTA · dark closer -->
     <div class="end-cta" id="contact">
-      <h3>Want the full audit? <span class="ital">Get in touch after the preview.</span></h3>
+      <h3>Ready to find the leaks? <span class="ital">Run the audit.</span></h3>
       <div class="right">
-        <span class="stamp stamp--on-ink">Preview first · details redacted · real context</span>
-        <p>The form gives you a partial read. If it looks worth discussing, the result page asks for your work email and context so I can send the full audit.</p>
-        <a class="btn btn--inv" data-cta="home_closer_run_preview" href="#homeAuditForm">Run preview <span aria-hidden="true">→</span></a>
+        <span class="stamp stamp--on-ink">9 dimensions · ranked fixes · operator field note</span>
+        <p>Enter your site, see where the revenue leaks. If the read points at something real, book a call and I will walk you through the full diagnostic.</p>
+        <a class="btn btn--inv" data-cta="home_closer_run_audit" href="#homeAuditForm">Run audit <span aria-hidden="true">→</span></a>
       </div>
     </div>
 
@@ -287,7 +280,7 @@ import Base from '../layouts/Base.astro';
           <a href="#work">Diagnostic</a>
           <a href="#work">Build</a>
           <a href="#work">Run</a>
-          <a href="#homeAuditForm">Audit preview</a>
+          <a href="#homeAuditForm">Run audit</a>
         </div>
         <div class="col">
           <span class="col-h">Field notes</span>
