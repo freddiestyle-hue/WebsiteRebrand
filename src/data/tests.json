@@ -12,7 +12,7 @@
       "cohort_size": 160,
       "variable": "LinkedIn DM voice + structure",
       "hypothesis": "Variant A (sharpened operator shorthand, two-year duration, \"teardown\" framing) will beat both B (artifact-only, no closer) and C (specific finding teaser) on Send → Click rate, because Huber-cohort operators reward peer-style brevity + confidence over either pure-drop minimalism or feature-leading prose.",
-      "prediction": "",
+      "prediction": "[CLAUDE'S CALL, FRED TO RATIFY OR REWRITE] C wins on Send → Click rate by 30-50% over A. Specific finding teasers outperform neutral framing in cold outreach because they prove the sender actually looked at the prospect's site — that signal is what overcomes the cold-DM trust barrier. A is the safe second (operator shorthand lands but doesn't differentiate). B underperforms because no closer = no clear next step; the elegance of pure artifact-drop only works after a warm intro, not as first-touch cold. If wrong, A wins (simple/safe beats specific) and the framework retreats to scalable neutral framing.",
       "winning_metric": "Send → Click rate (short_link_clicked / DMs sent per variant)",
       "decision_threshold": "≥50% lift over runner-up",
       "variants": [
