@@ -4,13 +4,13 @@
 // per IP). For prod traffic, set GOOGLE_PSI_API_KEY in the Vercel project
 // env and we'll include it on each request.
 //
-// PSI is slow (real Lighthouse run, 15-25 seconds typical), so we use a
-// generous timeout. The first call uses a tight timeout (28s) to keep the
-// audit responsive; on failure (timeout, 5xx, network), we retry once with
-// a longer timeout (45s) since some sites' Lighthouse runs do legitimately
-// take longer. If the retry also fails, we return null and the page
-// degrades the "How fast it loads" verdict cell to a curiosity-shaped
-// "we'll measure on the call" teaser via the slug render.
+// PSI is slow (real Lighthouse run, 15-25 seconds typical). It shares the
+// Vercel function's 60s Hobby ceiling with the headless pass, the crawl, and
+// the LLM memo build, so it is tightly bounded: one 20s attempt, with a short
+// retry ONLY for fast transient failures (5xx / network), never for a timeout.
+// A second long PSI wait after a timeout was the main cause of audit 504s.
+// On failure we return null and the page degrades the "How fast it loads"
+// verdict cell to a "we'll measure on the call" teaser via the slug render.
 
 export interface PageSpeedResult {
   strategy: 'mobile' | 'desktop';
@@ -24,9 +24,9 @@ export interface PageSpeedResult {
 }
 
 const PSI_URL = 'https://www.googleapis.com/pagespeedonline/v5/runPagespeed';
-const PSI_TIMEOUT_FIRST_MS = 28000;
-const PSI_TIMEOUT_RETRY_MS = 45000;
-const PSI_RETRY_BACKOFF_MS = 1500;
+const PSI_TIMEOUT_FIRST_MS = 20000;
+const PSI_TIMEOUT_RETRY_MS = 12000;
+const PSI_RETRY_BACKOFF_MS = 800;
 
 function bandFromScore(score: number | null): PageSpeedResult['band'] {
   if (score == null) return null;
@@ -103,10 +103,10 @@ export async function checkPageSpeed(
   const first = await attemptPsi(url, strategy, PSI_TIMEOUT_FIRST_MS);
   if (first.ok) return first.result;
 
-  // Don't retry HTTP 4xx (URL malformed, blocked, etc.) - those are
-  // deterministic. Retry on timeout, 5xx, and network errors where the
-  // second attempt has a real shot.
-  const retryable = first.reason === 'timeout' || first.reason === 'unknown' ||
+  // Retry only fast transient failures (5xx / network). NOT timeouts: the first
+  // attempt already burned 20s, and a second long PSI wait is what pushed audits
+  // past the 60s function cap. A timed-out PSI just degrades to null.
+  const retryable = first.reason === 'unknown' ||
     (first.reason === 'http' && /HTTP 5\d{2}/.test(first.detail ?? ''));
   if (!retryable) {
     console.warn(`[pagespeed] no retry for ${url} (${first.reason}: ${first.detail ?? '-'})`);

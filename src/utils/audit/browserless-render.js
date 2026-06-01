@@ -26,8 +26,10 @@
 
 export default async ({ page, context }) => {
   const url = context && context.url;
-  const NAV_TIMEOUT_MS = 20000;
-  const TRACE_TIMEOUT_MS = 15000;
+  // Keep the whole render inside Browserless's ~30s server-side cap (set by the
+  // caller's &timeout) so it returns usable data instead of being killed.
+  const NAV_TIMEOUT_MS = 15000;
+  const TRACE_TIMEOUT_MS = 8000;
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
   // --- inlined from tracking.ts: which hosts are analytics/ads beacons ---

@@ -58,6 +58,11 @@ export interface HeadlessResult {
 // sites - 60s lets the page actually finish settling before scroll simulation.
 // Vercel's default function timeout is 60s on Pro, so this is the hard ceiling.
 const HEADLESS_TIMEOUT_MS = 60000;
+// Cap the Browserless /function render so headless + PSI (which run in parallel)
+// + the crawl + the LLM memo build all fit inside the 60s function ceiling.
+// Browserless enforces this server-side via the &timeout query param; most
+// real renders finish in well under 15s, so this only bites pathological sites.
+const BROWSERLESS_FN_TIMEOUT_MS = 30000;
 const NAV_TIMEOUT_MS = 20000;
 // Trace budget covers homepage + up to 2 deep-page escalations.
 // Each trace = (enumerate + click + settle) ~3s; deep nav = ~2s. Worst case
@@ -456,9 +461,10 @@ async function runViaBrowserlessFunction(
   if (!token) return null;
   // `timeout` (ms) caps Browserless's own run a hair under our AbortController so
   // it returns a clean error body instead of us aborting the request mid-flight.
-  const endpoint = `https://production-sfo.browserless.io/function?token=${encodeURIComponent(token)}&timeout=55000`;
+  const endpoint = `https://production-sfo.browserless.io/function?token=${encodeURIComponent(token)}&timeout=${BROWSERLESS_FN_TIMEOUT_MS}`;
   const controller = new AbortController();
-  const abort = setTimeout(() => controller.abort(), HEADLESS_TIMEOUT_MS);
+  // Network backstop a few seconds past Browserless's own server-side cap.
+  const abort = setTimeout(() => controller.abort(), BROWSERLESS_FN_TIMEOUT_MS + 3000);
   try {
     const res = await fetch(endpoint, {
       method: 'POST',
