@@ -27,6 +27,9 @@ import chromium from '@sparticuz/chromium';
 import { chromium as playwright, type Page } from 'playwright-core';
 import { isTrackingHost, type HeadlessTrackingCapture } from './tracking';
 import { pickPrimaryCta, type CtaCandidate, type ConversionPathResult } from './conversion-path';
+// Raw source of the Browserless /function payload (Puppeteer, runs on Browserless's
+// servers). Imported as a string via Vite ?raw so it ships in the SSR bundle.
+import browserlessRenderFn from './browserless-render.js?raw';
 
 export interface HeadlessResult {
   // Rendered HTML after JS hydration (use to re-run tech-stack fingerprints)
@@ -441,8 +444,94 @@ export async function runHeadlessCheck(url: string): Promise<HeadlessResult | nu
   return last;
 }
 
+// Production render path: POST the self-contained Puppeteer routine in
+// browserless-render.js to Browserless's HTTPS /function API and map the JSON
+// back to a HeadlessResult. Replaces playwright.connect() (a WebSocket that hung
+// from Vercel's serverless network); a plain HTTPS POST completes reliably.
+async function runViaBrowserlessFunction(
+  url: string,
+  started: number,
+): Promise<HeadlessResult | null> {
+  const token = process.env.BROWSERLESS_TOKEN;
+  if (!token) return null;
+  // `timeout` (ms) caps Browserless's own run a hair under our AbortController so
+  // it returns a clean error body instead of us aborting the request mid-flight.
+  const endpoint = `https://production-sfo.browserless.io/function?token=${encodeURIComponent(token)}&timeout=55000`;
+  const controller = new AbortController();
+  const abort = setTimeout(() => controller.abort(), HEADLESS_TIMEOUT_MS);
+  try {
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: browserlessRenderFn, context: { url } }),
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      _lastHeadlessError = redactSecrets(`browserless /function HTTP ${res.status}: ${body.slice(0, 300)}`);
+      console.error('[audit/headless] /function non-OK', res.status, redactSecrets(body.slice(0, 300)));
+      return null;
+    }
+    const parsed = (await res.json()) as unknown;
+    // /function may return the data directly or wrapped as { data, type }.
+    const data =
+      parsed && typeof parsed === 'object' && 'data' in (parsed as Record<string, unknown>)
+        ? (parsed as { data: unknown }).data
+        : parsed;
+    return mapBrowserlessResult(data, Date.now() - started);
+  } catch (e) {
+    _lastHeadlessError = redactSecrets(e instanceof Error ? `${e.name}: ${e.message}` : String(e));
+    console.error('[audit/headless] /function failed', redactSecrets(e instanceof Error ? e.message : String(e)));
+    return null;
+  } finally {
+    clearTimeout(abort);
+  }
+}
+
+// Validate + shape the /function JSON into a HeadlessResult. Returns null (treated
+// as a failed render) when the core fields are missing, so a malformed response
+// fails the audit cleanly instead of producing a fake "complete" memo.
+function mapBrowserlessResult(data: unknown, durationMs: number): HeadlessResult | null {
+  if (!data || typeof data !== 'object') return null;
+  const d = data as Record<string, unknown>;
+  const mobile = d.mobile as Record<string, unknown> | undefined;
+  if (typeof d.renderedHtml !== 'string' || !mobile) return null;
+  const tracking = (d.tracking ?? {}) as Record<string, unknown>;
+  const strArr = (v: unknown): string[] =>
+    Array.isArray(v) ? (v.filter((x) => typeof x === 'string') as string[]) : [];
+  return {
+    renderedHtml: d.renderedHtml,
+    networkHosts: strArr(d.networkHosts),
+    scriptSrcs: strArr(d.scriptSrcs),
+    mobile: {
+      hasHorizontalScroll: !!mobile.hasHorizontalScroll,
+      smallestTapTargetPx: typeof mobile.smallestTapTargetPx === 'number' ? mobile.smallestTapTargetPx : null,
+      textSamplesUnder12px: typeof mobile.textSamplesUnder12px === 'number' ? mobile.textSamplesUnder12px : 0,
+      viewport: '390x844',
+    },
+    tracking: {
+      beaconUrls: strArr(tracking.beaconUrls),
+      dataLayerEvents: strArr(tracking.dataLayerEvents),
+      gtmContainerIds: strArr(tracking.gtmContainerIds),
+      ga4MeasurementIds: strArr(tracking.ga4MeasurementIds),
+    },
+    conversionPath: (d.conversionPath as HeadlessResult['conversionPath']) ?? {
+      primaryCtaText: null,
+      outcome: 'trace-failed',
+      clicksToForm: null,
+    },
+    durationMs,
+  };
+}
+
 async function runHeadlessOnce(url: string): Promise<HeadlessResult | null> {
   const started = Date.now();
+
+  // Production: render on Browserless via HTTPS /function (no WebSocket). The
+  // local-dev launch path below only runs when BROWSERLESS_TOKEN is absent.
+  if (process.env.BROWSERLESS_TOKEN) {
+    return runViaBrowserlessFunction(url, started);
+  }
 
   // Hard outer cap: if the whole thing takes >HEADLESS_TIMEOUT_MS, bail.
   const outerTimer = new Promise<null>((resolve) =>
@@ -452,48 +541,19 @@ async function runHeadlessOnce(url: string): Promise<HeadlessResult | null> {
   const work = (async (): Promise<HeadlessResult | null> => {
     let browser: Awaited<ReturnType<typeof playwright.launch>> | null = null;
     try {
-      // Preferred path: Browserless.io hosted Chromium via CDP. The Vercel
-      // function holds a WebSocket connection and waits while Browserless
-      // does the actual render on their infrastructure. This sidesteps the
-      // @sparticuz/chromium cold-start AND lets heavy enterprise sites
-      // (banks, real estate, anti-bot defenses) use their full render budget
-      // without burning Vercel function CPU/memory. The 60s Vercel edge cap
-      // still applies to OUR function, but Browserless's render runs in
-      // parallel and we just await the result.
-      //
-      // Fallback path: local Chromium via @sparticuz on Vercel (legacy) or
-      // system Chrome on macOS dev. Kept so the audit endpoint still works
-      // if BROWSERLESS_TOKEN is missing or the service is having an outage.
-      const browserlessToken = process.env.BROWSERLESS_TOKEN;
-      if (browserlessToken) {
-        // Browserless v2 via Playwright's native protocol (not CDP). The CDP
-        // path (`connectOverCDP` against /chromium) was hanging on Vercel
-        // functions despite working locally - Vercel's serverless network
-        // model appears to mishandle the CDP WebSocket handshake. The
-        // /playwright endpoint speaks Playwright's own ws protocol via
-        // chromium.connect() which has a more forgiving connection
-        // negotiation. Returns a proper Browser instance so all downstream
-        // newContext / page logic stays unchanged.
-        const wsUrl = `wss://production-sfo.browserless.io/playwright/chromium?token=${encodeURIComponent(browserlessToken)}`;
-        browser = await playwright.connect(wsUrl, {
-          // Longer timeout than local launch because Browserless cold-start
-          // can take 1-3s on first session of a billing period.
-          timeout: 30000,
+      // Local-dev path only: production returns above via Browserless /function.
+      // With no BROWSERLESS_TOKEN we launch a real Chromium so the audit runs
+      // end-to-end on a developer's machine - @sparticuz/chromium on Linux, a
+      // system Chrome channel fallback for macOS dev.
+      try {
+        const executablePath = await chromium.executablePath();
+        browser = await playwright.launch({
+          args: chromium.args,
+          executablePath,
+          headless: true,
         });
-      } else {
-        // Production (Vercel/Linux) uses the bundled serverless Chromium. That
-        // binary cannot exec on local macOS dev, so fall back to the system-
-        // installed Chrome there - lets the audit run end-to-end in local dev.
-        try {
-          const executablePath = await chromium.executablePath();
-          browser = await playwright.launch({
-            args: chromium.args,
-            executablePath,
-            headless: true,
-          });
-        } catch {
-          browser = await playwright.launch({ channel: 'chrome', headless: true });
-        }
+      } catch {
+        browser = await playwright.launch({ channel: 'chrome', headless: true });
       }
 
       const context = await browser.newContext({
