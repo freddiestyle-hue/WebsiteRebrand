@@ -138,12 +138,16 @@ if (isPOST && !memo) {
           Astro.response.status = 503;
           Astro.response.headers.set('Retry-After', '10');
           const lastErr = getLastHeadlessError();
-          runtimeError = `Headless render incomplete (renderedHtml=${renderedHtmlLen}b, hosts=${networkHostsCount}, mobileMeasured=${mobileMeasured}). Audit not written.${lastErr ? ' Cause: ' + lastErr : ''}`;
-          Astro.response.headers.set('X-Audit-Error', lastErr ? lastErr.slice(0, 500) : 'no-error-recorded');
+          // Prospect-facing copy stays generic: no internal infra detail and no
+          // credentials in the body or headers. The technical cause (already
+          // token-redacted at the source) goes to the server log only.
+          runtimeError =
+            "We couldn't finish reading this site just now — give it another try in a moment.";
           console.error('[audit/v3] headless unusable for', norm.url, {
             renderedHtmlLen,
             networkHostsCount,
             mobileMeasured,
+            cause: lastErr ?? 'no-error-recorded',
           });
           // Do NOT evict the existing cached memo on 503. Eviction here means
           // a failed regen destroys the prior good audit, which is worse than

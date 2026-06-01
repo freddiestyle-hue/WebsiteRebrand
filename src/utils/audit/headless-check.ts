@@ -406,6 +406,18 @@ export function getLastHeadlessError(): string | null {
   return _lastHeadlessError;
 }
 
+// Redact the Browserless credential from any string before it can reach a log
+// line, an HTTP response header, or the rendered page. playwright.connect()
+// echoes the full `wss://...?token=<BROWSERLESS_TOKEN>` URL in its error
+// messages, so an unsanitized headless error leaks the token to every visitor
+// who triggers it. Strip both the URL query form and the bare value.
+export function redactSecrets(input: string): string {
+  let out = input.replace(/token=[^&\s"')]+/gi, 'token=[redacted]');
+  const tok = process.env.BROWSERLESS_TOKEN;
+  if (tok && tok.length >= 8) out = out.split(tok).join('[redacted]');
+  return out;
+}
+
 export async function runHeadlessCheck(url: string): Promise<HeadlessResult | null> {
   _lastHeadlessError = null;
   const started = Date.now();
@@ -650,8 +662,8 @@ async function runHeadlessOnce(url: string): Promise<HeadlessResult | null> {
       };
     } catch (e) {
       const errInfo = e instanceof Error
-        ? { name: e.name, message: e.message, stack: e.stack?.split('\n').slice(0, 5).join(' | ') }
-        : { message: String(e) };
+        ? { name: e.name, message: redactSecrets(e.message), stack: redactSecrets(e.stack?.split('\n').slice(0, 5).join(' | ') ?? '') }
+        : { message: redactSecrets(String(e)) };
       _lastHeadlessError = `${errInfo.name || 'Error'}: ${errInfo.message}`;
       console.error('[audit/headless] failed', JSON.stringify(errInfo), 'browserless=', !!process.env.BROWSERLESS_TOKEN);
       return null;
