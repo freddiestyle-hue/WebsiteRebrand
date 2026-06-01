@@ -67,7 +67,7 @@ const FINDING_FIELDS_BY_VERTICAL: Record<string, string[]> = {
   ],
 };
 
-const CACHE_KEY = 'hq:airtable:prospects:v5';
+const CACHE_KEY = 'hq:airtable:prospects:v6';
 const CACHE_TTL_SECONDS = 1800;
 
 export type Vertical = 'Advertiser' | 'Mental Health' | 'Homecare' | 'Fractional Role';
@@ -294,9 +294,15 @@ export async function getOutreachQueueByWave(wave: string): Promise<OutreachQueu
   for (const info of all.values()) {
     if (!info.attackWave) continue;
     if (info.attackWave !== wave) continue;
-    // Only show prospects that haven't been actioned yet. Connection Sent /
-    // Sent / Replied / etc. should drop out of the queue automatically.
-    if (info.outreachStage && info.outreachStage !== 'Not Sent' && info.outreachStage !== 'Drafted') continue;
+    // ONLY show prospects at "Not Sent". Anything else - Drafted, Connection
+    // Sent, Sent, Replied, Disqualified, etc - is considered actioned and
+    // should not reappear in the Send Queue. The Send button's PATCH writes
+    // "Connection Sent" via /api/hq/mark-messaged, which is what drops the
+    // row out on next render. "Drafted" used to be included here but nothing
+    // in the codebase writes it - records at "Drafted" got there by manual
+    // edits in Airtable, and they were not "ready to send" in the way the
+    // queue intends. Fred's rule: click Send = reached out = out of the queue.
+    if (info.outreachStage && info.outreachStage !== 'Not Sent') continue;
     if (!info.linkedinUrl) continue;
     if (!info.linkedinDm) continue;
     queue.push({
