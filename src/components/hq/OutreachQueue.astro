@@ -15,6 +15,9 @@ interface Props {
 }
 
 const { queue, wave } = Astro.props;
+// Campaign slug for shortlink attribution, derived from the active wave.
+// (Was hardcoded 'wave1', which mislabelled every send regardless of wave.)
+const campaignSlug = (wave || '').toLowerCase().replace(/\s*-\s*this week\s*$/, '').replace(/[^a-z0-9]+/g, '') || 'wave';
 
 type Tier = 'aplus' | 'a' | 'b' | 'c' | 'd' | 'none';
 function tierOf(priority: string): Tier {
@@ -44,7 +47,7 @@ function safeUrl(u: string): string {
   }
 }
 ---
-<section class="sq" data-outreach-queue data-wave={wave}>
+<section class="sq" data-outreach-queue data-wave={wave} data-campaign={campaignSlug}>
   <div class="sq-head">
     <div class="sq-head-left">
       <div class="sq-eyebrow">SEND QUEUE · {wave.toUpperCase()}</div>
@@ -304,7 +307,7 @@ function safeUrl(u: string): string {
         credentials: 'same-origin',
         body: JSON.stringify({
           target_url: targetUrl.replace(/[.,;:!?)]+$/, ''),
-          campaign: 'wave1',
+          campaign: document.querySelector('[data-outreach-queue]')?.getAttribute('data-campaign') || 'wave',
           recipient,
           channel: 'linkedin_dm',
           created_by: 'hq_outreach_queue',
