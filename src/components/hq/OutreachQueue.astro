@@ -376,6 +376,25 @@ function safeUrl(u: string): string {
           ? `Copied DM. Opened LinkedIn. Marked ${mark.stage || 'sent'}.`
           : `Couldn't auto-copy DM (browser blocked clipboard). Opened LinkedIn. Marked ${mark.stage || 'sent'}.`;
         setStatus(row, msg, 'ok');
+        // Brief success-state pause so the operator sees the confirmation,
+        // then drop the row from the DOM. The server-side filter already
+        // excludes Connection Sent prospects on the next render; this just
+        // gives the same effect without a refresh. Update the header count
+        // so "N ready to send" stays honest, and swap in the empty state if
+        // we just sent the last one.
+        setTimeout(() => {
+          const list = row.closest<HTMLOListElement>('.sq-list');
+          row.remove();
+          const remaining = document.querySelectorAll<HTMLElement>('[data-outreach-queue] .sq-row').length;
+          const titleIt = document.querySelector<HTMLElement>('[data-outreach-queue] .sq-title .ital');
+          if (titleIt) titleIt.textContent = `${remaining} ready to send.`;
+          if (remaining === 0 && list) {
+            const empty = document.createElement('div');
+            empty.className = 'sq-empty';
+            empty.innerHTML = '<p>Queue cleared. Nice run.</p><p class="dim">Refresh to see prospects newly added to this wave.</p>';
+            list.replaceWith(empty);
+          }
+        }, 1500);
       } else {
         const msg = copied
           ? `Copied DM and opened LinkedIn. Airtable update failed: ${mark.error}`
