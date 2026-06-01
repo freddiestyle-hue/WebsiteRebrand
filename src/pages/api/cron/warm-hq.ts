@@ -25,7 +25,7 @@ import {
 import { parseDateRange, PRESETS } from '../../../utils/posthog/dateRange';
 import { getMessagedSlugs } from '../../../utils/hq/messaged';
 import { sendDigestEmail, sendHotAlertEmail } from '../../../utils/hq/notify';
-import { isActionableProspect } from '../../../utils/hq/signal-filter';
+import { classifyProspectSignal, isActionableProspect } from '../../../utils/hq/signal-filter';
 
 export const prerender = false;
 
@@ -104,6 +104,7 @@ async function fireSignalAlerts(
       }
     }
 
+    const classified = classifyProspectSignal(p);
     let signalLabel = '';
     let detail = '';
     if (v.signal === 'multi_viewer') {
@@ -115,6 +116,9 @@ async function fireSignalAlerts(
     } else if (v.signal === 'cta_plus_engaged') {
       signalLabel = `CTA click + engaged · ${p.cta_clicks} click${p.cta_clicks === 1 ? '' : 's'}`;
       detail = `Clicked Book a call alongside ${dwellHuman(p.total_dwell_seconds)} dwell${p.scroll_100s > 0 ? ` and a full read` : ''}. Declared intent — follow up today.`;
+    } else if (v.signal === 'deep_read') {
+      signalLabel = `Deep read · ${classified.label}`;
+      detail = `${classified.why} Evidence: ${classified.evidence.join(', ') || 'explicit reader interaction'}.`;
     } else {
       // Unknown signal — skip rather than send a vague alert.
       continue;

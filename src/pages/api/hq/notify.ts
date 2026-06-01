@@ -64,11 +64,40 @@ function humanSignal(signal: string): string {
   switch (signal) {
     case 'cta_click': return 'CTA click on Book a call';
     case 'deep_read': return 'Deep read (scrolled past 75%)';
+    case 'verdict_expand': return 'Opened verdict details';
+    case 'copy_print': return 'Copied or printed the memo';
+    case 'diagnostic_view': return 'Viewed diagnostic page';
+    case 'multi_viewer': return 'Multiple people viewed the memo';
+    case 'cta_plus_engaged': return 'CTA click plus engagement';
     case 'return_visit': return 'Repeat visit to memo';
     case 'long_dwell': return 'Single session >2min dwell';
     default: return signal;
   }
 }
+
+const SCANNER_CITIES = new Set([
+  'Boydton',
+  'Ashburn',
+  'Washington',
+  'Manassas',
+  'Des Moines',
+  'San Jose',
+  'Council Bluffs',
+  'The Dalles',
+  'North Bergen',
+  'Quincy',
+  'Cheyenne',
+  'Moncks Corner',
+]);
+
+const STRONG_SCANNER_SAFE_SIGNALS = new Set([
+  'deep_read',
+  'verdict_expand',
+  'copy_print',
+  'diagnostic_view',
+  'multi_viewer',
+  'cta_plus_engaged',
+]);
 
 export const POST: APIRoute = async ({ request }) => {
   const expected = (process.env.HQ_NOTIFY_SECRET || '').trim();
@@ -126,12 +155,19 @@ export const POST: APIRoute = async ({ request }) => {
     });
   }
 
+  if (body.city && SCANNER_CITIES.has(body.city) && !STRONG_SCANNER_SAFE_SIGNALS.has(signal)) {
+    return new Response(JSON.stringify({ ok: true, skipped: 'scanner_city' }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    });
+  }
+
   // Action Center cutover (2026-05-28): suppress bare 'cta_click' realtime
   // alerts. Fred's call: a single CTA click is too noisy on its own (browser
   // prefetch, accidental taps, scanners following CTAs). The cron-driven
   // signal alert pass (warm-hq.ts fireSignalAlerts) catches actionable CTA
   // events within 24h via isActionableProspect, which requires a co-signal
-  // (scroll, dwell, verdict expansion). Other realtime signals (deep_read,
+  // (scroll, verdict expansion, copy/print, or related click). Other realtime signals (deep_read,
   // long_dwell, return_visit) keep their immediate alerting because they
   // already imply engagement.
   if (signal === 'cta_click') {

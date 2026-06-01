@@ -13,6 +13,7 @@ import {
   prospectWebsiteUrl,
   slugToDomain,
 } from '../../utils/hq/messaged';
+import { classifyProspectSignal } from '../../utils/hq/signal-filter';
 
 interface Props {
   prospects: TopProspect[];
@@ -42,32 +43,8 @@ function timeAgo(iso: string): string {
 
 type Temp = 'hot' | 'warm' | 'cool' | 'cold';
 function heatBadge(p: TopProspect): { label: string; temp: Temp } {
-  if (p.cta_clicks > 0) return { label: 'CTA CLICK', temp: 'hot' };
-  if (p.prints > 0) return { label: 'PRINTED', temp: 'hot' };
-  if (p.copies > 0) return { label: 'COPIED', temp: 'hot' };
-  if (p.related_clicks > 0) return { label: 'EXPLORED', temp: 'warm' };
-  const engagedReturn = p.return_visitor && (
-    p.scroll_100s > 0 || p.verdict_expansions > 0 ||
-    p.total_dwell_seconds >= 30 || p.focus_seconds_total >= 30
-  );
-  if (engagedReturn) return { label: 'RETURNED', temp: 'warm' };
-  if (p.verdict_expansions > 0) return { label: 'VERDICTS', temp: 'warm' };
-  if (p.scroll_100s > 0) return { label: 'FULL READ', temp: 'warm' };
-  // ENGAGED / DEEP READ require a real human signal beyond raw dwell.
-  // SafeLinks / Mimecast scanners sit on the page for 30-60s while they
-  // analyse the URL but never fire scroll_depth, autocapture, focus, etc.
-  // Pure dwell with zero signals = bot. Pure dwell + ANY signal = human
-  // who at least loaded and moved their mouse.
-  const hasAnySignal = (
-    p.scroll_100s > 0 || p.verdict_expansions > 0 ||
-    p.copies > 0 || p.prints > 0 || p.related_clicks > 0 ||
-    p.focus_seconds_total >= 10
-  );
-  if (hasAnySignal) {
-    if (p.total_dwell_seconds >= 60 || p.focus_seconds_total >= 60) return { label: 'DEEP READ', temp: 'cool' };
-    if (p.total_dwell_seconds >= 30 || p.focus_seconds_total >= 30) return { label: 'ENGAGED', temp: 'cool' };
-  }
-  return { label: 'BROWSED', temp: 'cold' };
+  const c = classifyProspectSignal(p);
+  return { label: c.label.toUpperCase(), temp: c.temp };
 }
 
 const hero = prospects[0];
@@ -123,6 +100,10 @@ const heroReplay = heroLatest ? sessionReplayUrl(heroLatest.sid) : null;
         scroll_100s: hero.scroll_100s,
         copies: hero.copies,
         prints: hero.prints,
+        related_clicks: hero.related_clicks,
+        distinct_visitors: hero.distinct_visitors,
+        focus_seconds_total: hero.focus_seconds_total,
+        expanded_dimensions: hero.expanded_dimensions,
         return_visitor: hero.return_visitor,
         last_view: hero.last_view,
       })}
@@ -215,6 +196,10 @@ const heroReplay = heroLatest ? sessionReplayUrl(heroLatest.sid) : null;
               scroll_100s: p.scroll_100s,
               copies: p.copies,
               prints: p.prints,
+              related_clicks: p.related_clicks,
+              distinct_visitors: p.distinct_visitors,
+              focus_seconds_total: p.focus_seconds_total,
+              expanded_dimensions: p.expanded_dimensions,
               return_visitor: p.return_visitor,
               last_view: p.last_view,
             })}

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   isActionableProspect,
   filterActionable,
-  SIGNAL_THRESHOLDS,
+  classifyProspectSignal,
 } from '../signal-filter';
 import type { TopProspect } from '../../posthog/query';
 
@@ -40,17 +40,17 @@ function baseProspect(overrides: Partial<TopProspect> = {}): TopProspect {
 
 describe('isActionableProspect — multi-viewer branch', () => {
   it('actionable at 2 distinct visitors', () => {
-    const v = isActionableProspect(baseProspect({ distinct_visitors: 2 }));
+    const v = isActionableProspect(baseProspect({ distinct_visitors: 2, verdict_expansions: 1 }));
     expect(v.actionable).toBe(true);
     expect(v.signal).toBe('multi_viewer');
     expect(v.why).toContain('2 people');
   });
 
   it('actionable at 4 distinct visitors with correct count in why-line', () => {
-    const v = isActionableProspect(baseProspect({ distinct_visitors: 4 }));
+    const v = isActionableProspect(baseProspect({ distinct_visitors: 4, scroll_100s: 1 }));
     expect(v.actionable).toBe(true);
     expect(v.signal).toBe('multi_viewer');
-    expect(v.why).toBe('4 people read it');
+    expect(v.why).toContain('4 people');
   });
 
   it('not actionable at exactly 1 distinct visitor (the threshold floor)', () => {
@@ -65,6 +65,7 @@ describe('isActionableProspect — multi-viewer branch', () => {
         distinct_visitors: 3,
         unique_sessions: 5,
         total_dwell_seconds: 200,
+        verdict_expansions: 1,
       })
     );
     expect(v.signal).toBe('multi_viewer');
@@ -81,12 +82,12 @@ describe('isActionableProspect — returning + engaged branch', () => {
     expect(v.why).toContain('Returned');
   });
 
-  it('actionable with 2+ sessions and 30s+ dwell', () => {
+  it('NOT actionable with 2+ sessions and 30s+ dwell alone', () => {
     const v = isActionableProspect(
       baseProspect({ unique_sessions: 2, total_dwell_seconds: 35 })
     );
-    expect(v.actionable).toBe(true);
-    expect(v.signal).toBe('returning_engaged');
+    expect(v.actionable).toBe(false);
+    expect(v.signal).toBeNull();
   });
 
   it('actionable with 2+ sessions and a verdict expansion', () => {
@@ -112,28 +113,12 @@ describe('isActionableProspect — returning + engaged branch', () => {
     expect(v.actionable).toBe(false);
   });
 
-  it('NOT actionable with single session even if engagement is high', () => {
+  it('single-session explicit engagement is a deep-read signal', () => {
     const v = isActionableProspect(
       baseProspect({ unique_sessions: 1, scroll_100s: 1, total_dwell_seconds: 120 })
     );
-    expect(v.actionable).toBe(false);
-  });
-
-  it('dwell threshold is at the exact RETURNING_DWELL_MIN value', () => {
-    const below = isActionableProspect(
-      baseProspect({
-        unique_sessions: 2,
-        total_dwell_seconds: SIGNAL_THRESHOLDS.RETURNING_DWELL_MIN - 1,
-      })
-    );
-    const exact = isActionableProspect(
-      baseProspect({
-        unique_sessions: 2,
-        total_dwell_seconds: SIGNAL_THRESHOLDS.RETURNING_DWELL_MIN,
-      })
-    );
-    expect(below.actionable).toBe(false);
-    expect(exact.actionable).toBe(true);
+    expect(v.actionable).toBe(true);
+    expect(v.signal).toBe('deep_read');
   });
 });
 
@@ -146,12 +131,12 @@ describe('isActionableProspect — CTA + engaged branch', () => {
     expect(v.signal).toBe('cta_plus_engaged');
   });
 
-  it('actionable with cta_click + 30s+ dwell', () => {
+  it('NOT actionable with cta_click + 30s+ dwell alone', () => {
     const v = isActionableProspect(
       baseProspect({ cta_clicks: 1, total_dwell_seconds: 60 })
     );
-    expect(v.actionable).toBe(true);
-    expect(v.signal).toBe('cta_plus_engaged');
+    expect(v.actionable).toBe(false);
+    expect(v.signal).toBeNull();
   });
 
   it('actionable with cta_click + a content_copied event', () => {
@@ -212,10 +197,30 @@ describe('isActionableProspect — drive-by and edge cases', () => {
       baseProspect({
         unique_sessions: 2,
         expanded_dimensions: undefined as unknown as string[],
-        total_dwell_seconds: 40,
+        verdict_expansions: 1,
       })
     );
     expect(v.actionable).toBe(true);
+  });
+});
+
+describe('classifyProspectSignal', () => {
+  it('labels dwell/focus-only rows as scanner-shaped', () => {
+    const c = classifyProspectSignal(
+      baseProspect({ total_dwell_seconds: 45, focus_seconds_total: 28 })
+    );
+    expect(c.actionable).toBe(false);
+    expect(c.kind).toBe('scanner_likely');
+  });
+
+  it('explains explicit reader evidence', () => {
+    const c = classifyProspectSignal(
+      baseProspect({ scroll_100s: 1, verdict_expansions: 2, total_dwell_seconds: 95 })
+    );
+    expect(c.actionable).toBe(true);
+    expect(c.signal).toBe('deep_read');
+    expect(c.evidence.join(' ')).toContain('full read');
+    expect(c.evidence.join(' ')).toContain('verdict');
   });
 });
 
@@ -223,11 +228,11 @@ describe('filterActionable', () => {
   it('returns only actionable prospects, preserves order', () => {
     const list: TopProspect[] = [
       baseProspect({ prospect: 'a', distinct_visitors: 1 }),
-      baseProspect({ prospect: 'b', distinct_visitors: 3 }),
+      baseProspect({ prospect: 'b', distinct_visitors: 3, scroll_100s: 1 }),
       baseProspect({
         prospect: 'c',
         unique_sessions: 2,
-        total_dwell_seconds: 50,
+        verdict_expansions: 1,
       }),
       baseProspect({ prospect: 'd', cta_clicks: 1 }), // not actionable
     ];

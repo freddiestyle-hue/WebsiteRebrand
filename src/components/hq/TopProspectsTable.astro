@@ -7,6 +7,7 @@ import type { TopProspect } from '../../utils/posthog/query';
 import { sessionReplayUrl } from '../../utils/posthog/query';
 import type { ProspectInfo } from '../../utils/hq/airtable';
 import { slugToDomain, findOnLinkedinUrl } from '../../utils/hq/messaged';
+import { classifyProspectSignal } from '../../utils/hq/signal-filter';
 
 interface Props {
   prospects: TopProspect[];
@@ -72,6 +73,7 @@ function dimLabel(key: string): string {
       const displayCo = info?.company || slugToDomain(p.prospect);
       const noContact = !info?.firstName;
       const liHref = info?.linkedinUrl || findOnLinkedinUrl(p.prospect);
+      const signal = classifyProspectSignal(p);
       return (
         <details class="row">
           <summary>
@@ -88,15 +90,24 @@ function dimLabel(key: string): string {
                 {noContact && <span class="src">· no Airtable record</span>}
               </div>
             </div>
-            <span class="m"><b>{p.total_views}</b> views</span>
-            <span class="m"><b>{p.unique_sessions}</b> sess</span>
-            <span class="m" title={p.distinct_visitors >= 2 ? 'Multi-viewer: forwarded internally or returned from another device' : 'Single viewer'}><b class={p.distinct_visitors >= 2 ? 'accent' : 'dim'}>{p.distinct_visitors}</b> ppl</span>
-            <span class="m"><b>{dwell(p.total_dwell_seconds)}</b> dwell</span>
-            <span class="m"><b class={p.cta_clicks > 0 ? 'accent' : 'dim'}>{p.cta_clicks > 0 ? p.cta_clicks : '—'}</b> cta</span>
+            <span class="m m--views"><b>{p.total_views}</b> views</span>
+            <span class="m m--sessions"><b>{p.unique_sessions}</b> sess</span>
+            <span class="m m--people" title={p.distinct_visitors >= 2 ? 'Multi-viewer: forwarded internally or returned from another device' : 'Single viewer'}><b class={p.distinct_visitors >= 2 ? 'accent' : 'dim'}>{p.distinct_visitors}</b> ppl</span>
+            <span class="m m--dwell"><b>{dwell(p.total_dwell_seconds)}</b> dwell</span>
+            <span class="m m--cta"><b class={p.cta_clicks > 0 ? 'accent' : 'dim'}>{p.cta_clicks > 0 ? p.cta_clicks : '—'}</b> cta</span>
+            <span class={`signal-pill signal-${signal.temp}`} title={signal.why}>{signal.label}</span>
             <span class={`heat-pill ${heatClass(p.heat_score)}`}><b>{p.heat_score}</b> heat</span>
             <span class="chev" aria-hidden="true">↓</span>
           </summary>
           <div class="sessions">
+            <div class="dim-row signal-row">
+              <span class="dim-label">Signal</span>
+              <ul class="dim-chips">
+                {(signal.evidence.length ? signal.evidence : [signal.why]).map((e) => (
+                  <li class={`dim-chip signal-chip signal-chip-${signal.temp}`}>{e}</li>
+                ))}
+              </ul>
+            </div>
             {p.expanded_dimensions && p.expanded_dimensions.length > 0 && (
               <div class="dim-row">
                 <span class="dim-label">Drilled into</span>
@@ -117,7 +128,14 @@ function dimLabel(key: string): string {
                     <li>
                       <span class="s-when">{timeAgo(s.last_event)}</span>
                       <span class="s-mono">{dwell(s.dwell_seconds)} dwell</span>
-                      <span class="s-mono">{s.views} event{s.views === 1 ? '' : 's'}</span>
+                      <span class="s-mono">{s.views} pageview{s.views === 1 ? '' : 's'}</span>
+                      {s.city && <span class="s-mono">{s.city}{s.country ? `, ${s.country}` : ''}</span>}
+                      {s.source && <span class="s-mono">{s.source}{s.campaign ? ` / ${s.campaign}` : ''}</span>}
+                      {s.max_scroll > 0 && <span class="s-mono">{s.max_scroll}% scroll</span>}
+                      {s.focus_seconds > 0 && <span class="s-mono">{s.focus_seconds}s focus</span>}
+                      {s.verdict_expansions > 0 && <span class="s-cta">{s.verdict_expansions} verdict open{s.verdict_expansions === 1 ? '' : 's'}</span>}
+                      {s.cell_expands > 0 && <span class="s-cta">{s.cell_expands} cell open{s.cell_expands === 1 ? '' : 's'}</span>}
+                      {s.related_clicks > 0 && <span class="s-cta">{s.related_clicks} related click{s.related_clicks === 1 ? '' : 's'}</span>}
                       {s.clicks > 0 && <span class="s-cta">{s.clicks} CTA click{s.clicks === 1 ? '' : 's'}</span>}
                       <span class="s-fill"></span>
                       {url ? (
@@ -158,7 +176,7 @@ function dimLabel(key: string): string {
   summary {
     list-style: none;
     display: grid;
-    grid-template-columns: 28px 1fr 70px 60px 80px 50px 90px 18px;
+    grid-template-columns: 28px 1fr 70px 60px 80px 70px 50px 118px 90px 18px;
     align-items: center;
     gap: 16px;
     padding: 12px 18px;
@@ -269,6 +287,39 @@ function dimLabel(key: string): string {
   .heat-pill.heat-cold { color: var(--ink-faint, #7A8597); }
   .heat-pill.heat-cold b { color: var(--ink-dim, #3A4658); }
 
+  .signal-pill {
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: lowercase;
+    padding: 3px 8px;
+    border: 1px solid var(--line, rgba(14,26,44,0.14));
+    text-align: center;
+    white-space: nowrap;
+  }
+  .signal-pill.signal-hot,
+  .signal-chip-hot {
+    background: var(--accent-bg, #F2F7E5);
+    color: var(--accent-deep, #4A6E18);
+    border-color: var(--accent, #8FBF3F);
+  }
+  .signal-pill.signal-warm,
+  .signal-chip-warm {
+    background: var(--sage, #E8F0D9);
+    color: var(--accent-deep, #4A6E18);
+    border-color: var(--accent-deep, #4A6E18);
+  }
+  .signal-pill.signal-cool,
+  .signal-chip-cool {
+    color: var(--ink-dim, #3A4658);
+    border-color: var(--line-strong, rgba(14,26,44,0.28));
+  }
+  .signal-pill.signal-cold,
+  .signal-chip-cold {
+    color: var(--ink-faint, #7A8597);
+    border-color: var(--line, rgba(14,26,44,0.14));
+  }
+
   .chev {
     font-family: var(--mono, 'DM Mono', monospace);
     font-size: 12px;
@@ -320,6 +371,30 @@ function dimLabel(key: string): string {
     border: 1px solid var(--accent-deep, #4A6E18);
     white-space: nowrap;
   }
+  .signal-row {
+    margin-bottom: 10px;
+  }
+  .signal-chip {
+    background: var(--paper, #FFFFFF);
+  }
+  .dim-chip.signal-chip-hot {
+    background: var(--accent-bg, #F2F7E5);
+    color: var(--accent-deep, #4A6E18);
+    border-color: var(--accent, #8FBF3F);
+  }
+  .dim-chip.signal-chip-warm {
+    background: var(--sage, #E8F0D9);
+    color: var(--accent-deep, #4A6E18);
+    border-color: var(--accent-deep, #4A6E18);
+  }
+  .dim-chip.signal-chip-cool {
+    color: var(--ink-dim, #3A4658);
+    border-color: var(--line-strong, rgba(14,26,44,0.28));
+  }
+  .dim-chip.signal-chip-cold {
+    color: var(--ink-faint, #7A8597);
+    border-color: var(--line, rgba(14,26,44,0.14));
+  }
 
   .sess-list {
     list-style: none;
@@ -357,7 +432,11 @@ function dimLabel(key: string): string {
       grid-template-columns: 28px 1fr 60px 90px 18px;
       gap: 8px;
     }
-    summary .m:nth-of-type(2), summary .m:nth-of-type(3) { display: none; }
+    summary .m--views,
+    summary .m--sessions,
+    summary .m--dwell,
+    summary .m--cta,
+    summary .signal-pill { display: none; }
     .sessions { padding: 10px 14px 14px 14px; }
   }
 </style>

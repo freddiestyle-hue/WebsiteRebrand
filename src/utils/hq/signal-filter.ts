@@ -27,7 +27,7 @@
 //   related_clicks * 20  (memo_related / memo_to_mri)
 //   scroll_100s * 15
 //   verdict_expansions * 10
-//   return_visitor (when engaged) → +30
+//   return_visitor (when explicitly engaged) → +30
 //   focus_seconds_total / 10, capped 20
 //   total_dwell_seconds / 30, capped 10
 //
@@ -47,7 +47,6 @@ export const SIGNAL_THRESHOLDS = {
    *  a real engagement event. Bare repeat-visits look like the same
    *  bot opening the page twice. */
   RETURNING_SESSIONS_MIN: 2,
-  RETURNING_DWELL_MIN: 30,
 
   /** CTA-plus: a single CTA click is too noisy on its own (people
    *  misclick, browsers prefetch, etc.). We require a second signal
@@ -58,7 +57,17 @@ export const SIGNAL_THRESHOLDS = {
 export type ActionableSignal =
   | 'multi_viewer'
   | 'returning_engaged'
-  | 'cta_plus_engaged';
+  | 'cta_plus_engaged'
+  | 'deep_read';
+
+export type ProspectSignalClass =
+  | 'commercial_intent'
+  | 'team_read'
+  | 'returning_read'
+  | 'deep_read'
+  | 'light_read'
+  | 'scanner_likely'
+  | 'raw_open';
 
 export interface ActionableVerdict {
   /** True when the prospect crosses any actionable threshold below. */
@@ -71,19 +80,27 @@ export interface ActionableVerdict {
   why: string | null;
 }
 
+export interface ProspectSignalClassification {
+  actionable: boolean;
+  signal: ActionableSignal | null;
+  kind: ProspectSignalClass;
+  label: string;
+  temp: 'hot' | 'warm' | 'cool' | 'cold';
+  why: string;
+  evidence: string[];
+}
+
 const NOT_ACTIONABLE: ActionableVerdict = {
   actionable: false,
   signal: null,
   why: null,
 };
 
-/** True when the prospect has engagement beyond a single drive-by
- *  visit. Used by the returning-engaged branch and the CTA-plus
- *  branch to require a co-signal alongside the primary trigger. */
-function hasRealEngagement(p: TopProspect): boolean {
+/** Explicit reader actions. Dwell/focus are useful context, but scanners
+ *  can produce them, so they do not make a prospect actionable by themselves. */
+function hasReaderInteraction(p: TopProspect): boolean {
   return (
     p.scroll_100s > 0 ||
-    p.total_dwell_seconds >= SIGNAL_THRESHOLDS.RETURNING_DWELL_MIN ||
     p.verdict_expansions > 0 ||
     p.copies > 0 ||
     p.prints > 0 ||
@@ -92,47 +109,138 @@ function hasRealEngagement(p: TopProspect): boolean {
   );
 }
 
+function hasCtaCoSignal(p: TopProspect): boolean {
+  return (
+    p.scroll_100s > 0 ||
+    p.verdict_expansions > 0 ||
+    p.copies > 0 ||
+    p.prints > 0 ||
+    p.related_clicks > 0 ||
+    (p.expanded_dimensions?.length ?? 0) > 0
+  );
+}
+
+function evidenceFor(p: TopProspect): string[] {
+  const out: string[] = [];
+  const expandedCount = p.expanded_dimensions?.length ?? 0;
+  if (p.distinct_visitors >= 2) out.push(`${p.distinct_visitors} people`);
+  if (p.unique_sessions >= 2) out.push(`${p.unique_sessions} sessions`);
+  if (p.cta_clicks > 0) out.push(`${p.cta_clicks} CTA${p.cta_clicks === 1 ? '' : 's'}`);
+  if (p.related_clicks > 0) out.push(`${p.related_clicks} related click${p.related_clicks === 1 ? '' : 's'}`);
+  if (p.scroll_100s > 0) out.push(`${p.scroll_100s} full read${p.scroll_100s === 1 ? '' : 's'}`);
+  if (p.verdict_expansions > 0) out.push(`${p.verdict_expansions} verdict open${p.verdict_expansions === 1 ? '' : 's'}`);
+  if (expandedCount > 0) out.push(`${expandedCount} cells opened`);
+  if (p.copies > 0) out.push(`${p.copies} copy${p.copies === 1 ? '' : 'ies'}`);
+  if (p.prints > 0) out.push(`${p.prints} print${p.prints === 1 ? '' : 's'}`);
+  if (p.total_dwell_seconds > 0) out.push(`${p.total_dwell_seconds}s dwell`);
+  return out.slice(0, 5);
+}
+
+export function classifyProspectSignal(p: TopProspect): ProspectSignalClassification {
+  const evidence = evidenceFor(p);
+  const interacted = hasReaderInteraction(p);
+
+  if (p.distinct_visitors >= SIGNAL_THRESHOLDS.MULTI_VIEWER_MIN && interacted) {
+    return {
+      actionable: true,
+      signal: 'multi_viewer',
+      kind: 'team_read',
+      label: 'team read',
+      temp: 'hot',
+      why: `${p.distinct_visitors} people interacted with the memo.`,
+      evidence,
+    };
+  }
+
+  if (p.cta_clicks >= SIGNAL_THRESHOLDS.CTA_MIN && hasCtaCoSignal(p)) {
+    return {
+      actionable: true,
+      signal: 'cta_plus_engaged',
+      kind: 'commercial_intent',
+      label: 'commercial intent',
+      temp: 'hot',
+      why: 'Clicked a CTA with a real engagement co-signal.',
+      evidence,
+    };
+  }
+
+  if (
+    p.unique_sessions >= SIGNAL_THRESHOLDS.RETURNING_SESSIONS_MIN &&
+    interacted
+  ) {
+    return {
+      actionable: true,
+      signal: 'returning_engaged',
+      kind: 'returning_read',
+      label: 'returning read',
+      temp: 'warm',
+      why: `Returned ${p.unique_sessions} times and interacted.`,
+      evidence,
+    };
+  }
+
+  if (interacted) {
+    const saved = p.copies > 0 || p.prints > 0 || p.related_clicks > 0;
+    return {
+      actionable: true,
+      signal: 'deep_read',
+      kind: saved ? 'commercial_intent' : 'deep_read',
+      label: saved ? 'saved or explored' : 'deep read',
+      temp: saved ? 'hot' : 'warm',
+      why: saved
+        ? 'Saved, copied, or explored beyond the memo.'
+        : 'Interacted with the memo beyond a raw open.',
+      evidence,
+    };
+  }
+
+  if (p.total_dwell_seconds >= 30 || p.focus_seconds_total >= 10) {
+    return {
+      actionable: false,
+      signal: null,
+      kind: 'scanner_likely',
+      label: 'scanner-shaped',
+      temp: 'cold',
+      why: 'Dwell/focus appeared without scrolls, opens, copies, prints, or CTA context.',
+      evidence,
+    };
+  }
+
+  if (p.total_views > 0 || p.unique_sessions > 0) {
+    return {
+      actionable: false,
+      signal: null,
+      kind: 'raw_open',
+      label: 'raw open',
+      temp: 'cold',
+      why: 'Opened the page, but no human interaction signal fired.',
+      evidence,
+    };
+  }
+
+  return {
+    actionable: false,
+    signal: null,
+    kind: 'light_read',
+    label: 'light read',
+    temp: 'cool',
+    why: 'Light activity only.',
+    evidence,
+  };
+}
+
 /** The single decision function for "does this prospect deserve a
  *  spot on the action center today?" Returns the strongest signal
  *  category (multi-viewer wins over returning, which wins over cta)
  *  and a human-readable why-line for the UI. */
 export function isActionableProspect(p: TopProspect): ActionableVerdict {
-  // Multi-viewer wins. Distinct people on one audit is the cleanest
-  // internal-forward signal. Order: 4+ > 3 > 2 because the wording
-  // shifts but the predicate is the same.
-  if (p.distinct_visitors >= SIGNAL_THRESHOLDS.MULTI_VIEWER_MIN) {
-    return {
-      actionable: true,
-      signal: 'multi_viewer',
-      why: `${p.distinct_visitors} people read it`,
-    };
-  }
-
-  // Returning + engaged. A return visit on its own is too easy to trip
-  // (same person reopening a tab, browser back-button). Pair it with
-  // a real engagement event.
-  if (
-    p.unique_sessions >= SIGNAL_THRESHOLDS.RETURNING_SESSIONS_MIN &&
-    hasRealEngagement(p)
-  ) {
-    return {
-      actionable: true,
-      signal: 'returning_engaged',
-      why: `Returned ${p.unique_sessions}× and engaged`,
-    };
-  }
-
-  // CTA click + something. Bare cta_click is noisy (misclicks,
-  // prefetch, bot CTA-following). Require a second signal.
-  if (p.cta_clicks >= SIGNAL_THRESHOLDS.CTA_MIN && hasRealEngagement(p)) {
-    return {
-      actionable: true,
-      signal: 'cta_plus_engaged',
-      why: `Clicked Book a call + engaged`,
-    };
-  }
-
-  return NOT_ACTIONABLE;
+  const classified = classifyProspectSignal(p);
+  if (!classified.actionable || !classified.signal) return NOT_ACTIONABLE;
+  return {
+    actionable: true,
+    signal: classified.signal,
+    why: classified.why,
+  };
 }
 
 /** Convenience filter: returns only the actionable prospects, in their

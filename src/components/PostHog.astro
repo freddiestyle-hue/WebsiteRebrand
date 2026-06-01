@@ -69,7 +69,7 @@ const identifyPayload = identifyAs
       try {
         var p = new URLSearchParams(window.location.search);
         var supers = {};
-        ['utm_source','utm_medium','utm_campaign','utm_content','utm_term','prospect','r'].forEach(function (k) {
+        ['utm_source','utm_medium','utm_campaign','utm_content','utm_term','utm_recipient','prospect','r','rl','via'].forEach(function (k) {
           var v = p.get(k);
           if (v) supers[k] = v;
         });

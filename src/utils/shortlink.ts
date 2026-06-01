@@ -205,9 +205,9 @@ export async function trackClick(code: string, isBot: boolean): Promise<void> {
   });
 }
 
-// Append UTM params (and a `via=shortlink` marker) to the target URL on
-// redirect. Existing query params are preserved; UTM keys overwrite to keep
-// canonical attribution. Pure - exported for testing.
+// Append UTM params (and shortlink markers) to the target URL on redirect.
+// Existing query params are preserved; UTM keys overwrite to keep canonical
+// attribution. Pure - exported for testing.
 export function appendUtmParams(targetUrl: string, meta: ShortLinkMeta, code: string): string {
   let url: URL;
   try {
@@ -221,7 +221,9 @@ export function appendUtmParams(targetUrl: string, meta: ShortLinkMeta, code: st
   // Default to 'outreach' (DMs, cold email) for back-compat. Callers that are
   // not outreach - blog posts, social shares - pass an explicit medium.
   url.searchParams.set('utm_medium', meta.medium || 'outreach');
+  url.searchParams.set('utm_content', code);
   url.searchParams.set('via', 'shortlink');
-  url.searchParams.set('rl', code); // shortlink code itself - lets PostHog group multi-clicks
+  url.searchParams.set('rl', code); // canonical Rivett shortlink code
+  url.searchParams.set('r', code); // legacy alias already registered in PostHog
   return url.toString();
 }

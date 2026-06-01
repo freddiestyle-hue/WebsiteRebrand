@@ -41,7 +41,10 @@ const POSTHOG_PROJECT_ID = 373899;
 // v9: added related_clicks to TopProspect — counts memo_related and
 //     memo_to_mri CTA hits (the new sticky exit ramps). Weighted +20 in
 //     heat_score so prospects who explore further surface higher.
-const CACHE_VERSION = 'v9';
+// v10: scanner-aware signal model. Strict human sessions no longer accept
+//     focus/autocapture alone, TopProspect views mean pageviews (not all
+//     events), and per-session rows include source/location/scroll context.
+const CACHE_VERSION = 'v10';
 
 // Lazy redis client. Construction is cheap but we only need one instance.
 // Use KV_REST_API_* env vars (set by Vercel KV / Upstash integration) since
@@ -123,9 +126,9 @@ async function cached<T>(
 // Mimecast and other email-security crawlers fan out across Amsterdam,
 // Dublin, Bristol, Frankfurt) and the queue ended up full of zero-click
 // zero-scroll sessions. New filter: a session counts as human only if it
-// fired at least one $autocapture click, scroll_depth, CTA, verdict expand,
-// copy, print, or tab_focus_time event. Real readers do at least one of
-// those. Scanners don't trigger the JS handlers meaningfully.
+// fired at least one explicit reader action: scroll_depth, CTA, verdict
+// expand, copy, or print. Focus time and raw autocapture are useful context,
+// but scanners can manufacture them, so they do not qualify a prospect.
 //
 // We still exclude Fred's own home cities so he doesn't watch himself.
 
@@ -146,7 +149,7 @@ const SELF_CITY_EXCLUSION = `
 
 // Events that prove a session was driven by a human. A scanner that just
 // loads the page and fires $pageview/$pageleave won't appear here.
-const HUMAN_SIGNAL_EVENTS = `'$autocapture','scroll_depth','cta_clicked','audit_v3_verdict_expanded','content_copied','content_printed','tab_focus_time'`;
+const HUMAN_SIGNAL_EVENTS = `'scroll_depth','cta_clicked','audit_v3_verdict_expanded','content_copied','content_printed'`;
 
 /**
  * Build a "this session interacted" subquery given a time-where clause.
@@ -387,6 +390,15 @@ export interface ProspectSession {
   last_event: string;
   views: number;
   clicks: number;
+  city: string | null;
+  country: string | null;
+  source: string | null;
+  campaign: string | null;
+  max_scroll: number;
+  focus_seconds: number;
+  verdict_expansions: number;
+  related_clicks: number;
+  cell_expands: number;
 }
 
 export interface TopProspect {
@@ -434,7 +446,7 @@ export interface TopProspect {
 //   related_clicks:              +20  (memo_related / memo_to_mri — sticky signal)
 //   scroll_100s:                 +15
 //   verdict_expansions:          +10
-//   return_visitor (bool):       +30, ONLY if there is also real engagement
+//   return_visitor (bool):       +30, ONLY if there is also explicit interaction
 //   focus_seconds_total / 10:    +1, capped at +20
 //   total_dwell_seconds / 30:    +1, capped at +10
 const HEAT_SCORE_SQL = `(
@@ -447,7 +459,7 @@ const HEAT_SCORE_SQL = `(
   (related_clicks * 20) +
   (scroll_100s * 15) +
   (verdict_expansions * 10) +
-  (if(unique_sessions > 1 AND (total_dwell_seconds >= 30 OR scroll_100s > 0 OR verdict_expansions > 0 OR cta_clicks > 0 OR copies > 0 OR prints > 0 OR related_clicks > 0), 30, 0)) +
+  (if(unique_sessions > 1 AND (scroll_100s > 0 OR verdict_expansions > 0 OR cta_clicks > 0 OR copies > 0 OR prints > 0 OR related_clicks > 0), 30, 0)) +
   least(20, intDiv(focus_seconds_total, 10)) +
   least(10, intDiv(total_dwell_seconds, 30))
 )`;
@@ -475,21 +487,42 @@ export async function getTopProspects(range: DateRange, mode: TrafficMode = 'hum
       arrayDistinct(arrayFlatten(groupArray(session_expanded_dims))) AS expanded_dimensions,
       ${HEAT_SCORE_SQL} AS heat_score,
       max(last_event) AS last_view,
-      groupArray(tuple(sid, session_dwell, last_event, session_views, session_clicks)) AS sessions_raw
+      groupArray(tuple(
+        sid,
+        session_dwell,
+        last_event,
+        session_views,
+        session_clicks,
+        session_city,
+        session_country,
+        session_source,
+        session_campaign,
+        session_max_scroll,
+        session_focus,
+        session_verdicts,
+        session_related,
+        session_cell_expands
+      )) AS sessions_raw
     FROM (
       SELECT
         ${PROSPECT_SLUG_EXPR} AS prospect,
         ${PROSPECT_SURFACE_EXPR} AS surface,
         properties.$session_id AS sid,
         toString(any(person_id)) AS session_person_id,
-        count() AS session_views,
+        countIf(event = '$pageview') AS session_views,
         countIf(event = 'cta_clicked') AS session_clicks,
         countIf(event = 'audit_v3_verdict_expanded') AS session_verdicts,
         countIf(event = 'scroll_depth' AND toInt(properties.depth) = 100) AS session_scroll_100,
+        max(if(event = 'scroll_depth', toInt(properties.depth), 0)) AS session_max_scroll,
         countIf(event = 'content_copied') AS session_copies,
         countIf(event = 'content_printed') AS session_prints,
         sumIf(toInt(properties.focus_seconds), event = 'tab_focus_time') AS session_focus,
         countIf(event = 'cta_clicked' AND (properties.cta = 'memo_related' OR properties.cta = 'memo_to_mri')) AS session_related,
+        countIf(event = 'cta_clicked' AND properties.cta LIKE 'cell_expand_%') AS session_cell_expands,
+        toString(any(properties.$geoip_city_name)) AS session_city,
+        toString(any(properties.$geoip_country_name)) AS session_country,
+        toString(any(properties.utm_source)) AS session_source,
+        toString(any(properties.utm_campaign)) AS session_campaign,
         -- v3.5 per-cell drill-down: collect distinct dimension icon keys this
         -- session expanded. cta is 'cell_expand_search', 'cell_expand_spark',
         -- etc. — strip the prefix client-side. Order preserved by first click
@@ -514,7 +547,7 @@ export async function getTopProspects(range: DateRange, mode: TrafficMode = 'hum
     -- This HAVING clause is the query-side guarantee.
     HAVING ${
       mode === 'humans'
-        ? '(cta_clicks + verdict_expansions + scroll_100s + copies + prints + related_clicks) > 0 OR focus_seconds_total >= 10'
+        ? '(cta_clicks + verdict_expansions + scroll_100s + copies + prints + related_clicks) > 0 OR length(expanded_dimensions) > 0'
         : '1=1'
     }
     ORDER BY heat_score DESC, last_view DESC
@@ -539,7 +572,22 @@ export async function getTopProspects(range: DateRange, mode: TrafficMode = 'hum
     expanded_dimensions: string[];
     heat_score: number;
     last_view: string;
-    sessions_raw: Array<[string | null, number, string, number, number]>;
+    sessions_raw: Array<[
+      string | null,
+      number,
+      string,
+      number,
+      number,
+      string | null,
+      string | null,
+      string | null,
+      string | null,
+      number,
+      number,
+      number,
+      number,
+      number
+    ]>;
   }>(r);
 
   return raw.map((row) => ({
@@ -561,12 +609,36 @@ export async function getTopProspects(range: DateRange, mode: TrafficMode = 'hum
     heat_score: row.heat_score ?? 0,
     last_view: row.last_view,
     sessions: (row.sessions_raw || [])
-      .map(([sid, dwell, last_event, views, clicks]) => ({
+      .map(([
+        sid,
+        dwell,
+        last_event,
+        views,
+        clicks,
+        city,
+        country,
+        source,
+        campaign,
+        max_scroll,
+        focus_seconds,
+        verdict_expansions,
+        related_clicks,
+        cell_expands,
+      ]) => ({
         sid,
         dwell_seconds: dwell,
         last_event,
         views,
         clicks,
+        city: city || null,
+        country: country || null,
+        source: source || null,
+        campaign: campaign || null,
+        max_scroll: max_scroll ?? 0,
+        focus_seconds: focus_seconds ?? 0,
+        verdict_expansions: verdict_expansions ?? 0,
+        related_clicks: related_clicks ?? 0,
+        cell_expands: cell_expands ?? 0,
       }))
       .sort((a, b) => (a.last_event < b.last_event ? 1 : -1)),
   }));

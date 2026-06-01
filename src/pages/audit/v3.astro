@@ -1080,13 +1080,43 @@ const splitHeading = (heading: string): { lead: string; tail: string } => {
         }, totalMs + 200);
       }
 
+      function captureAuditEvent(name, props) {
+        if (!window.posthog || !window.posthog.capture) return;
+        window.posthog.capture(name, props || {}, { send_instantly: true, transport: 'sendBeacon' });
+      }
+
       form.addEventListener('submit', function () {
         // Don't preventDefault - let the form POST naturally. The browser
         // waits for the response (~30s) while this overlay animates. When
         // /audit/v3 returns, the new HTML replaces the page, overlay gone.
         var raw = (input.value || '').trim().replace(/^https?:\/\//, '');
+        captureAuditEvent('audit_v3_form_submitted', {
+          input_domain: raw,
+          path: window.location.pathname,
+        });
         startScan(raw || 'somewhere.com');
       });
+    })();
+  </script>
+)}
+
+{!memo && (inputError || runtimeError) && (
+  <script
+    is:inline
+    define:vars={{
+      failureReason: inputError ? 'input_error' : 'runtime_error',
+      failureMessage: inputError || runtimeError,
+      failureInputDomain: submittedUrl,
+    }}
+  >
+    (function () {
+      if (!window.posthog || !window.posthog.capture) return;
+      window.posthog.capture('audit_v3_form_failed', {
+        reason: failureReason,
+        message: failureMessage,
+        input_domain: failureInputDomain,
+        path: window.location.pathname,
+      }, { send_instantly: true, transport: 'sendBeacon' });
     })();
   </script>
 )}

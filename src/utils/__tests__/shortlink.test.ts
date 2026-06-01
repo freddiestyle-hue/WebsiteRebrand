@@ -142,8 +142,10 @@ describe('appendUtmParams (Upgrade 13)', () => {
     expect(url.searchParams.get('utm_campaign')).toBe('wave1');
     expect(url.searchParams.get('utm_recipient')).toBe('claire');
     expect(url.searchParams.get('utm_medium')).toBe('outreach');
+    expect(url.searchParams.get('utm_content')).toBe('k3x9');
     expect(url.searchParams.get('via')).toBe('shortlink');
     expect(url.searchParams.get('rl')).toBe('k3x9');
+    expect(url.searchParams.get('r')).toBe('k3x9');
   });
 
   it('omits optional UTM params when meta is missing', () => {
@@ -154,8 +156,10 @@ describe('appendUtmParams (Upgrade 13)', () => {
     expect(url.searchParams.get('utm_recipient')).toBeNull();
     // Required-by-design params still set:
     expect(url.searchParams.get('utm_medium')).toBe('outreach');
+    expect(url.searchParams.get('utm_content')).toBe('k3x9');
     expect(url.searchParams.get('via')).toBe('shortlink');
     expect(url.searchParams.get('rl')).toBe('k3x9');
+    expect(url.searchParams.get('r')).toBe('k3x9');
   });
 
   it('defaults utm_medium to outreach when no medium is given (DMs, cold email)', () => {
@@ -189,7 +193,7 @@ describe('appendUtmParams (Upgrade 13)', () => {
   });
 
   it('overwrites existing UTM params (shortlink attribution wins)', () => {
-    const withStaleUtm = `${baseTarget}?utm_source=old_source&utm_campaign=old_campaign`;
+    const withStaleUtm = `${baseTarget}?utm_source=old_source&utm_campaign=old_campaign&utm_content=old_code&r=old`;
     const result = appendUtmParams(
       withStaleUtm,
       { target: withStaleUtm, channel: 'linkedin_dm', campaign: 'wave1' },
@@ -198,6 +202,9 @@ describe('appendUtmParams (Upgrade 13)', () => {
     const url = new URL(result);
     expect(url.searchParams.get('utm_source')).toBe('linkedin_dm');
     expect(url.searchParams.get('utm_campaign')).toBe('wave1');
+    expect(url.searchParams.get('utm_content')).toBe('k3x9');
+    expect(url.searchParams.get('r')).toBe('k3x9');
+    expect(url.searchParams.get('rl')).toBe('k3x9');
   });
 
   it('returns the original URL unchanged when target is malformed', () => {

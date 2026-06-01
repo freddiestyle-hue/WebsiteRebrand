@@ -57,6 +57,7 @@ import DeviceTable from '../components/hq/DeviceTable.astro';
 import ReferrerTable from '../components/hq/ReferrerTable.astro';
 import ActivityTimeline from '../components/hq/ActivityTimeline.astro';
 import DateRangeNav from '../components/hq/DateRangeNav.astro';
+import { classifyProspectSignal, filterActionable } from '../utils/hq/signal-filter';
 
 // --- Auth gating (unchanged) ---
 const HQ_KEY = (process.env.HQ_KEY || import.meta.env.HQ_KEY || '').trim();
@@ -136,7 +137,7 @@ if (authed) {
 
 // --- Action (follow-up) queue: engaged prospects not yet worked ---
 const STAGES_DONE = new Set(['Sent', 'Replied', 'Booked', 'Won', 'Lost', 'Disqualified']);
-const actionQueue = top
+const actionQueue = filterActionable(top)
   .filter((p) => {
     const info = prospectInfo.get(p.prospect);
     if (info && STAGES_DONE.has(info.outreachStage)) return false;
@@ -193,47 +194,22 @@ function timeAgo(iso: string): string {
 
 type Temp = 'hot' | 'warm' | 'cool' | 'cold';
 function heatBadge(p: TopProspect): { label: string; temp: Temp } {
-  if (p.cta_clicks > 0) return { label: 'clicked book-a-call', temp: 'hot' };
-  if (p.prints > 0) return { label: 'printed the memo', temp: 'hot' };
-  if (p.copies > 0) return { label: 'copied from it', temp: 'hot' };
-  if (p.related_clicks > 0) return { label: 'explored further', temp: 'warm' };
-  const engagedReturn = p.return_visitor && (
-    p.scroll_100s > 0 || p.verdict_expansions > 0 ||
-    p.total_dwell_seconds >= 30 || p.focus_seconds_total >= 30
-  );
-  if (engagedReturn) return { label: 'returning + engaged', temp: 'warm' };
-  if (p.verdict_expansions > 0) return { label: 'opened the verdicts', temp: 'warm' };
-  if (p.scroll_100s > 0) return { label: 'read it end to end', temp: 'warm' };
-  // Pure dwell without any human signal = SafeLinks/Mimecast scanner.
-  // Require at least one real interaction to label as engaged/deep read.
-  const hasAnySignal = (
-    p.scroll_100s > 0 || p.verdict_expansions > 0 ||
-    p.copies > 0 || p.prints > 0 || p.related_clicks > 0 ||
-    p.focus_seconds_total >= 10
-  );
-  if (hasAnySignal) {
-    if (p.total_dwell_seconds >= 60 || p.focus_seconds_total >= 60) return { label: 'deep read', temp: 'cool' };
-    if (p.total_dwell_seconds >= 30 || p.focus_seconds_total >= 30) return { label: 'engaged', temp: 'cool' };
-  }
-  return { label: 'browsed', temp: 'cold' };
+  const c = classifyProspectSignal(p);
+  return { label: c.label, temp: c.temp };
 }
 function warmWhy(p: TopProspect): string {
-  if (p.cta_clicks > 0) return 'Clicked the diagnostic CTA. Intent is on the table - a nudge lands now.';
-  if (p.return_visitor && (p.scroll_100s > 0 || p.total_dwell_seconds >= 30))
-    return 'Came back and read again. Sticky interest worth a direct follow-up.';
-  if (p.scroll_100s > 0) return 'Read the memo end to end. The argument landed.';
-  if (p.verdict_expansions > 0) return 'Opened the verdicts and dug into the specifics.';
-  if (p.total_dwell_seconds >= 60) return 'Spent real time on the memo. Engaged, not skimming.';
-  return 'Opened the memo. Early signal, a light touch keeps it warm.';
+  return classifyProspectSignal(p).why;
 }
 function warmProof(p: TopProspect): [string, string][] {
   const out: [string, string][] = [];
+  if (p.distinct_visitors >= 2) out.push([String(p.distinct_visitors), 'people']);
   if (p.unique_sessions) out.push([String(p.unique_sessions), p.unique_sessions === 1 ? 'session' : 'sessions']);
-  if (p.total_views) out.push([String(p.total_views), p.total_views === 1 ? 'read' : 'reads']);
+  if (p.cta_clicks) out.push([String(p.cta_clicks), p.cta_clicks === 1 ? 'cta' : 'ctas']);
+  if (p.scroll_100s) out.push(['100%', 'scroll']);
+  if (p.verdict_expansions) out.push([String(p.verdict_expansions), 'verdicts']);
+  if (p.expanded_dimensions?.length) out.push([String(p.expanded_dimensions.length), 'cells']);
   if (p.total_dwell_seconds) out.push([dwell(p.total_dwell_seconds), 'dwell']);
-  if (p.cta_clicks) out.push([String(p.cta_clicks), 'cta click']);
-  else if (p.scroll_100s) out.push(['100%', 'scroll']);
-  return out.slice(0, 4);
+  return out.slice(0, 5);
 }
 
 // tier parse from Airtable "Priority" (e.g. "A+ #3")
@@ -257,7 +233,7 @@ const waveShort = CURRENT_WAVE.replace(/\s*[-–]\s*this week\s*$/i, '').trim() 
 // ---- view models ----
 interface WarmVM {
   slug: string; initials: string; name: string; title: string; company: string;
-  signal: string; temp: Temp; why: string; proof: [string, string][]; time: string;
+  signal: string; signalClass: string; temp: Temp; why: string; proof: [string, string][]; time: string;
   memo: string; liUrl: string; firstName: string; signals: string; lane?: boolean;
 }
 interface ColdVM {
@@ -277,17 +253,20 @@ const followUps: WarmVM[] = actionQueue.map((p) => {
   const info = prospectInfo.get(p.prospect);
   const name = info?.displayName || info?.firstName || slugToDomain(p.prospect);
   const h = heatBadge(p);
+  const classified = classifyProspectSignal(p);
   return {
     slug: p.prospect, initials: initialsOf(name), name,
     title: info?.title || '', company: info?.company || slugToDomain(p.prospect),
-    signal: h.label, temp: h.temp, why: warmWhy(p), proof: warmProof(p),
+    signal: h.label, signalClass: classified.kind, temp: h.temp, why: warmWhy(p), proof: warmProof(p),
     time: timeAgo(p.last_view), memo: p.prospect,
     liUrl: info?.linkedinUrl || findOnLinkedinUrl(p.prospect) || '',
     firstName: info?.firstName || name.split(' ')[0] || '',
     signals: JSON.stringify({
       total_dwell_seconds: p.total_dwell_seconds, unique_sessions: p.unique_sessions,
       total_views: p.total_views, cta_clicks: p.cta_clicks, verdict_expansions: p.verdict_expansions,
-      scroll_100s: p.scroll_100s, copies: p.copies, prints: p.prints,
+      scroll_100s: p.scroll_100s, copies: p.copies, prints: p.prints, related_clicks: p.related_clicks,
+      distinct_visitors: p.distinct_visitors, focus_seconds_total: p.focus_seconds_total,
+      expanded_dimensions: p.expanded_dimensions,
       return_visitor: p.return_visitor, last_view: p.last_view,
     }),
   };
@@ -303,7 +282,7 @@ const sends: ColdVM[] = outreachQueue.map((r) => ({
 
 // ---- card renderers (mirror the approved mockup) ----
 function warmCard(p: WarmVM): string {
-  return `<article class="card card--warm" data-slug="${attr(p.slug)}" data-signals="${attr(p.signals)}" data-li-url="${attr(p.liUrl)}" data-first-name="${attr(p.firstName)}" data-company="${attr(p.company)}" data-name="${attr(p.name)}">
+  return `<article class="card card--warm" data-slug="${attr(p.slug)}" data-signal-class="${attr(p.signalClass)}" data-signals="${attr(p.signals)}" data-li-url="${attr(p.liUrl)}" data-first-name="${attr(p.firstName)}" data-company="${attr(p.company)}" data-name="${attr(p.name)}">
     <div class="strip">
       <span class="striptag">${p.lane ? '<span class="lane">Follow up</span>' : ''}${ic('ic-03-signal')} ${esc(p.signal)}</span>
       <span class="stamp-time">${esc(p.time)}</span>
