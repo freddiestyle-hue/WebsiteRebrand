@@ -9,11 +9,21 @@ const { sources } = Astro.props;
 const total = sources.reduce((s, x) => s + x.visitors, 0) || 1;
 
 function prettySource(src: string): string {
-  if (src === '$direct') return 'Direct / no referrer';
-  if (src === 'linkedin.com' || src === 'www.linkedin.com') return 'LinkedIn';
-  if (src.endsWith('google.com') || src === 'google.com') return 'Google';
-  if (src === 'twitter.com' || src === 't.co' || src === 'x.com') return 'Twitter / X';
-  return src;
+  const [base, ...detail] = src.split(' / ');
+  const prettyBase = (() => {
+    if (base === '$direct') return 'Direct / no referrer';
+    if (base === 'linkedin_dm') return 'LinkedIn DM';
+    if (base === 'linkedin_comment') return 'LinkedIn comment';
+    if (base === 'linkedin_post' || base === 'linkedin') return 'LinkedIn';
+    if (base === 'cold_email') return 'Cold email';
+    if (base === 'email_signature') return 'Email signature';
+    if (base === 'shortlink') return 'Shortlink';
+    if (base === 'linkedin.com' || base === 'www.linkedin.com') return 'LinkedIn';
+    if (base.endsWith('google.com') || base === 'google.com') return 'Google';
+    if (base === 'twitter.com' || base === 't.co' || base === 'x.com') return 'Twitter / X';
+    return base;
+  })();
+  return detail.length ? `${prettyBase} / ${detail.join(' / ')}` : prettyBase;
 }
 ---
 {sources.length === 0 ? (

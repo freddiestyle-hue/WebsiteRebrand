@@ -44,7 +44,9 @@ const POSTHOG_PROJECT_ID = 373899;
 // v10: scanner-aware signal model. Strict human sessions no longer accept
 //     focus/autocapture alone, TopProspect views mean pageviews (not all
 //     events), and per-session rows include source/location/scroll context.
-const CACHE_VERSION = 'v10';
+// v11: traffic-source table is session-based and prefers UTM/shortlink source
+//     context before falling back to browser referrer/direct.
+const CACHE_VERSION = 'v11';
 
 // Lazy redis client. Construction is cheap but we only need one instance.
 // Use KV_REST_API_* env vars (set by Vercel KV / Upstash integration) since
@@ -1062,7 +1064,7 @@ export async function getVisitorTech(range: DateRange, mode: TrafficMode = 'huma
 }
 
 // --------------------------------------------------------------------------
-// Query: traffic sources (initial referring domain, real humans only)
+// Query: traffic sources (session source, real humans only)
 // --------------------------------------------------------------------------
 
 export interface TrafficSource {
@@ -1075,12 +1077,47 @@ export async function getTrafficSources(range: DateRange, mode: TrafficMode = 'h
   return cached('sources', range, async () => {
     const r = await runQuery(`
       SELECT
-        coalesce(properties.$initial_referring_domain, '$direct') AS source,
-        uniq(distinct_id) AS visitors,
-        countIf(event = '$pageview') AS pageviews
-      FROM events
-      WHERE ${hogqlRangeClause(range)}
-        ${lightHumanWhereFor(mode)}
+        source,
+        uniq(session_person) AS visitors,
+        sum(session_pageviews) AS pageviews
+      FROM (
+        SELECT
+          properties.$session_id AS sid,
+          any(distinct_id) AS session_person,
+          countIf(event = '$pageview') AS session_pageviews,
+          multiIf(
+            nullIf(anyIf(toString(properties.utm_source), toString(properties.utm_source) != ''), '') IS NOT NULL
+              AND nullIf(anyIf(toString(properties.utm_campaign), toString(properties.utm_campaign) != ''), '') IS NOT NULL,
+              concat(
+                anyIf(toString(properties.utm_source), toString(properties.utm_source) != ''),
+                ' / ',
+                anyIf(toString(properties.utm_campaign), toString(properties.utm_campaign) != '')
+              ),
+            nullIf(anyIf(toString(properties.utm_source), toString(properties.utm_source) != ''), '') IS NOT NULL,
+              anyIf(toString(properties.utm_source), toString(properties.utm_source) != ''),
+            nullIf(anyIf(toString(properties.$initial_utm_source), toString(properties.$initial_utm_source) != ''), '') IS NOT NULL
+              AND nullIf(anyIf(toString(properties.$initial_utm_campaign), toString(properties.$initial_utm_campaign) != ''), '') IS NOT NULL,
+              concat(
+                anyIf(toString(properties.$initial_utm_source), toString(properties.$initial_utm_source) != ''),
+                ' / ',
+                anyIf(toString(properties.$initial_utm_campaign), toString(properties.$initial_utm_campaign) != '')
+              ),
+            nullIf(anyIf(toString(properties.$initial_utm_source), toString(properties.$initial_utm_source) != ''), '') IS NOT NULL,
+              anyIf(toString(properties.$initial_utm_source), toString(properties.$initial_utm_source) != ''),
+            nullIf(anyIf(toString(properties.via), toString(properties.via) = 'shortlink'), '') IS NOT NULL,
+              'shortlink',
+            nullIf(anyIf(toString(properties.$referring_domain), toString(properties.$referring_domain) != ''), '') IS NOT NULL,
+              anyIf(toString(properties.$referring_domain), toString(properties.$referring_domain) != ''),
+            nullIf(anyIf(toString(properties.$initial_referring_domain), toString(properties.$initial_referring_domain) != ''), '') IS NOT NULL,
+              anyIf(toString(properties.$initial_referring_domain), toString(properties.$initial_referring_domain) != ''),
+            '$direct'
+          ) AS source
+        FROM events
+        WHERE ${hogqlRangeClause(range)}
+          ${lightHumanWhereFor(mode)}
+        GROUP BY sid
+        HAVING session_pageviews > 0
+      ) AS sessions
       GROUP BY source
       ORDER BY visitors DESC
       LIMIT 20
