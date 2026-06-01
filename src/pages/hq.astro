@@ -57,6 +57,8 @@ import DeviceTable from '../components/hq/DeviceTable.astro';
 import ReferrerTable from '../components/hq/ReferrerTable.astro';
 import ActivityTimeline from '../components/hq/ActivityTimeline.astro';
 import DateRangeNav from '../components/hq/DateRangeNav.astro';
+import PredictionsTile from '../components/hq/PredictionsTile.astro';
+import testsData from '../data/tests.json';
 import { classifyProspectSignal, filterActionable } from '../utils/hq/signal-filter';
 
 // --- Auth gating (unchanged) ---
@@ -2746,6 +2748,7 @@ details.exp .expbody { padding: 0 var(--sp-4) var(--sp-4); }
 
         <div class="only-cockpit">
           <div class="modehead"><div><span class="kicker">The cockpit</span><h1>The next batch. <span class="ital">What to send now.</span></h1></div></div>
+          <PredictionsTile tests={testsData.tests as any} />
           <div id="pulse" class="pulse" set:html={pulseHtml}></div>
           <div id="queue" set:html={queueHtml}></div>
         </div>

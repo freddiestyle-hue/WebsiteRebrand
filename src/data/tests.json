@@ -1,0 +1,44 @@
+{
+  "tests": [
+    {
+      "id": "wave3-abc-messaging",
+      "week": "2026-W23",
+      "status": "pre-send",
+      "designed": "2026-06-01",
+      "send_window_start": "2026-06-02",
+      "send_window_end": "2026-06-03",
+      "measurement_date": "2026-06-10",
+      "cohort": "Wave 3 Huber Bootcamp",
+      "cohort_size": 160,
+      "variable": "LinkedIn DM voice + structure",
+      "hypothesis": "Variant A (sharpened operator shorthand, two-year duration, \"teardown\" framing) will beat both B (artifact-only, no closer) and C (specific finding teaser) on Send → Click rate, because Huber-cohort operators reward peer-style brevity + confidence over either pure-drop minimalism or feature-leading prose.",
+      "prediction": "",
+      "winning_metric": "Send → Click rate (short_link_clicked / DMs sent per variant)",
+      "decision_threshold": "≥50% lift over runner-up",
+      "variants": [
+        {
+          "id": "A",
+          "n": 54,
+          "name": "Sharpened operator shorthand",
+          "campaign": "wave3_a"
+        },
+        {
+          "id": "B",
+          "n": 53,
+          "name": "Artifact-only (no closer)",
+          "campaign": "wave3_b"
+        },
+        {
+          "id": "C",
+          "n": 53,
+          "name": "Specific finding teaser",
+          "campaign": "wave3_c"
+        }
+      ],
+      "links": {
+        "hypothesis_doc": "AI-HQ/01-Projects/Rivett/tests/2026-W23-wave3-abc-messaging.md"
+      },
+      "result": null
+    }
+  ]
+}

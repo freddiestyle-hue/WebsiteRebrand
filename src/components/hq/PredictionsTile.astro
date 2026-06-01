@@ -1,0 +1,227 @@
+---
+// PredictionsTile — surfaces active test predictions at the top of /hq cockpit.
+// Discipline mechanic: the tile nags red if a test is pre-send and the
+// prediction field is empty, which is the testing-framework's non-negotiable
+// "write the prediction BEFORE measurement" rule. Out-of-sight = ignored.
+
+interface Variant {
+  id: string;
+  n: number;
+  name: string;
+  campaign: string;
+}
+
+interface Test {
+  id: string;
+  week: string;
+  status: 'pre-send' | 'in-flight' | 'measuring' | 'done';
+  designed: string;
+  send_window_start: string;
+  send_window_end: string;
+  measurement_date: string;
+  cohort: string;
+  cohort_size: number;
+  variable: string;
+  hypothesis: string;
+  prediction: string;
+  winning_metric: string;
+  decision_threshold: string;
+  variants: Variant[];
+  links?: { hypothesis_doc?: string };
+  result?: unknown;
+}
+
+interface Props {
+  tests: Test[];
+}
+
+const { tests } = Astro.props;
+
+// Today: deterministic from the request, so SSR + render match.
+const today = new Date().toISOString().slice(0, 10);
+
+function statusLabel(t: Test): { label: string; tone: 'urgent' | 'warm' | 'cool' | 'done' } {
+  if (t.status === 'done') return { label: 'DONE', tone: 'done' };
+  if (t.status === 'measuring') return { label: 'MEASURING', tone: 'warm' };
+  if (t.status === 'in-flight') return { label: 'IN FLIGHT', tone: 'warm' };
+  // pre-send: urgent only if prediction is empty
+  return t.prediction.trim()
+    ? { label: 'PRE-SEND', tone: 'cool' }
+    : { label: 'PREDICTION REQUIRED', tone: 'urgent' };
+}
+
+function daysUntil(dateStr: string): number {
+  const d = new Date(dateStr + 'T00:00:00Z').getTime();
+  const t = new Date(today + 'T00:00:00Z').getTime();
+  return Math.round((d - t) / 86400000);
+}
+
+const active = tests.filter((t) => t.status !== 'done');
+---
+
+{active.length > 0 && (
+  <section class="pt" data-predictions-tile aria-label="Active test predictions">
+    <div class="pt-head">
+      <span class="pt-kicker">§ Active tests</span>
+      <h2 class="pt-title">Predictions on the table. <span class="ital">Write 'em before you send.</span></h2>
+    </div>
+    <ol class="pt-list">
+      {active.map((t) => {
+        const s = statusLabel(t);
+        const daysToSend = daysUntil(t.send_window_start);
+        const daysToMeasure = daysUntil(t.measurement_date);
+        const predictionEmpty = !t.prediction.trim();
+        return (
+          <li class={`pt-row tone-${s.tone}`} data-test-id={t.id}>
+            <div class="pt-rail" aria-hidden="true"></div>
+            <div class="pt-body">
+              <div class="pt-line1">
+                <span class={`pt-badge tone-${s.tone}`}>{s.label}</span>
+                <span class="pt-name">{t.id}</span>
+                <span class="pt-week">· {t.week} · {t.cohort_size} prospects</span>
+              </div>
+
+              <div class="pt-line2">
+                <span class="pt-label">Variable:</span> <em>{t.variable}</em>
+              </div>
+
+              <div class="pt-hyp">
+                <span class="pt-label">Hypothesis:</span> {t.hypothesis}
+              </div>
+
+              <div class={`pt-pred ${predictionEmpty ? 'empty' : ''}`}>
+                <span class="pt-label">My prediction:</span>{' '}
+                {predictionEmpty ? (
+                  <span class="pt-empty-pred">
+                    [WRITE YOUR PREDICTION BEFORE SENDING — edit
+                    <code>src/data/tests.json</code> or the hypothesis doc, commit, redeploy.]
+                  </span>
+                ) : (
+                  <span>{t.prediction}</span>
+                )}
+              </div>
+
+              <div class="pt-variants">
+                {t.variants.map((v) => (
+                  <span class="pt-v">
+                    <b>{v.id}</b> n={v.n} · <span class="pt-v-name">{v.name}</span>
+                  </span>
+                ))}
+              </div>
+
+              <div class="pt-meta">
+                <span class="pt-label">Decision:</span> {t.winning_metric}, {t.decision_threshold}.
+                {t.status === 'pre-send' && (
+                  <span class="pt-count">
+                    {daysToSend > 0
+                      ? ` Send in ${daysToSend}d (${t.send_window_start}). Measure ${t.measurement_date}.`
+                      : daysToSend === 0
+                        ? ` Send window opens TODAY (${t.send_window_start}).`
+                        : ` Send window opened ${Math.abs(daysToSend)}d ago. Measure ${t.measurement_date}.`}
+                  </span>
+                )}
+                {t.status === 'in-flight' && (
+                  <span class="pt-count"> Sending. Measure in {daysToMeasure}d ({t.measurement_date}).</span>
+                )}
+                {t.status === 'measuring' && (
+                  <span class="pt-count"> Measure {t.measurement_date} ({daysToMeasure}d).</span>
+                )}
+              </div>
+            </div>
+          </li>
+        );
+      })}
+    </ol>
+  </section>
+)}
+
+<style>
+  .pt { margin: var(--sp-5) 0 var(--sp-6); }
+  .pt-head {
+    border-bottom: 1px solid var(--ink);
+    padding-bottom: var(--sp-3);
+    margin-bottom: var(--sp-4);
+  }
+  .pt-kicker {
+    font: 600 10px/1 var(--mono); letter-spacing: var(--track-mono);
+    text-transform: uppercase; color: var(--ink-faint);
+    display: block; margin-bottom: var(--sp-2);
+  }
+  .pt-title { font: 600 22px/1.15 var(--grotesk); margin: 0; }
+  .pt-title .ital { font: italic 18px/1.2 var(--serif); color: var(--ink-dim); margin-left: var(--sp-2); }
+
+  .pt-list { list-style: none; margin: 0; padding: 0; border: 1px solid var(--ink); }
+  .pt-row {
+    display: grid; grid-template-columns: 4px 1fr; align-items: stretch;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .pt-row:last-child { border-bottom: 0; }
+  .pt-row.tone-urgent { background: #fff5f5; }
+
+  .pt-rail { background: var(--ink-faint); }
+  .pt-row.tone-urgent .pt-rail { background: #b00020; }
+  .pt-row.tone-warm .pt-rail { background: var(--accent-deep, #c98a00); }
+  .pt-row.tone-cool .pt-rail { background: var(--sage, #6c8d7a); }
+  .pt-row.tone-done .pt-rail { background: var(--ink-faint); }
+
+  .pt-body { padding: var(--sp-4) var(--sp-5); min-width: 0; }
+
+  .pt-line1 { display: flex; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-2); flex-wrap: wrap; }
+  .pt-badge {
+    display: inline-block; padding: 2px var(--sp-2);
+    font: 600 10px/1.5 var(--mono); letter-spacing: var(--track-mono);
+    border: 1px solid var(--ink); color: var(--ink); background: var(--paper);
+  }
+  .pt-badge.tone-urgent { background: #b00020; color: #fff; border-color: #b00020; }
+  .pt-badge.tone-warm { background: var(--accent-deep, #c98a00); color: var(--paper); border-color: var(--accent-deep, #c98a00); }
+  .pt-badge.tone-cool { background: var(--sage, #6c8d7a); color: var(--paper); border-color: var(--sage, #6c8d7a); }
+  .pt-badge.tone-done { background: var(--ink-faint); color: var(--paper); border-color: var(--ink-faint); }
+
+  .pt-name { font: 600 14px/1.2 var(--grotesk); color: var(--ink); }
+  .pt-week { font: 12px/1.2 var(--mono); color: var(--ink-faint); }
+
+  .pt-line2, .pt-hyp, .pt-pred, .pt-meta {
+    font: 13px/1.5 var(--serif); color: var(--ink-dim);
+    margin-bottom: var(--sp-2);
+  }
+  .pt-label {
+    font: 600 11px/1.4 var(--mono); letter-spacing: var(--track-mono);
+    text-transform: uppercase; color: var(--ink); margin-right: var(--sp-1);
+  }
+  .pt-hyp em, .pt-line2 em { font-style: italic; color: var(--ink); }
+
+  .pt-pred {
+    background: var(--paper-2);
+    padding: var(--sp-3) var(--sp-3);
+    border-left: 2px solid var(--ink);
+    margin: var(--sp-3) 0;
+  }
+  .pt-pred.empty {
+    background: #fff0f0;
+    border-left-color: #b00020;
+  }
+  .pt-empty-pred {
+    font: italic 13px/1.5 var(--serif); color: #b00020;
+  }
+  .pt-empty-pred code {
+    font: 11px/1 var(--mono); background: var(--paper); padding: 1px 4px;
+    color: var(--ink); font-style: normal;
+  }
+
+  .pt-variants { display: flex; flex-wrap: wrap; gap: var(--sp-3); margin: var(--sp-2) 0; }
+  .pt-v {
+    font: 12px/1.4 var(--mono);
+    background: var(--paper-2); padding: 2px var(--sp-2);
+    border: 1px solid var(--line-soft); color: var(--ink-dim);
+  }
+  .pt-v b { color: var(--ink); }
+  .pt-v-name { font-family: var(--serif); font-size: 11px; font-style: italic; }
+
+  .pt-meta { font: 12px/1.5 var(--mono); color: var(--ink-faint); margin-top: var(--sp-3); }
+  .pt-count { color: var(--ink); }
+
+  @media (max-width: 720px) {
+    .pt-body { padding: var(--sp-3); }
+    .pt-line2, .pt-hyp, .pt-pred, .pt-meta { font-size: 12px; }
+  }
+</style>
