@@ -158,6 +158,27 @@ describe('appendUtmParams (Upgrade 13)', () => {
     expect(url.searchParams.get('rl')).toBe('k3x9');
   });
 
+  it('defaults utm_medium to outreach when no medium is given (DMs, cold email)', () => {
+    const result = appendUtmParams(
+      baseTarget,
+      { target: baseTarget, channel: 'linkedin_dm', campaign: 'wave1' },
+      'k3x9',
+    );
+    expect(new URL(result).searchParams.get('utm_medium')).toBe('outreach');
+  });
+
+  it('uses an explicit medium when provided (blog/social shares are not outreach)', () => {
+    const result = appendUtmParams(
+      baseTarget,
+      { target: baseTarget, channel: 'linkedin_post', campaign: 'my-post', medium: 'social' },
+      'k3x9',
+    );
+    const url = new URL(result);
+    expect(url.searchParams.get('utm_medium')).toBe('social');
+    expect(url.searchParams.get('utm_source')).toBe('linkedin_post');
+    expect(url.searchParams.get('utm_campaign')).toBe('my-post');
+  });
+
   it('preserves existing query params on the target URL', () => {
     const withParams = `${baseTarget}?ref=manual&existing=1`;
     const result = appendUtmParams(withParams, { target: withParams, campaign: 'wave1' }, 'k3x9');

@@ -20,7 +20,8 @@
 //     "target_url": "https://rivett.tech/audit/v3/spok-com",
 //     "campaign": "wave1",          // optional
 //     "recipient": "claire",        // optional
-//     "channel": "linkedin_dm",     // optional
+//     "channel": "linkedin_dm",     // optional - becomes utm_source
+//     "medium": "social",           // optional - utm_medium, defaults to 'outreach'
 //     "custom_code": "claire-spok", // optional - vanity code
 //     "created_by": "hq_operator"   // optional - attribution
 //   }
@@ -104,11 +105,12 @@ export const POST: APIRoute = async ({ request }) => {
   const campaign = typeof body.campaign === 'string' ? body.campaign.trim().slice(0, 80) : undefined;
   const recipient = typeof body.recipient === 'string' ? body.recipient.trim().slice(0, 120) : undefined;
   const channel = typeof body.channel === 'string' ? body.channel.trim().slice(0, 60) : undefined;
+  const medium = typeof body.medium === 'string' ? body.medium.trim().slice(0, 60) : undefined;
   const created_by = typeof body.created_by === 'string' ? body.created_by.trim().slice(0, 60) : undefined;
   const custom_code = typeof body.custom_code === 'string' ? body.custom_code : undefined;
 
   const code = await createShortLink(
-    { target, campaign, recipient, channel, created_by },
+    { target, campaign, recipient, channel, medium, created_by },
     custom_code,
   );
 

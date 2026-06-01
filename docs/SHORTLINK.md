@@ -34,7 +34,8 @@ Every outbound channel — LinkedIn DMs, cold emails, manual outreach, Python sc
 | `target_url` | **Yes** | Full http/https URL. Validated. |
 | `campaign` | No | Free-form. Examples: `wave1`, `wave2`, `mental-health-q3`. ≤80 chars. |
 | `recipient` | No | Identifier (slug, email, LinkedIn URL fragment). ≤120 chars. |
-| `channel` | No | `linkedin_dm` / `cold_email` / `twitter_dm` / etc. ≤60 chars. |
+| `channel` | No | `linkedin_dm` / `cold_email` / `twitter_dm` / etc. Becomes `utm_source`. ≤60 chars. |
+| `medium` | No | Becomes `utm_medium`. **Defaults to `outreach`** (DMs, cold email). Pass `social` for blog/organic posts so they are not mislabeled as outbound. ≤60 chars. |
 | `created_by` | No | Who/what minted (`fred`, `hq_outreach_queue`, `python_gmail_script`). ≤60 chars. |
 | `custom_code` | No | Vanity slug (`claire-spok`). Lowercase alphanumeric+hyphen, 2-32 chars. Fails if taken. |
 
@@ -62,7 +63,7 @@ Public endpoint. Looks up the code, fires PostHog `short_link_clicked`, appends 
 utm_source={channel}
 utm_campaign={campaign}
 utm_recipient={recipient}
-utm_medium=outreach
+utm_medium={medium, defaults to outreach}
 via=shortlink
 rl={code}
 ```

@@ -25,7 +25,7 @@ const POSTHOG_CLIENT_KEY = 'phc_vqst8XDELjjTmFYwJiqzD7PzazzyQ9J69WJmcfJoxt27';
 // channel, code, target_path) plus IP/UA-derived geo for /hq Action Queue.
 async function captureClickEvent(opts: {
   code: string;
-  meta: { target: string; campaign?: string; recipient?: string; channel?: string };
+  meta: { target: string; campaign?: string; recipient?: string; channel?: string; medium?: string };
   userAgent: string;
   ip: string | null;
   referer: string | null;
@@ -52,6 +52,7 @@ async function captureClickEvent(opts: {
       rl_campaign: opts.meta.campaign ?? null,
       rl_recipient: opts.meta.recipient ?? null,
       rl_channel: opts.meta.channel ?? null,
+      rl_medium: opts.meta.medium ?? null,
       $ip: opts.ip ?? undefined,
       $user_agent: opts.userAgent,
       $referrer: opts.referer ?? '$direct',
@@ -105,6 +106,7 @@ export const GET: APIRoute = async ({ params, request, redirect }) => {
         campaign: record.campaign,
         recipient: record.recipient,
         channel: record.channel,
+        medium: record.medium,
       },
       userAgent,
       ip,
@@ -124,6 +126,7 @@ export const GET: APIRoute = async ({ params, request, redirect }) => {
       campaign: record.campaign,
       recipient: record.recipient,
       channel: record.channel,
+      medium: record.medium,
     },
     code,
   );

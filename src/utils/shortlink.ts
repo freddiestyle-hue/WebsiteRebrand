@@ -32,6 +32,12 @@ export interface ShortLinkMeta {
   recipient?: string;
   /** Channel (e.g., 'linkedin_dm', 'cold_email', 'twitter_dm', 'manual'). */
   channel?: string;
+  /**
+   * Marketing medium for utm_medium. Defaults to 'outreach' when unset, which
+   * is correct for DMs and cold email. Blog/social distribution passes 'social'
+   * so organic shares are not mislabeled as outbound.
+   */
+  medium?: string;
   /** Who/what minted this link (e.g., 'fred', 'hq_outreach_queue', 'python_gmail_script'). */
   created_by?: string;
 }
@@ -212,7 +218,9 @@ export function appendUtmParams(targetUrl: string, meta: ShortLinkMeta, code: st
   if (meta.channel) url.searchParams.set('utm_source', meta.channel);
   if (meta.campaign) url.searchParams.set('utm_campaign', meta.campaign);
   if (meta.recipient) url.searchParams.set('utm_recipient', meta.recipient);
-  url.searchParams.set('utm_medium', 'outreach');
+  // Default to 'outreach' (DMs, cold email) for back-compat. Callers that are
+  // not outreach - blog posts, social shares - pass an explicit medium.
+  url.searchParams.set('utm_medium', meta.medium || 'outreach');
   url.searchParams.set('via', 'shortlink');
   url.searchParams.set('rl', code); // shortlink code itself - lets PostHog group multi-clicks
   return url.toString();
