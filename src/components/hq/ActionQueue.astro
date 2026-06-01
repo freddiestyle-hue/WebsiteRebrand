@@ -53,8 +53,20 @@ function heatBadge(p: TopProspect): { label: string; temp: Temp } {
   if (engagedReturn) return { label: 'RETURNED', temp: 'warm' };
   if (p.verdict_expansions > 0) return { label: 'VERDICTS', temp: 'warm' };
   if (p.scroll_100s > 0) return { label: 'FULL READ', temp: 'warm' };
-  if (p.total_dwell_seconds >= 60 || p.focus_seconds_total >= 60) return { label: 'DEEP READ', temp: 'cool' };
-  if (p.total_dwell_seconds >= 30 || p.focus_seconds_total >= 30) return { label: 'ENGAGED', temp: 'cool' };
+  // ENGAGED / DEEP READ require a real human signal beyond raw dwell.
+  // SafeLinks / Mimecast scanners sit on the page for 30-60s while they
+  // analyse the URL but never fire scroll_depth, autocapture, focus, etc.
+  // Pure dwell with zero signals = bot. Pure dwell + ANY signal = human
+  // who at least loaded and moved their mouse.
+  const hasAnySignal = (
+    p.scroll_100s > 0 || p.verdict_expansions > 0 ||
+    p.copies > 0 || p.prints > 0 || p.related_clicks > 0 ||
+    p.focus_seconds_total >= 10
+  );
+  if (hasAnySignal) {
+    if (p.total_dwell_seconds >= 60 || p.focus_seconds_total >= 60) return { label: 'DEEP READ', temp: 'cool' };
+    if (p.total_dwell_seconds >= 30 || p.focus_seconds_total >= 30) return { label: 'ENGAGED', temp: 'cool' };
+  }
   return { label: 'BROWSED', temp: 'cold' };
 }
 

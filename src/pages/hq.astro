@@ -204,8 +204,17 @@ function heatBadge(p: TopProspect): { label: string; temp: Temp } {
   if (engagedReturn) return { label: 'returning + engaged', temp: 'warm' };
   if (p.verdict_expansions > 0) return { label: 'opened the verdicts', temp: 'warm' };
   if (p.scroll_100s > 0) return { label: 'read it end to end', temp: 'warm' };
-  if (p.total_dwell_seconds >= 60 || p.focus_seconds_total >= 60) return { label: 'deep read', temp: 'cool' };
-  if (p.total_dwell_seconds >= 30 || p.focus_seconds_total >= 30) return { label: 'engaged', temp: 'cool' };
+  // Pure dwell without any human signal = SafeLinks/Mimecast scanner.
+  // Require at least one real interaction to label as engaged/deep read.
+  const hasAnySignal = (
+    p.scroll_100s > 0 || p.verdict_expansions > 0 ||
+    p.copies > 0 || p.prints > 0 || p.related_clicks > 0 ||
+    p.focus_seconds_total >= 10
+  );
+  if (hasAnySignal) {
+    if (p.total_dwell_seconds >= 60 || p.focus_seconds_total >= 60) return { label: 'deep read', temp: 'cool' };
+    if (p.total_dwell_seconds >= 30 || p.focus_seconds_total >= 30) return { label: 'engaged', temp: 'cool' };
+  }
   return { label: 'browsed', temp: 'cold' };
 }
 function warmWhy(p: TopProspect): string {

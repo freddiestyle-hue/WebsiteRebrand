@@ -500,11 +500,23 @@ export async function getTopProspects(range: DateRange, mode: TrafficMode = 'hum
       FROM events
       WHERE ${hogqlRangeClause(range)}
         AND ${PROSPECT_PATH_FILTER_TOP}
-        ${lightHumanWhereFor(mode)}
+        ${humanWhereFor(mode)}
       GROUP BY prospect, surface, sid
     ) AS sessions
     WHERE prospect != ''
     GROUP BY prospect, surface
+    -- Defence in depth: even with the strict humanWhereFor session filter
+    -- above, require that the aggregate across all of a prospect's sessions
+    -- shows at least one human signal before they qualify for the Action
+    -- Queue. Pure-dwell prospects (Microsoft SafeLinks / Mimecast scanners
+    -- sitting on the page for 30s with no scroll, click, copy, or print)
+    -- got labelled "engaged" because the badge fell back to dwell-only.
+    -- This HAVING clause is the query-side guarantee.
+    HAVING ${
+      mode === 'humans'
+        ? '(cta_clicks + verdict_expansions + scroll_100s + copies + prints + related_clicks) > 0 OR focus_seconds_total >= 10'
+        : '1=1'
+    }
     ORDER BY heat_score DESC, last_view DESC
     LIMIT 25
   `);
