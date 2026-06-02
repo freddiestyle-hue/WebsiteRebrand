@@ -1,7 +1,7 @@
 ---
 import Base from '../../layouts/Base.astro';
 
-const title = 'The Crinkler Engine · Rivett';
+const title = 'The Audit · Rivett';
 const description = 'Proposal for Mark Gannon, CrinklePak.';
 ---
 <Base
@@ -25,52 +25,43 @@ const description = 'Proposal for Mark Gannon, CrinklePak.';
 
     <!-- HERO -->
     <section class="hero">
-      <h1>The Crinkler <span class="ital">Engine.</span></h1>
-      <p class="dek">What we talked about. Priced and shaped.</p>
+      <h1>The audit. <span class="ital">$3,500. Two weeks.</span></h1>
+      <p class="dek">Per our chat — here's the shape.</p>
     </section>
 
-    <!-- THE ENGINE -->
-    <section class="block engine">
+    <!-- WHAT YOU GET -->
+    <section class="block">
       <div class="strap">
-        <span class="lbl">The offer</span>
-        <h2>We find them. We audit them.<br>We send them. You close them.</h2>
+        <span class="lbl">What you get</span>
+        <h2>One written plan. <span class="ital">Yours to keep.</span></h2>
       </div>
 
       <div class="nums">
-        <div><span class="k">Setup</span><span class="v">$5,000</span></div>
-        <div><span class="k">Monthly</span><span class="v">$6,000</span></div>
-        <div><span class="k">Volume</span><span class="v">~50/wk</span></div>
-        <div><span class="k">Commit</span><span class="v">Any month</span></div>
+        <div><span class="k">Investment</span><span class="v">$3,500</span></div>
+        <div><span class="k">Timeline</span><span class="v">2 weeks</span></div>
+        <div><span class="k">Deliverable</span><span class="v">Written plan</span></div>
+        <div><span class="k">Walkthrough</span><span class="v">30 min</span></div>
       </div>
 
-      <div class="three">
-        <div>
-          <span class="three-k">Mining</span>
-          <p>Every gift basket brand, subscription box, 3PL and packaging buyer in your market. Named. Tagged. Ranked by fit.</p>
-        </div>
-        <div>
-          <span class="three-k">Outreach</span>
-          <p>Custom audit per prospect, posted at their own domain. Cold DM that lands because it called out something only you'd notice.</p>
-        </div>
-        <div>
-          <span class="three-k">Pipeline</span>
-          <p>Booked meetings drop into your calendar. Live dashboard. Audit your auditor any time.</p>
-        </div>
-      </div>
+      <ul class="get">
+        <li><b>Full diagnosis</b> using your actual data — Google Ads, LinkedIn Ads, Shopify, GA4, the email setup.</li>
+        <li><b>Plain-English leak list</b> — what's broken, what it's costing you, what the fix is.</li>
+        <li><b>Hero rewrite</b> for the homepage — the one I previewed on the call, fully drafted.</li>
+        <li><b>Quick wins</b> you (or your guy) can ship this week — no Rivett required.</li>
+        <li><b>Priority list</b> ranked by effort and payoff. Cleanest move first.</li>
+        <li><b>30-min walkthrough call</b> when it lands. Line by line. Ask whatever.</li>
+      </ul>
 
-      <p class="bottom-line">Year 1: <b>$77,000</b>. Less than one BD hire.</p>
+      <p class="bottom-line">Run it yourself. Hand it to your guy. Or hire me to fire it up. <span class="ital">Your call.</span></p>
     </section>
 
-    <!-- THE DOORWAY -->
-    <section class="block doorway">
+    <!-- AFTER -->
+    <section class="block after">
       <div class="strap">
-        <span class="lbl">First step</span>
-        <h2>Before that <span class="ital">— the audit.</span></h2>
+        <span class="lbl">After</span>
+        <h2>What comes next <span class="ital">depends on what we find.</span></h2>
       </div>
-
-      <p class="lede">$3,500. Two weeks. Written plan using your data. Includes a sample of 10 wholesale prospects with the audits I'd send them and the DMs I'd open with — so you see the engine in action before you sign for the bigger thing.</p>
-
-      <p class="lede minor">Yours to keep. Run it yourself or fire the engine up. Your call.</p>
+      <p class="lede">The plan tells us what's worth your time and what isn't. Scope, price, timing — we talk about it after, with the data in hand. No pre-priced retainers. No surprise upsells.</p>
     </section>
 
     <!-- END CTA -->
@@ -82,7 +73,7 @@ const description = 'Proposal for Mark Gannon, CrinklePak.';
         <ol class="steps">
           <li><span class="n">01</span><span>Reply. SOW + invoice today.</span></li>
           <li><span class="n">02</span><span>Pay 50% to kick off — $1,750.</span></li>
-          <li><span class="n">03</span><span>Two weeks. Plan delivered. Engine on standby.</span></li>
+          <li><span class="n">03</span><span>Two weeks. Plan delivered.</span></li>
         </ol>
       </div>
     </section>
@@ -178,12 +169,12 @@ const description = 'Proposal for Mark Gannon, CrinklePak.';
 .proposal .hero h1 {
   font-family: var(--grotesk);
   font-weight: 800;
-  font-size: clamp(64px, 11vw, 144px);
-  line-height: 0.9;
+  font-size: clamp(56px, 9vw, 120px);
+  line-height: 0.92;
   letter-spacing: var(--track-display);
   margin: 0;
   text-wrap: balance;
-  max-width: 880px;
+  max-width: 920px;
 }
 .proposal .hero h1 .ital {
   font-family: var(--serif);
@@ -279,63 +270,57 @@ const description = 'Proposal for Mark Gannon, CrinklePak.';
   color: var(--ink);
 }
 
-/* ---------- Three columns ---------- */
-.proposal .three {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--sp-10);
+/* ---------- Get list ---------- */
+.proposal .get {
+  list-style: none;
+  padding: 0;
   margin: var(--sp-7) 0;
+  max-width: 760px;
 }
-@media (max-width: 780px) {
-  .proposal .three { grid-template-columns: 1fr; gap: var(--sp-7); }
+.proposal .get li {
+  padding: var(--sp-5) 0 var(--sp-5) 32px;
+  border-bottom: var(--bw-hair) solid var(--line);
+  position: relative;
+  font-size: 17px;
+  line-height: 1.5;
+  color: var(--ink);
 }
-.proposal .three-k {
-  display: block;
-  font-family: var(--mono);
-  font-size: 11px;
-  letter-spacing: var(--track-mono);
-  text-transform: uppercase;
-  color: var(--accent-deep);
-  margin-bottom: var(--sp-3);
-  padding-bottom: var(--sp-3);
-  border-bottom: var(--bw-hair) solid var(--ink);
+.proposal .get li:last-child { border-bottom: 0; }
+.proposal .get li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 27px;
+  width: 18px;
+  height: var(--bw-rule);
+  background: var(--accent-deep);
 }
-.proposal .three p {
-  font-size: 16px;
+.proposal .get li b { font-weight: 600; }
+
+.proposal .bottom-line {
+  font-family: var(--grotesk);
+  font-weight: 500;
+  font-size: clamp(20px, 2.2vw, 26px);
+  line-height: 1.4;
+  color: var(--ink);
+  margin: var(--sp-10) 0 0;
+  max-width: 720px;
+}
+.proposal .bottom-line .ital {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 400;
+  color: var(--ink-dim);
+}
+
+/* ---------- After ---------- */
+.proposal .after .lede {
+  font-family: var(--grotesk);
+  font-size: clamp(19px, 2vw, 24px);
   line-height: 1.55;
   color: var(--ink);
   margin: 0;
-}
-
-.proposal .bottom-line {
-  font-family: var(--serif);
-  font-style: italic;
-  font-size: 22px;
-  color: var(--ink-dim);
-  margin: var(--sp-10) 0 0;
-}
-.proposal .bottom-line b {
-  font-family: var(--grotesk);
-  font-style: normal;
-  font-weight: 700;
-  color: var(--ink);
-}
-
-/* ---------- Doorway ---------- */
-.proposal .doorway .lede {
-  font-family: var(--grotesk);
-  font-size: clamp(19px, 1.9vw, 22px);
-  line-height: 1.55;
-  color: var(--ink);
-  margin: 0 0 var(--sp-6);
   max-width: 760px;
-}
-.proposal .doorway .lede.minor {
-  font-family: var(--serif);
-  font-style: italic;
-  font-size: 19px;
-  color: var(--ink-dim);
-  margin-top: var(--sp-4);
 }
 
 /* ---------- CTA ---------- */
