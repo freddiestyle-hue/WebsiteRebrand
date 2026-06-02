@@ -1,0 +1,196 @@
+---
+// Wave 3 Huber campaign panel for /hq.
+//
+// One section. Status pill + 9 metric tiles in 3x3 grid + variant split footer.
+// Fully server-rendered from fetchWave3State(); no client JS.
+//
+// Layout:
+//   STATUS · sent · delivered
+//   opens  · clicks · replies
+//   bounces · bookings · variant-split
+
+import type { Wave3State } from '../../utils/hq/wave3';
+
+interface Props {
+  state: Wave3State;
+}
+
+const { state } = Astro.props;
+
+const pctStr = (n: number) =>
+  Number.isFinite(n) && n > 0 ? `${n}%` : '0%';
+
+const tiles = [
+  {
+    label: 'Status',
+    value: state.campaign.status,
+    sub: `${state.campaign.inboxes[0] || 'no inbox'} · ${state.campaign.scheduleTimezone}`,
+    statusColor: state.campaign.status === 'Active' ? 'go' : 'wait',
+  },
+  {
+    label: 'Sent / 45',
+    value: `${state.delivery.sent} / ${state.campaign.totalLeads}`,
+    sub: state.delivery.sent === 0
+      ? 'Queued · waiting for schedule window'
+      : `${state.campaign.contactedLeads} unique contacted`,
+  },
+  {
+    label: 'Delivered',
+    value: state.delivery.delivered,
+    sub: `${pctStr(state.delivery.deliveryRate)} delivery rate`,
+  },
+  {
+    label: 'Opens (unique)',
+    value: state.engagement.opensUnique,
+    sub: `${pctStr(state.engagement.openRate)} open rate · noisy in 2026`,
+  },
+  {
+    label: 'Clicks (unique)',
+    value: state.engagement.clicksUnique,
+    sub: `${pctStr(state.engagement.clickRate)} click rate · the real signal`,
+  },
+  {
+    label: 'Replies',
+    value: state.engagement.replies,
+    sub: `${pctStr(state.engagement.replyRate)} reply rate · target >5%`,
+  },
+  {
+    label: 'Bounces',
+    value: state.delivery.bounced,
+    sub: state.delivery.bounced
+      ? `${pctStr(100 * state.delivery.bounced / Math.max(1, state.delivery.sent))} bounce rate`
+      : 'No bounces yet',
+  },
+  {
+    label: 'Bookings',
+    value: state.engagement.bookings,
+    sub: state.engagement.bookings
+      ? `${state.engagement.bookingRate}% booking rate · 🎯`
+      : 'No bookings yet',
+  },
+  {
+    label: 'Variant split',
+    value: `A:${state.variants.aCount} / B:${state.variants.bCount}`,
+    sub: 'A = "Geo-sci homepage speed" · B = "Your audit"',
+  },
+];
+
+const fetchedDisplay = state.fetchedAt.replace('T', ' ').slice(0, 19) + ' UTC';
+---
+
+<div class="wave3-grid">
+  {tiles.map((t) => (
+    <div class={`tile${t.statusColor ? ` tile-status-${t.statusColor}` : ''}`}>
+      <div class="lab">{t.label}</div>
+      <div class="val">{t.value}</div>
+      <div class="sub">{t.sub}</div>
+    </div>
+  ))}
+</div>
+
+<div class="wave3-foot">
+  <span class="foot-lab">Fetched</span>
+  <span class="foot-val">{fetchedDisplay}</span>
+  <span class="foot-sep">·</span>
+  <a
+    href={`https://app.instantly.ai/app/campaigns/2e066a65-7b19-451b-946e-4c039ea1c4ce`}
+    class="foot-link" target="_blank" rel="noopener">Open in Instantly →</a>
+  <span class="foot-sep">·</span>
+  <a
+    href={`https://us.posthog.com/project/373899/dashboard/1658034`}
+    class="foot-link" target="_blank" rel="noopener">PostHog dashboard →</a>
+  {state.errors.length > 0 && (
+    <details class="foot-err">
+      <summary>{state.errors.length} fetch error(s)</summary>
+      {state.errors.map((e) => <div class="err-line">{e}</div>)}
+    </details>
+  )}
+</div>
+
+<style>
+  .wave3-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1px;
+    background: var(--line, rgba(14,26,44,0.14));
+    border: 1px solid var(--line, rgba(14,26,44,0.14));
+  }
+  @media (max-width: 720px) {
+    .wave3-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 480px) {
+    .wave3-grid { grid-template-columns: 1fr; }
+  }
+  .tile {
+    padding: 1.25rem 1.25rem 1.1rem;
+    background: var(--paper-2, #F4F2ED);
+  }
+  .tile-status-go {
+    background: linear-gradient(180deg,
+      color-mix(in srgb, var(--accent, #3F7553) 8%, var(--paper-2, #F4F2ED)) 0%,
+      var(--paper-2, #F4F2ED) 80%);
+  }
+  .tile-status-wait {
+    background: linear-gradient(180deg,
+      color-mix(in srgb, var(--signal-halt, #B8860B) 8%, var(--paper-2, #F4F2ED)) 0%,
+      var(--paper-2, #F4F2ED) 80%);
+  }
+  .lab {
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink-faint, #7A8597);
+    margin-bottom: 0.5rem;
+  }
+  .val {
+    font-family: var(--grotesk, 'Inter Tight', system-ui);
+    font-size: clamp(1.6rem, 3vw, 2.25rem);
+    font-weight: 700;
+    line-height: 1;
+    color: var(--ink, #0E1A2C);
+    letter-spacing: -0.02em;
+  }
+  .sub {
+    margin-top: 0.6rem;
+    font-family: var(--newsreader, 'Newsreader', serif);
+    font-size: 0.82rem;
+    line-height: 1.35;
+    color: var(--ink-dim, #4C5563);
+    font-style: italic;
+  }
+  .wave3-foot {
+    margin-top: 0.85rem;
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-faint, #7A8597);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    align-items: center;
+  }
+  .foot-lab { font-weight: 500; }
+  .foot-val { color: var(--ink-dim, #4C5563); }
+  .foot-sep { opacity: 0.5; }
+  .foot-link {
+    color: var(--accent, #3F7553);
+    text-decoration: none;
+    border-bottom: 1px dotted color-mix(in srgb, var(--accent, #3F7553) 50%, transparent);
+  }
+  .foot-link:hover {
+    color: var(--accent-deep, #2F5B40);
+    border-bottom-style: solid;
+  }
+  .foot-err {
+    color: var(--signal-halt, #B8860B);
+  }
+  .err-line {
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 0.7rem;
+    margin-top: 0.2rem;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+</style>

@@ -58,6 +58,8 @@ import ReferrerTable from '../components/hq/ReferrerTable.astro';
 import ActivityTimeline from '../components/hq/ActivityTimeline.astro';
 import DateRangeNav from '../components/hq/DateRangeNav.astro';
 import PredictionsTile from '../components/hq/PredictionsTile.astro';
+import Wave3Panel from '../components/hq/Wave3Panel.astro';
+import { fetchWave3State, type Wave3State } from '../utils/hq/wave3';
 import testsData from '../data/tests.json';
 import { classifyProspectSignal, filterActionable } from '../utils/hq/signal-filter';
 
@@ -134,6 +136,17 @@ if (authed) {
     outreachQueue = await getOutreachQueueByWave(CURRENT_WAVE);
   } catch (e) {
     console.error('[hq] outreach queue fetch failed', e);
+  }
+}
+
+// Wave 3 Huber campaign state - server-rendered from Instantly + PostHog.
+// Fails soft: panel renders with zeros + error tooltip if fetch fails.
+let wave3State: Wave3State | null = null;
+if (authed) {
+  try {
+    wave3State = await fetchWave3State();
+  } catch (e) {
+    console.error('[hq] wave3 fetch failed', e);
   }
 }
 
@@ -376,6 +389,14 @@ const pulseHtml = pulse.map((p) => {
 const queueHtml = renderQueue();
 
 // analytics section index (chrome only; the components render the data)
+const WAVE3_SECTION = {
+  id: 'wave3', n: '00', icon: 'ic-14-outreach',
+  title: 'Wave 3 Huber', tail: 'live campaign.',
+  sub: wave3State
+    ? `${wave3State.delivery.sent}/${wave3State.campaign.totalLeads} sent`
+    : 'fetching',
+};
+
 const AN_SECTIONS = [
   { id: 'reads', n: '01', icon: 'ic-13-memo', title: 'Recent reads', tail: 'who opened it.', sub: `${recent.length} sessions` },
   { id: 'prospects', n: '02', icon: 'ic-06-operator', title: 'Top prospects', tail: 'by heat.', sub: `${top.length} ranked` },
@@ -2757,6 +2778,7 @@ details.exp .expbody { padding: 0 var(--sp-4) var(--sp-4); }
           <div class="modehead"><div><span class="kicker kicker--neutral">The report</span><h1>What happened. <span class="ital">Since the last batch.</span></h1></div></div>
           <div class="daterange"><DateRangeNav range={range} /><span class="win">Window · <span id="an-window">{range.label}</span></span></div>
           <div id="an-sections" class="an-layout">
+            <section class="an-sec" id="an-wave3"><Fragment set:html={anHead(WAVE3_SECTION)} />{wave3State ? <Wave3Panel state={wave3State} /> : <div class="empty"><p>Wave 3 state unavailable — check INSTANTLY_API_KEY + POSTHOG_PROJECT_API_KEY env vars.</p></div>}</section>
             <section class="an-sec" id="an-reads"><Fragment set:html={anHead(AN_SECTIONS[0])} /><RecentReadsFeed reads={recent} prospectInfo={prospectInfo} /></section>
             <section class="an-sec" id="an-prospects"><Fragment set:html={anHead(AN_SECTIONS[1])} /><TopProspectsTable prospects={top} prospectInfo={prospectInfo} /></section>
             <section class="an-sec" id="an-cta"><Fragment set:html={anHead(AN_SECTIONS[2])} /><CtaClicksFeed clicks={ctas} prospectInfo={prospectInfo} /></section>
