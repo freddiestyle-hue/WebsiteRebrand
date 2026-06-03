@@ -1,0 +1,38 @@
+---
+// /diagnostic FAQ — approved 2026-06-02.
+const faqs = [
+  {
+    q: 'What if we don&rsquo;t have warehouse access yet?',
+    a: 'We can run the diagnostic off Stripe, a CRM, a pasted Sheet, or screenshots of your current dashboard. The warehouse is ideal. It is not the gate. If we can&rsquo;t score a vital, it is logged as <b>insufficient</b> and becomes a question for the 90-day plan.',
+    open: true,
+  },
+  {
+    q: 'What is the difference between Diagnostic and Revenue MRI?',
+    a: 'The diagnostic is the two-week read. The MRI is the deeper, instrumented build that follows if the memo says it is worth it. Most people start here.',
+  },
+  {
+    q: 'Can we run a diagnostic across multiple portfolio companies?',
+    a: 'Yes. We scope one read per company and stagger the read-outs across the fortnight. Board-level summaries come at the end.',
+  },
+  {
+    q: 'Is there an NDA?',
+    a: 'Not for the intake. If we proceed, we send the standard mutual NDA inside 24 hours, before any numbers change hands.',
+  },
+];
+---
+<section class="faq-sec">
+  <span class="stamp">Frequently asked · 04 questions</span>
+  <h2>Things people ask <span class="ital">before booking.</span></h2>
+  <div class="faq">
+    {faqs.map((item, idx) => (
+      <details open={item.open}>
+        <summary>
+          <span class="num">{String(idx + 1).padStart(2, '0')}</span>
+          <span set:html={item.q} />
+          <span class="marker">+</span>
+        </summary>
+        <div class="answer"><p set:html={item.a} /></div>
+      </details>
+    ))}
+  </div>
+</section>

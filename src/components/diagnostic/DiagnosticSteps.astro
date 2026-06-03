@@ -1,0 +1,31 @@
+---
+// /diagnostic process steps — approved 2026-06-02.
+// Five-step ordered list, two-column layout: steps left, reassurance asides right.
+import DiagnosticReassurance from './DiagnosticReassurance.astro';
+
+const steps = [
+  { n: '01', body: 'Read-in call', italic: 'inside 48 hours.' },
+  { n: '02', body: 'We sit in your stack', italic: 'and read the last quarter.' },
+  { n: '03', body: 'Twelve vitals scored', italic: 'against the rubric.' },
+  { n: '04', body: 'A one-page memo.', italic: 'Diagnosis, plan, halt list.' },
+  { n: '05', body: 'Read-out call', italic: 'with you. And your board.' },
+];
+---
+<div class="diag-body">
+  <div>
+    <span class="sec-lbl">What you get back · 02 wks</span>
+    <h2 class="sec-h">A one-page memo. <span class="ital">Diagnosis, plan, halt list.</span></h2>
+    <p class="sec-lede">No deck. No retainer. One document, one decision. Here is how the fortnight runs.</p>
+
+    <ol class="steps" style="max-width:620px;">
+      {steps.map((s) => (
+        <li>
+          <span class="n">{s.n}</span>
+          <span class="t">{s.body} <span class="ital">{s.italic}</span></span>
+        </li>
+      ))}
+    </ol>
+  </div>
+
+  <DiagnosticReassurance />
+</div>

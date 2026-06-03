@@ -2,22 +2,19 @@
 import Base from '../layouts/Base.astro';
 import BookingProvider from '../components/diagnostic/BookingProvider.astro';
 import DiagnosticHero from '../components/diagnostic/DiagnosticHero.astro';
-import WhatThisIs from '../components/diagnostic/WhatThisIs.astro';
-import FitGrid from '../components/diagnostic/FitGrid.astro';
-import ThreeQuestions from '../components/diagnostic/ThreeQuestions.astro';
-import DiagnosticCard from '../components/diagnostic/DiagnosticCard.astro';
-import AlternateRoutes from '../components/diagnostic/AlternateRoutes.astro';
-import LeakReveal from '../components/diagnostic/LeakReveal.astro';
-import { diagnostic } from '../content/diagnostic';
+import DiagnosticSteps from '../components/diagnostic/DiagnosticSteps.astro';
+import DiagnosticFAQ from '../components/diagnostic/DiagnosticFAQ.astro';
+import DiagnosticEndCTA from '../components/diagnostic/DiagnosticEndCTA.astro';
+import '../styles/diagnostic-cro.css';
 
-const description = diagnostic.hero.dek.split('. ')[0].slice(0, 158);
+const description = 'A senior operator reads your last quarter, sits in your stack, and writes the one-page memo on what to halt. Two-week diagnostic, fixed scope.';
 
 const serviceJsonLd = {
   '@context': 'https://schema.org',
   '@type': 'Service',
   name: 'Rivett Diagnostic',
   serviceType: 'Revenue leak diagnostic',
-  description: diagnostic.whatThisIs.body,
+  description,
   provider: {
     '@type': 'Organization',
     name: 'Rivett',
@@ -25,22 +22,10 @@ const serviceJsonLd = {
     founder: { '@type': 'Person', name: 'Fred Style' },
   },
   areaServed: 'Worldwide',
-  offers: {
-    '@type': 'Offer',
-    price: '3500',
-    priceCurrency: 'USD',
-    priceSpecification: {
-      '@type': 'PriceSpecification',
-      price: '3500',
-      priceCurrency: 'USD',
-      valueAddedTaxIncluded: false,
-    },
-    availability: 'https://schema.org/InStock',
-  },
 };
 ---
 <Base
-  title="Book a diagnostic · Rivett"
+  title="Book the diagnostic · Rivett"
   description={description}
   fontWeights="Inter+Tight:wght@400;500;600;700;800"
 >
@@ -48,30 +33,18 @@ const serviceJsonLd = {
 
   <script type="application/ld+json" set:html={JSON.stringify(serviceJsonLd)} />
 
-  <div class="page diagnostic-page">
-    <DiagnosticHero />
+  <div class="diagnostic-page" data-proof="C" data-form="three" data-quote="on" data-logos="on">
+    <div class="page">
+      <DiagnosticHero />
 
-    <div class="cols">
-      <div class="col-content">
-        <WhatThisIs />
-        <FitGrid />
-        <ThreeQuestions />
-      </div>
-      <div class="col-card">
-        <div class="sticky">
-          <DiagnosticCard />
-        </div>
-      </div>
+      <DiagnosticSteps />
+
+      <DiagnosticFAQ />
     </div>
 
-    <LeakReveal />
-
-    <AlternateRoutes />
-
-    <footer class="page-foot">
-      <div>© 2026 Rivett · Operator's Practice</div>
-      <div>fred@rivett.tech · reply within 24 hours</div>
-    </footer>
+    <div class="page">
+      <DiagnosticEndCTA />
+    </div>
   </div>
 </Base>
 
