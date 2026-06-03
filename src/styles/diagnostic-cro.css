@@ -262,7 +262,7 @@ textarea.input { min-height: 110px; resize: vertical; line-height: 1.5; }
 /* ============================================================
    END-CTA + footer (dark)
    ============================================================ */
-.end-cta { background: var(--ink); color: var(--on-ink); padding: var(--sp-14) var(--sp-12); display: grid; grid-template-columns: 1.4fr 1fr; gap: 64px; align-items: center; margin-top: var(--sp-14); }
+.end-cta { background: var(--ink); color: var(--on-ink); padding: var(--sp-14) var(--sp-12); display: grid; grid-template-columns: 1.4fr 1fr; gap: 64px; align-items: center; margin-top: var(--sp-14); margin-bottom: var(--sp-16); }
 @media (max-width: 880px) { .end-cta { grid-template-columns: 1fr; gap: var(--sp-8); padding: var(--sp-10); } }
 .end-cta h3 { font-family: var(--grotesk); font-weight: 700; font-size: clamp(28px, 3.6vw, 44px); line-height: 1.04; letter-spacing: -0.04em; margin: 0; color: var(--on-ink); text-wrap: balance; }
 .end-cta h3 .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--on-ink-italic); letter-spacing: -0.02em; }
