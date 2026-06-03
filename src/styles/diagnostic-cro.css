@@ -2,11 +2,9 @@
    RIVETT · /diagnostic CRO redesign · component styles
    Extracted from approved design 2026-06-02.
    Layered on rivett-ds/tokens.css. All values route through tokens.
-   ============================================================ */
 
-   RIVETT · /diagnostic redesign · hero proof bar + demoted card
-   Layered on tokens.css. Every value routes through a token.
-   Variant state is driven by data-attributes on <body>:
+   Hero proof bar + demoted card. Every value routes through a token.
+   Variant state is driven by data-attributes on the .diagnostic-page wrapper:
      data-proof  A | B | C
      data-cta    pair | single
      data-trust  below | above | hidden
@@ -271,6 +269,7 @@ details[open] summary .marker { transform: rotate(45deg); }
 
 @media (max-width: 880px) { .site-foot .row { grid-template-columns: 1fr 1fr; gap: var(--sp-7); } }
 
+/* ============================================================
    RIVETT · /diagnostic · CRO version
    Layered on tokens.css + diag.css. Adds the form-in-hero layout,
    the booking card, and the outcome line. Routes through tokens.
