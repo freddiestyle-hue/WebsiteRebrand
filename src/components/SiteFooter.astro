@@ -1,0 +1,116 @@
+---
+// Shared site footer. Self-contained: markup + scoped styles, so it renders
+// correctly on any page regardless of which global CSS that page loads.
+// Canonical version - extracted from the homepage footer (was inline + relied
+// on /audit/v3-css/kit.css). New pages should use this component.
+interface Props {
+  /** Marks the current section's link as active (optional). */
+  current?: 'diagnostic' | 'blog' | 'home';
+}
+const { current } = Astro.props;
+const year = 2026;
+---
+<footer class="site-foot">
+  <div class="page">
+    <div class="row">
+      <div>
+        <a href="/" class="foot-wm" aria-label="Rivett, home">
+          rivett<span class="dot" aria-hidden="true"></span>
+        </a>
+      </div>
+      <div class="col">
+        <span class="col-h">The work</span>
+        <a href="/diagnostic" class={current === 'diagnostic' ? 'is-current' : ''}>Diagnostic</a>
+        <a href="/#modules">Build</a>
+        <a href="/#modules">Run</a>
+        <a href="/#homeAuditForm">Run audit</a>
+      </div>
+      <div class="col">
+        <span class="col-h">Field notes</span>
+        <a href="/blog" class={current === 'blog' ? 'is-current' : ''}>All notes</a>
+        <a href="/revenue-leak-mri">Revenue MRI</a>
+      </div>
+      <div class="col">
+        <span class="col-h">Contact</span>
+        <a href="mailto:fred@rivett.tech">fred@rivett.tech</a>
+        <a href="/diagnostic">Talk to Fred</a>
+        <a href="https://www.linkedin.com/in/fredstyle/" rel="noopener">LinkedIn</a>
+      </div>
+    </div>
+    <div class="bot">
+      <span>&copy; rivett &middot; {year}</span>
+      <span>v1.0 &middot; Cape Town &amp; remote</span>
+    </div>
+  </div>
+</footer>
+
+<style>
+  .site-foot {
+    background: var(--ink);
+    color: var(--on-ink);
+    padding: var(--sp-14) 0 var(--sp-7);
+  }
+  .site-foot .row {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr 1fr 1fr;
+    gap: var(--sp-10);
+  }
+  @media (max-width: 880px) {
+    .site-foot .row { grid-template-columns: 1fr 1fr; gap: var(--sp-7); }
+  }
+  .foot-wm {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.1em;
+    font-family: var(--grotesk);
+    font-weight: 700;
+    font-size: 28px;
+    letter-spacing: -0.05em;
+    line-height: 1;
+    color: var(--on-ink);
+    text-decoration: none;
+  }
+  .foot-wm .dot {
+    display: inline-block;
+    width: 0.32em;
+    height: 0.32em;
+    background: var(--accent);
+    border-radius: var(--r-pill);
+    transform: translateY(0.04em);
+  }
+  .site-foot .col-h {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: var(--track-mono);
+    text-transform: uppercase;
+    color: var(--on-ink-faint);
+    margin-bottom: var(--sp-4);
+    display: block;
+  }
+  .site-foot .col a {
+    display: block;
+    padding: 4px 0;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--on-ink);
+    text-decoration: none;
+    cursor: pointer;
+    transition: color var(--dur-1, 0.15s) var(--ease, ease);
+  }
+  .site-foot .col a:hover,
+  .site-foot .col a.is-current { color: var(--accent); }
+  .site-foot .bot {
+    margin-top: var(--sp-12);
+    padding-top: var(--sp-6);
+    border-top: var(--bw-hair) solid var(--on-ink-line);
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: var(--track-mono);
+    text-transform: uppercase;
+    color: var(--on-ink-faint);
+    flex-wrap: wrap;
+    gap: var(--sp-3);
+  }
+</style>

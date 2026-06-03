@@ -5,6 +5,7 @@ import DiagnosticHero from '../components/diagnostic/DiagnosticHero.astro';
 import DiagnosticSteps from '../components/diagnostic/DiagnosticSteps.astro';
 import DiagnosticFAQ from '../components/diagnostic/DiagnosticFAQ.astro';
 import DiagnosticEndCTA from '../components/diagnostic/DiagnosticEndCTA.astro';
+import SiteFooter from '../components/SiteFooter.astro';
 import '../styles/diagnostic-cro.css';
 
 const description = 'A senior operator reads your last quarter, sits in your stack, and writes the one-page memo on what to halt. Two-week diagnostic, fixed scope.';
@@ -45,6 +46,8 @@ const serviceJsonLd = {
     <div class="page">
       <DiagnosticEndCTA />
     </div>
+
+    <SiteFooter current="diagnostic" />
   </div>
 </Base>
 

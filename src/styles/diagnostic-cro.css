@@ -271,7 +271,7 @@ textarea.input { min-height: 110px; resize: vertical; line-height: 1.5; }
 .cta-inv { display: inline-flex; align-items: center; gap: var(--sp-3); padding: 15px 24px; background: var(--paper); color: var(--ink); border: var(--bw-hair) solid var(--paper); font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; white-space: nowrap; text-decoration: none; cursor: pointer; transition: background var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease); }
 .cta-inv:hover { background: var(--accent); border-color: var(--accent); }
 
-@media (max-width: 880px) { .site-foot .row { grid-template-columns: 1fr 1fr; gap: var(--sp-7); } }
+/* Footer styles moved to the shared SiteFooter.astro component (scoped). */
 
 /* ============================================================
    RIVETT · /diagnostic · CRO version
