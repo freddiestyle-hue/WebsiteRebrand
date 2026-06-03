@@ -6,6 +6,7 @@ const { current } = Astro.props;
 const path = Astro.url.pathname;
 const mriActive = current === 'mri' || path.startsWith('/revenue-leak-mri');
 const toolsActive = mriActive;
+const diagnosticActive = path === '/diagnostic' || path.startsWith('/diagnostic/');
 const auditPreviewHref = '/#homeAuditForm';
 ---
 <header class="site-header" data-scrolled="false">
@@ -15,7 +16,9 @@ const auditPreviewHref = '/#homeAuditForm';
     </a>
     <ul class="nav-links">
       <li><a href="/#modules">Work</a></li>
-      <li><a href="/diagnostic">Diagnostic</a></li>
+      <li class={diagnosticActive ? 'current-li' : ''}>
+        <a href="/diagnostic" class={diagnosticActive ? 'current' : ''}>Diagnostic</a>
+      </li>
       <li class:list={['tools-item', toolsActive ? 'current-li' : '']}>
         <details class="tools-menu">
           <summary class={toolsActive ? 'current' : ''}>Tools</summary>

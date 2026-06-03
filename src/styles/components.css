@@ -714,6 +714,9 @@ footer.site .wordmark { font-size: 14px; }
     cursor: pointer;
     list-style: none;
     transition: color 0.15s;
+    /* override browser default bold weight so Tools matches the other nav links */
+    font: inherit;
+    color: inherit;
   }
   .tools-menu summary::-webkit-details-marker { display: none; }
   .tools-menu summary:hover,
