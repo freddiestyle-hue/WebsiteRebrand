@@ -130,7 +130,7 @@ const heroReplay = heroLatest ? sessionReplayUrl(heroLatest.sid) : null;
         </div>
         <h3 class="hero-name">
           {(heroInfo?.linkedinUrl || heroLiHref) ? (
-            <a href={heroInfo?.linkedinUrl || heroLiHref} target="_blank" rel="noopener" class="name-link" title={heroInfo?.linkedinUrl ? "Open LinkedIn profile" : "Google site:linkedin.com search"}>
+            <a href={heroInfo?.linkedinUrl || heroLiHref} target="_blank" rel="noopener" class="name-link" title={heroInfo?.linkedinUrl ? "Open LinkedIn profile" : "Google site:linkedin.com search"} data-mark-channel={heroInfo?.linkedinUrl ? "linkedin" : undefined}>
               {heroInfo?.firstName || heroDomain}<span class="name-link-arrow" aria-hidden="true"> ↗</span>
             </a>
           ) : (heroInfo?.firstName || heroDomain)}
@@ -141,8 +141,8 @@ const heroReplay = heroLatest ? sessionReplayUrl(heroLatest.sid) : null;
         </div>
         {(heroInfo?.email || heroInfo?.linkedinUrl) && (
           <div class="hero-contact">
-            {heroInfo.email && <a href={`mailto:${heroInfo.email}`}>{heroInfo.email}</a>}
-            {heroInfo.linkedinUrl && <a href={heroInfo.linkedinUrl} target="_blank" rel="noopener">LinkedIn ↗</a>}
+            {heroInfo.email && <a href={`mailto:${heroInfo.email}`} data-mark-channel="email">{heroInfo.email}</a>}
+            {heroInfo.linkedinUrl && <a href={heroInfo.linkedinUrl} target="_blank" rel="noopener" data-mark-channel="linkedin">LinkedIn ↗</a>}
             {heroInfo.outreachStage && <span class="hero-stage">{heroInfo.outreachStage.toLowerCase()}</span>}
           </div>
         )}
@@ -224,7 +224,7 @@ const heroReplay = heroLatest ? sessionReplayUrl(heroLatest.sid) : null;
             <div class="body-col">
               <div class="name">
                 {(info?.linkedinUrl || liHref) ? (
-                  <a href={info?.linkedinUrl || liHref} target="_blank" rel="noopener" class="name-link" title={info?.linkedinUrl ? "Open LinkedIn profile" : "Google site:linkedin.com search"}>
+                  <a href={info?.linkedinUrl || liHref} target="_blank" rel="noopener" class="name-link" title={info?.linkedinUrl ? "Open LinkedIn profile" : "Google site:linkedin.com search"} data-mark-channel={info?.linkedinUrl ? "linkedin" : undefined}>
                     {info?.firstName || domain}<span class="name-link-arrow" aria-hidden="true"> ↗</span>
                   </a>
                 ) : (info?.firstName || domain)}
@@ -626,6 +626,27 @@ const heroReplay = heroLatest ? sessionReplayUrl(heroLatest.sid) : null;
             btn.textContent = '✓';
             alert('Could not mark messaged. Try again.');
           }
+        });
+      });
+
+      // Click-to-Sent. Tagged contact links (mailto: + real LinkedIn profile
+      // URLs) mark the prospect Sent the moment Fred clicks them - his flow
+      // is to one-shot the connection request + audit, so the click IS the
+      // send. LinkedIn opens in a new tab and mailto: hands off to the system
+      // mail client, so the current page stays loaded and the fetch completes
+      // normally. Google "site:linkedin.com" search fallbacks are excluded
+      // because that click is discovery, not outreach. Downgrade protection
+      // on the API endpoint stops a Replied/Booked/Won row from regressing.
+      queue.querySelectorAll('a[data-mark-channel]').forEach((a) => {
+        a.addEventListener('click', () => {
+          const channel = a.getAttribute('data-mark-channel');
+          if (!channel) return;
+          if (channel === 'linkedin' && !/linkedin\.com\/in\//i.test(a.href)) return;
+          const row = a.closest('[data-slug]');
+          if (!row) return;
+          const slug = row.getAttribute('data-slug');
+          if (!slug) return;
+          markSentSilently(slug);
         });
       });
 

@@ -36,11 +36,14 @@ const calLinkOf = (href: string) => href.replace(/^cal:/, '');
     a.addEventListener('click', (e) => {
       const w = window as any;
       if (w.posthog) {
-        w.posthog.capture('diagnostic_cta_click', { source: 'alt_route_short_call' });
+        w.posthog.capture('diagnostic_cta_click', { source: 'alt_route_short_call', path: window.location.pathname }, { send_instantly: true, transport: 'sendBeacon' });
       }
       const ns = w.__rivettCalNamespace;
       if (w.Cal && ns && w.Cal.ns?.[ns]) {
         e.preventDefault();
+        if (w.posthog) {
+          w.posthog.capture('diagnostic_booking_modal_opened', { source: 'alt_route_short_call', path: window.location.pathname }, { send_instantly: true, transport: 'sendBeacon' });
+        }
         w.Cal.ns[ns]('modal', { calLink: link });
       }
     });

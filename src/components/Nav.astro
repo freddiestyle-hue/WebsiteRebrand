@@ -5,8 +5,7 @@ interface Props {
 const { current } = Astro.props;
 const path = Astro.url.pathname;
 const mriActive = current === 'mri' || path.startsWith('/revenue-leak-mri');
-const vanishActive = path.startsWith('/30-day-vanish-test');
-const toolsActive = mriActive || vanishActive;
+const toolsActive = mriActive;
 const auditPreviewHref = '/#homeAuditForm';
 ---
 <header class="site-header" data-scrolled="false">
@@ -24,10 +23,6 @@ const auditPreviewHref = '/#homeAuditForm';
             <a href={auditPreviewHref}>
               <span>Audit preview</span>
               <small>Run the scan. Detailed findings are redacted.</small>
-            </a>
-            <a href="/30-day-vanish-test" class={vanishActive ? 'current' : ''}>
-              <span>30-Day Vanish Test</span>
-              <small>See what breaks if you stop replying.</small>
             </a>
             <a href="/revenue-leak-mri" class={mriActive ? 'current' : ''}>
               <span>Revenue MRI</span>
@@ -60,7 +55,6 @@ const auditPreviewHref = '/#homeAuditForm';
       <span>Tools</span>
       <ul>
         <li><a href={auditPreviewHref}>Audit preview</a></li>
-        <li><a href="/30-day-vanish-test">30-Day Vanish Test</a></li>
         <li><a href="/revenue-leak-mri">Revenue MRI</a></li>
       </ul>
     </li>

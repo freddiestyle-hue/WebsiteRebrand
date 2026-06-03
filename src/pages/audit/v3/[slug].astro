@@ -52,7 +52,7 @@ interface CachedV3 {
   fetchedAt: string;
 }
 
-const CAL_URL = 'https://cal.com/fred-style/discovery?overlayCalendar=true';
+const CAL_BASE_URL = 'https://cal.com/fred-style/discovery';
 // Email clients (Outlook, Gmail) and DM platforms (LinkedIn) routinely append
 // or absorb the trailing punctuation when a URL ends a sentence:
 //   "audit of your site: https://rivett.tech/audit/v3/foo-com. Would love..."
@@ -61,6 +61,17 @@ const CAL_URL = 'https://cal.com/fred-style/discovery?overlayCalendar=true';
 // prospect lands on their actual audit instead of a 404.
 const rawSlug = Astro.params.slug ?? '';
 const slug = rawSlug.replace(/[.,;)\]\s]+$/, '');
+const calUrl = new URL(CAL_BASE_URL);
+calUrl.searchParams.set('overlayCalendar', 'true');
+calUrl.searchParams.set('prospect', slug);
+calUrl.searchParams.set('utm_source', 'audit_memo');
+calUrl.searchParams.set('utm_medium', 'site');
+calUrl.searchParams.set('utm_content', 'memo_book_call');
+for (const key of ['utm_campaign', 'utm_recipient', 'rl', 'r']) {
+  const value = Astro.url.searchParams.get(key);
+  if (value) calUrl.searchParams.set(key, value);
+}
+const CAL_URL = calUrl.toString();
 
 let cached: CachedV3 | null = null;
 let kvError: 'invalid' | 'not_found' | 'kv_failed' | null = null;

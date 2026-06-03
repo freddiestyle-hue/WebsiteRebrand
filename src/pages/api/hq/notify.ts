@@ -67,6 +67,11 @@ function humanSignal(signal: string): string {
     case 'verdict_expand': return 'Opened verdict details';
     case 'copy_print': return 'Copied or printed the memo';
     case 'diagnostic_view': return 'Viewed diagnostic page';
+    case 'diagnostic_cta_click': return 'Clicked diagnostic booking CTA';
+    case 'diagnostic_booking_complete': return 'Completed diagnostic booking';
+    case 'call_booked': return 'Booked a call';
+    case 'audit_full_requested': return 'Requested full audit';
+    case 'mri_email_captured': return 'Submitted Revenue MRI email';
     case 'multi_viewer': return 'Multiple people viewed the memo';
     case 'cta_plus_engaged': return 'CTA click plus engagement';
     case 'return_visit': return 'Repeat visit to memo';
@@ -95,6 +100,11 @@ const STRONG_SCANNER_SAFE_SIGNALS = new Set([
   'verdict_expand',
   'copy_print',
   'diagnostic_view',
+  'diagnostic_cta_click',
+  'diagnostic_booking_complete',
+  'call_booked',
+  'audit_full_requested',
+  'mri_email_captured',
   'multi_viewer',
   'cta_plus_engaged',
 ]);

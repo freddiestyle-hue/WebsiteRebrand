@@ -151,7 +151,40 @@ const SELF_CITY_EXCLUSION = `
 
 // Events that prove a session was driven by a human. A scanner that just
 // loads the page and fires $pageview/$pageleave won't appear here.
-const HUMAN_SIGNAL_EVENTS = `'scroll_depth','cta_clicked','audit_v3_verdict_expanded','content_copied','content_printed'`;
+const HUMAN_SIGNAL_EVENTS = [
+  'scroll_depth',
+  'audit_v3_scroll_depth',
+  'cta_clicked',
+  'audit_v3_verdict_expanded',
+  'audit_v3_section_viewed',
+  'audit_v3_dwell',
+  'audit_v3_full_audit_requested',
+  'content_copied',
+  'audit_v3_content_copied',
+  'content_printed',
+  'audit_v3_print',
+  'diagnostic_cta_click',
+  'diagnostic_booking_modal_opened',
+  'diagnostic_booking_complete',
+  'call_booked',
+  'revenue_mri_email_captured',
+  'mri_email_captured',
+  'mri_book_diagnostic_clicked',
+].map((e) => `'${e}'`).join(',');
+
+const REVENUE_SIGNAL_EVENTS = [
+  'audit_v3_full_audit_requested',
+  'audit_lead_received',
+  'audit_lead_email_sent',
+  'diagnostic_cta_click',
+  'diagnostic_booking_modal_opened',
+  'diagnostic_booking_complete',
+  'call_booked',
+  'revenue_mri_email_captured',
+  'mri_email_captured',
+  'mri_lead_email_sent',
+  'mri_book_diagnostic_clicked',
+].map((e) => `'${e}'`).join(',');
 
 /**
  * Build a "this session interacted" subquery given a time-where clause.
@@ -418,9 +451,10 @@ export interface TopProspect {
   scroll_100s: number;            // scroll_depth where depth=100 (full reads)
   copies: number;                 // content_copied events (selection >= 20 chars)
   prints: number;                 // content_printed events (saving as PDF)
-  focus_seconds_total: number;    // sum of tab_focus_time.focus_seconds across sessions
-  return_visitor: boolean;        // unique_sessions > 1 (came back at least once)
-  // v9 stickiness signal
+	  focus_seconds_total: number;    // sum of tab_focus_time.focus_seconds across sessions
+	  return_visitor: boolean;        // unique_sessions > 1 (came back at least once)
+	  revenue_signals: number;        // full audit requests, diagnostic/booking/MRI money-path signals
+	  // v9 stickiness signal
   related_clicks: number;         // cta_clicked with cta=memo_related (blog read-next) or memo_to_mri
   // v3.5 per-cell drill-down signal (which dimensions did they expand on the audit)
   // Each entry is the dimension icon key (e.g. 'search', 'spark', 'mail'),
@@ -445,6 +479,7 @@ export interface TopProspect {
 //   distinct_visitors >= 3:      +25  (additive — team is reviewing)
 //   distinct_visitors >= 4:      +25  (additive — many stakeholders, buy signal)
 //   cta_clicks:                  +25
+//   revenue_signals:             +45  (full audit, booking, MRI lead/path signal)
 //   related_clicks:              +20  (memo_related / memo_to_mri — sticky signal)
 //   scroll_100s:                 +15
 //   verdict_expansions:          +10
@@ -455,13 +490,14 @@ const HEAT_SCORE_SQL = `(
   (prints * 40) +
   (copies * 30) +
   (if(distinct_visitors >= 2, 35, 0)) +
-  (if(distinct_visitors >= 3, 25, 0)) +
-  (if(distinct_visitors >= 4, 25, 0)) +
-  (cta_clicks * 25) +
-  (related_clicks * 20) +
+	  (if(distinct_visitors >= 3, 25, 0)) +
+	  (if(distinct_visitors >= 4, 25, 0)) +
+	  (cta_clicks * 25) +
+	  (revenue_signals * 45) +
+	  (related_clicks * 20) +
   (scroll_100s * 15) +
   (verdict_expansions * 10) +
-  (if(unique_sessions > 1 AND (scroll_100s > 0 OR verdict_expansions > 0 OR cta_clicks > 0 OR copies > 0 OR prints > 0 OR related_clicks > 0), 30, 0)) +
+	  (if(unique_sessions > 1 AND (scroll_100s > 0 OR verdict_expansions > 0 OR cta_clicks > 0 OR copies > 0 OR prints > 0 OR related_clicks > 0 OR revenue_signals > 0), 30, 0)) +
   least(20, intDiv(focus_seconds_total, 10)) +
   least(10, intDiv(total_dwell_seconds, 30))
 )`;
@@ -483,9 +519,10 @@ export async function getTopProspects(range: DateRange, mode: TrafficMode = 'hum
       sum(session_verdicts) AS verdict_expansions,
       sum(session_scroll_100) AS scroll_100s,
       sum(session_copies) AS copies,
-      sum(session_prints) AS prints,
-      sum(session_focus) AS focus_seconds_total,
-      sum(session_related) AS related_clicks,
+	      sum(session_prints) AS prints,
+	      sum(session_focus) AS focus_seconds_total,
+	      sum(session_revenue_signals) AS revenue_signals,
+	      sum(session_related) AS related_clicks,
       arrayDistinct(arrayFlatten(groupArray(session_expanded_dims))) AS expanded_dimensions,
       ${HEAT_SCORE_SQL} AS heat_score,
       max(last_event) AS last_view,
@@ -513,13 +550,14 @@ export async function getTopProspects(range: DateRange, mode: TrafficMode = 'hum
         toString(any(person_id)) AS session_person_id,
         countIf(event = '$pageview') AS session_views,
         countIf(event = 'cta_clicked') AS session_clicks,
-        countIf(event = 'audit_v3_verdict_expanded') AS session_verdicts,
-        countIf(event = 'scroll_depth' AND toInt(properties.depth) = 100) AS session_scroll_100,
-        max(if(event = 'scroll_depth', toInt(properties.depth), 0)) AS session_max_scroll,
-        countIf(event = 'content_copied') AS session_copies,
-        countIf(event = 'content_printed') AS session_prints,
-        sumIf(toInt(properties.focus_seconds), event = 'tab_focus_time') AS session_focus,
-        countIf(event = 'cta_clicked' AND (properties.cta = 'memo_related' OR properties.cta = 'memo_to_mri')) AS session_related,
+	        countIf(event = 'audit_v3_verdict_expanded') AS session_verdicts,
+	        countIf(event IN ('scroll_depth', 'audit_v3_scroll_depth') AND toInt(properties.depth) = 100) AS session_scroll_100,
+	        max(if(event IN ('scroll_depth', 'audit_v3_scroll_depth'), toInt(properties.depth), 0)) AS session_max_scroll,
+	        countIf(event IN ('content_copied', 'audit_v3_content_copied')) AS session_copies,
+	        countIf(event IN ('content_printed', 'audit_v3_print')) AS session_prints,
+	        sumIf(toInt(properties.focus_seconds), event = 'tab_focus_time') AS session_focus,
+	        countIf(event IN (${REVENUE_SIGNAL_EVENTS})) AS session_revenue_signals,
+	        countIf(event = 'cta_clicked' AND (properties.cta = 'memo_related' OR properties.cta = 'memo_to_mri')) AS session_related,
         countIf(event = 'cta_clicked' AND properties.cta LIKE 'cell_expand_%') AS session_cell_expands,
         toString(any(properties.$geoip_city_name)) AS session_city,
         toString(any(properties.$geoip_country_name)) AS session_country,
@@ -549,7 +587,7 @@ export async function getTopProspects(range: DateRange, mode: TrafficMode = 'hum
     -- This HAVING clause is the query-side guarantee.
     HAVING ${
       mode === 'humans'
-        ? '(cta_clicks + verdict_expansions + scroll_100s + copies + prints + related_clicks) > 0 OR length(expanded_dimensions) > 0'
+	        ? '(cta_clicks + verdict_expansions + scroll_100s + copies + prints + related_clicks + revenue_signals) > 0 OR length(expanded_dimensions) > 0'
         : '1=1'
     }
     ORDER BY heat_score DESC, last_view DESC
@@ -569,8 +607,9 @@ export async function getTopProspects(range: DateRange, mode: TrafficMode = 'hum
     scroll_100s: number;
     copies: number;
     prints: number;
-    focus_seconds_total: number;
-    related_clicks: number;
+	    focus_seconds_total: number;
+	    revenue_signals: number;
+	    related_clicks: number;
     expanded_dimensions: string[];
     heat_score: number;
     last_view: string;
@@ -604,8 +643,9 @@ export async function getTopProspects(range: DateRange, mode: TrafficMode = 'hum
     scroll_100s: row.scroll_100s ?? 0,
     copies: row.copies ?? 0,
     prints: row.prints ?? 0,
-    focus_seconds_total: row.focus_seconds_total ?? 0,
-    related_clicks: row.related_clicks ?? 0,
+	    focus_seconds_total: row.focus_seconds_total ?? 0,
+	    revenue_signals: row.revenue_signals ?? 0,
+	    related_clicks: row.related_clicks ?? 0,
     expanded_dimensions: (row.expanded_dimensions ?? []).filter((d) => d && d !== ''),
     return_visitor: row.unique_sessions > 1,
     heat_score: row.heat_score ?? 0,

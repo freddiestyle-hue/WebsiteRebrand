@@ -57,7 +57,11 @@ import { CAL_LINK, CAL_NAMESPACE } from '../../content/diagnostic';
     action: "bookingSuccessful",
     callback: function (e) {
       if (window.posthog) {
-        window.posthog.capture("diagnostic_booking_complete", { source: "cal_modal" });
+        window.posthog.capture("diagnostic_booking_complete", {
+          source: "cal_modal",
+          path: window.location.pathname,
+          booking_uid: e?.data?.booking?.uid || e?.data?.uid || null,
+        }, { send_instantly: true, transport: "sendBeacon" });
       }
     },
   });

@@ -67,7 +67,7 @@ const FINDING_FIELDS_BY_VERTICAL: Record<string, string[]> = {
   ],
 };
 
-const CACHE_KEY = 'hq:airtable:prospects:v6';
+const CACHE_KEY = 'hq:airtable:prospects:v8';
 const CACHE_TTL_SECONDS = 1800;
 
 export type Vertical = 'Advertiser' | 'Mental Health' | 'Homecare' | 'Fractional Role';
@@ -209,7 +209,17 @@ async function fetchAll(pat: string): Promise<AirtableRecord[]> {
 function recordToInfo(rec: AirtableRecord): ProspectInfo | null {
   const f = rec.fields || {};
   const auditUrl = String(f['Audit URL'] || '').trim();
-  const slug = extractSlug(auditUrl);
+  // Slug join key. Prefer the slug embedded in the Audit URL (so PostHog
+  // engagement joins work). Fall back to a synthetic slug derived from the
+  // Domain field so prospects without an audit still surface in the HQ
+  // backlog - they just won't have engagement signals attached. This lets
+  // the "fix the backlog" view include the 74 migrated records (and any
+  // future un-audited rows) instead of silently dropping them.
+  let slug = extractSlug(auditUrl);
+  if (!slug) {
+    const domain = String(f['Domain'] || '').trim().toLowerCase();
+    if (domain) slug = domain.replace(/\./g, '-').replace(/[^a-z0-9-]/g, '');
+  }
   if (!slug) return null;
 
   const firstName = String(f['First Name'] || '').trim();
@@ -281,30 +291,70 @@ export interface OutreachQueueRow {
 }
 
 /**
- * Returns the prospects ready to send for a given Attack Wave - filtered to
- * unsent rows with a LinkedIn URL and a populated LinkedIn DM. Ordered by
- * Priority (A+ first, then A, B, C) and then by record id for stability.
- *
- * Reads from the same cached Prospects pull that getProspectsBySlug uses,
- * so the queue stays in sync with the Action Queue / Top Prospects views.
+ * Options for `getOutreachQueueByWave`. Defaults match the original wave-scoped
+ * "send queue" semantics; pass `wave: null` and relax the gates to surface the
+ * full unreached backlog.
  */
-export async function getOutreachQueueByWave(wave: string): Promise<OutreachQueueRow[]> {
+export interface OutreachQueueOptions {
+  /** Wave to scope to. `null` returns all waves AND prospects with no wave assigned. */
+  wave?: string | null;
+  /** When true, also includes prospects at stage "Drafted" (copy written, never sent). */
+  includeDrafted?: boolean;
+  /** When true, also includes "Connection Sent" + "Sent" (in-flight; chase / follow up). */
+  includeInFlight?: boolean;
+  /** When true, the queue only includes rows with a populated LinkedIn DM. */
+  requireDm?: boolean;
+  /** When true (default), the queue only includes rows with a LinkedIn URL. */
+  requireLinkedinUrl?: boolean;
+}
+
+/**
+ * Returns the prospects ready to send. Defaults to the strict wave-scoped
+ * queue (Not Sent + LinkedIn URL + LinkedIn DM, single wave). Callers can pass
+ * an options object to surface the full backlog instead - drop the wave gate,
+ * include "Drafted" rows, and allow rows without a generated DM (the cockpit's
+ * Send button auto-disables when DM is missing, prompting the "Draft DM" flow).
+ *
+ * Ordered by Priority (A+ first, then A, B, C) and then by record id for
+ * stability. Reads from the same cached Prospects pull that getProspectsBySlug
+ * uses, so the queue stays in sync with the Action Queue / Top Prospects views.
+ */
+export async function getOutreachQueueByWave(
+  arg: string | OutreachQueueOptions,
+): Promise<OutreachQueueRow[]> {
+  const opts: Required<OutreachQueueOptions> = typeof arg === 'string'
+    ? { wave: arg, includeDrafted: false, includeInFlight: false, requireDm: true, requireLinkedinUrl: true }
+    : {
+        wave: arg.wave ?? null,
+        includeDrafted: arg.includeDrafted ?? false,
+        includeInFlight: arg.includeInFlight ?? false,
+        requireDm: arg.requireDm ?? true,
+        requireLinkedinUrl: arg.requireLinkedinUrl ?? true,
+      };
+
+  const stageList: string[] = ['Not Sent'];
+  if (opts.includeDrafted) stageList.push('Drafted');
+  if (opts.includeInFlight) stageList.push('Connection Sent', 'Connection Accepted', 'Sent', 'Bumped');
+  const allowedStages = new Set<string>(stageList);
+
   const all = await getProspectsBySlug();
   const queue: OutreachQueueRow[] = [];
   for (const info of all.values()) {
-    if (!info.attackWave) continue;
-    if (info.attackWave !== wave) continue;
-    // ONLY show prospects at "Not Sent". Anything else - Drafted, Connection
-    // Sent, Sent, Replied, Disqualified, etc - is considered actioned and
-    // should not reappear in the Send Queue. The Send button's PATCH writes
-    // "Connection Sent" via /api/hq/mark-messaged, which is what drops the
-    // row out on next render. "Drafted" used to be included here but nothing
-    // in the codebase writes it - records at "Drafted" got there by manual
-    // edits in Airtable, and they were not "ready to send" in the way the
-    // queue intends. Fred's rule: click Send = reached out = out of the queue.
-    if (info.outreachStage && info.outreachStage !== 'Not Sent') continue;
-    if (!info.linkedinUrl) continue;
-    if (!info.linkedinDm) continue;
+    // Wave gate: only enforced when the caller asked for a specific wave.
+    // `wave: null` surfaces every prospect across all waves AND prospects
+    // with no Attack Wave assigned (the migration backlog lives here).
+    if (opts.wave !== null) {
+      if (!info.attackWave) continue;
+      if (info.attackWave !== opts.wave) continue;
+    }
+    // Stage gate. Always exclude Replied / Booked / Won / Lost / Disqualified
+    // (deal terminal states). Optionally include Drafted (manually drafted
+    // rows that never shipped) and in-flight stages (Connection Sent / Sent
+    // etc. - prospect needs chasing for an accept or reply).
+    const stage = info.outreachStage || 'Not Sent';
+    if (!allowedStages.has(stage)) continue;
+    if (opts.requireLinkedinUrl && !info.linkedinUrl) continue;
+    if (opts.requireDm && !info.linkedinDm) continue;
     queue.push({
       recordId: info.recordId,
       slug: info.slug,

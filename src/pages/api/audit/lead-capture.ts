@@ -23,6 +23,7 @@
 
 import type { APIRoute } from 'astro';
 import { Resend } from 'resend';
+import { captureServerEvent } from '../../../utils/posthog/capture';
 
 export const prerender = false;
 
@@ -67,6 +68,23 @@ export const POST: APIRoute = async ({ request }) => {
     return json({ error: 'Missing audited_url.' }, 400);
   }
 
+  const submittedAt = new Date().toISOString();
+  const eventProps = {
+    source: 'audit_v3_preview_gate',
+    audited_url: auditedUrl,
+    audit_id: auditId || null,
+    score_percent: scorePercent,
+    score_band: scoreBand(scorePercent),
+    audit_run_url: auditRunUrl || null,
+    has_context: context.length > 0,
+  };
+  await captureServerEvent({
+    event: 'audit_lead_received',
+    distinctId: email,
+    properties: eventProps,
+    timestamp: submittedAt,
+  });
+
   const resendApiKey = process.env.RESEND_API_KEY;
   const notificationEmail = process.env.NOTIFICATION_EMAIL;
   const fromEmail = process.env.QUALIFY_FROM_EMAIL || 'qualify@rivett.tech';
@@ -77,12 +95,17 @@ export const POST: APIRoute = async ({ request }) => {
     // still fires. Fred sees nothing, but the lead isn't lost from the
     // visitor's perspective (they got value).
     console.error('[audit/lead-capture] RESEND_API_KEY or NOTIFICATION_EMAIL not set; lead silently dropped:', { email, auditedUrl });
+    await captureServerEvent({
+      event: 'audit_lead_email_failed',
+      distinctId: email,
+      properties: { ...eventProps, reason: 'backend_not_configured' },
+      timestamp: submittedAt,
+    });
     return json({ ok: true, unlock: true, note: 'backend_not_configured' });
   }
 
   const resend = new Resend(resendApiKey);
   const subject = `Audit lead · ${auditedUrl}`;
-  const submittedAt = new Date().toISOString();
 
   const html = buildHtmlEmail({
     email,
@@ -119,8 +142,21 @@ export const POST: APIRoute = async ({ request }) => {
     console.error('[audit/lead-capture] resend error', error);
     // Don't punish the visitor — return ok so the unlock fires anyway.
     // Fred can find them by reply-to if Resend dashboard logs the send.
+    await captureServerEvent({
+      event: 'audit_lead_email_failed',
+      distinctId: email,
+      properties: { ...eventProps, reason: 'resend_error' },
+      timestamp: submittedAt,
+    });
     return json({ ok: true, unlock: true, note: 'send_failed' });
   }
+
+  await captureServerEvent({
+    event: 'audit_lead_email_sent',
+    distinctId: email,
+    properties: eventProps,
+    timestamp: submittedAt,
+  });
 
   return json({ ok: true, unlock: true });
 };
@@ -139,6 +175,14 @@ function json(body: Record<string, unknown>, status = 200) {
 
 function isEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function scoreBand(score: number | null) {
+  if (score == null) return 'unknown';
+  if (score >= 80) return '80_100';
+  if (score >= 60) return '60_79';
+  if (score >= 40) return '40_59';
+  return '0_39';
 }
 
 function escapeHtml(value: string) {
