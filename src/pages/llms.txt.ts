@@ -34,7 +34,7 @@ export async function GET(_context: APIContext) {
   lines.push('## Tools');
   lines.push('');
   lines.push(`- [Revenue Leak MRI](${SITE_ORIGIN}/revenue-leak-mri): interactive diagnostic for finding broken revenue mechanics.`);
-  lines.push(`- [Book a diagnostic](${SITE_ORIGIN}/diagnostic): two-week fixed-scope engagement, $3,500.`);
+  lines.push(`- [Book a diagnostic](${SITE_ORIGIN}/diagnostic): two-week fixed-scope engagement, one senior operator, one-page memo. No payment up front.`);
   lines.push('');
   lines.push('## Full corpus');
   lines.push('');

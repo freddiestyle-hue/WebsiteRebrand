@@ -1,0 +1,34 @@
+---
+// /diagnostic reassurance aside — approved 2026-06-02.
+// Two stacked blocks: refund promise + calendar window.
+// The calendar copy is updated dynamically below via a small script so the dates
+// stay near-future without manual editing every week.
+---
+<aside class="aside">
+  <div class="reassure">
+    <span class="stamp">Reassurance</span>
+    <h4>If the read is wrong, <span class="ital">we refund the second week.</span></h4>
+    <p>Half the diagnostic is the meeting that does not happen. If the memo lands and you say &ldquo;I knew that&rdquo;, we refund the second week. You keep the document.</p>
+  </div>
+  <div class="reassure">
+    <span class="stamp">Calendar</span>
+    <p class="cal-when" data-cal-when>Next slot updates on page load</p>
+    <p>Or the same week, different days. We&rsquo;ll suggest two more in the follow-up.</p>
+  </div>
+</aside>
+
+<script is:inline>
+  (function () {
+    const el = document.querySelector('[data-cal-when]');
+    if (!el) return;
+    const now = new Date();
+    // Find the next Monday at 14:00 SAST (UTC+2, no DST in South Africa).
+    const day = now.getDay(); // 0 Sun ... 6 Sat
+    const daysUntilMon = (8 - day) % 7 || 7; // always next week's Monday, not today even if Mon
+    const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysUntilMon);
+    const yyyy = next.getFullYear();
+    const mm = String(next.getMonth() + 1).padStart(2, '0');
+    const dd = String(next.getDate()).padStart(2, '0');
+    el.textContent = 'Mon · ' + yyyy + '·' + mm + '·' + dd + ' · 14:00 SAST';
+  })();
+</script>

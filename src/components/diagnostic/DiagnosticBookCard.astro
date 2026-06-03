@@ -1,0 +1,121 @@
+---
+// /diagnostic book card — approved 2026-06-02.
+// Three-field intake form that, on submit:
+//   1. POSTs to /api/diagnostic-intake (captures lead even if user bails)
+//   2. Opens the Cal modal with name/email/notes prefilled
+// Cal handles the time picker; existing call_booked webhook fires on success.
+import { CAL_LINK, CAL_NAMESPACE } from '../../content/diagnostic';
+---
+<aside class="book-card" id="book">
+  <span class="stamp stamp--neutral">Book the diagnostic</span>
+  <div class="bc-h">Three minutes. <span class="ital">We reply in 24 hours.</span></div>
+  <p class="bc-sub">No NDA for the intake. No payment up front.</p>
+
+  <form class="bc-form" id="diagnostic-intake-form" novalidate>
+    <div class="field">
+      <label for="di-name">Name <span class="req">REQUIRED</span></label>
+      <input id="di-name" name="name" class="input" placeholder="Your name" required autocomplete="name" />
+    </div>
+    <div class="field">
+      <label for="di-email">Email <span class="req">REQUIRED</span></label>
+      <input id="di-email" name="email" class="input" type="email" placeholder="you@company.com" required autocomplete="email" />
+    </div>
+    <div class="field bc-third">
+      <label for="di-notes">Where are the numbers, or what is happening?</label>
+      <textarea id="di-notes" name="notes" class="input" rows="2" placeholder="Stripe / a sheet / warehouse. Or one line on what is going on."></textarea>
+    </div>
+
+    <button class="bc-submit" type="submit" data-default-label="Book diagnostic →">Book diagnostic →</button>
+    <p class="bc-micro">We read whatever you send. We&rsquo;ll ask the rest in the reply.</p>
+    <p class="bc-or"><a href="mailto:fred@rivett.tech">Or email Fred &rarr;</a></p>
+  </form>
+
+  <div class="bc-foot">
+    <span><span class="tdot"></span>No payment up front</span>
+    <span><span class="tdot"></span>Reply in 24 hrs</span>
+    <span><span class="tdot"></span>Refund the 2nd week if the read is wrong</span>
+  </div>
+</aside>
+
+<script is:inline define:vars={{ CAL_LINK, CAL_NAMESPACE }}>
+  (function () {
+    const form = document.getElementById('diagnostic-intake-form');
+    if (!form) return;
+    const submit = form.querySelector('.bc-submit');
+    const defaultLabel = submit ? submit.dataset.defaultLabel || submit.textContent : 'Book diagnostic →';
+
+    function setBusy(busy, label) {
+      if (!submit) return;
+      submit.disabled = !!busy;
+      submit.textContent = label || defaultLabel;
+    }
+
+    function captureClient(event, payload) {
+      if (window.posthog) {
+        window.posthog.capture(event, payload || {});
+      }
+    }
+
+    function openCalWithPrefill(name, email, notes) {
+      if (typeof window.Cal !== 'function' || !window.__rivettCalNamespace) {
+        // Cal not loaded — fall back to a new tab on the discovery URL with prefill.
+        captureClient('cal_modal_fallback', { source: 'diagnostic_intake', reason: 'cal_not_loaded' });
+        const params = new URLSearchParams({ name, email, notes: notes || '' });
+        window.open('https://cal.com/' + CAL_LINK + '?' + params.toString(), '_blank', 'noopener');
+        return;
+      }
+      try {
+        window.Cal.ns[window.__rivettCalNamespace]('modal', {
+          calLink: window.__rivettCalLink,
+          config: {
+            layout: 'month_view',
+            name: name,
+            email: email,
+            notes: notes || '',
+            'metadata[source]': 'diagnostic_intake',
+            'metadata[path]': window.location.pathname,
+          },
+        });
+        captureClient('diagnostic_intake_to_cal_modal', { has_notes: Boolean(notes) });
+      } catch (err) {
+        captureClient('cal_modal_fallback', { source: 'diagnostic_intake', reason: 'modal_threw' });
+        const params = new URLSearchParams({ name, email, notes: notes || '' });
+        window.open('https://cal.com/' + CAL_LINK + '?' + params.toString(), '_blank', 'noopener');
+      }
+    }
+
+    form.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      const data = new FormData(form);
+      const name = (data.get('name') || '').toString().trim();
+      const email = (data.get('email') || '').toString().trim();
+      const notes = (data.get('notes') || '').toString().trim();
+
+      if (!name || !email) {
+        setBusy(false, 'Name and email required');
+        setTimeout(function () { setBusy(false); }, 2200);
+        return;
+      }
+
+      setBusy(true, 'Booking...');
+      captureClient('diagnostic_intake_submitted', { has_notes: Boolean(notes), name_length: name.length });
+
+      // Fire-and-let-finish: POST the lead, then open Cal regardless of POST outcome.
+      // We don't block the booking step on the API; the form is captured server-side
+      // even if the user bails on the time picker.
+      try {
+        fetch('/api/diagnostic-intake', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: name, email: email, notes: notes, path: window.location.pathname, submitted_at: new Date().toISOString() }),
+          keepalive: true,
+        }).catch(function () { /* swallow; Cal is the primary path */ });
+      } catch (err) { /* same */ }
+
+      openCalWithPrefill(name, email, notes);
+
+      // Reset label after a moment so a second booking (different person on same machine) works.
+      setTimeout(function () { setBusy(false); }, 600);
+    });
+  })();
+</script>
