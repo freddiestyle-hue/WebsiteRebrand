@@ -732,6 +732,12 @@ footer.site .wordmark { font-size: 14px; }
   .tools-menu[open] summary::after {
     content: '–';
   }
+  /* When details is closed, hide the panel. The bare `display: grid` below
+     was overriding the browser's default content-hiding for closed <details>,
+     leaving the panel always-visible under the Tools summary. */
+  .tools-menu:not([open]) .tools-panel {
+    display: none;
+  }
   .tools-panel {
     background: var(--paper);
     border: 1px solid var(--ink);
