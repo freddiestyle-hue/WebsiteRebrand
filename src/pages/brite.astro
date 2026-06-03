@@ -267,6 +267,12 @@ const description = 'Cold outbound that turns marketing audits into Brite job re
 </script>
 
 <style is:global>
+  /* This prototype is a standalone Brite-branded property. Hide Rivett's
+     global nav so Anil sees a clean Brite page, not Rivett chrome. Scoped
+     to this page only — the style bundle ships solely with /brite. */
+  .site-header { display: none !important; }
+  body { padding-top: 0 !important; }
+
   .brite {
     --o: #ff9700;
     --o-d: #e88500;
