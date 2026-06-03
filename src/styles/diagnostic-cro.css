@@ -246,14 +246,16 @@ textarea.input { min-height: 110px; resize: vertical; line-height: 1.5; }
 .faq-sec h2 { font-family: var(--grotesk); font-weight: 700; font-size: 44px; line-height: 1.04; letter-spacing: -0.04em; margin: var(--sp-4) 0 var(--sp-8); text-wrap: balance; max-width: 1000px; }
 .faq-sec h2 .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); }
 .faq { border-top: var(--bw-hair) solid var(--ink); max-width: 900px; }
-details { border-bottom: var(--bw-hair) solid var(--line); padding: var(--sp-5) 0; }
-details summary { list-style: none; cursor: pointer; display: grid; grid-template-columns: 36px 1fr 24px; align-items: baseline; gap: var(--sp-3); font-family: var(--grotesk); font-weight: 600; font-size: 19px; letter-spacing: var(--track-h-sm); line-height: 1.35; color: var(--ink); }
-details summary::-webkit-details-marker { display: none; }
-details summary .num { font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); color: var(--ink-faint); padding-top: 5px; }
-details summary .marker { font-family: var(--mono); font-size: 18px; color: var(--accent-deep); transition: transform var(--dur-2) var(--ease); display: inline-block; line-height: 1; text-align: right; }
-details[open] summary .marker { transform: rotate(45deg); }
-.answer { padding: var(--sp-4) 36px 0 calc(36px + var(--sp-3)); font-size: 16px; line-height: 1.65; color: var(--ink-dim); max-width: 720px; }
-.answer p { margin: 0; }
+/* Scoped to .faq so these don't leak out to other <details> elements on the page
+   (e.g. the site nav's Tools dropdown, which got the border + padding before). */
+.faq details { border-bottom: var(--bw-hair) solid var(--line); padding: var(--sp-5) 0; }
+.faq details summary { list-style: none; cursor: pointer; display: grid; grid-template-columns: 36px 1fr 24px; align-items: baseline; gap: var(--sp-3); font-family: var(--grotesk); font-weight: 600; font-size: 19px; letter-spacing: var(--track-h-sm); line-height: 1.35; color: var(--ink); }
+.faq details summary::-webkit-details-marker { display: none; }
+.faq details summary .num { font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); color: var(--ink-faint); padding-top: 5px; }
+.faq details summary .marker { font-family: var(--mono); font-size: 18px; color: var(--accent-deep); transition: transform var(--dur-2) var(--ease); display: inline-block; line-height: 1; text-align: right; }
+.faq details[open] summary .marker { transform: rotate(45deg); }
+.faq .answer { padding: var(--sp-4) 36px 0 calc(36px + var(--sp-3)); font-size: 16px; line-height: 1.65; color: var(--ink-dim); max-width: 720px; }
+.faq .answer p { margin: 0; }
 
 /* ============================================================
    END-CTA + footer (dark)
