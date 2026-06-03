@@ -5,7 +5,9 @@
 import DiagnosticBookCard from './DiagnosticBookCard.astro';
 
 const logos = [
-  { id: 'somewhere', name: 'Somewhere', wordmark: true },
+  // Somewhere's only public asset is a square logomark PNG (S on teal).
+  // The .logo--invert class strips the teal background to keep the row monochrome.
+  { id: 'somewhere', name: 'Somewhere', src: '/img/proof/somewhere.png', cls: 'logo--invert logo--square' },
   { id: 'visa', name: 'VISA', src: '/img/proof/visa.svg' },
   { id: 'samsung', name: 'Samsung', src: '/img/proof/samsung.svg' },
   { id: 'unilever', name: 'Unilever', src: '/img/proof/unilever.svg' },
@@ -35,12 +37,8 @@ const logos = [
         <div class="band-lbl">Past portfolio work</div>
         <div class="logos logo-row">
           {logos.map((logo) => (
-            <span class="logo-cell">
-              {logo.wordmark ? (
-                <span class="logo-wordmark">{logo.name}</span>
-              ) : (
-                <img src={logo.src} alt={logo.name} class="logo-img" loading="lazy" />
-              )}
+            <span class={`logo-cell ${logo.cls ?? ''}`}>
+              <img src={logo.src} alt={logo.name} class="logo-img" loading="lazy" />
             </span>
           ))}
         </div>
@@ -52,15 +50,18 @@ const logos = [
 </header>
 
 <style>
-  /* Local overrides for the Variant C logo presentation (image-based instead of design-bundle wordmark slots) */
+  /* Variant C proof bar: image logos, mono-grayscale, sized to match the band. */
   .logo-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-6) var(--sp-7); }
   .logo-cell { display: inline-flex; align-items: center; height: 28px; opacity: 0.78; }
   .logo-img { height: 22px; width: auto; display: block; filter: grayscale(1); }
-  .logo-cell .logo-wordmark { font-family: var(--grotesk); font-weight: 700; font-size: 16px; letter-spacing: -0.02em; color: var(--ink); line-height: 1; }
+  /* Square logomarks (PNG with coloured backgrounds, e.g. Somewhere) get inverted
+     so the row reads as dark glyphs on light, matching the SVG wordmarks. */
+  .logo-cell.logo--invert .logo-img { filter: invert(1) grayscale(1); }
+  .logo-cell.logo--square .logo-img { height: 24px; width: 24px; }
   @media (max-width: 640px) {
     .logo-row { gap: var(--sp-4) var(--sp-5); }
     .logo-cell { height: 22px; }
     .logo-img { height: 16px; }
-    .logo-cell .logo-wordmark { font-size: 13px; }
+    .logo-cell.logo--square .logo-img { height: 18px; width: 18px; }
   }
 </style>
