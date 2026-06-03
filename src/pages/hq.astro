@@ -133,7 +133,21 @@ if (authed) {
     console.error('[hq] PostHog fetch failed', e);
   }
   try {
-    outreachQueue = await getOutreachQueueByWave(CURRENT_WAVE);
+    // Backlog mode: surface every prospect that still needs human attention.
+    // Drops the wave gate, includes Drafted rows whose copy was written but
+    // never shipped, includes in-flight stages (Connection Sent / Sent /
+    // Bumped) so Fred can chase pending accepts and stalled threads, and lets
+    // rows without a generated DM or LinkedIn URL through. The card UI
+    // gracefully disables Send / click-to-Sent when the row is missing data.
+    // Only Replied / Booked / Won / Lost / Disqualified are excluded - those
+    // are terminal.
+    outreachQueue = await getOutreachQueueByWave({
+      wave: null,
+      includeDrafted: true,
+      includeInFlight: true,
+      requireDm: false,
+      requireLinkedinUrl: false,
+    });
   } catch (e) {
     console.error('[hq] outreach queue fetch failed', e);
   }
@@ -305,7 +319,7 @@ function warmCard(p: WarmVM): string {
     <div class="body">
       <div class="qhero">
         <span class="avatar">${esc(p.initials)}</span>
-        <div class="who"><h3 class="name">${esc(p.name)}</h3><p class="role">${p.title ? esc(p.title) + ' · ' : ''}<span class="co">${esc(p.company)}</span></p></div>
+        <div class="who"><h3 class="name">${p.liUrl ? `<a href="${attr(p.liUrl)}" target="_blank" rel="noopener" data-mark-channel="linkedin" data-slug="${attr(p.slug)}">${esc(p.name)} ${ic('ic-10-external')}</a>` : esc(p.name)}</h3><p class="role">${p.title ? esc(p.title) + ' · ' : ''}<span class="co">${esc(p.company)}</span></p></div>
       </div>
       <p class="why">${esc(p.why)}</p>
       <div class="proof">${p.proof.map(([v, k]) => `<span class="pt"><b>${esc(v)}</b> ${esc(k)}</span>`).join('')}</div>
@@ -330,7 +344,7 @@ function coldCard(p: ColdVM): string {
     <div class="body">
       <div class="qhero">
         <span class="avatar">${esc(p.initials)}</span>
-        <div class="who"><h3 class="name">${esc(p.name)}</h3><p class="role">${p.title ? esc(p.title) + ' · ' : ''}<span class="co">${esc(p.company)}</span></p></div>
+        <div class="who"><h3 class="name">${p.liUrl ? `<a href="${attr(p.liUrl)}" target="_blank" rel="noopener" data-mark-channel="linkedin" data-slug="${attr(p.slug)}">${esc(p.name)} ${ic('ic-10-external')}</a>` : esc(p.name)}</h3><p class="role">${p.title ? esc(p.title) + ' · ' : ''}<span class="co">${esc(p.company)}</span></p></div>
       </div>
       <div class="proof"><span class="pt"><b>${esc(p.tier)}</b> tier</span>${p.industry ? `<span class="pt"><b>${esc(p.industry)}</b></span>` : ''}<span class="pt"><b>${esc(p.wave)}</b></span>${p.audit ? '' : '<span class="pt">no audit minted</span>'}</div>
       <div class="dm">
@@ -2985,6 +2999,27 @@ details.exp .expbody { padding: 0 var(--sp-4) var(--sp-4); }
     else if (act === 'messaged') { var c3 = a.closest('.card'); if (c3) doMessaged(c3); }
     else if (act === 'close-draft') closeDraft();
     else if (act === 'send-draft') sendDraft();
+  });
+  // Click-to-Sent. Tagged contact anchors (real LinkedIn profile URLs) mark
+  // the prospect Sent the moment Fred clicks them. His flow is to one-shot
+  // the connection request + audit, so the click IS the send. The Google
+  // "site:linkedin.com" search fallback is excluded - clicking that is a
+  // discovery action, not an outreach action. Server-side downgrade
+  // protection in /api/hq/mark-messaged also stops a Replied/Booked/Won row
+  // from being regressed if Fred clicks the link out of curiosity.
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest('a[data-mark-channel]');
+    if (!a) return;
+    if (a.dataset.markChannel === 'linkedin' && !/linkedin\.com\/in\//i.test(a.href)) return;
+    var slug = a.dataset.slug;
+    if (!slug) { var c = a.closest('[data-slug]'); slug = c && c.dataset.slug; }
+    if (!slug) return;
+    markMessaged(slug, 'Sent').then(function (m) {
+      if (m && m.ok) {
+        var card = document.querySelector('.card[data-slug="' + (window.CSS && CSS.escape ? CSS.escape(slug) : slug) + '"]');
+        if (card) card.classList.add('is-sent');
+      }
+    });
   });
   var veil = document.getElementById('draftveil');
   if (veil) veil.addEventListener('click', function (e) { if (e.target.id === 'draftveil') closeDraft(); });

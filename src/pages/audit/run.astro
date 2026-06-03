@@ -2,6 +2,7 @@
 export const prerender = false;
 import { runAudit, rankedRecommendations, type AuditResult, type CheckResult } from '../../utils/audit/engine';
 import { mirrorAudit, type MirrorResult } from '../../utils/audit/llm-mirror';
+import PostHog from '../../components/PostHog.astro';
 
 const rawUrl = Astro.url.searchParams.get('url') || '';
 let result: AuditResult | null = null;
@@ -229,6 +230,7 @@ function splitDisplay(kicker: string): { roman: string; italic: string; dek: str
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&family=Newsreader:ital,wght@0,400;0,500;1,400;1,500&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="/audit/memo.css" />
+<PostHog />
 <style>
   /* Soft gate on recommendations panel.
      Visitor sees verdict cells above. The recommendations block stays

@@ -31,12 +31,15 @@ const fallbackUrl = `https://cal.com/${CAL_LINK}?overlayCalendar=true`;
       const source = btn.dataset.bookSource ?? 'unknown';
       const w = window as any;
       if (w.posthog) {
-        w.posthog.capture('diagnostic_cta_click', { source });
+        w.posthog.capture('diagnostic_cta_click', { source, path: window.location.pathname }, { send_instantly: true, transport: 'sendBeacon' });
       }
       const ns = w.__rivettCalNamespace;
       const link = w.__rivettCalLink;
       if (w.Cal && ns && w.Cal.ns?.[ns]) {
         event.preventDefault();
+        if (w.posthog) {
+          w.posthog.capture('diagnostic_booking_modal_opened', { source, path: window.location.pathname }, { send_instantly: true, transport: 'sendBeacon' });
+        }
         w.Cal.ns[ns]('modal', { calLink: link });
       }
     });

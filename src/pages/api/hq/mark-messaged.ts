@@ -75,6 +75,27 @@ export const POST: APIRoute = async ({ request }) => {
     });
   }
 
+  // Downgrade protection. The click-to-mark wiring on hero/queue contact links
+  // fires this endpoint with stage='Sent'. If the prospect has already replied,
+  // booked, won, lost, or been disqualified, a fresh "Sent" mark would regress
+  // their stage and clobber real progress. Refuse the write and report the
+  // current stage so the UI can stay in sync.
+  const STAGE_RANK: Record<string, number> = {
+    'Not Sent': 0, 'Drafted': 1, 'Connection Sent': 2, 'Connection Accepted': 3,
+    'Sent': 4, 'Bumped': 5, 'Replied': 6, 'Booked': 7, 'Won': 8,
+    'Lost': 9, 'Disqualified': 9,
+  };
+  if (action === 'mark') {
+    const current = prospect.outreachStage || 'Not Sent';
+    const currentRank = STAGE_RANK[current] ?? 0;
+    const incomingRank = STAGE_RANK[stage] ?? 0;
+    if (currentRank > incomingRank) {
+      return new Response(JSON.stringify({
+        ok: true, slug, action, stage: current, skipped: 'downgrade_protection',
+      }), { status: 200, headers: { 'content-type': 'application/json' } });
+    }
+  }
+
   const ok = await setOutreachStage(prospect.recordId, stage);
 
   return new Response(JSON.stringify({ ok, slug, action, stage }), {

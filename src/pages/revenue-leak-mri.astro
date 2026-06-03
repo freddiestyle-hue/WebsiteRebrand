@@ -466,7 +466,7 @@ import PostHog from '../components/PostHog.astro';
           <h3>Turn the leak into a <span class="ital">fix list.</span></h3>
         </div>
         <div class="actions">
-          <a class="book" href="https://rivett.tech/diagnostic">Book diagnostic →</a>
+          <a class="book" href="https://rivett.tech/diagnostic" data-action="book-diagnostic">Book diagnostic →</a>
           <div class="small-actions">
             <button data-action="open-lead">Email fix list</button>
             <button data-action="copy">Copy readout</button>
@@ -513,16 +513,131 @@ import PostHog from '../components/PostHog.astro';
   const STATE_KEY = 'rivett-mri-state';
   const POS_KEY = 'rivett-mri-pos';
   const defaults = { spend: 25000, leads: 412, deal: 6500, vendor: 8000, responseHrs: 8, leadToOpp: 18, oppClose: 24, growthHrs: 35, hourly: 120 };
-  let state = { ...defaults };
-  try {
-    const saved = JSON.parse(localStorage.getItem(STATE_KEY) || 'null');
-    if (saved && typeof saved === 'object') state = { ...defaults, ...saved };
-  } catch(e){}
-  let i = 0;
+	  let state = { ...defaults };
+	  let restoredState = false;
+	  try {
+	    const saved = JSON.parse(localStorage.getItem(STATE_KEY) || 'null');
+	    if (saved && typeof saved === 'object') {
+	      state = { ...defaults, ...saved };
+	      restoredState = true;
+	    }
+	  } catch(e){}
+	  let i = 0;
   try {
     const p = parseInt(localStorage.getItem(POS_KEY) || '0', 10);
     if (!isNaN(p) && p >= 0 && p < total) i = p;
-  } catch(e){}
+	  } catch(e){}
+	  const viewedSteps = {};
+	  const answeredSteps = {};
+	  let startedTracked = false;
+	  let resultViewedTracked = false;
+
+	  function scoreBand(score) {
+	    if (score >= 80) return '80_100';
+	    if (score >= 60) return '60_79';
+	    if (score >= 40) return '40_59';
+	    return '0_39';
+	  }
+
+	  function moneyBand(value) {
+	    const n = Number(value) || 0;
+	    if (n >= 1000000) return '1m_plus';
+	    if (n >= 500000) return '500k_1m';
+	    if (n >= 100000) return '100k_500k';
+	    if (n >= 50000) return '50k_100k';
+	    if (n >= 10000) return '10k_50k';
+	    if (n > 0) return '1_10k';
+	    return '0';
+	  }
+
+	  function valueBand(key, value) {
+	    const n = Number(value) || 0;
+	    if (['spend', 'deal', 'vendor'].includes(key)) return moneyBand(n);
+	    if (key === 'leads') {
+	      if (n >= 5000) return '5000_plus';
+	      if (n >= 1000) return '1000_4999';
+	      if (n >= 250) return '250_999';
+	      if (n >= 50) return '50_249';
+	      if (n > 0) return '1_49';
+	      return '0';
+	    }
+	    if (key === 'responseHrs') {
+	      if (n <= 1) return '0_1h';
+	      if (n <= 4) return '1_4h';
+	      if (n <= 24) return '4_24h';
+	      if (n <= 72) return '24_72h';
+	      return '72h_plus';
+	    }
+	    if (['leadToOpp', 'oppClose'].includes(key)) {
+	      if (n >= 50) return '50_100';
+	      if (n >= 30) return '30_49';
+	      if (n >= 15) return '15_29';
+	      if (n > 0) return '1_14';
+	      return '0';
+	    }
+	    if (key === 'growthHrs') {
+	      if (n >= 80) return '80_plus';
+	      if (n >= 40) return '40_79';
+	      if (n >= 20) return '20_39';
+	      if (n > 0) return '1_19';
+	      return '0';
+	    }
+	    if (key === 'hourly') {
+	      if (n >= 250) return '250_plus';
+	      if (n >= 150) return '150_249';
+	      if (n >= 75) return '75_149';
+	      if (n > 0) return '1_74';
+	      return '0';
+	    }
+	    return 'unknown';
+	  }
+
+	  function resultProps(r) {
+	    return {
+	      source: 'revenue-leak-mri',
+	      path: window.location.pathname,
+	      score_band: scoreBand(r.score),
+	      total_leak_band: moneyBand(r.total),
+	      annualised_band: moneyBand(r.annualised),
+	      biggest_leak: biggestLeak(r),
+	    };
+	  }
+
+	  function trackMri(event, props) {
+	    if (!window.posthog || !window.posthog.capture) return;
+	    window.posthog.capture(event, {
+	      source: 'revenue-leak-mri',
+	      path: window.location.pathname,
+	      ...(props || {}),
+	    }, { send_instantly: true, transport: 'sendBeacon' });
+	  }
+
+	  function stepMeta(screen) {
+	    if (!screen) return { step_index: null, step: 'unknown', key: null };
+	    return {
+	      step_index: Number(screen.dataset.i || 0),
+	      step: screen.dataset.step || 'unknown',
+	      key: screen.dataset.key || null,
+	    };
+	  }
+
+	  function trackStepViewed(screen) {
+	    const meta = stepMeta(screen);
+	    const key = String(meta.step_index) + ':' + meta.step + ':' + (meta.key || '');
+	    if (viewedSteps[key]) return;
+	    viewedSteps[key] = true;
+	    trackMri('mri_step_viewed', meta);
+	  }
+
+	  function trackStepAnswered(screen) {
+	    const meta = stepMeta(screen);
+	    if (!meta.key || answeredSteps[meta.key]) return;
+	    answeredSteps[meta.key] = true;
+	    trackMri('mri_step_answered', {
+	      ...meta,
+	      value_band: valueBand(meta.key, state[meta.key]),
+	    });
+	  }
 
   // hydrate inputs
   document.querySelectorAll('[data-input]').forEach(el => {
@@ -608,8 +723,8 @@ import PostHog from '../components/PostHog.astro';
     requestAnimationFrame(step);
   }
 
-  function renderReveal() {
-    const r = compute();
+	  function renderReveal() {
+	    const r = compute();
     const out = (k) => document.querySelector(`[data-out="${k}"]`);
 
     // total
@@ -675,10 +790,14 @@ import PostHog from '../components/PostHog.astro';
     if (state.oppClose >= 35) noteC.textContent = 'Close rate is above the operator benchmark.';
     else noteC.textContent = 'Close rate sits ' + (35 - state.oppClose) + ' pts below the 35% benchmark. Usually a conversation-design issue.';
 
-    const noteH = out('noteHandoff');
-    if (state.leadToOpp >= 30) noteH.textContent = 'Lead → opportunity rate is at benchmark.';
-    else noteH.textContent = 'Lead → opp at ' + state.leadToOpp + '% leaves ' + (30 - state.leadToOpp) + ' pts on the table. Handoff or scoring is leaking.';
-  }
+	    const noteH = out('noteHandoff');
+	    if (state.leadToOpp >= 30) noteH.textContent = 'Lead → opportunity rate is at benchmark.';
+	    else noteH.textContent = 'Lead → opp at ' + state.leadToOpp + '% leaves ' + (30 - state.leadToOpp) + ' pts on the table. Handoff or scoring is leaking.';
+	    if (!resultViewedTracked) {
+	      resultViewedTracked = true;
+	      trackMri('mri_result_viewed', resultProps(r));
+	    }
+	  }
 
   // ---------- nav ----------
   function persist() {
@@ -701,8 +820,8 @@ import PostHog from '../components/PostHog.astro';
     });
   }
 
-  function render() {
-    screens.forEach((s, idx) => {
+	  function render() {
+	    screens.forEach((s, idx) => {
       s.classList.remove('active', 'exit');
       if (idx === i) {
         // replay animations
@@ -718,8 +837,9 @@ import PostHog from '../components/PostHog.astro';
           if (inp) inp.focus({ preventScroll: true });
         }, 380);
         // if reveal screen, compute
-        if (s.dataset.step === 'reveal') renderReveal();
-      } else if (idx < i) {
+	        if (s.dataset.step === 'reveal') renderReveal();
+	        trackStepViewed(s);
+	      } else if (idx < i) {
         s.classList.add('exit');
       }
     });
@@ -731,10 +851,14 @@ import PostHog from '../components/PostHog.astro';
     persist();
   }
 
-  function go(n) {
-    if (n > i) commitCurrent();
-    const next = Math.max(0, Math.min(total - 1, n));
-    if (next === i) return;
+	  function go(n) {
+	    const currentScreen = screens[i];
+	    if (n > i) {
+	      commitCurrent();
+	      trackStepAnswered(currentScreen);
+	    }
+	    const next = Math.max(0, Math.min(total - 1, n));
+	    if (next === i) return;
     i = next;
     render();
   }
@@ -800,19 +924,21 @@ import PostHog from '../components/PostHog.astro';
     b.addEventListener('click', (e) => { e.preventDefault(); go(i + 1); });
   });
 
-  function openLeadModal() {
-    if (!leadModal) return;
-    leadModal.hidden = false;
-    if (leadStatus) leadStatus.textContent = '';
-    requestAnimationFrame(() => {
+	  function openLeadModal() {
+	    if (!leadModal) return;
+	    leadModal.hidden = false;
+	    if (leadStatus) leadStatus.textContent = '';
+	    trackMri('mri_lead_modal_opened', resultProps(compute()));
+	    requestAnimationFrame(() => {
       leadForm?.querySelector('input[name="email"]')?.focus({ preventScroll: true });
     });
   }
 
-  function closeLeadModal() {
-    if (!leadModal) return;
-    leadModal.hidden = true;
-  }
+	  function closeLeadModal() {
+	    if (!leadModal) return;
+	    leadModal.hidden = true;
+	    trackMri('mri_lead_modal_closed', resultProps(compute()));
+	  }
 
   leadModal?.addEventListener('click', (e) => {
     if (e.target === leadModal) closeLeadModal();
@@ -827,10 +953,15 @@ import PostHog from '../components/PostHog.astro';
     const button = leadForm.querySelector('button[type="submit"]');
     const r = compute();
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      if (leadStatus) leadStatus.textContent = 'Use a valid work email.';
-      return;
-    }
+	    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+	      if (leadStatus) leadStatus.textContent = 'Use a valid work email.';
+	      trackMri('mri_email_submit_failed', {
+	        ...resultProps(r),
+	        reason: 'invalid_email',
+	      });
+	      return;
+	    }
+	    trackMri('mri_email_submit_attempted', resultProps(r));
 
     if (button) {
       button.disabled = true;
@@ -863,21 +994,25 @@ import PostHog from '../components/PostHog.astro';
         revenue_mri_total_leak: Math.round(r.total),
         revenue_mri_annualised: Math.round(r.annualised),
       });
-      window.posthog?.capture?.('revenue_mri_email_captured', {
-        company,
-        score: r.score,
-        total_leak: Math.round(r.total),
-        annualised: Math.round(r.annualised),
-        biggest_leak: biggestLeak(r),
-        source: 'revenue-leak-mri',
-      });
+	      window.posthog?.capture?.('revenue_mri_email_captured', {
+	        company,
+	        ...resultProps(r),
+	      });
+	      window.posthog?.capture?.('mri_email_captured', {
+	        company,
+	        ...resultProps(r),
+	      });
 
       leadForm.dataset.sent = 'true';
       if (leadStatus) leadStatus.textContent = 'Got it. Fred has the MRI context.';
       if (button) button.textContent = 'Sent';
-    } catch (error) {
-      if (leadStatus) leadStatus.textContent = error instanceof Error ? error.message : 'Could not send this yet.';
-      if (button) {
+	    } catch (error) {
+	      if (leadStatus) leadStatus.textContent = error instanceof Error ? error.message : 'Could not send this yet.';
+	      trackMri('mri_email_submit_failed', {
+	        ...resultProps(r),
+	        reason: 'request_failed',
+	      });
+	      if (button) {
         button.disabled = false;
         button.textContent = 'Send fix list';
       }
@@ -898,10 +1033,12 @@ import PostHog from '../components/PostHog.astro';
   document.addEventListener('click', (e) => {
     const a = e.target.closest('[data-action]');
     if (!a) return;
-    if (a.dataset.action === 'open-lead') {
-      e.preventDefault();
-      openLeadModal();
-    } else if (a.dataset.action === 'close-lead') {
+	    if (a.dataset.action === 'open-lead') {
+	      e.preventDefault();
+	      openLeadModal();
+	    } else if (a.dataset.action === 'book-diagnostic') {
+	      trackMri('mri_book_diagnostic_clicked', resultProps(compute()));
+	    } else if (a.dataset.action === 'close-lead') {
       e.preventDefault();
       closeLeadModal();
     } else if (a.dataset.action === 'copy') {
@@ -920,18 +1057,24 @@ import PostHog from '../components/PostHog.astro';
         '',
         'Inputs · spend ' + fmtMoneyFull(state.spend) + ' / leads ' + state.leads + ' / deal ' + fmtMoneyFull(state.deal) + ' / response ' + state.responseHrs + 'hr / lead→opp ' + state.leadToOpp + '% / close ' + state.oppClose + '%',
       ].join('\n');
-      navigator.clipboard.writeText(txt);
-      a.textContent = 'Copied ✓';
+	      navigator.clipboard.writeText(txt);
+	      trackMri('mri_result_copied', resultProps(r));
+	      a.textContent = 'Copied ✓';
       setTimeout(() => a.textContent = 'Copy readout', 1800);
-    } else if (a.dataset.action === 'restart') {
-      state = { ...defaults };
+	    } else if (a.dataset.action === 'restart') {
+	      trackMri('mri_restarted', resultProps(compute()));
+	      state = { ...defaults };
       localStorage.removeItem(STATE_KEY);
       localStorage.removeItem(POS_KEY);
       location.reload();
     }
   });
 
-  render();
+	  if (!startedTracked) {
+	    startedTracked = true;
+	    trackMri('mri_started', { restored_state: restoredState, start_step: i });
+	  }
+	  render();
 })();
     </script>
   </body>

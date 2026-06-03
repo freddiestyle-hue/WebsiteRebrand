@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { Resend } from 'resend';
+import { captureServerEvent } from '../../utils/posthog/capture';
 
 export const prerender = false;
 
@@ -66,10 +67,6 @@ export const POST: APIRoute = async ({ request }) => {
   const notificationEmail = process.env.NOTIFICATION_EMAIL;
   const fromEmail = process.env.QUALIFY_FROM_EMAIL || 'qualify@rivett.tech';
 
-  if (!resendApiKey || !notificationEmail) {
-    return json({ error: 'Email is not configured yet.' }, 500);
-  }
-
   const message: MriLeadMessage = {
     email,
     company,
@@ -79,6 +76,24 @@ export const POST: APIRoute = async ({ request }) => {
     inputs: pickNumbers(payload.inputs, inputKeys),
     readout: pickNumbers(payload.readout, readoutKeys),
   };
+
+  const eventProps = leadEventProps(message);
+  await captureServerEvent({
+    event: 'mri_lead_received',
+    distinctId: email,
+    properties: eventProps,
+    timestamp: submittedAt,
+  });
+
+  if (!resendApiKey || !notificationEmail) {
+    await captureServerEvent({
+      event: 'mri_lead_email_failed',
+      distinctId: email,
+      properties: { ...eventProps, reason: 'backend_not_configured' },
+      timestamp: submittedAt,
+    });
+    return json({ error: 'Email is not configured yet.' }, 500);
+  }
 
   const resend = new Resend(resendApiKey);
   const subject = `Revenue MRI lead: ${company || email}`;
@@ -96,8 +111,21 @@ export const POST: APIRoute = async ({ request }) => {
   });
 
   if (error) {
+    await captureServerEvent({
+      event: 'mri_lead_email_failed',
+      distinctId: email,
+      properties: { ...eventProps, reason: 'resend_error' },
+      timestamp: submittedAt,
+    });
     return json({ error: 'Email failed to send. Try again.' }, 502);
   }
+
+  await captureServerEvent({
+    event: 'mri_lead_email_sent',
+    distinctId: email,
+    properties: eventProps,
+    timestamp: submittedAt,
+  });
 
   return json({ ok: true });
 };
@@ -124,6 +152,48 @@ function pickNumbers(value: unknown, keys: string[]) {
     if (Number.isFinite(number)) picked[key] = number;
     return picked;
   }, {});
+}
+
+function leadEventProps(message: MriLeadMessage): Record<string, unknown> {
+  const readout = message.readout;
+  return {
+    source: message.source,
+    path: message.path,
+    company: message.company || null,
+    submitted_at: message.submittedAt,
+    score_band: scoreBand(readout.score),
+    total_leak_band: moneyBand(readout.total),
+    annualised_band: moneyBand(readout.annualised),
+    biggest_leak: biggestLeak(readout),
+  };
+}
+
+function moneyBand(value: unknown) {
+  const n = Number(value) || 0;
+  if (n >= 1_000_000) return '1m_plus';
+  if (n >= 500_000) return '500k_1m';
+  if (n >= 100_000) return '100k_500k';
+  if (n >= 50_000) return '50k_100k';
+  if (n >= 10_000) return '10k_50k';
+  if (n > 0) return '1_10k';
+  return '0';
+}
+
+function scoreBand(value: unknown) {
+  const n = Number(value) || 0;
+  if (n >= 80) return '80_100';
+  if (n >= 60) return '60_79';
+  if (n >= 40) return '40_59';
+  return '0_39';
+}
+
+function biggestLeak(readout: Record<string, number>) {
+  return [
+    ['response_decay', readout.leakResponse],
+    ['conversion_gap', readout.leakConversion],
+    ['sales_handoff', readout.leakHandoff],
+    ['operating_drag', readout.leakDrag],
+  ].sort((a, b) => Number(b[1] || 0) - Number(a[1] || 0))[0]?.[0] ?? 'unknown';
 }
 
 function buildHtmlEmail(payload: MriLeadMessage) {

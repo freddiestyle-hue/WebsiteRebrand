@@ -29,7 +29,7 @@ import Base from '../layouts/Base.astro';
         <span class="prefix">https://</span>
         <input class="domain" type="text" name="url" inputmode="url" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="enter the site you want read" required aria-label="Domain" />
         <input type="hidden" name="source" value="home" />
-        <button class="btn btn--solid" type="submit">Run audit <span aria-hidden="true">→</span></button>
+        <button class="btn btn--solid" type="submit" data-cta="home_audit_form_submit">Run audit <span aria-hidden="true">→</span></button>
       </form>
 
       <div class="audit-meta">
@@ -280,7 +280,7 @@ import Base from '../layouts/Base.astro';
           <a href="#work">Diagnostic</a>
           <a href="#work">Build</a>
           <a href="#work">Run</a>
-          <a href="#homeAuditForm">Run audit</a>
+          <a href="#homeAuditForm" data-cta="home_footer_run_audit">Run audit</a>
         </div>
         <div class="col">
           <span class="col-h">Field notes</span>
@@ -334,14 +334,30 @@ import Base from '../layouts/Base.astro';
 </style>
 
 <script is:inline>
-  (function () {
-    var form = document.getElementById('homeAuditForm');
-    if (!form) return;
-    form.addEventListener('submit', function () {
-      var input = form.querySelector('input[name="url"]');
-      if (input) {
-        input.value = input.value.trim().replace(/^https?:\/\//, '').replace(/\/$/, '');
-      }
-    });
-  })();
-</script>
+	  (function () {
+	    var form = document.getElementById('homeAuditForm');
+	    if (!form) return;
+	    form.addEventListener('submit', function () {
+	      var input = form.querySelector('input[name="url"]');
+	      var normalized = '';
+	      if (input) {
+	        normalized = input.value.trim().replace(/^https?:\/\//, '').replace(/\/$/, '');
+	        input.value = normalized;
+	      }
+	      if (window.posthog && window.posthog.capture) {
+	        window.posthog.capture('audit_form_submitted', {
+	          surface: 'homepage',
+	          form_id: 'homeAuditForm',
+	          input_domain: normalized,
+	          source: 'home_preview',
+	          path: window.location.pathname,
+	        }, { send_instantly: true, transport: 'sendBeacon' });
+	        window.posthog.capture('audit_v3_form_submitted', {
+	          input_domain: normalized,
+	          source: 'home_preview',
+	          path: window.location.pathname,
+	        }, { send_instantly: true, transport: 'sendBeacon' });
+	      }
+	    });
+	  })();
+	</script>
