@@ -178,6 +178,50 @@ const icpEntry: IcpVoiceEntry | null = icpSlug
   : null;
 const heroQuote: IcpQuote | null = icpEntry?.quotes?.[0] ?? null;
 
+// ===== Variant resolution (server-side) =====
+// Progressive-reveal A/B/C test. URL param ?v= wins, then rivett_variant cookie
+// (set by /r/[code] shortlink resolver), then default A.
+//
+// Server-rendering the variant state means cells ship gated from the first paint -
+// no flash of ungated content (FOUC) before the JS runs, and no-JS readers
+// see the variant correctly.
+type Variant = 'a' | 'b' | 'c';
+const variantParam = (Astro.url.searchParams.get('v') ?? '').toLowerCase();
+const variantCookie = (Astro.cookies.get('rivett_variant')?.value ?? '').toLowerCase();
+const VARIANT: Variant = (
+  variantParam === 'b' || variantParam === 'c' || variantParam === 'a'
+    ? variantParam
+    : variantCookie === 'b' || variantCookie === 'c' || variantCookie === 'a'
+      ? variantCookie
+      : 'a'
+) as Variant;
+
+// Per-cell gate opener copy. Mirrors the client-side COPY object below so the
+// server emits the same label JS would have appended on mount.
+const CELL_OPENER: Record<number, string> = {
+  1: 'Tap for the index read',
+  2: 'Tap for the citation read',
+  3: 'Tap for the speed score',
+  4: "Tap for what's tracking",
+  5: 'Tap for the ad count',
+  6: 'Tap for the path read',
+  7: 'Tap for the mobile read',
+  8: 'Tap for the auth read',
+  9: 'Tap for the stack count',
+};
+const PLAN_OPENER: Record<number | 'combined', string> = {
+  2: 'Tap for fix 02',
+  3: 'Tap for fix 03',
+  combined: 'Tap for the first three moves',
+};
+const HERO_OPENER = 'Tap to see what I found';
+
+function cellIsGated(cellNum: number, v: Variant): boolean {
+  if (v === 'c') return true;
+  if (v === 'b') return cellNum >= 4;
+  return false;
+}
+
 const now = new Date();
 const headerDate = `${now.getUTCFullYear()}·${String(now.getUTCMonth() + 1).padStart(2, '0')}·${String(now.getUTCDate()).padStart(2, '0')}`;
 const fetchedAtDisplay = cached?.fetchedAt
@@ -993,7 +1037,7 @@ const SCORE_GRADE = gradeFor(scorePercent);
   .hero .strength[data-gated] .s-text { display: none; }
 </style>
 </head>
-<body>
+<body class={`variant-${VARIANT}`}>
 {cached && memo && heroData ? (
   <main class="page">
     <header class="top">
@@ -1016,9 +1060,20 @@ const SCORE_GRADE = gradeFor(scorePercent);
         <p class="lede">{heroData.pageHero}</p>
 
         {heroData.strength ? (
-          <div class="strength" id="heroStrength">
+          <div
+            class="strength"
+            id="heroStrength"
+            data-gated={VARIANT === 'c' ? '' : undefined}
+          >
             <span class="s-lab">What's working</span>
             <p class="s-text">{heroData.strength}</p>
+            {VARIANT === 'c' ? (
+              <button type="button" class="lock-gate lock-gate--hero" aria-expanded="false">
+                <span class="lg-plus" aria-hidden="true">+</span>
+                <span class="lg-label">{HERO_OPENER}</span>
+                <span class="lg-go" aria-hidden="true">→</span>
+              </button>
+            ) : null}
           </div>
         ) : null}
 
@@ -1082,8 +1137,16 @@ const SCORE_GRADE = gradeFor(scorePercent);
           const meta = lockedMeta(cell.icon);
           const tone = deriveTone(cell);
           const cellNumber = idx + 1;
+          const isGated = cellIsGated(cellNumber, VARIANT);
           return (
-            <article class="v3-lock" tabindex="0" data-cell={cellNumber} data-dimension={cell.icon}>
+            <article
+              class="v3-lock"
+              tabindex="0"
+              data-cell={cellNumber}
+              data-dimension={cell.icon}
+              data-gated={isGated ? '' : undefined}
+              data-stage={isGated ? '0' : undefined}
+            >
               <div class="lhead">
                 <span class="v3-lock-ic" aria-hidden="true">
                   <svg viewBox="0 0 24 24" width="24" height="24" set:html={LOCK_ICON[cell.icon] ?? LOCK_ICON.search} />
@@ -1132,6 +1195,23 @@ const SCORE_GRADE = gradeFor(scorePercent);
                     </ul>
                   </div>
                 </Fragment>
+              ) : null}
+              {isGated ? (
+                <button
+                  type="button"
+                  class="lock-gate lock-gate--cell"
+                  aria-expanded="false"
+                  aria-controls={`cell-checks-${cell.icon}`}
+                >
+                  <span class="lg-plus" aria-hidden="true">+</span>
+                  <span class="lg-label">{CELL_OPENER[cellNumber] ?? 'Tap to reveal'}</span>
+                  <span class="lg-go" aria-hidden="true">→</span>
+                  {VARIANT === 'c' ? (
+                    <span class="lg-dots" aria-hidden="true">
+                      <i></i><i></i><i></i>
+                    </span>
+                  ) : null}
+                </button>
               ) : null}
             </article>
           );
@@ -1403,7 +1483,12 @@ const SCORE_GRADE = gradeFor(scorePercent);
     // Finding cells.
     //   Variant B: cells 4-9 gated, single-tap full reveal.
     //   Variant C: all 9 gated, three-stage reveal.
+    // Server-rendering note: the Astro template now emits data-gated +
+    // data-stage="0" + the gate <button> directly. If we see that, skip
+    // re-gating client-side (would duplicate the button). The block below
+    // is the fallback for any path that still arrives without server gates.
     document.querySelectorAll('.v3-lock').forEach(function (cell) {
+      if (cell.hasAttribute('data-gated')) return; // already gated server-side
       var idx = parseInt(cell.getAttribute('data-cell'), 10);
       var copy = COPY[idx] || {};
       var gated = (v === 'c') || (v === 'b' && idx >= 4);
@@ -1421,7 +1506,7 @@ const SCORE_GRADE = gradeFor(scorePercent);
     // Hero strength (Variant C only).
     if (v === 'c') {
       var strength = document.getElementById('heroStrength');
-      if (strength) {
+      if (strength && !strength.hasAttribute('data-gated')) {
         strength.setAttribute('data-gated', '');
         strength.appendChild(makeGate('hero', { label: HERO_COPY, stages: 0 }));
       }
