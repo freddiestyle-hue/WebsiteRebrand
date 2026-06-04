@@ -31,8 +31,9 @@ function timeAgo(iso: string): string {
   if (hr < 48) return `${hr}h ago`;
   return `${Math.round(hr / 24)}d ago`;
 }
-function prospectUrl(slug: string, surface: 'audit' | 'intake-review' | undefined): string {
+function prospectUrl(slug: string, surface: 'audit' | 'intake-review' | 'proposal' | undefined): string {
   if (surface === 'intake-review') return `https://intake-reviews.vercel.app/intake-review/${slug}`;
+  if (surface === 'proposal') return `https://rivett.tech/p/${slug}`;
   return `https://rivett.tech/audit/v3/${slug}`;
 }
 function heatClass(h: number): string {

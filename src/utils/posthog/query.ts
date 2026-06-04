@@ -46,7 +46,11 @@ const POSTHOG_PROJECT_ID = 373899;
 //     events), and per-session rows include source/location/scroll context.
 // v11: traffic-source table is session-based and prefers UTM/shortlink source
 //     context before falling back to browser referrer/direct.
-const CACHE_VERSION = 'v11';
+// v12: proposal surface — /p/{slug} pages join the prospect path/slug/surface
+//     filters, and human_engaged (real pointer/scroll/key/touch input) joins
+//     the behavioural human filter + is_engaged flag. One-screen proposals
+//     that can't scroll now register a real reader while staying scanner-proof.
+const CACHE_VERSION = 'v12';
 
 // Lazy redis client. Construction is cheap but we only need one instance.
 // Use KV_REST_API_* env vars (set by Vercel KV / Upstash integration) since
@@ -152,6 +156,7 @@ const SELF_CITY_EXCLUSION = `
 // Events that prove a session was driven by a human. A scanner that just
 // loads the page and fires $pageview/$pageleave won't appear here.
 const HUMAN_SIGNAL_EVENTS = [
+  'human_engaged',
   'scroll_depth',
   'audit_v3_scroll_depth',
   'cta_clicked',
@@ -315,6 +320,7 @@ function rowsToObjects<T = Record<string, unknown>>(r: HogQLResult): T[] {
 const PROSPECT_PATH_FILTER = `(
   properties.$pathname ILIKE '/audit/%'
   OR properties.$pathname ILIKE '/intake-review/%'
+  OR properties.$pathname ILIKE '/p/%'
 )`;
 
 // Top-prospects path filter: same, but only the v3 audit format (since the
@@ -322,6 +328,7 @@ const PROSPECT_PATH_FILTER = `(
 const PROSPECT_PATH_FILTER_TOP = `(
   properties.$pathname ILIKE '/audit/v3/%'
   OR properties.$pathname ILIKE '/intake-review/%'
+  OR properties.$pathname ILIKE '/p/%'
 )`;
 
 // Slug extraction: strip the leading surface path so the remainder is the
@@ -330,13 +337,14 @@ const PROSPECT_PATH_FILTER_TOP = `(
 // sometimes append punctuation to URLs ("/audit/v3/signaturit-com." in
 // the wild — break the Airtable slug join unless we normalise here).
 const PROSPECT_SLUG_EXPR =
-  `replaceRegexpOne(replaceRegexpOne(properties.$pathname, '^/(audit/(v3|p)|intake-review)(/|$)', ''), '[\\\\s./]+$', '')`;
+  `replaceRegexpOne(replaceRegexpOne(properties.$pathname, '^/(audit/(v3|p)|intake-review|p)(/|$)', ''), '[\\\\s./]+$', '')`;
 
 // Surface classification — inspect the path. Cheaper than reading the
 // PostHog super-property and works on historic events too.
 const PROSPECT_SURFACE_EXPR = `
   CASE
     WHEN properties.$pathname ILIKE '/intake-review/%' THEN 'intake-review'
+    WHEN properties.$pathname ILIKE '/p/%' THEN 'proposal'
     ELSE 'audit'
   END
 `;
@@ -351,7 +359,7 @@ const PROSPECT_SURFACE_EXPR = `
 export interface RecentRead {
   path: string;
   prospect: string;
-  surface: 'audit' | 'intake-review';
+  surface: 'audit' | 'intake-review' | 'proposal';
   session_id: string | null;
   distinct_id: string;
   city: string | null;
@@ -393,7 +401,7 @@ export async function getRecentReads(range: DateRange, mode: TrafficMode = 'huma
         -- not hidden.
         countIf(event IN (
           'scroll_depth','cta_clicked','content_copied',
-          'content_printed','audit_v3_verdict_expanded'
+          'content_printed','audit_v3_verdict_expanded','human_engaged'
         )) > 0 AS is_engaged
       FROM events
       WHERE ${hogqlRangeClause(range)}
@@ -438,7 +446,7 @@ export interface ProspectSession {
 
 export interface TopProspect {
   prospect: string;
-  surface: 'audit' | 'intake-review';
+  surface: 'audit' | 'intake-review' | 'proposal';
   total_views: number;
   unique_sessions: number;
   // Distinct people (resolved person_id) across all sessions in the range.
@@ -597,7 +605,7 @@ export async function getTopProspects(range: DateRange, mode: TrafficMode = 'hum
   // Reshape sessions_raw tuples into typed objects, sorted most-recent first.
   const raw = rowsToObjects<{
     prospect: string;
-    surface: 'audit' | 'intake-review';
+    surface: 'audit' | 'intake-review' | 'proposal';
     total_views: number;
     unique_sessions: number;
     distinct_visitors: number;
@@ -891,7 +899,7 @@ export async function getActiveNow(): Promise<ActiveNow> {
 export interface CtaClick {
   cta: string;
   prospect: string;
-  surface: 'audit' | 'intake-review';
+  surface: 'audit' | 'intake-review' | 'proposal';
   city: string | null;
   country: string | null;
   href: string;
@@ -903,9 +911,10 @@ export async function getCtaClicks(range: DateRange, mode: TrafficMode = 'humans
   const r = await runQuery(`
     SELECT
       properties.cta AS cta,
-      replaceRegexpOne(properties.path, '^/(audit/(v3|p)|intake-review)/', '') AS prospect,
+      replaceRegexpOne(properties.path, '^/(audit/(v3|p)|intake-review|p)/', '') AS prospect,
       CASE
         WHEN properties.path ILIKE '/intake-review/%' THEN 'intake-review'
+        WHEN properties.path ILIKE '/p/%' THEN 'proposal'
         ELSE 'audit'
       END AS surface,
       properties.$geoip_city_name AS city,

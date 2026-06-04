@@ -70,9 +70,9 @@ function dwellHuman(seconds: number): string {
 }
 
 function memoUrlFor(p: import('../../../utils/posthog/query').TopProspect): string {
-  return p.surface === 'intake-review'
-    ? `https://intake-reviews.vercel.app/intake-review/${p.prospect}`
-    : `https://rivett.tech/audit/v3/${p.prospect}`;
+  if (p.surface === 'intake-review') return `https://intake-reviews.vercel.app/intake-review/${p.prospect}`;
+  if (p.surface === 'proposal') return `https://rivett.tech/p/${p.prospect}`;
+  return `https://rivett.tech/audit/v3/${p.prospect}`;
 }
 
 // Fire HOT alerts for any prospect newly crossing an actionable threshold

@@ -50,7 +50,7 @@ function mark(r: RecentRead): { label: string; cls: string; title: string } {
   // don't follow up on a non-read.
   return { label: 'RAW', cls: 'mark--raw', title: 'No engagement events — likely an email-security scanner, not a real read. Wait for a second hit from a non-datacenter IP.' };
 }
-function fullUrl(path: string, surface: 'audit' | 'intake-review' | undefined): string {
+function fullUrl(path: string, surface: 'audit' | 'intake-review' | 'proposal' | undefined): string {
   if (surface === 'intake-review') return `https://intake-reviews.vercel.app${path}`;
   return path;
 }

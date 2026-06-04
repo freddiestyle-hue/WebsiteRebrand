@@ -235,4 +235,37 @@ const identifyPayload = identifyAs
     // Fallback for browsers that don't fire pagehide reliably.
     window.addEventListener('beforeunload', flush);
   })();
+
+  // Verified human open. Fires at most ONCE per page load, and only after the
+  // visitor does something a headless preview/scanner never does: move a
+  // pointer, scroll, press a key, or touch — while the tab is actually visible.
+  // LinkedIn's Azure link-preview renderer, Outlook SafeLinks, Mimecast et al.
+  // fetch the page (firing $pageview) but never move a mouse, so they never
+  // trip this. HQ treats `human_engaged` as the real "a person opened it"
+  // signal; $pageview alone is the bot-inclusive one. One-screen proposals
+  // can't lean on scroll_depth, so pointer movement is what makes them
+  // countable without letting scanners through.
+  (function () {
+    var fired = false;
+    var evs = ['pointermove', 'scroll', 'keydown', 'touchstart'];
+    function cleanup() {
+      evs.forEach(function (t) { window.removeEventListener(t, onInteract, true); });
+    }
+    function onInteract(e) {
+      if (fired) return;
+      // Automation flags itself — Playwright/Puppeteer/headless CDP set this.
+      if (navigator.webdriver === true) return;
+      if (document.visibilityState !== 'visible') return;
+      fired = true;
+      cleanup();
+      if (!window.posthog || !window.posthog.capture) return;
+      window.posthog.capture('human_engaged', {
+        path: window.location.pathname,
+        trigger: e && e.type,
+      }, { send_instantly: true, transport: 'sendBeacon' });
+    }
+    evs.forEach(function (t) {
+      window.addEventListener(t, onInteract, { capture: true, passive: true });
+    });
+  })();
 </script>
