@@ -23,6 +23,8 @@ const FIELDS = [
   'Email', 'LinkedIn URL', 'Audit URL', 'Audit Score',
   'Outreach Stage', 'LinkedIn DM', 'LinkedIn Follow-up DM',
   'Email Subject', 'Email Body', 'Sent At', 'Replied At', 'Notes',
+  // Engagement (synced from Instantly /api/cron/sync-instantly)
+  'Opens', 'Clicks', 'Replies', 'Last Engaged At', 'Instantly Lead ID',
   // Vertical
   'Vertical',
   // Shared audit findings
@@ -67,7 +69,10 @@ const FINDING_FIELDS_BY_VERTICAL: Record<string, string[]> = {
   ],
 };
 
-const CACHE_KEY = 'hq:airtable:prospects:v8';
+// v9: added Opens / Clicks / Replies / Last Engaged At / Instantly Lead ID.
+// Bump this whenever ProspectInfo gains or loses a field — old cached payloads
+// will be missing the new keys, which turns numeric math into NaN downstream.
+const CACHE_KEY = 'hq:airtable:prospects:v9';
 const CACHE_TTL_SECONDS = 1800;
 
 export type Vertical = 'Advertiser' | 'Mental Health' | 'Homecare' | 'Fractional Role';
@@ -106,6 +111,16 @@ export interface ProspectInfo {
   priority: string;
   /** Audit URL, kept on the info so the outreach queue can render it directly. */
   auditUrl: string;
+  /** Email open count from Instantly. NOTE: includes Instantly's own URL pre-scanner. */
+  opens: number;
+  /** Email click count from Instantly. Inflated by Instantly's proxaction.com link wrapper - cross-reference PostHog short_link_clicked uniques for human-only. */
+  clicks: number;
+  /** Email reply count from Instantly. */
+  replies: number;
+  /** Most recent open/click/reply timestamp from Instantly (ISO). */
+  lastEngagedAt: string;
+  /** Instantly lead UUID, used to identify the same lead across syncs. */
+  instantlyLeadId: string;
 }
 
 let _redis: Redis | null = null;
@@ -267,7 +282,21 @@ function recordToInfo(rec: AirtableRecord): ProspectInfo | null {
     attackWave: String(f['Attack Wave'] || '').trim(),
     priority: String(f['Priority'] || '').trim(),
     auditUrl,
+    opens: numberField(f['Opens']),
+    clicks: numberField(f['Clicks']),
+    replies: numberField(f['Replies']),
+    lastEngagedAt: String(f['Last Engaged At'] || '').trim(),
+    instantlyLeadId: String(f['Instantly Lead ID'] || '').trim(),
   };
+}
+
+function numberField(v: unknown): number {
+  if (typeof v === 'number' && Number.isFinite(v)) return v;
+  if (typeof v === 'string') {
+    const n = Number(v);
+    if (Number.isFinite(n)) return n;
+  }
+  return 0;
 }
 
 // --------------------------------------------------------------------------
@@ -384,6 +413,182 @@ export async function getOutreachQueueByWave(
     return a.recordId.localeCompare(b.recordId);
   });
   return queue;
+}
+
+/**
+ * Returns email (lowercased) → ProspectInfo. Used by the Instantly sync cron to
+ * match Instantly leads back to Airtable records without a full table scan per
+ * lead. Builds from the same cache as getProspectsBySlug, so it's free after
+ * the first call in a request.
+ */
+export async function getProspectsByEmail(): Promise<Map<string, ProspectInfo>> {
+  const bySlug = await getProspectsBySlug();
+  const byEmail = new Map<string, ProspectInfo>();
+  for (const info of bySlug.values()) {
+    const email = info.email.trim().toLowerCase();
+    if (!email) continue;
+    if (!byEmail.has(email)) byEmail.set(email, info);
+  }
+  return byEmail;
+}
+
+/**
+ * Engagement update from the Instantly sync. Writes Opens / Clicks / Replies /
+ * Last Engaged At / Instantly Lead ID, and bumps Outreach Stage forward when
+ * the engagement implies it (Sent → on first send; Replied → on first reply).
+ *
+ * Stage transitions are one-way: we never regress (a manually-set Booked stays
+ * Booked even if Instantly reports a later open). Pass only the fields you want
+ * written; omit a field to leave Airtable unchanged.
+ */
+export interface ProspectEngagementUpdate {
+  recordId: string;
+  opens?: number;
+  clicks?: number;
+  replies?: number;
+  lastEngagedAt?: string; // ISO
+  instantlyLeadId?: string;
+  sentAt?: string; // ISO date (YYYY-MM-DD)
+  repliedAt?: string; // ISO date (YYYY-MM-DD)
+  /** Current outreach stage in Airtable (so we don't regress). */
+  currentStage?: string;
+  /** When true, has at least one email send recorded by Instantly. */
+  hasBeenSent?: boolean;
+  /** When true, has at least one reply recorded by Instantly. */
+  hasReplied?: boolean;
+}
+
+const STAGE_RANK: Record<string, number> = {
+  'Not Sent': 0,
+  'Drafted': 1,
+  'Connection Sent': 2,
+  'Connection Accepted': 3,
+  'Sent': 4,
+  'Bumped': 5,
+  'Replied': 6,
+  'Booked': 7,
+  'Won': 8,
+  'Lost': 8,
+  'Disqualified': 8,
+};
+
+/** Pick the higher-ranked of two stages, never regressing. */
+function advanceStage(current: string, proposed: string): string {
+  const c = STAGE_RANK[current] ?? 0;
+  const p = STAGE_RANK[proposed] ?? 0;
+  return p > c ? proposed : current;
+}
+
+export async function updateProspectEngagement(
+  update: ProspectEngagementUpdate
+): Promise<boolean> {
+  const pat = (process.env.AIRTABLE_PAT || '').trim();
+  if (!pat || !update.recordId) return false;
+
+  const fields: Record<string, unknown> = {};
+  if (typeof update.opens === 'number') fields['Opens'] = update.opens;
+  if (typeof update.clicks === 'number') fields['Clicks'] = update.clicks;
+  if (typeof update.replies === 'number') fields['Replies'] = update.replies;
+  if (update.lastEngagedAt) fields['Last Engaged At'] = update.lastEngagedAt;
+  if (update.instantlyLeadId) fields['Instantly Lead ID'] = update.instantlyLeadId;
+  if (update.sentAt) fields['Sent At'] = update.sentAt;
+  if (update.repliedAt) fields['Replied At'] = update.repliedAt;
+
+  // Stage advancement: only set when we have evidence and the current stage is
+  // earlier in the funnel. Manual "Booked" / "Won" never gets overwritten.
+  const current = update.currentStage || 'Not Sent';
+  let nextStage = current;
+  if (update.hasBeenSent) nextStage = advanceStage(nextStage, 'Sent');
+  if (update.hasReplied) nextStage = advanceStage(nextStage, 'Replied');
+  if (nextStage !== current) fields['Outreach Stage'] = nextStage;
+
+  if (Object.keys(fields).length === 0) return true;
+
+  try {
+    const url = `https://api.airtable.com/v0/${BASE_ID}/${encodeURIComponent(TABLE)}/${update.recordId}`;
+    const res = await fetch(url, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${pat}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ fields, typecast: true }),
+    });
+    if (!res.ok) {
+      console.warn('[hq airtable] updateProspectEngagement failed', res.status, await res.text());
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.warn('[hq airtable] updateProspectEngagement threw', e);
+    return false;
+  }
+}
+
+/**
+ * Batch variant - up to 10 records per PATCH per Airtable's limit. Returns the
+ * number of records the API confirmed updating.
+ */
+export async function updateProspectEngagementBatch(
+  updates: ProspectEngagementUpdate[]
+): Promise<number> {
+  if (updates.length === 0) return 0;
+  const pat = (process.env.AIRTABLE_PAT || '').trim();
+  if (!pat) return 0;
+
+  let updated = 0;
+  for (let i = 0; i < updates.length; i += 10) {
+    const chunk = updates.slice(i, i + 10);
+    const records = chunk.map((u) => {
+      const fields: Record<string, unknown> = {};
+      if (typeof u.opens === 'number') fields['Opens'] = u.opens;
+      if (typeof u.clicks === 'number') fields['Clicks'] = u.clicks;
+      if (typeof u.replies === 'number') fields['Replies'] = u.replies;
+      if (u.lastEngagedAt) fields['Last Engaged At'] = u.lastEngagedAt;
+      if (u.instantlyLeadId) fields['Instantly Lead ID'] = u.instantlyLeadId;
+      if (u.sentAt) fields['Sent At'] = u.sentAt;
+      if (u.repliedAt) fields['Replied At'] = u.repliedAt;
+
+      const current = u.currentStage || 'Not Sent';
+      let nextStage = current;
+      if (u.hasBeenSent) nextStage = advanceStage(nextStage, 'Sent');
+      if (u.hasReplied) nextStage = advanceStage(nextStage, 'Replied');
+      if (nextStage !== current) fields['Outreach Stage'] = nextStage;
+
+      return { id: u.recordId, fields };
+    }).filter((r) => Object.keys(r.fields).length > 0);
+
+    if (records.length === 0) continue;
+
+    try {
+      const url = `https://api.airtable.com/v0/${BASE_ID}/${encodeURIComponent(TABLE)}`;
+      const res = await fetch(url, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${pat}`,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({ records, typecast: true }),
+      });
+      if (!res.ok) {
+        console.warn('[hq airtable] batch update failed', res.status, await res.text());
+        continue;
+      }
+      const data = (await res.json()) as { records?: unknown[] };
+      updated += data.records?.length ?? 0;
+    } catch (e) {
+      console.warn('[hq airtable] batch update threw', e);
+    }
+  }
+
+  // Bust the slug cache once at the end so the next /hq render reflects all
+  // the engagement changes at once.
+  const redis = getRedis();
+  if (redis && updated > 0) {
+    redis.del(CACHE_KEY).catch(() => {});
+  }
+
+  return updated;
 }
 
 /**

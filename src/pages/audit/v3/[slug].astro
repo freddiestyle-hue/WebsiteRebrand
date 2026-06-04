@@ -991,13 +991,151 @@ function bandLabel(pct: number): string {
 )}
 
 {/* Upgrade 12 - per-cell expand toggle. Vanilla JS, no framework. Each toggle
-    flips its own aria-expanded + the controlled element's hidden state. The
-    PostHog autocapture layer picks up the click via data-cta so we can see
-    which dimensions prospects drill into. Cells are independent (no
-    auto-collapse) - prospects often want to compare two dimensions side by
-    side. If clutter becomes a problem in practice we can add accordion later. */}
-<script is:inline>
+    flips its own aria-expanded + the controlled element's hidden state. Now
+    also fires audit_v3_verdict_expanded to PostHog (in addition to the
+    autocapture cta_clicked) so we can join verdict-drill engagement with
+    Instantly opens / Cal.com bookings on a per-prospect timeline. */}
+<script is:inline define:vars={{ slug, hostname: cached?.hostname || '' }}>
   (function() {
+    function track(event, props) {
+      try {
+        if (window.rivett && typeof window.rivett.track === 'function') {
+          window.rivett.track(event, props || {});
+        }
+      } catch (e) { /* never break the page for analytics */ }
+    }
+
+    // ----- audit_v3_memo_rendered -----
+    // Fires once on first paint. PostHog's $pageview also covers the page
+    // but this gives us a dedicated event keyed on the slug + score so the
+    // memo-view funnel is grep-able without spelunking the pageview stream.
+    var scoreEl = document.querySelector('.score-card .read');
+    var scoreText = scoreEl ? (scoreEl.textContent || '').trim() : '';
+    var scoreMatch = scoreText.match(/^(\d+)/);
+    track('audit_v3_memo_rendered', {
+      slug: slug,
+      hostname: hostname,
+      score_numeric: scoreMatch ? Number(scoreMatch[1]) : null,
+      url: window.location.href,
+    });
+
+    // ----- audit_v3_section_viewed -----
+    // IntersectionObserver, one fire per section ever (Set guards against
+    // re-fires when the user scrolls back). Threshold 0.4 means "at least
+    // 40% of the section is in the viewport" - tuned to skip drive-bys.
+    var SECTION_MAP = [
+      ['.hero', 'hero'],
+      ['.industry-voice', 'industry_voice'],
+      ['.locked-section', 'findings'],
+      ['.plan-preview', 'plan_preview'],
+      ['.related-notes', 'related_notes'],
+      ['.closer', 'closer'],
+    ];
+    var seen = new Set();
+    if ('IntersectionObserver' in window) {
+      var io = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) {
+          if (!entry.isIntersecting) return;
+          var name = entry.target.getAttribute('data-section');
+          if (!name || seen.has(name)) return;
+          seen.add(name);
+          track('audit_v3_section_viewed', {
+            slug: slug,
+            hostname: hostname,
+            section: name,
+          });
+          // Section is now logged; stop watching it to save cycles.
+          io.unobserve(entry.target);
+        });
+      }, { threshold: 0.4 });
+      SECTION_MAP.forEach(function(pair) {
+        var el = document.querySelector(pair[0]);
+        if (el) {
+          el.setAttribute('data-section', pair[1]);
+          io.observe(el);
+        }
+      });
+    }
+
+    // ----- audit_v3_scroll_depth -----
+    // Page-specific depth marks (25/50/75/100%). PostHog autocapture has
+    // a generic scroll_depth but it doesn't carry the prospect slug as a
+    // discoverable property - this one does. Single fire per threshold.
+    var depths = [25, 50, 75, 100];
+    var depthsHit = new Set();
+    function onScroll() {
+      var doc = document.documentElement;
+      var max = Math.max(1, (doc.scrollHeight - doc.clientHeight));
+      var pct = Math.min(100, Math.round((window.scrollY / max) * 100));
+      for (var i = 0; i < depths.length; i += 1) {
+        var d = depths[i];
+        if (pct >= d && !depthsHit.has(d)) {
+          depthsHit.add(d);
+          track('audit_v3_scroll_depth', { slug: slug, hostname: hostname, depth: d });
+        }
+      }
+    }
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll(); // catch the case where the page is shorter than viewport
+
+    // ----- audit_v3_dwell -----
+    // Active time only (visibilitychange + focus/blur). Fires at the
+    // ladder 30s/60s/120s/300s. "Read in two minutes and left" vs "tab
+    // open in background for 5 minutes" are very different signals, so
+    // we exclude background time.
+    var activeMs = 0;
+    var tickStart = document.hasFocus() && !document.hidden ? Date.now() : 0;
+    var ladders = [30, 60, 120, 300];
+    var laddersHit = new Set();
+    function flushTick() {
+      if (tickStart) {
+        activeMs += (Date.now() - tickStart);
+        tickStart = 0;
+      }
+      var seconds = Math.floor(activeMs / 1000);
+      for (var i = 0; i < ladders.length; i += 1) {
+        var l = ladders[i];
+        if (seconds >= l && !laddersHit.has(l)) {
+          laddersHit.add(l);
+          track('audit_v3_dwell', { slug: slug, hostname: hostname, seconds: l });
+        }
+      }
+    }
+    function resumeTick() {
+      if (!tickStart && document.hasFocus() && !document.hidden) {
+        tickStart = Date.now();
+      }
+    }
+    document.addEventListener('visibilitychange', function() {
+      if (document.hidden) flushTick(); else resumeTick();
+    });
+    window.addEventListener('focus', resumeTick);
+    window.addEventListener('blur', flushTick);
+    window.addEventListener('beforeunload', flushTick);
+    setInterval(flushTick, 5000); // periodic flush so a 60s read with no
+                                  // focus changes still fires its ladder
+
+    // ----- audit_v3_form_view -----
+    // "Form" here = the closer CTA. There's no email-capture form on the
+    // page yet; this event tracks reaching the booking CTA at the bottom.
+    // Mirrors the diagnostic page's audit_v3_form_view name so downstream
+    // funnels work uniformly.
+    var closer = document.querySelector('.closer');
+    if (closer && 'IntersectionObserver' in window) {
+      var ctaSeen = false;
+      var ctaIo = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) {
+          if (entry.isIntersecting && !ctaSeen) {
+            ctaSeen = true;
+            track('audit_v3_form_view', { slug: slug, hostname: hostname });
+            ctaIo.disconnect();
+          }
+        });
+      }, { threshold: 0.3 });
+      ctaIo.observe(closer);
+    }
+
+    // ----- Verdict expansion (carries forward existing behavior) -----
     document.querySelectorAll('.v3-lock-expand-toggle').forEach(function(btn) {
       btn.addEventListener('click', function(e) {
         e.stopPropagation();
@@ -1014,6 +1152,19 @@ function bandLabel(pct: number): string {
           textEl.textContent = nextExpanded
             ? 'Hide'
             : 'Show ' + count + ' signal' + (count === 1 ? '' : 's');
+        }
+        // Audit-specific expand event. data-cta still fires cta_clicked via
+        // autocapture, but this adds the dimension identifier (e.g. "speed",
+        // "seo") in a typed property for cross-prospect drill-down. Only
+        // fire on the "open" transition - collapses aren't useful signal.
+        if (nextExpanded) {
+          var cta = btn.getAttribute('data-cta') || '';
+          var dimension = cta.replace(/^cell_expand_/, '');
+          track('audit_v3_verdict_expanded', {
+            slug: slug,
+            hostname: hostname,
+            dimension: dimension,
+          });
         }
       });
     });

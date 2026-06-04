@@ -1,0 +1,58 @@
+# Polls Instantly engagement into HQ (Airtable + PostHog) every 10 minutes.
+#
+# Why a GitHub Action and not a Vercel cron? Vercel Hobby caps cron jobs at one
+# run per day. The sync needs near-real-time cadence so Fred sees opens/clicks
+# soon after they happen, not the next morning. GitHub Actions cron is free,
+# fires off-platform, and stays within the Hobby plan budget.
+#
+# What it does: curls /api/cron/sync-instantly with the same CRON_SECRET bearer
+# the Vercel cron uses. The endpoint reads Instantly per-lead engagement,
+# diffs against Airtable, writes back the deltas, and mirrors net-new events
+# to PostHog. Idempotent: skipping a run is harmless because the next run
+# picks up everything missed.
+#
+# Required GitHub repo secrets:
+#   CRON_SECRET - same value as the CRON_SECRET env var on Vercel.
+
+name: Sync Instantly to HQ
+
+on:
+  schedule:
+    # Every 10 minutes. GitHub cron is best-effort; runs can be delayed by a
+    # few minutes under load.
+    - cron: "*/10 * * * *"
+  workflow_dispatch: # allow manual trigger from the Actions tab
+
+# Cancel any in-flight run when a new one starts. A long sync (>10 min) is a
+# bug to fix, not something to overlap.
+concurrency:
+  group: sync-instantly
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Trigger sync endpoint
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::CRON_SECRET not set in repo secrets"
+            exit 1
+          fi
+          RESPONSE=$(curl --fail-with-body --silent --show-error \
+            --max-time 90 \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "https://rivett.tech/api/cron/sync-instantly")
+          echo "$RESPONSE"
+          # Surface counts in the job summary so you can see at a glance what
+          # the latest sync did without clicking into logs.
+          {
+            echo "### Sync run"
+            echo ""
+            echo '```json'
+            echo "$RESPONSE"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
