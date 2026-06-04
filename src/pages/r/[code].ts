@@ -12,6 +12,7 @@
 // form landing) so a typo in a DM doesn't return a 404 to a real prospect.
 
 import type { APIRoute } from 'astro';
+import crypto from 'node:crypto';
 import { resolveShortLink, trackClick, appendUtmParams, isBotUserAgent } from '../../utils/shortlink';
 
 export const prerender = false;
@@ -19,6 +20,47 @@ export const prerender = false;
 const POSTHOG_HOST = 'https://us.i.posthog.com';
 // Public client token - safe to embed. Same key the in-browser PostHog uses.
 const POSTHOG_CLIENT_KEY = 'phc_vqst8XDELjjTmFYwJiqzD7PzazzyQ9J69WJmcfJoxt27';
+
+// ============================================================
+// Progressive-reveal A/B/C variant assignment.
+// ============================================================
+// Each shortlink resolution stamps the visitor with a variant (A/B/C) and
+// passes it through to the audit page via ?v= URL param. Same prospect
+// always gets the same variant - sticky three ways:
+//   1. Existing rivett_variant cookie wins (cross-link consistency).
+//   2. Otherwise, SHA-256 hash of recipient or code gives deterministic
+//      bucket assignment (sticky across browser sessions for the same
+//      recipient).
+//   3. Cookie written on response so future visits stay sticky.
+//
+// B/C 50/50 split. Control (A) retired — the original ungated audit already
+// has a historical baseline on /hq, so every fresh send goes to the two new
+// reveal variants. Existing A-cookied prospects still resolve to A (cookie
+// wins below), so already-sent recipients aren't reshuffled mid-flight.
+const VARIANT_COOKIE = 'rivett_variant';
+const VARIANT_COOKIE_MAX_AGE = 60 * 60 * 24 * 90; // 90 days
+type Variant = 'a' | 'b' | 'c';
+
+function resolveVariant(opts: {
+  cookieHeader: string | null;
+  recipient?: string;
+  code: string;
+}): { variant: Variant; assigned: boolean } {
+  // 1. Cookie wins.
+  if (opts.cookieHeader) {
+    const m = opts.cookieHeader.match(new RegExp('(?:^|;\\s*)' + VARIANT_COOKIE + '=([abcABC])\\b'));
+    if (m) return { variant: m[1].toLowerCase() as Variant, assigned: false };
+  }
+  // 2. Deterministic hash of the seed - same recipient/code always gets the
+  // same bucket so re-clicks don't reshuffle.
+  const seed = (opts.recipient || opts.code || '').toLowerCase();
+  const hash = crypto.createHash('sha256').update(seed).digest();
+  // First byte mod 2 → 0/1 → b/c. 256 divides evenly by 2, so this split has
+  // zero modulo bias (the retired 3-arm version had a tiny one).
+  const bucket = hash[0] % 2;
+  const variant = (['b', 'c'] as const)[bucket];
+  return { variant, assigned: true };
+}
 
 // Fire-and-forget server-side event. Doesn't block the redirect on PostHog
 // being slow or down. Captures the click context (campaign, recipient,
@@ -29,6 +71,7 @@ async function captureClickEvent(opts: {
   userAgent: string;
   ip: string | null;
   referer: string | null;
+  variant: Variant;
 }): Promise<void> {
   let targetPath = '';
   try {
@@ -56,6 +99,9 @@ async function captureClickEvent(opts: {
       $ip: opts.ip ?? undefined,
       $user_agent: opts.userAgent,
       $referrer: opts.referer ?? '$direct',
+      // Variant assigned at this redirect. Same recipient always gets the
+      // same letter so re-clicks don't split their event stream across arms.
+      variant: opts.variant.toUpperCase(),
       // Stamp this as a server-side fire so it's filterable in PostHog.
       source: 'shortlink_server',
     },
@@ -92,6 +138,16 @@ export const GET: APIRoute = async ({ params, request, redirect }) => {
     null;
   const isBot = isBotUserAgent(userAgent);
 
+  // Resolve the prospect's variant. Sticky on existing cookie; otherwise
+  // deterministic hash on recipient (or code as fallback). The same recipient
+  // always gets the same letter so re-clicks don't reshuffle.
+  const cookieHeader = request.headers.get('cookie');
+  const { variant, assigned } = resolveVariant({
+    cookieHeader,
+    recipient: record.recipient,
+    code,
+  });
+
   // Bot path: increment the bot counter, skip the PostHog event. Still
   // redirect so the unfurl preview gets the OG card from the target page.
   if (isBot) {
@@ -111,6 +167,7 @@ export const GET: APIRoute = async ({ params, request, redirect }) => {
       userAgent,
       ip,
       referer,
+      variant,
     }).catch((e) => console.error('[shortlink] capture failed', e));
     trackClick(code, false).catch((e) => console.error('[shortlink] trackClick failed', e));
   }
@@ -119,7 +176,7 @@ export const GET: APIRoute = async ({ params, request, redirect }) => {
   // captures the campaign/recipient/channel context in the in-browser PostHog
   // pageview event. The shortlink event above is a head-start; the pageview
   // event is the canonical record.
-  const finalUrl = appendUtmParams(
+  const targetWithUtms = appendUtmParams(
     record.target,
     {
       target: record.target,
@@ -131,5 +188,29 @@ export const GET: APIRoute = async ({ params, request, redirect }) => {
     code,
   );
 
-  return redirect(finalUrl, 302);
+  // Append the variant param. The audit page reads ?v= on load and applies
+  // the body.variant-X class. URL param wins over cookie so we can force a
+  // variant for QA / debugging (?v=c) without nuking the visitor's cookie.
+  const finalUrl = (() => {
+    try {
+      const u = new URL(targetWithUtms);
+      u.searchParams.set('v', variant.toUpperCase());
+      return u.toString();
+    } catch {
+      // Bare path/relative URL - tack on with a query separator.
+      const sep = targetWithUtms.includes('?') ? '&' : '?';
+      return `${targetWithUtms}${sep}v=${variant.toUpperCase()}`;
+    }
+  })();
+
+  // Sticky-variant cookie. Only write on first assignment (when we hashed
+  // them into a bucket) so we don't keep rewriting the same value on every
+  // click. Path=/ so it works for direct visits to /audit/v3 too.
+  const headers: Record<string, string> = { Location: finalUrl };
+  if (assigned) {
+    headers['Set-Cookie'] =
+      `${VARIANT_COOKIE}=${variant}; Path=/; Max-Age=${VARIANT_COOKIE_MAX_AGE}; SameSite=Lax`;
+  }
+
+  return new Response(null, { status: 302, headers });
 };
