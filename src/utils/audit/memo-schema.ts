@@ -188,9 +188,9 @@ export const SynthesisSchema = z.object({
   softCount: z.number().int().min(0),
 });
 
-export const MemoSchema = z.object({
+const MemoSchemaBase = z.object({
   version: z.enum(SUPPORTED_MEMO_SCHEMA_VERSIONS),
-  brand: z.enum(['rivett', 'brite']).default('rivett'),
+  brand: z.enum(['rivett', 'brite']).optional(),
   ctaUrl: z.url().optional(),
   grade: MemoGradeSchema.optional(),
   roles: z.array(BriteRoleSchema).optional(),
@@ -229,6 +229,22 @@ export const MemoSchema = z.object({
     text: z.string().min(1),
   }),
 }).superRefine((memo, ctx) => {
+  if (memo.version === BRITE_MEMO_SCHEMA_VERSION && memo.brand !== 'brite') {
+    ctx.addIssue({
+      code: 'custom',
+      message: 'Brite v3 memos require explicit brand "brite".',
+      path: ['brand'],
+    });
+  }
+
+  if (memo.brand === 'brite' && memo.version !== BRITE_MEMO_SCHEMA_VERSION) {
+    ctx.addIssue({
+      code: 'custom',
+      message: 'Brite memos must use schema version 3.0.0.',
+      path: ['version'],
+    });
+  }
+
   if (memo.brand !== 'brite') return;
 
   if (!memo.ctaUrl) {
@@ -272,6 +288,14 @@ export const MemoSchema = z.object({
   const roleIds = new Set((memo.roles ?? []).map((role) => role.id));
 
   memo.verdictCells.forEach((cell, index) => {
+    if (!cell.reliability) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Brite verdict cells require reliability.',
+        path: ['verdictCells', index, 'reliability'],
+      });
+    }
+
     if (!cell.role) {
       ctx.addIssue({
         code: 'custom',
@@ -285,6 +309,16 @@ export const MemoSchema = z.object({
         path: ['verdictCells', index, 'role'],
       });
     }
+
+    cell.checks.forEach((check, checkIndex) => {
+      if (!check.reliability) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'Brite verdict checks require reliability.',
+          path: ['verdictCells', index, 'checks', checkIndex, 'reliability'],
+        });
+      }
+    });
   });
 
   memo.teamGap?.missing.forEach((roleId, index) => {
@@ -308,6 +342,11 @@ export const MemoSchema = z.object({
   });
 });
 
+export const MemoSchema = MemoSchemaBase.transform((memo) => ({
+  ...memo,
+  brand: memo.brand ?? 'rivett',
+}));
+
 export type Memo = z.infer<typeof MemoSchema>;
 export type MemoCover = z.infer<typeof CoverSchema>;
 export type VerdictCell = z.infer<typeof VerdictCellSchema>;
@@ -330,5 +369,5 @@ export function fmtInt(n?: number): string | null {
 }
 
 export function memoToJsonSchema() {
-  return z.toJSONSchema(MemoSchema);
+  return z.toJSONSchema(MemoSchemaBase);
 }

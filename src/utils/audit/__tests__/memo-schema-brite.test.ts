@@ -76,6 +76,85 @@ describe('MemoSchema Brite v3 contract', () => {
     expect(parsed.success).toBe(true);
   });
 
+  it('rejects v3 memos without an explicit Brite brand', () => {
+    const parsed = MemoSchema.safeParse({
+      ...baseMemo,
+      version: BRITE_MEMO_SCHEMA_VERSION,
+      ctaUrl: 'https://calendly.com/incrementum-team/45-minite-call',
+      grade: { letter: 'C-', band: 'gaps', peerLabel: 'B2B SaaS peer floor' },
+      roles: [
+        {
+          id: 'analytics',
+          name: 'Marketing / Web Analytics',
+          does: 'Owns GA4, ROAS, CAC, dashboards, and attribution.',
+          priceMonthly: 2800,
+          usEquivAnnual: 180000,
+        },
+      ],
+      teamGap: {
+        headcount: null,
+        specialists: [{ role: 'analytics', present: false, who: null }],
+        missing: [],
+        reliability: 'inferred',
+      },
+    });
+
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      expect(parsed.error.issues.some((issue) => issue.path.join('.') === 'brand')).toBe(true);
+    }
+  });
+
+  it('rejects Brite v3 cells and checks without reliability', () => {
+    const parsed = MemoSchema.safeParse({
+      ...baseMemo,
+      verdictCells: baseMemo.verdictCells.map((cell) => ({
+        ...cell,
+        reliability: undefined,
+        checks: cell.checks.map((check) => ({ ...check, reliability: undefined })),
+      })),
+      version: BRITE_MEMO_SCHEMA_VERSION,
+      brand: 'brite',
+      ctaUrl: 'https://calendly.com/incrementum-team/45-minite-call',
+      grade: { letter: 'C-', band: 'gaps', peerLabel: 'B2B SaaS peer floor' },
+      roles: [
+        {
+          id: 'analytics',
+          name: 'Marketing / Web Analytics',
+          does: 'Owns GA4, ROAS, CAC, dashboards, and attribution.',
+          priceMonthly: 2800,
+          usEquivAnnual: 180000,
+        },
+        {
+          id: 'technical-seo',
+          name: 'Technical SEO',
+          does: 'Owns technical organic depth.',
+          priceMonthly: 4000,
+          usEquivAnnual: 180000,
+        },
+        {
+          id: 'performance-marketing',
+          name: 'Performance Marketing',
+          does: 'Owns paid signal quality.',
+          priceMonthly: 3500,
+          usEquivAnnual: 180000,
+        },
+      ],
+      teamGap: {
+        headcount: null,
+        specialists: [{ role: 'analytics', present: false, who: null }],
+        missing: [],
+        reliability: 'inferred',
+      },
+    });
+
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      expect(parsed.error.issues.some((issue) => issue.path.join('.') === 'verdictCells.0.reliability')).toBe(true);
+      expect(parsed.error.issues.some((issue) => issue.path.join('.') === 'verdictCells.0.checks.0.reliability')).toBe(true);
+    }
+  });
+
   it('accepts Brite v3 fields without requiring them on legacy memos', () => {
     const parsed = MemoSchema.safeParse({
       ...baseMemo,
