@@ -101,6 +101,19 @@ describe('pickHeroFinding only heroes verified failures', () => {
     expect(hero.dimension).toBe('clean');
   });
 
+  it('does not lead with conversion when failures are non-applicable or inferred', () => {
+    const hero = pickHeroFinding(
+      mkMemo([
+        adsRunningCell(),
+        cell('eye', [
+          { ok: false, text: 'LinkedIn Insight not applicable', reliability: 'verified-na' },
+          { ok: false, text: 'Lifecycle ownership appears thin', reliability: 'inferred' },
+        ]),
+      ]),
+    );
+    expect(hero.dimension).toBe('clean');
+  });
+
   it('does lead with conversion when there is at least one verified fail', () => {
     const hero = pickHeroFinding(
       mkMemo([
