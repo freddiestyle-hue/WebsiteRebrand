@@ -49,12 +49,13 @@ const ICON_TO_DIMENSION: Partial<Record<VerdictIcon, Exclude<HeroDimension, 'cle
 const ADS_LANDING_PSI_THRESHOLD = 70;
 
 // Verified-only check reader. Returns the labels of checks whose reliability is
-// 'verified' (or untagged, treated as verified) AND that failed. Soft-absence
-// failures never qualify - we don't lead with what we couldn't measure.
+// 'verified' (or untagged, treated as verified) AND that failed. Soft-absence,
+// inferred, and verified-not-applicable rows never qualify - we don't lead with
+// what we couldn't measure or what is not a defect.
 function verifiedFailLabels(cell?: VerdictCell): string[] {
   if (!cell) return [];
   return cell.checks
-    .filter((c) => !c.ok && (c.reliability ?? 'verified') !== 'soft-absence')
+    .filter((c) => !c.ok && (c.reliability ?? 'verified') === 'verified')
     .map((c) => c.text);
 }
 
@@ -221,8 +222,7 @@ function cellByIcon(memo: Memo): Map<VerdictIcon, VerdictCell> {
 }
 
 function failedChecks(cell?: VerdictCell): number {
-  if (!cell) return 0;
-  return cell.checks.filter((c) => !c.ok).length;
+  return verifiedFailLabels(cell).length;
 }
 
 function cellFails(cell?: VerdictCell): boolean {

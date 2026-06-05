@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { buildRevenueEstimate, lcpSeconds } from '../revenue-estimate';
-import type { Memo, VerdictCell, VerdictIcon } from '../memo-schema';
+import { MEMO_SCHEMA_VERSION, type Memo, type VerdictCell, type VerdictIcon } from '../memo-schema';
 
 function cell(icon: VerdictIcon, over: Partial<VerdictCell> = {}): VerdictCell {
   return {
@@ -14,7 +14,7 @@ function cell(icon: VerdictIcon, over: Partial<VerdictCell> = {}): VerdictCell {
 
 function mkMemo(cells: VerdictCell[]): Memo {
   return {
-    version: '2.0.0',
+    version: MEMO_SCHEMA_VERSION,
     slug: 'acme-test-0123456789abcdef',
     domain: 'acme.test',
     generatedAt: new Date().toISOString(),
