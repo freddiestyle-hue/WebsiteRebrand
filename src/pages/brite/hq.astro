@@ -1,0 +1,513 @@
+---
+import Base from '../../layouts/Base.astro';
+
+const title = 'Brite Demand Engine HQ';
+const description = 'A seeded Brite demand engine demo showing prospect audits, role routing, outreach status, and pilot activity.';
+---
+<Base
+  title={title}
+  description={description}
+  posthogCapturePageview={true}
+>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+
+<div class="bhq">
+  <header class="bx-nav">
+    <div class="bx-wrap bx-wrap-wide bx-nav-in">
+      <a class="bx-logo" href="/brite" aria-label="brite">
+        <svg class="bx-logo-svg" viewBox="0 0 134 42" fill="none" xmlns="http://www.w3.org/2000/svg" role="img"><path d="M25.4891 3H25.5109M42.9781 21H43M25.4891 39H25.5109M8 21H8.02186M37.856 8.27179H37.8779M37.856 33.7282H37.8779M13.1221 33.7282H13.144M13.1221 8.27179H13.144M34.2336 21C34.2336 25.9706 30.3185 30 25.4891 30C20.6596 30 16.7445 25.9706 16.7445 21C16.7445 16.0294 20.6596 12 25.4891 12C30.3185 12 34.2336 16.0294 34.2336 21Z" stroke="#FF9700" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M71.2725 25.255C71.2725 21.5175 68.7425 19.1025 65.465 19.1025C62.1875 19.1025 59.6 21.5175 59.6 25.255C59.6 28.9925 62.13 31.4075 65.465 31.4075C68.8 31.4075 71.2725 28.9925 71.2725 25.255ZM75.93 25.255C75.93 31.35 71.675 35.375 65.925 35.375C60.175 35.375 60.9225 34.455 59.37 32.5575V35.0875H55V7.71751H59.6V17.78C61.21 15.9975 63.395 15.135 65.925 15.135C71.675 15.135 75.93 19.1025 75.93 25.1975V25.255Z" fill="white"/><path d="M90.2475 15.1924V19.5624C89.845 19.5049 89.5 19.4474 89.155 19.4474C85.6475 19.4474 83.4625 21.5174 83.4625 25.5424V35.0874H78.8625V15.3649H83.2325V18.2399C84.555 16.1699 86.97 15.1349 90.2475 15.1349V15.1924Z" fill="white"/><path d="M92.6624 15.4225H97.2624V35.145H92.6624V15.4225ZM92.0299 9.38502C92.0299 7.83252 93.2949 6.62503 94.9624 6.62503C96.6299 6.62503 97.8949 7.77503 97.8949 9.27003C97.8949 10.765 96.6874 12.145 94.9624 12.145C93.2374 12.145 92.0299 10.9375 92.0299 9.38502Z" fill="white"/><path d="M113.707 34.0525C112.615 34.915 110.947 35.375 109.28 35.375C104.967 35.375 102.495 33.075 102.495 28.7625V19.275H99.2749V15.595H102.495V11.11H107.095V15.595H112.385V19.275H107.095V28.6475C107.095 30.545 108.072 31.58 109.797 31.58C111.522 31.58 111.695 31.2925 112.385 30.775L113.65 34.0525H113.707Z" fill="white"/><path d="M118.307 23.7025H129.462C129.117 20.885 126.932 18.93 123.885 18.93C120.837 18.93 118.71 20.8275 118.25 23.7025H118.307ZM133.832 26.75H118.365C118.94 29.625 121.297 31.465 124.747 31.465C128.197 31.465 128.715 30.775 130.095 29.3375L132.567 32.155C130.785 34.2825 128.025 35.375 124.632 35.375C118.02 35.375 113.765 31.12 113.765 25.255C113.765 19.39 118.077 15.1925 123.942 15.1925C129.807 15.1925 133.89 19.2175 133.89 25.37C133.89 31.5225 133.89 26.29 133.832 26.75Z" fill="white"/></svg>
+      </a>
+      <span class="bx-nav-label">Demand engine · live ops</span>
+    </div>
+  </header>
+
+  <section class="bhq-demo" aria-label="Demo status">
+    <div class="bhq-demo-in">
+      <span class="bhq-demo-pill">DEMO</span>
+      <span>DEMO · Seeded with sample Brite-ICP prospects. Live data starts week 1 of pilot.</span>
+    </div>
+  </section>
+
+  <section class="bhq-header">
+    <div class="bx-wrap bx-wrap-wide">
+      <span class="bx-eyebrow">BRITE DEMAND ENGINE</span>
+      <h1 class="bhq-h1">Pipeline · pilot week 4</h1>
+      <p class="bhq-subtitle">Cold outbound that finds startups leaking money on marketing, audits them, and routes the leak to a Brite role.</p>
+    </div>
+  </section>
+
+  <section class="bhq-pulse" aria-label="Pipeline metrics">
+    <div class="bx-wrap bx-wrap-wide">
+      <div class="bhq-kpis">
+        <article class="bhq-kpi">
+          <span class="bhq-kpi-label">Prospects in pipeline</span>
+          <strong>47</strong>
+          <span class="bhq-kpi-sub bhq-kpi-sub-o">+12 this week</span>
+        </article>
+        <article class="bhq-kpi">
+          <span class="bhq-kpi-label">Audits run · 7d</span>
+          <strong>14</strong>
+          <span class="bhq-kpi-sub bhq-kpi-sub-o">100% delivered</span>
+        </article>
+        <article class="bhq-kpi">
+          <span class="bhq-kpi-label">Outreach sent</span>
+          <strong>31</strong>
+          <span class="bhq-kpi-sub">4-week cumulative</span>
+        </article>
+        <article class="bhq-kpi">
+          <span class="bhq-kpi-label">Replies</span>
+          <strong>11</strong>
+          <span class="bhq-kpi-sub bhq-kpi-sub-o">35.5% reply rate</span>
+        </article>
+        <article class="bhq-kpi">
+          <span class="bhq-kpi-label">Calls booked</span>
+          <strong>4</strong>
+          <span class="bhq-kpi-sub bhq-kpi-sub-o">36% reply→call</span>
+        </article>
+        <article class="bhq-kpi">
+          <span class="bhq-kpi-label">Hires placed</span>
+          <strong>2</strong>
+          <span class="bhq-kpi-sub bhq-kpi-sub-o">$7,000 MRR landed</span>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="bhq-main">
+    <div class="bx-wrap bx-wrap-wide">
+      <div class="bhq-grid">
+        <section class="bhq-card bhq-queue-card" aria-label="Send queue">
+          <div class="bhq-card-head">
+            <span class="bhq-card-k">SEND QUEUE</span>
+            <div class="bhq-filter" aria-label="Status filters">
+              <span class="is-active">All</span>
+              <span>Audited</span>
+              <span>Sent</span>
+              <span>Replied</span>
+              <span>Booked</span>
+              <span>Placed</span>
+            </div>
+          </div>
+          <div class="bhq-queue" id="bhq-queue"></div>
+        </section>
+
+        <aside class="bhq-card bhq-roles-card" aria-label="Brite roles">
+          <div class="bhq-card-head">
+            <span class="bhq-card-k">BRITE ROLES</span>
+            <span class="bhq-card-k">PILOT TOTAL</span>
+          </div>
+          <div class="bhq-roles" id="bhq-roles"></div>
+        </aside>
+      </div>
+
+      <section class="bhq-card bhq-feed-card" aria-label="Recent audits">
+        <div class="bhq-card-head">
+          <span class="bhq-card-k">RECENT AUDITS</span>
+          <span class="bhq-head-note">Last 8</span>
+        </div>
+        <div class="bhq-feed" id="bhq-feed"></div>
+      </section>
+
+      <section class="bhq-card bhq-activity-card" aria-label="Audit activity">
+        <div class="bhq-card-head">
+          <span class="bhq-card-k">AUDITS · LAST 7 DAYS</span>
+        </div>
+        <div class="bhq-bars" id="bhq-bars"></div>
+      </section>
+    </div>
+  </section>
+
+  <section class="bx-cta">
+    <div class="bx-wrap bx-wrap-wide bx-cta-in">
+      <div>
+        <h2 class="bx-cta-h">Monday 9am — first 50 prospects scoped to your real ICP.</h2>
+        <p class="bx-cta-p">You see every audit, every reply, every call. Pay me what it's worth once we have data.</p>
+      </div>
+      <a class="bx-btn bx-btn-lg" href="https://calendly.com/incrementum-team/30min" target="_blank" rel="noopener" data-cta="brite-hq-cta">Lock the pilot</a>
+    </div>
+  </section>
+
+  <footer class="bx-foot">
+    <div class="bx-wrap bx-wrap-wide bx-foot-in">
+      <a class="bx-logo" href="/brite" aria-label="brite">
+        <svg class="bx-logo-svg bx-logo-svg-sm" viewBox="0 0 134 42" fill="none" xmlns="http://www.w3.org/2000/svg" role="img"><path d="M25.4891 3H25.5109M42.9781 21H43M25.4891 39H25.5109M8 21H8.02186M37.856 8.27179H37.8779M37.856 33.7282H37.8779M13.1221 33.7282H13.144M13.1221 8.27179H13.144M34.2336 21C34.2336 25.9706 30.3185 30 25.4891 30C20.6596 30 16.7445 25.9706 16.7445 21C16.7445 16.0294 20.6596 12 25.4891 12C30.3185 12 34.2336 16.0294 34.2336 21Z" stroke="#FF9700" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M71.2725 25.255C71.2725 21.5175 68.7425 19.1025 65.465 19.1025C62.1875 19.1025 59.6 21.5175 59.6 25.255C59.6 28.9925 62.13 31.4075 65.465 31.4075C68.8 31.4075 71.2725 28.9925 71.2725 25.255ZM75.93 25.255C75.93 31.35 71.675 35.375 65.925 35.375C60.175 35.375 60.9225 34.455 59.37 32.5575V35.0875H55V7.71751H59.6V17.78C61.21 15.9975 63.395 15.135 65.925 15.135C71.675 15.135 75.93 19.1025 75.93 25.1975V25.255Z" fill="white"/><path d="M90.2475 15.1924V19.5624C89.845 19.5049 89.5 19.4474 89.155 19.4474C85.6475 19.4474 83.4625 21.5174 83.4625 25.5424V35.0874H78.8625V15.3649H83.2325V18.2399C84.555 16.1699 86.97 15.1349 90.2475 15.1349V15.1924Z" fill="white"/><path d="M92.6624 15.4225H97.2624V35.145H92.6624V15.4225ZM92.0299 9.38502C92.0299 7.83252 93.2949 6.62503 94.9624 6.62503C96.6299 6.62503 97.8949 7.77503 97.8949 9.27003C97.8949 10.765 96.6874 12.145 94.9624 12.145C93.2374 12.145 92.0299 10.9375 92.0299 9.38502Z" fill="white"/><path d="M113.707 34.0525C112.615 34.915 110.947 35.375 109.28 35.375C104.967 35.375 102.495 33.075 102.495 28.7625V19.275H99.2749V15.595H102.495V11.11H107.095V15.595H112.385V19.275H107.095V28.6475C107.095 30.545 108.072 31.58 109.797 31.58C111.522 31.58 111.695 31.2925 112.385 30.775L113.65 34.0525H113.707Z" fill="white"/><path d="M118.307 23.7025H129.462C129.117 20.885 126.932 18.93 123.885 18.93C120.837 18.93 118.71 20.8275 118.25 23.7025H118.307ZM133.832 26.75H118.365C118.94 29.625 121.297 31.465 124.747 31.465C128.197 31.465 128.715 30.775 130.095 29.3375L132.567 32.155C130.785 34.2825 128.025 35.375 124.632 35.375C118.02 35.375 113.765 31.12 113.765 25.255C113.765 19.39 118.077 15.1925 123.942 15.1925C129.807 15.1925 133.89 19.2175 133.89 25.37C133.89 31.5225 133.89 26.29 133.832 26.75Z" fill="white"/></svg>
+      </a>
+      <span>Prototype built by <b>Fred Style</b> · Rivett · A demonstration, not affiliated with Brite.</span>
+    </div>
+  </footer>
+</div>
+
+<script is:inline>
+  const PROSPECTS = [
+    { name: "Outbound Labs",    stage: "Series A · GTM tooling · scaling sales",          finding: "4 unidentified trackers",      role: "Marketing/Web Analytics", price: "$2,800/mo", status: "audited", lastTouch: "30min ago", minutes: 30 },
+    { name: "Edenflow",         stage: "Seed · Workflow automation",                       finding: "No Meta Pixel",                role: "Performance Marketing",    price: "$3,500/mo", status: "audited", lastTouch: "45min ago", minutes: 45 },
+    { name: "Klever HR",        stage: "Seed · Performance reviews · Series A pending",    finding: "No Meta Pixel",                role: "Performance Marketing",    price: "$3,500/mo", status: "audited", lastTouch: "1h ago",    minutes: 60 },
+    { name: "Anvil Studios",    stage: "Seed · No-code internal tools",                    finding: "GTM junk drawer",              role: "Marketing/Web Analytics", price: "$2,800/mo", status: "audited", lastTouch: "1h ago",    minutes: 65 },
+    { name: "Indigo Lattice",   stage: "Series A · Vertical SaaS for insurance",           finding: "No Meta Pixel",                role: "Performance Marketing",    price: "$3,500/mo", status: "audited", lastTouch: "1h ago",    minutes: 75 },
+    { name: "Brio Energy",      stage: "Series A · ESG analytics",                         finding: "5s mobile load",               role: "Digital Marketing",        price: "$3,500/mo", status: "audited", lastTouch: "2h ago",    minutes: 120 },
+    { name: "Lumenpath AI",     stage: "Series A · LLM agents · 8mo runway",               finding: "No Meta Pixel",                role: "Performance Marketing",    price: "$3,500/mo", status: "sent",    lastTouch: "2h ago",    minutes: 130 },
+    { name: "Forge Logistics",  stage: "Seed · Trucking SaaS · founder-led growth",        finding: "4.7s mobile load",             role: "Digital Marketing",        price: "$3,500/mo", status: "replied", lastTouch: "4h ago",    minutes: 240 },
+    { name: "Tessellate",       stage: "Series A · Design ops SaaS",                       finding: "No DMARC record",              role: "Email Marketing",          price: "$3,500/mo", status: "replied", lastTouch: "5h ago",    minutes: 300 },
+    { name: "Klyff Health",     stage: "Series A · Patient intake · D2C component",        finding: "No DMARC record",              role: "Email Marketing",          price: "$3,500/mo", status: "booked",  lastTouch: "6h ago",    minutes: 360 },
+    { name: "Kindred Stack",    stage: "Seed · DevEx platform",                            finding: "No Meta Pixel",                role: "Performance Marketing",    price: "$3,500/mo", status: "replied", lastTouch: "8h ago",    minutes: 480 },
+    { name: "Drift Robotics",   stage: "Series A · Warehouse automation",                  finding: "4 unidentified trackers",      role: "Marketing/Web Analytics", price: "$2,800/mo", status: "booked",  lastTouch: "9h ago",    minutes: 540 },
+    { name: "Gilded Markets",   stage: "Seed · Fintech infra",                             finding: "No schema markup",             role: "Technical SEO",            price: "$4,000/mo", status: "replied", lastTouch: "12h ago",   minutes: 720 },
+    { name: "Stride Finance",   stage: "Seed · B2B AP automation",                         finding: "No schema markup",             role: "Technical SEO",            price: "$4,000/mo", status: "sent",    lastTouch: "1d ago",    minutes: 1440 },
+    { name: "Boundless Data",   stage: "Series A · CDP for mid-market",                    finding: "No rich snippets",             role: "Technical SEO",            price: "$4,000/mo", status: "sent",    lastTouch: "1d ago",    minutes: 1500 },
+    { name: "Northwave Bio",    stage: "Series A · Bio devtools · TAM US+EU",              finding: "5.2s mobile load",             role: "Digital Marketing",        price: "$3,500/mo", status: "sent",    lastTouch: "2d ago",    minutes: 2880 },
+    { name: "Flint Climate",    stage: "Series A · Carbon accounting",                     finding: "No DMARC record",              role: "Email Marketing",          price: "$3,500/mo", status: "sent",    lastTouch: "2d ago",    minutes: 2940 },
+    { name: "Cinder Devtools",  stage: "Seed · Open source tooling",                       finding: "No schema markup",             role: "Technical SEO",            price: "$4,000/mo", status: "sent",    lastTouch: "3d ago",    minutes: 4320 },
+    { name: "Habit AI",         stage: "Seed · Behavior science API",                      finding: "GTM junk drawer",              role: "Marketing/Web Analytics", price: "$2,800/mo", status: "placed",  lastTouch: "4d ago",    minutes: 5760 },
+    { name: "Acorn Path",       stage: "Series A · Education D2C",                         finding: "No DMARC record",              role: "Email Marketing",          price: "$3,500/mo", status: "placed",  lastTouch: "11d ago",   minutes: 15840 },
+  ];
+
+  const COLD_OPENERS = {
+    "No Meta Pixel":
+      "You're spending on Google and LinkedIn but flying blind on the channel that usually wins for your category. A performance hire pays for itself the month they wire up Meta.",
+    "No DMARC record":
+      "Your order and onboarding emails are landing in spam, and anyone can spoof your domain at the same time. A half-day fix for the right hire. Want the breakdown?",
+    "4.7s mobile load":
+      "You're paying for ad clicks that hit a 4.7-second page on mobile. A digital marketing hire turns the traffic you're already buying into qualified leads.",
+    "5s mobile load":
+      "You're paying for ad clicks that hit a 5-second page on mobile. A digital marketing hire turns the traffic you're already buying into qualified leads.",
+    "5.2s mobile load":
+      "You're paying for ad clicks that hit a 5.2-second page on mobile. A digital marketing hire turns the traffic you're already buying into qualified leads.",
+    "No schema markup":
+      "Your competitors are getting review stars and rich snippets in Google search. You're not. A technical SEO fixes that in a week and your category page lights up.",
+    "No rich snippets":
+      "You ship great product pages and Google shows none of the review stars. A technical SEO closes that gap inside a sprint and your CTR climbs.",
+    "4 unidentified trackers":
+      "Your tag manager has four trackers nobody can name, no clean CAC, no clean ROAS. An analytics hire gives you a dashboard the team will actually trust.",
+    "GTM junk drawer":
+      "Your tag manager is a junk drawer. There's no clean read on what's working. An analytics hire installs the dashboard your CFO will stop questioning.",
+  };
+
+  const ROLES = {
+    "Performance Marketing":     { does: "Google Ads, Facebook Ads, campaign optimisation, reducing CAC",                          price: "$3,500/mo" },
+    "Email Marketing":           { does: "Email, SMS, push & in-app, lifecycle journeys",                                          price: "$3,500/mo" },
+    "Digital Marketing":         { does: "Google Ads, Facebook Ads, email, reducing CAC",                                          price: "$3,500/mo" },
+    "Marketing/Web Analytics":   { does: "GA4, Mixpanel, Heap, ROAS & CAC, A/B tests, dashboards",                                 price: "$2,800/mo" },
+    "Technical SEO":             { does: "Keyword research, sitemap, schema, internal linking, snippet optimisation",              price: "$4,000/mo" },
+    "Salesforce Admin":          { does: "Salesforce administration",                                                              price: "$5,000/mo" },
+  };
+
+  const ROLES_BOARD = [
+    { role: "Performance Marketing",   price: "$3,500/mo", matches: 14 },
+    { role: "Email Marketing",         price: "$3,500/mo", matches: 10 },
+    { role: "Marketing/Web Analytics", price: "$2,800/mo", matches: 9  },
+    { role: "Technical SEO",           price: "$4,000/mo", matches: 8  },
+    { role: "Digital Marketing",       price: "$3,500/mo", matches: 6  },
+    { role: "Salesforce Admin",        price: "$5,000/mo", matches: 0  },
+  ];
+
+  const DAILY_AUDITS = [
+    { day: "Mon", count: 3 },
+    { day: "Tue", count: 2 },
+    { day: "Wed", count: 3 },
+    { day: "Thu", count: 2 },
+    { day: "Fri", count: 3 },
+    { day: "Sat", count: 1 },
+    { day: "Sun", count: 0 },
+  ];
+
+  let expandedCompany = null;
+
+  function escapeHtml(value) {
+    return String(value)
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#039;');
+  }
+
+  function statusLabel(status) {
+    return status.charAt(0).toUpperCase() + status.slice(1);
+  }
+
+  function renderExpanded(prospect) {
+    const role = ROLES[prospect.role];
+    return `
+      <div class="bhq-expanded">
+        <div class="bx-panel-flow">
+          <div class="bx-panel-leak">
+            <span class="bx-panel-k">Audit finds</span>
+            <h3 class="bx-panel-finding">${escapeHtml(prospect.finding)}</h3>
+            <p class="bx-panel-detail">${escapeHtml(prospect.stage)}</p>
+          </div>
+          <div class="bx-panel-arrow" aria-hidden="true">→</div>
+          <div class="bx-panel-role">
+            <span class="bx-panel-k bx-panel-k-o">Brite places</span>
+            <h3 class="bx-panel-rolename">${escapeHtml(prospect.role)}</h3>
+            <p class="bx-panel-does">${escapeHtml(role.does)}</p>
+            <span class="bx-panel-price">${escapeHtml(role.price)}</span>
+          </div>
+        </div>
+        <div class="bx-panel-cold">
+          <span class="bx-panel-k">The cold opener it writes</span>
+          <p>${escapeHtml(COLD_OPENERS[prospect.finding])}</p>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderQueue() {
+    const queue = document.getElementById('bhq-queue');
+    queue.innerHTML = PROSPECTS.map((prospect) => `
+      <article class="bhq-prospect${expandedCompany === prospect.name ? ' is-expanded' : ''}">
+        <button class="bhq-queue-row" type="button" data-company="${escapeHtml(prospect.name)}">
+          <span class="bhq-company">${escapeHtml(prospect.name)}</span>
+          <span class="bhq-stage-finding">
+            <span class="bhq-stage">${escapeHtml(prospect.stage)}</span>
+            <span class="bhq-finding"><span aria-hidden="true">●</span>${escapeHtml(prospect.finding)}</span>
+          </span>
+          <span class="bhq-role">${escapeHtml(prospect.role)}</span>
+          <span class="bhq-status bhq-status-${escapeHtml(prospect.status)}">${escapeHtml(statusLabel(prospect.status))}</span>
+          <span class="bhq-touch">${escapeHtml(prospect.lastTouch)}</span>
+        </button>
+        ${expandedCompany === prospect.name ? renderExpanded(prospect) : ''}
+      </article>
+    `).join('');
+
+    queue.querySelectorAll('.bhq-queue-row').forEach((row) => {
+      row.addEventListener('click', () => {
+        const company = row.dataset.company;
+        const prospect = PROSPECTS.find((item) => item.name === company);
+        const nextCompany = expandedCompany === company ? null : company;
+        expandedCompany = nextCompany;
+        renderQueue();
+        if (nextCompany && window.posthog) {
+          window.posthog.capture('brite_hq_row_expanded', {
+            company: prospect.name,
+            role: prospect.role,
+            status: prospect.status,
+          });
+        }
+      });
+    });
+  }
+
+  function renderRoles() {
+    const roles = document.getElementById('bhq-roles');
+    roles.innerHTML = ROLES_BOARD.map((item) => `
+      <article class="bhq-role-row${item.matches === 0 ? ' is-zero' : ''}">
+        <div>
+          <h3>${escapeHtml(item.role)}</h3>
+          <p>${escapeHtml(item.price)}</p>
+          ${item.role === 'Salesforce Admin' ? '<em>Audit doesn&#039;t catch this yet — separate scan in week 2.</em>' : ''}
+        </div>
+        <div class="bhq-role-count">
+          <strong>${escapeHtml(item.matches)}</strong>
+          <span>matches</span>
+        </div>
+      </article>
+    `).join('');
+  }
+
+  function renderFeed() {
+    const feed = document.getElementById('bhq-feed');
+    const recent = PROSPECTS.slice().sort((a, b) => a.minutes - b.minutes).slice(0, 8);
+    feed.innerHTML = recent.map((item) => `
+      <article class="bhq-feed-row">
+        <span class="bhq-feed-company">${escapeHtml(item.name)}</span>
+        <span>${escapeHtml(item.finding)}</span>
+        <span>${escapeHtml(item.role)}</span>
+        <span class="bhq-feed-time">${escapeHtml(item.lastTouch)}</span>
+      </article>
+    `).join('');
+  }
+
+  function renderBars() {
+    const bars = document.getElementById('bhq-bars');
+    const max = Math.max(...DAILY_AUDITS.map((item) => item.count));
+    bars.innerHTML = DAILY_AUDITS.map((item) => `
+      <article class="bhq-bar-item">
+        <div class="bhq-bar-shell">
+          ${item.count === max ? `<span class="bhq-bar-count">${escapeHtml(item.count)}</span>` : ''}
+          <span class="bhq-bar" style="height: ${max ? (item.count / max) * 120 : 0}px"></span>
+        </div>
+        <span class="bhq-bar-label">${escapeHtml(item.day)}</span>
+      </article>
+    `).join('');
+  }
+
+  renderQueue();
+  renderRoles();
+  renderFeed();
+  renderBars();
+</script>
+
+<style is:global>
+  .site-header { display: none !important; }
+  body { padding-top: 0 !important; }
+
+  .bhq {
+    --o: #ff9700;
+    --o-d: #e88500;
+    --dark: #1a1a1a;
+    --dark-2: #232323;
+    --dark-3: #2b2b2b;
+    --ink: #1f1f1f;
+    --muted: #758696;
+    --line-d: rgba(255,255,255,0.12);
+    --line-l: #ececec;
+    --font: 'Montserrat', -apple-system, BlinkMacSystemFont, sans-serif;
+    --body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: var(--body);
+    color: #fff;
+    background: var(--dark);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .bhq * { box-sizing: border-box; }
+  .bhq .bx-wrap { max-width: 1080px; margin: 0 auto; padding: 0 28px; }
+  .bhq .bx-wrap-wide { max-width: 1280px; margin: 0 auto; padding: 0 28px; }
+  .bhq .bx-o { color: var(--o); }
+
+  .bhq .bx-logo { display: inline-flex; align-items: center; text-decoration: none; }
+  .bhq .bx-logo-svg { height: 26px; width: auto; display: block; }
+  .bhq .bx-logo-svg-sm { height: 20px; }
+
+  .bhq .bx-nav { position: sticky; top: 0; z-index: 20; background: var(--dark); border-bottom: 1px solid var(--line-d); }
+  .bhq .bx-nav-in { display: flex; justify-content: space-between; align-items: center; min-height: 64px; padding: 18px 28px; }
+  .bhq .bx-nav-right { display: flex; align-items: center; gap: 18px; }
+  .bhq .bx-nav-label { font-family: var(--font); font-weight: 600; font-size: 11px; letter-spacing: 0; text-transform: uppercase; color: rgba(255,255,255,0.5); }
+
+  .bhq .bx-btn { display: inline-block; font-family: var(--font); font-weight: 700; font-size: 15px; color: #fff; background: var(--o); padding: 13px 26px; border-radius: 999px; text-decoration: none; transition: background 0.15s ease; }
+  .bhq .bx-btn:hover { background: var(--o-d); }
+  .bhq .bx-btn-sm { padding: 9px 18px; font-size: 13.5px; }
+  .bhq .bx-btn-lg { padding: 16px 32px; font-size: 16px; }
+
+  .bhq .bx-eyebrow { display: inline-block; font-family: var(--font); font-weight: 700; font-size: 12px; letter-spacing: 0; text-transform: uppercase; color: var(--o); margin-bottom: 22px; }
+  .bhq .bx-panel-flow { display: grid; grid-template-columns: 1fr auto 1fr; gap: 18px; align-items: stretch; }
+  .bhq .bx-panel-k { display: block; font-family: var(--font); font-weight: 700; font-size: 11px; letter-spacing: 0; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+  .bhq .bx-panel-k-o { color: var(--o-d); }
+  .bhq .bx-panel-leak { background: var(--dark-2); border: 1px solid var(--line-d); border-radius: 14px; padding: 22px; }
+  .bhq .bx-panel-finding { font-family: var(--font); font-weight: 800; font-size: 20px; margin: 0 0 10px; letter-spacing: 0; color: #fff; }
+  .bhq .bx-panel-detail { font-size: 14px; line-height: 1.55; color: rgba(255,255,255,0.65); margin: 0; }
+  .bhq .bx-panel-arrow { display: flex; align-items: center; font-size: 26px; color: var(--o); font-weight: 700; }
+  .bhq .bx-panel-role { background: var(--dark); border: 1px solid var(--line-d); border-radius: 14px; padding: 22px; }
+  .bhq .bx-panel-role .bx-panel-k { color: var(--o); }
+  .bhq .bx-panel-rolename { font-family: var(--font); font-weight: 800; font-size: 20px; margin: 0 0 10px; letter-spacing: 0; color: #fff; }
+  .bhq .bx-panel-does { font-size: 14px; line-height: 1.55; color: rgba(255,255,255,0.72); margin: 0 0 14px; }
+  .bhq .bx-panel-price { display: inline-block; font-family: var(--font); font-weight: 700; font-size: 13px; color: #fff; background: var(--o); padding: 6px 14px; border-radius: 999px; }
+  .bhq .bx-panel-cold { margin-top: 22px; padding-top: 22px; border-top: 1px solid var(--line-d); }
+  .bhq .bx-panel-cold p { font-size: 16px; line-height: 1.55; color: #fff; margin: 0; font-style: italic; }
+
+  .bhq .bx-cta { background: var(--dark-2); padding: 40px 0; border-top: 1px solid var(--line-d); }
+  .bhq .bx-cta-in { display: flex; justify-content: space-between; align-items: center; gap: 32px; flex-wrap: wrap; }
+  .bhq .bx-cta-h { font-family: var(--font); font-weight: 800; font-size: 28px; line-height: 1.12; letter-spacing: 0; margin: 0; max-width: 640px; color: #fff; }
+  .bhq .bx-cta-p { font-size: 15px; color: rgba(255,255,255,0.65); margin: 14px 0 0; max-width: 640px; }
+
+  .bhq .bx-foot { background: var(--dark); border-top: 1px solid var(--line-d); padding: 26px 0; }
+  .bhq .bx-foot-in { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: rgba(255,255,255,0.5); flex-wrap: wrap; gap: 10px; }
+  .bhq .bx-foot b { color: #fff; font-weight: 600; }
+
+  .bhq-demo { position: sticky; top: 64px; z-index: 19; min-height: 44px; display: flex; align-items: center; justify-content: center; background: var(--dark-3); border-bottom: 1px solid var(--line-d); }
+  .bhq-demo-in { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 10px 28px; font-size: 13px; line-height: 1.3; color: rgba(255,255,255,0.65); text-align: center; }
+  .bhq-demo-pill { display: inline-block; font-family: var(--font); font-size: 11px; font-weight: 700; line-height: 1; color: #fff; background: var(--o); padding: 3px 9px; border-radius: 999px; }
+
+  .bhq-header { padding: 36px 0 24px; background: var(--dark); }
+  .bhq-h1 { font-family: var(--font); font-size: 38px; font-weight: 800; line-height: 1.08; letter-spacing: 0; color: #fff; margin: 0; }
+  .bhq-subtitle { max-width: 720px; margin: 16px 0 0; font-size: 15px; line-height: 1.6; color: rgba(255,255,255,0.6); }
+
+  .bhq-pulse { background: var(--dark); padding: 28px 0; }
+  .bhq-kpis { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; }
+  .bhq-kpi { background: var(--dark-2); border: 1px solid var(--line-d); border-radius: 16px; padding: 22px; min-width: 0; }
+  .bhq-kpi-label { display: block; min-height: 28px; font-family: var(--font); font-size: 11px; font-weight: 700; line-height: 1.25; letter-spacing: 0; text-transform: uppercase; color: rgba(255,255,255,0.45); }
+  .bhq-kpi strong { display: block; margin-top: 8px; font-family: var(--font); font-size: 34px; font-weight: 800; line-height: 1; letter-spacing: 0; color: #fff; }
+  .bhq-kpi-sub { display: block; margin-top: 4px; font-size: 12px; color: rgba(255,255,255,0.5); }
+  .bhq-kpi-sub-o { color: var(--o); }
+
+  .bhq-main { padding: 0 0 40px; background: var(--dark); }
+  .bhq-grid { display: grid; grid-template-columns: 1fr 320px; gap: 18px; align-items: start; }
+  .bhq-card { background: var(--dark-2); border: 1px solid var(--line-d); border-radius: 16px; overflow: hidden; }
+  .bhq-card-head { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 18px 22px; border-bottom: 1px solid var(--line-d); }
+  .bhq-card-k { font-family: var(--font); font-size: 11px; font-weight: 700; line-height: 1; letter-spacing: 0; text-transform: uppercase; color: rgba(255,255,255,0.55); white-space: nowrap; }
+  .bhq-head-note { font-size: 12px; color: rgba(255,255,255,0.5); }
+  .bhq-filter { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 0; font-size: 12px; color: rgba(255,255,255,0.5); }
+  .bhq-filter span { display: inline-flex; align-items: center; }
+  .bhq-filter span + span::before { content: "·"; margin: 0 7px; color: rgba(255,255,255,0.5); }
+  .bhq-filter .is-active { color: var(--o); }
+
+  .bhq-prospect { border-bottom: 1px solid var(--line-d); }
+  .bhq-prospect:last-child { border-bottom: 0; }
+  .bhq-queue-row { width: 100%; display: grid; grid-template-columns: 200px minmax(0, 1fr) 200px 110px 80px; gap: 14px; align-items: center; padding: 16px 22px; background: transparent; border: 0; color: inherit; text-align: left; cursor: pointer; transition: background 0.15s ease; }
+  .bhq-queue-row:hover { background: var(--dark-3); }
+  .bhq-company { min-width: 0; font-family: var(--font); font-size: 15px; font-weight: 700; line-height: 1.25; color: #fff; }
+  .bhq-stage-finding { display: block; min-width: 0; }
+  .bhq-stage { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; line-height: 1.35; color: rgba(255,255,255,0.5); }
+  .bhq-finding { display: flex; align-items: center; gap: 8px; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; line-height: 1.35; color: rgba(255,255,255,0.85); }
+  .bhq-finding span { flex: 0 0 auto; font-size: 8px; color: var(--o); }
+  .bhq-role { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font); font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.85); }
+  .bhq-status { display: inline-block; justify-self: start; padding: 4px 10px; border-radius: 999px; font-family: var(--font); font-size: 11px; font-weight: 700; line-height: 1.3; letter-spacing: 0; text-transform: uppercase; }
+  .bhq-status-audited { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.7); }
+  .bhq-status-sent { background: rgba(255,151,0,0.12); color: var(--o); }
+  .bhq-status-replied { background: rgba(255,151,0,0.22); color: var(--o); }
+  .bhq-status-booked { background: var(--o); color: #fff; }
+  .bhq-status-placed { background: #1f6f3e; color: #fff; }
+  .bhq-touch { font-size: 12px; color: rgba(255,255,255,0.4); text-align: right; }
+  .bhq-expanded { background: var(--dark-3); padding: 22px; }
+
+  .bhq-role-row { display: grid; grid-template-columns: 1fr auto; gap: 14px; padding: 14px 18px; border-bottom: 1px solid var(--line-d); }
+  .bhq-role-row:last-child { border-bottom: 0; }
+  .bhq-role-row h3 { margin: 0; font-family: var(--font); font-size: 14px; font-weight: 600; line-height: 1.25; color: #fff; }
+  .bhq-role-row p { margin: 5px 0 0; font-size: 12px; line-height: 1.35; color: rgba(255,255,255,0.5); }
+  .bhq-role-row em { display: block; margin-top: 7px; font-size: 11px; line-height: 1.4; color: rgba(255,255,255,0.4); }
+  .bhq-role-count { text-align: right; }
+  .bhq-role-count strong { display: block; font-family: var(--font); font-size: 22px; font-weight: 800; line-height: 1; color: var(--o); }
+  .bhq-role-count span { display: block; margin-top: 5px; font-family: var(--font); font-size: 10px; font-weight: 700; line-height: 1; letter-spacing: 0; text-transform: uppercase; color: rgba(255,255,255,0.4); }
+  .bhq-role-row.is-zero .bhq-role-count strong { color: rgba(255,255,255,0.3); }
+
+  .bhq-feed-card,
+  .bhq-activity-card { margin-top: 18px; }
+  .bhq-feed-row { display: grid; grid-template-columns: 200px 1fr 1fr 120px; gap: 18px; align-items: center; padding: 14px 22px; border-bottom: 1px solid var(--line-d); font-size: 13px; color: rgba(255,255,255,0.72); }
+  .bhq-feed-row:last-child { border-bottom: 0; }
+  .bhq-feed-company { font-family: var(--font); font-weight: 700; color: #fff; }
+  .bhq-feed-time { text-align: right; color: rgba(255,255,255,0.4); }
+
+  .bhq-bars { display: grid; grid-template-columns: repeat(7, 1fr); gap: 12px; align-items: end; padding: 22px; }
+  .bhq-bar-item { min-width: 0; }
+  .bhq-bar-shell { position: relative; display: flex; align-items: flex-end; justify-content: center; height: 140px; border-bottom: 1px solid var(--line-d); }
+  .bhq-bar { display: block; width: 100%; background: var(--o); border-radius: 6px 6px 0 0; }
+  .bhq-bar-count { position: absolute; top: 0; font-family: var(--font); font-size: 12px; font-weight: 700; line-height: 1; color: #fff; }
+  .bhq-bar-label { display: block; margin-top: 10px; text-align: center; font-family: var(--font); font-size: 11px; font-weight: 700; line-height: 1; letter-spacing: 0; text-transform: uppercase; color: rgba(255,255,255,0.5); }
+
+  @media (max-width: 1080px) {
+    .bhq-kpis { grid-template-columns: repeat(3, 1fr); }
+    .bhq-queue-row { grid-template-columns: 180px minmax(0, 1fr) 170px 100px 74px; gap: 12px; }
+  }
+
+  @media (max-width: 880px) {
+    .bhq .bx-wrap,
+    .bhq .bx-wrap-wide { padding: 0 22px; }
+    .bhq-grid { grid-template-columns: 1fr; }
+    .bhq-kpis { grid-template-columns: repeat(3, 1fr); }
+    .bhq .bx-panel-flow { grid-template-columns: 1fr; }
+    .bhq .bx-panel-arrow { justify-content: center; }
+    .bhq-feed-row { grid-template-columns: 160px 1fr 1fr 96px; }
+  }
+
+  @media (max-width: 720px) {
+    .bhq-card-head { align-items: flex-start; flex-direction: column; }
+    .bhq-filter { justify-content: flex-start; }
+    .bhq-queue-row { grid-template-columns: 1fr auto; }
+    .bhq-stage-finding,
+    .bhq-role { grid-column: 1 / -1; }
+    .bhq-touch { text-align: left; }
+    .bhq-feed-row { grid-template-columns: 1fr; gap: 4px; }
+    .bhq-feed-time { text-align: left; }
+  }
+
+  @media (max-width: 560px) {
+    .bhq-kpis { grid-template-columns: repeat(2, 1fr); }
+    .bhq-demo { top: 64px; }
+    .bhq-demo-in { align-items: flex-start; text-align: left; }
+    .bhq-h1 { font-size: 34px; }
+    .bhq .bx-cta-in { align-items: flex-start; }
+    .bhq .bx-btn-lg { width: 100%; text-align: center; }
+  }
+</style>
+</Base>
