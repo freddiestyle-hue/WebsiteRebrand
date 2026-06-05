@@ -223,6 +223,55 @@ export const MemoSchema = z.object({
   personalObservation: z.object({
     text: z.string().min(1),
   }),
+}).superRefine((memo, ctx) => {
+  if (memo.brand !== 'brite') return;
+
+  if (!memo.roles?.length) {
+    ctx.addIssue({
+      code: 'custom',
+      message: 'Brite memos require a non-empty roles catalog.',
+      path: ['roles'],
+    });
+    return;
+  }
+
+  const roleIds = new Set(memo.roles.map((role) => role.id));
+
+  memo.verdictCells.forEach((cell, index) => {
+    if (!cell.role) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Brite verdict cells require a role id.',
+        path: ['verdictCells', index, 'role'],
+      });
+    } else if (!roleIds.has(cell.role)) {
+      ctx.addIssue({
+        code: 'custom',
+        message: `Brite verdict cell role '${cell.role}' is not in roles.`,
+        path: ['verdictCells', index, 'role'],
+      });
+    }
+  });
+
+  memo.teamGap?.missing.forEach((roleId, index) => {
+    if (!roleIds.has(roleId)) {
+      ctx.addIssue({
+        code: 'custom',
+        message: `Brite teamGap missing role '${roleId}' is not in roles.`,
+        path: ['teamGap', 'missing', index],
+      });
+    }
+  });
+
+  memo.teamGap?.specialists.forEach((specialist, index) => {
+    if (!roleIds.has(specialist.role)) {
+      ctx.addIssue({
+        code: 'custom',
+        message: `Brite teamGap specialist role '${specialist.role}' is not in roles.`,
+        path: ['teamGap', 'specialists', index, 'role'],
+      });
+    }
+  });
 });
 
 export type Memo = z.infer<typeof MemoSchema>;

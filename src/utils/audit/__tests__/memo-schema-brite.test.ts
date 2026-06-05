@@ -18,6 +18,7 @@ const baseMemo = {
       value: 'Mostly clean',
       note: 'GA4 is present, but demo attribution needs an owner.',
       checks: [{ ok: true, text: 'GA4 present', reliability: 'verified' }],
+      role: 'analytics',
       reliability: 'verified',
     },
     {
@@ -26,6 +27,7 @@ const baseMemo = {
       value: 'Flat',
       note: 'Traffic appears flat against category peers.',
       checks: [{ ok: false, text: 'Traffic is modeled, not measured', reliability: 'inferred' }],
+      role: 'technical-seo',
       reliability: 'inferred',
     },
     {
@@ -34,6 +36,7 @@ const baseMemo = {
       value: 'Google only',
       note: 'Meta checks do not apply to the current channel mix.',
       checks: [{ ok: true, text: 'Meta Pixel not applicable', reliability: 'verified-na' }],
+      role: 'performance-marketing',
       reliability: 'verified-na',
     },
   ],
@@ -78,6 +81,20 @@ describe('MemoSchema Brite v3 contract', () => {
           priceMonthly: 2800,
           usEquivAnnual: 180000,
         },
+        {
+          id: 'technical-seo',
+          name: 'Technical SEO',
+          does: 'Owns technical organic depth.',
+          priceMonthly: 4000,
+          usEquivAnnual: 180000,
+        },
+        {
+          id: 'performance-marketing',
+          name: 'Performance Marketing',
+          does: 'Owns paid signal quality.',
+          priceMonthly: 3500,
+          usEquivAnnual: 180000,
+        },
       ],
       teamGap: {
         headcount: null,
@@ -92,6 +109,51 @@ describe('MemoSchema Brite v3 contract', () => {
       expect(parsed.data.brand).toBe('brite');
       expect(parsed.data.roles?.[0]?.priceMonthly).toBe(2800);
       expect(parsed.data.teamGap?.missing).toContain('analytics');
+    }
+  });
+
+  it('rejects Brite v3 cells whose role is not in the memo role catalog', () => {
+    const parsed = MemoSchema.safeParse({
+      ...baseMemo,
+      version: BRITE_MEMO_SCHEMA_VERSION,
+      brand: 'brite',
+      ctaUrl: 'https://calendly.com/incrementum-team/45-minite-call',
+      grade: { letter: 'C-', band: 'gaps', peerLabel: 'B2B SaaS peer floor' },
+      roles: [
+        {
+          id: 'analytics',
+          name: 'Marketing / Web Analytics',
+          does: 'Owns GA4, ROAS, CAC, dashboards, and attribution.',
+          priceMonthly: 2800,
+          usEquivAnnual: 180000,
+        },
+      ],
+      teamGap: {
+        headcount: null,
+        specialists: [{ role: 'analytics', present: false, who: null }],
+        missing: ['analytics'],
+        reliability: 'inferred',
+      },
+    });
+
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      expect(parsed.error.issues.some((issue) => issue.path.join('.') === 'verdictCells.1.role')).toBe(true);
+    }
+  });
+
+  it('rejects Brite v3 memos without a role catalog', () => {
+    const parsed = MemoSchema.safeParse({
+      ...baseMemo,
+      version: BRITE_MEMO_SCHEMA_VERSION,
+      brand: 'brite',
+      ctaUrl: 'https://calendly.com/incrementum-team/45-minite-call',
+      grade: { letter: 'C-', band: 'gaps', peerLabel: 'B2B SaaS peer floor' },
+    });
+
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      expect(parsed.error.issues.some((issue) => issue.path.join('.') === 'roles')).toBe(true);
     }
   });
 });
