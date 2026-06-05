@@ -119,6 +119,23 @@ describe('synthesizeDiagnosis', () => {
     expect(s.primaryIssue?.reliability).toBe('soft-absence');
   });
 
+  it('keeps verified not-applicable conversion checks out of gap synthesis', () => {
+    const s = synthesizeDiagnosis(
+      mkAudit([
+        mkCheck({
+          id: 'tracking-linkedin-insight',
+          category: 'tracking',
+          passed: false,
+          reliability: 'verified-na',
+        }),
+      ]),
+      mkEnrich({ ads: { metaActive: 1, googleActive: 0, linkedinActive: 0 } as AdsResult }),
+      [],
+    );
+    expect(s.primaryIssue).toBeNull();
+    expect(s.crossSignals.map((c) => c.key)).not.toContain('ads-running-conversion-gaps');
+  });
+
   it('flags a missing DMARC record', () => {
     const s = synthesizeDiagnosis(
       mkAudit([]),
@@ -149,6 +166,7 @@ describe('synthesizeDiagnosis', () => {
           { ok: true, text: 'a', reliability: 'verified' },
           { ok: false, text: 'b', reliability: 'soft-absence' },
           { ok: false, text: 'c', reliability: 'inferred' },
+          { ok: false, text: 'd', reliability: 'verified-na' },
         ],
       },
     ]);
@@ -333,6 +351,19 @@ describe('rollupReliability weight-aware cascade (Upgrade 8)', () => {
     const memo = buildMemoFromAudit(audit);
     const conv = memo.verdictCells.find((c) => c.icon === 'eye');
     expect(conv?.reliability).toBe('soft-absence');
+  });
+
+  it('verified-na rows stay neutral in cell rollup and synthesis totals', () => {
+    const audit = mkAudit([
+      mkCheck({ id: 'tracking-linkedin-insight', category: 'tracking', passed: false, reliability: 'verified-na' }),
+    ]);
+    const memo = buildMemoFromAudit(audit);
+    const target = memo.verdictCells.find((c) => c.icon === 'target');
+    expect(target?.reliability).toBe('verified-na');
+    expect(memo.synthesis?.primaryIssue).toBeNull();
+    expect(memo.synthesis?.verifiedCount).toBe(0);
+    expect(memo.synthesis?.softCount).toBe(0);
+    expect(memo.rankedFixes[0].what).toBe('Keep doing what you are doing.');
   });
 
   it('memo carries auditVersion = AUDIT_ENGINE_VERSION on every new build (Upgrade 11)', () => {

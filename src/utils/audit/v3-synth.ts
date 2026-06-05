@@ -70,6 +70,9 @@ function verifiedCount(checks: CheckResult[]): {
   let unconfirmed = 0;
   for (const c of checks) {
     const rel = c.reliability ?? 'verified';
+    if (rel === 'verified-na') {
+      continue;
+    }
     if (rel === 'soft-absence') {
       unconfirmed++;
     } else if (c.passed) {
@@ -147,6 +150,10 @@ function impactFor(check: CheckResult): 'low' | 'med' | 'high' {
   if (check.weight >= 3) return 'high';
   if (check.weight === 2) return 'med';
   return 'low';
+}
+
+function isApplicableFailure(check: CheckResult): boolean {
+  return !check.passed && check.reliability !== 'verified-na';
 }
 
 function fmtMs(ms: number | null): string {
@@ -945,11 +952,16 @@ function placeholderStack(staticRan: boolean): VerdictCell {
 // cascading - it's a smaller but still load-bearing signal.
 function rollupReliability(checks: VerdictCheck[]): Reliability {
   let hasInferred = false;
+  let hasVerified = false;
+  let hasVerifiedNa = false;
   for (const c of checks) {
     if ((c.weight ?? 1) === 0) continue;
     if (c.reliability === 'soft-absence') return 'soft-absence';
     if (c.reliability === 'inferred') hasInferred = true;
+    if (c.reliability === 'verified') hasVerified = true;
+    if (c.reliability === 'verified-na') hasVerifiedNa = true;
   }
+  if (hasVerifiedNa && !hasVerified && !hasInferred) return 'verified-na';
   return hasInferred ? 'inferred' : 'verified';
 }
 
@@ -1008,7 +1020,7 @@ export function synthesizeDiagnosis(
 
   // Conversion + tracking gaps - the failures that cost paid traffic money.
   const adGaps = audit.checks.filter(
-    (c) => !c.passed && (c.category === 'conversion' || c.category === 'tracking'),
+    (c) => isApplicableFailure(c) && (c.category === 'conversion' || c.category === 'tracking'),
   );
   const adGapsHardFact = adGaps.length > 0 && adGaps.every((c) => c.reliability === 'verified');
   const adGapWord = adGaps.length === 1 ? 'gap' : 'gaps';
@@ -1076,7 +1088,7 @@ export function synthesizeDiagnosis(
   } else {
     // Fall back to the worst failing audit check, verified failures first.
     const worst = audit.checks
-      .filter((c) => !c.passed)
+      .filter(isApplicableFailure)
       .sort((a, b) => {
         const ra = a.reliability === 'verified' ? 1 : 0;
         const rb = b.reliability === 'verified' ? 1 : 0;
@@ -1099,7 +1111,7 @@ export function synthesizeDiagnosis(
   for (const cell of cells) {
     for (const c of cell.checks) {
       if (c.reliability === 'verified') verifiedCount++;
-      else if (c.reliability) softCount++;
+      else if (c.reliability && c.reliability !== 'verified-na') softCount++;
     }
   }
 
@@ -1164,7 +1176,7 @@ export function buildMemoFromAudit(audit: AuditResult, enrich?: EnrichmentBundle
     'tracking',
   ]);
   const failed = audit.checks
-    .filter((c) => !c.passed)
+    .filter(isApplicableFailure)
     .sort((a, b) => {
       if (adsRunning) {
         const aBoost = AD_OPERATOR_PRIORITY.has(a.category) ? 100 : 0;
@@ -1237,7 +1249,7 @@ export function buildMemoFromAudit(audit: AuditResult, enrich?: EnrichmentBundle
   // generic "X ads running" - those gaps are where paid clicks bleed.
   const adConvGapCount = adsRunning
     ? audit.checks.filter(
-        (c) => !c.passed && AD_OPERATOR_PRIORITY.has(c.category),
+        (c) => isApplicableFailure(c) && AD_OPERATOR_PRIORITY.has(c.category),
       ).length
     : 0;
   // Default: just the band label as a one-word verdict.

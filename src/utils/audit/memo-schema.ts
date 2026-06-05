@@ -347,7 +347,8 @@ export const MemoSchema = MemoSchemaBase.transform((memo) => ({
   brand: memo.brand ?? 'rivett',
 }));
 
-export type Memo = z.infer<typeof MemoSchema>;
+export type Memo = z.output<typeof MemoSchemaBase>;
+export type ParsedMemo = z.output<typeof MemoSchema>;
 export type MemoCover = z.infer<typeof CoverSchema>;
 export type VerdictCell = z.infer<typeof VerdictCellSchema>;
 export type VerdictCheck = z.infer<typeof VerdictCheckSchema>;
