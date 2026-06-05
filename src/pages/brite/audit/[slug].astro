@@ -44,7 +44,7 @@ if (!isValidSlug(slug)) {
     }
   } catch (e) {
     statusCode = 500;
-    error = e instanceof Error ? e.message : String(e);
+    error = 'The Brite audit could not load.';
     console.error('[brite/audit] KV fetch failed', e);
   }
 }
@@ -56,6 +56,7 @@ const fallbackRole = roles[0] ?? BRITE_ROLES[0];
 const missingRoles = (memo?.teamGap?.missing ?? [])
   .map((id) => roleById(roles, id))
   .filter((role): role is BriteRole => role != null);
+const primaryMissingRole = missingRoles[0] ?? null;
 
 const renderedCells = (memo?.verdictCells ?? []).map((cell) => {
   const role = roleById(roles, cell.role) ?? missingRoles[0] ?? fallbackRole;
@@ -586,7 +587,7 @@ function money(n?: number): string {
         </div>
         <div class="team-grid">
           <div class="panel">
-            <h3>{missingRoles[0]?.name ?? fallbackRole.name}</h3>
+            <h3>{primaryMissingRole?.name ?? 'Team gap not verified yet'}</h3>
             <p class="muted">
               {memo.teamGap?.headcount == null
                 ? 'Public headcount was not measured in this sample memo.'
@@ -594,8 +595,17 @@ function money(n?: number): string {
               {' '}
               The staffing read is {confidenceCopy(memo.teamGap?.reliability).label.toLowerCase()}.
             </p>
-            <span class="role-price">{money(missingRoles[0]?.priceMonthly ?? fallbackRole.priceMonthly)}</span>
-            <div class="senior-swap">Senior US equivalent: ${(missingRoles[0]?.usEquivAnnual ?? fallbackRole.usEquivAnnual ?? 180000).toLocaleString('en-US')}/yr.</div>
+            {primaryMissingRole ? (
+              <>
+                <span class="role-price">{money(primaryMissingRole.priceMonthly)}</span>
+                <div class="senior-swap">Senior US equivalent: ${(primaryMissingRole.usEquivAnnual ?? 180000).toLocaleString('en-US')}/yr.</div>
+              </>
+            ) : (
+              <>
+                <span class="role-price">Role pending</span>
+                <div class="senior-swap">Run Apollo or manual roster review before naming the missing specialist.</div>
+              </>
+            )}
           </div>
           <div class="panel">
             <h3>Missing owner IDs</h3>

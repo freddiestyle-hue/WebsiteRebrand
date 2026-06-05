@@ -66,6 +66,16 @@ describe('MemoSchema Brite v3 contract', () => {
     }
   });
 
+  it('allows legacy Rivett memos to use non-Brite HTTPS CTA URLs', () => {
+    const parsed = MemoSchema.safeParse({
+      ...baseMemo,
+      version: MEMO_SCHEMA_VERSION,
+      ctaUrl: 'https://rivett.tech/book',
+    });
+
+    expect(parsed.success).toBe(true);
+  });
+
   it('accepts Brite v3 fields without requiring them on legacy memos', () => {
     const parsed = MemoSchema.safeParse({
       ...baseMemo,
@@ -154,6 +164,132 @@ describe('MemoSchema Brite v3 contract', () => {
     expect(parsed.success).toBe(false);
     if (!parsed.success) {
       expect(parsed.error.issues.some((issue) => issue.path.join('.') === 'roles')).toBe(true);
+    }
+  });
+
+  it('rejects Brite v3 memos without a team gap', () => {
+    const parsed = MemoSchema.safeParse({
+      ...baseMemo,
+      version: BRITE_MEMO_SCHEMA_VERSION,
+      brand: 'brite',
+      ctaUrl: 'https://calendly.com/incrementum-team/45-minite-call',
+      grade: { letter: 'C-', band: 'gaps', peerLabel: 'B2B SaaS peer floor' },
+      roles: [
+        {
+          id: 'analytics',
+          name: 'Marketing / Web Analytics',
+          does: 'Owns GA4, ROAS, CAC, dashboards, and attribution.',
+          priceMonthly: 2800,
+          usEquivAnnual: 180000,
+        },
+        {
+          id: 'technical-seo',
+          name: 'Technical SEO',
+          does: 'Owns technical organic depth.',
+          priceMonthly: 4000,
+          usEquivAnnual: 180000,
+        },
+        {
+          id: 'performance-marketing',
+          name: 'Performance Marketing',
+          does: 'Owns paid signal quality.',
+          priceMonthly: 3500,
+          usEquivAnnual: 180000,
+        },
+      ],
+    });
+
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      expect(parsed.error.issues.some((issue) => issue.path.join('.') === 'teamGap')).toBe(true);
+    }
+  });
+
+  it('accepts Brite v3 memos with an empty team-gap missing list', () => {
+    const parsed = MemoSchema.safeParse({
+      ...baseMemo,
+      version: BRITE_MEMO_SCHEMA_VERSION,
+      brand: 'brite',
+      ctaUrl: 'https://calendly.com/incrementum-team/45-minite-call',
+      grade: { letter: 'C-', band: 'gaps', peerLabel: 'B2B SaaS peer floor' },
+      roles: [
+        {
+          id: 'analytics',
+          name: 'Marketing / Web Analytics',
+          does: 'Owns GA4, ROAS, CAC, dashboards, and attribution.',
+          priceMonthly: 2800,
+          usEquivAnnual: 180000,
+        },
+        {
+          id: 'technical-seo',
+          name: 'Technical SEO',
+          does: 'Owns technical organic depth.',
+          priceMonthly: 4000,
+          usEquivAnnual: 180000,
+        },
+        {
+          id: 'performance-marketing',
+          name: 'Performance Marketing',
+          does: 'Owns paid signal quality.',
+          priceMonthly: 3500,
+          usEquivAnnual: 180000,
+        },
+      ],
+      teamGap: {
+        headcount: null,
+        specialists: [{ role: 'analytics', present: false, who: null }],
+        missing: [],
+        reliability: 'inferred',
+      },
+    });
+
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.teamGap?.missing).toEqual([]);
+    }
+  });
+
+  it('rejects non-Calendly Brite CTA URLs', () => {
+    const parsed = MemoSchema.safeParse({
+      ...baseMemo,
+      version: BRITE_MEMO_SCHEMA_VERSION,
+      brand: 'brite',
+      ctaUrl: 'javascript:alert(1)',
+      grade: { letter: 'C-', band: 'gaps', peerLabel: 'B2B SaaS peer floor' },
+      roles: [
+        {
+          id: 'analytics',
+          name: 'Marketing / Web Analytics',
+          does: 'Owns GA4, ROAS, CAC, dashboards, and attribution.',
+          priceMonthly: 2800,
+          usEquivAnnual: 180000,
+        },
+        {
+          id: 'technical-seo',
+          name: 'Technical SEO',
+          does: 'Owns technical organic depth.',
+          priceMonthly: 4000,
+          usEquivAnnual: 180000,
+        },
+        {
+          id: 'performance-marketing',
+          name: 'Performance Marketing',
+          does: 'Owns paid signal quality.',
+          priceMonthly: 3500,
+          usEquivAnnual: 180000,
+        },
+      ],
+      teamGap: {
+        headcount: null,
+        specialists: [{ role: 'analytics', present: false, who: null }],
+        missing: ['analytics'],
+        reliability: 'inferred',
+      },
+    });
+
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      expect(parsed.error.issues.some((issue) => issue.path.join('.') === 'ctaUrl')).toBe(true);
     }
   });
 });

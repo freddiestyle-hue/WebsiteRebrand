@@ -165,6 +165,11 @@ export const TeamGapSchema = z.object({
   reliability: z.enum(RELIABILITY_VALUES),
 });
 
+function isBriteCtaUrl(value: string): boolean {
+  const url = new URL(value);
+  return url.protocol === 'https:' && (url.hostname === 'calendly.com' || url.hostname.endsWith('.calendly.com'));
+}
+
 export const SynthesisSchema = z.object({
   // The dimension the rules flag as the systemic headline. null when nothing
   // dominates (a site clean enough that no single issue leads).
@@ -226,16 +231,45 @@ export const MemoSchema = z.object({
 }).superRefine((memo, ctx) => {
   if (memo.brand !== 'brite') return;
 
+  if (!memo.ctaUrl) {
+    ctx.addIssue({
+      code: 'custom',
+      message: 'Brite memos require a CTA URL.',
+      path: ['ctaUrl'],
+    });
+  } else if (!isBriteCtaUrl(memo.ctaUrl)) {
+    ctx.addIssue({
+      code: 'custom',
+      message: 'Brite CTA URL must be an https://calendly.com URL.',
+      path: ['ctaUrl'],
+    });
+  }
+
+  if (!memo.grade) {
+    ctx.addIssue({
+      code: 'custom',
+      message: 'Brite memos require a grade.',
+      path: ['grade'],
+    });
+  }
+
   if (!memo.roles?.length) {
     ctx.addIssue({
       code: 'custom',
       message: 'Brite memos require a non-empty roles catalog.',
       path: ['roles'],
     });
-    return;
   }
 
-  const roleIds = new Set(memo.roles.map((role) => role.id));
+  if (!memo.teamGap) {
+    ctx.addIssue({
+      code: 'custom',
+      message: 'Brite memos require a team gap.',
+      path: ['teamGap'],
+    });
+  }
+
+  const roleIds = new Set((memo.roles ?? []).map((role) => role.id));
 
   memo.verdictCells.forEach((cell, index) => {
     if (!cell.role) {
@@ -244,7 +278,7 @@ export const MemoSchema = z.object({
         message: 'Brite verdict cells require a role id.',
         path: ['verdictCells', index, 'role'],
       });
-    } else if (!roleIds.has(cell.role)) {
+    } else if (roleIds.size > 0 && !roleIds.has(cell.role)) {
       ctx.addIssue({
         code: 'custom',
         message: `Brite verdict cell role '${cell.role}' is not in roles.`,
@@ -254,7 +288,7 @@ export const MemoSchema = z.object({
   });
 
   memo.teamGap?.missing.forEach((roleId, index) => {
-    if (!roleIds.has(roleId)) {
+    if (roleIds.size > 0 && !roleIds.has(roleId)) {
       ctx.addIssue({
         code: 'custom',
         message: `Brite teamGap missing role '${roleId}' is not in roles.`,
@@ -264,7 +298,7 @@ export const MemoSchema = z.object({
   });
 
   memo.teamGap?.specialists.forEach((specialist, index) => {
-    if (!roleIds.has(specialist.role)) {
+    if (roleIds.size > 0 && !roleIds.has(specialist.role)) {
       ctx.addIssue({
         code: 'custom',
         message: `Brite teamGap specialist role '${specialist.role}' is not in roles.`,

@@ -1,7 +1,7 @@
 // Authenticated memo-seed endpoint.
 //
 // POSTs a memo JSON payload into Upstash KV at `memo:${slug}` so the
-// /audit/p/{slug} renderer can pick it up. Same Bearer-auth model as
+// brand-specific memo renderer can pick it up. Same Bearer-auth model as
 // /api/audit/check. Validates the body against MemoSchema before writing,
 // so we don't poison KV with a malformed memo that would 500 the renderer.
 //
@@ -46,6 +46,10 @@ function checkAuth(req: Request): { ok: true } | { ok: false; status: number; re
   return { ok: true };
 }
 
+function memoPath(memo: Memo): string {
+  return memo.brand === 'brite' ? `/brite/audit/${memo.slug}` : `/audit/p/${memo.slug}`;
+}
+
 export const POST: APIRoute = async ({ request }) => {
   const auth = checkAuth(request);
   if (!auth.ok) return jsonResponse(auth.status, { error: auth.reason });
@@ -75,7 +79,7 @@ export const POST: APIRoute = async ({ request }) => {
       ok: true,
       slug: memo.slug,
       key,
-      url: `https://rivett.tech/audit/p/${memo.slug}`,
+      url: `https://rivett.tech${memoPath(memo)}`,
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);

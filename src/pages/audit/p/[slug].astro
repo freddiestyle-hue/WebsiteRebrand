@@ -33,6 +33,10 @@ if (!isValidSlug(slug)) {
         statusCode = 500;
         error = 'Memo schema validation failed.';
         console.error('[audit/p] schema validation failed', parsed.error.flatten());
+      } else if (parsed.data.brand === 'brite') {
+        statusCode = 404;
+        error = 'Memo not found.';
+        console.error('[audit/p] Brite memo requested through Rivett route', { slug });
       } else if (parsed.data.slug !== slug) {
         // Defense in depth: a stale or mis-keyed write could leave a memo
         // under a different slug than the one it claims internally. Refuse
