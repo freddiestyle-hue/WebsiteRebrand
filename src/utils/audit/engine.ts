@@ -26,7 +26,8 @@ import type { SerpResult } from './serp';
 //                  (HTML parse, regex, allowlist). Never assert the absence.
 //   inferred     - a perception or model read, not a measurement. Frame as
 //                  perception, never as fact.
-export type ReliabilityTag = 'verified' | 'soft-absence' | 'inferred';
+//   verified-na  - verified as not applicable to this business/channel.
+export type ReliabilityTag = 'verified' | 'soft-absence' | 'inferred' | 'verified-na';
 
 export interface CheckResult {
   id: string;

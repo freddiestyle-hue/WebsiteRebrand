@@ -1,6 +1,11 @@
 import { z } from 'zod';
 
 export const MEMO_SCHEMA_VERSION = '2.0.0';
+export const BRITE_MEMO_SCHEMA_VERSION = '3.0.0';
+export const SUPPORTED_MEMO_SCHEMA_VERSIONS = [
+  MEMO_SCHEMA_VERSION,
+  BRITE_MEMO_SCHEMA_VERSION,
+] as const;
 
 // Upgrade 11 - the audit engine version that produced this memo. Bumped on
 // each shipped engine change (3.5.0 ships SerpAPI pages-indexed). Surfaces
@@ -35,7 +40,8 @@ export const VERDICT_ICON_VALUES = [
 //   verified     - assertable as fact
 //   soft-absence - an absence the method can false-negative; never assert it
 //   inferred     - a perception or model read, not a measurement
-export const RELIABILITY_VALUES = ['verified', 'soft-absence', 'inferred'] as const;
+//   verified-na  - verified as not applicable to this business/channel
+export const RELIABILITY_VALUES = ['verified', 'soft-absence', 'inferred', 'verified-na'] as const;
 
 const VerdictCheckSchema = z.object({
   ok: z.boolean(),
@@ -58,6 +64,9 @@ const VerdictCellSchema = z.object({
   heading: z.string().min(1),
   value: z.string().min(1),
   note: z.string().min(1),
+  // Brite v3: optional role id this gap maps to. Optional so cached v2
+  // Rivett memos continue to validate unchanged.
+  role: z.string().optional(),
   // Old single-string benchmark stays for back-compat with /audit/p memos
   // written under the v2.0.0 schema. New v3 audits split it into two columns
   // for the cell footer: bench-left (method/category) and bench-right (status).
@@ -111,6 +120,51 @@ const CrossSignalSchema = z.object({
   reliability: z.enum(RELIABILITY_VALUES),
 });
 
+const PaidLandingSchema = z.object({
+  rawUrl: z.string().min(1),
+  source: z.enum(['meta', 'google', 'linkedin']),
+  confidence: z.enum(['verified', 'fuzzy']),
+  pageName: z.string().nullable(),
+  headline: z.string().nullable(),
+  finalUrl: z.string().nullish(),
+});
+
+export const PaidEvidenceSchema = z.object({
+  landings: z.array(PaidLandingSchema).default([]),
+  metaActive: z.number().nullable().optional(),
+  googleActive: z.number().nullable().optional(),
+  linkedinActive: z.number().nullable().optional(),
+  earliestSeen: z.string().nullable().optional(),
+  commentary: z.string().optional(),
+});
+
+export const BriteRoleSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  does: z.string().min(1),
+  priceMonthly: z.number().nonnegative(),
+  usEquivAnnual: z.number().positive().optional(),
+});
+
+export const MemoGradeSchema = z.object({
+  letter: z.string().min(1),
+  band: z.enum(['strong', 'solid', 'gaps', 'at-risk']),
+  peerLabel: z.string().min(1),
+});
+
+const TeamGapSpecialistSchema = z.object({
+  role: z.string().min(1),
+  present: z.boolean(),
+  who: z.string().nullish(),
+});
+
+export const TeamGapSchema = z.object({
+  headcount: z.number().int().min(0).nullable(),
+  specialists: z.array(TeamGapSpecialistSchema),
+  missing: z.array(z.string().min(1)),
+  reliability: z.enum(RELIABILITY_VALUES),
+});
+
 export const SynthesisSchema = z.object({
   // The dimension the rules flag as the systemic headline. null when nothing
   // dominates (a site clean enough that no single issue leads).
@@ -130,7 +184,12 @@ export const SynthesisSchema = z.object({
 });
 
 export const MemoSchema = z.object({
-  version: z.literal(MEMO_SCHEMA_VERSION),
+  version: z.enum(SUPPORTED_MEMO_SCHEMA_VERSIONS),
+  brand: z.enum(['rivett', 'brite']).default('rivett'),
+  ctaUrl: z.url().optional(),
+  grade: MemoGradeSchema.optional(),
+  roles: z.array(BriteRoleSchema).optional(),
+  teamGap: TeamGapSchema.optional(),
   // Upgrade 11 - the audit engine version that produced this memo. Optional
   // for back-compat with cached memos written before 3.5 (treated as legacy
   // /3.4 by analytics). New memos always carry it via buildMemoFromAudit.
@@ -156,6 +215,7 @@ export const MemoSchema = z.object({
   // Upgrade 7 - the cross-dimension synthesis. Optional for back-compat with
   // v2.0.0 memos written before the synthesis layer existed.
   synthesis: SynthesisSchema.optional(),
+  paidEvidence: PaidEvidenceSchema.optional(),
 
   verdictCells: z.array(VerdictCellSchema).min(3).max(10),
   rankedFixes: z.array(RankedFixSchema).min(1).max(5),
@@ -176,6 +236,10 @@ export type Benchmark = z.infer<typeof BenchmarkSchema>;
 export type Screenshots = z.infer<typeof ScreenshotsSchema>;
 export type Synthesis = z.infer<typeof SynthesisSchema>;
 export type CrossSignal = z.infer<typeof CrossSignalSchema>;
+export type PaidEvidence = z.infer<typeof PaidEvidenceSchema>;
+export type BriteRole = z.infer<typeof BriteRoleSchema>;
+export type MemoGrade = z.infer<typeof MemoGradeSchema>;
+export type TeamGap = z.infer<typeof TeamGapSchema>;
 
 export function fmtInt(n?: number): string | null {
   if (n == null) return null;

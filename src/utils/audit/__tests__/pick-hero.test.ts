@@ -1,6 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { pickHeroFinding } from '../pick-hero';
-import type { Memo, VerdictCell, VerdictCheck, VerdictIcon } from '../memo-schema';
+import {
+  MEMO_SCHEMA_VERSION,
+  type Memo,
+  type VerdictCell,
+  type VerdictCheck,
+  type VerdictIcon,
+} from '../memo-schema';
 
 function cell(icon: VerdictIcon, checks: VerdictCheck[], over: Partial<VerdictCell> = {}): VerdictCell {
   return {
@@ -24,7 +30,7 @@ function adsRunningCell(): VerdictCell {
 
 function mkMemo(cells: VerdictCell[]): Memo {
   return {
-    version: '2.0.0',
+    version: MEMO_SCHEMA_VERSION,
     slug: 'acme-test-0123456789abcdef',
     domain: 'acme.test',
     generatedAt: new Date().toISOString(),
