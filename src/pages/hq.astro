@@ -141,8 +141,16 @@ if (authed) {
     // gracefully disables Send / click-to-Sent when the row is missing data.
     // Only Replied / Booked / Won / Lost / Disqualified are excluded - those
     // are terminal.
+    // Scope the queue to two active cohorts only — Wave 3 Huber (Advertiser
+     // leftovers waiting on LinkedIn DM) and Wave 5 Fractional (the new
+     // fractional outreach push). Everything else (Wave 1, Wave 2, Mental
+     // Health, Homecare, Wave 3 fractional that already shipped) drops out
+     // of the queue so Fred only sees what's actionable this week.
     outreachQueue = await getOutreachQueueByWave({
-      wave: null,
+      cohorts: [
+        { wave: 'Wave 3 - This Week', vertical: 'Advertiser' },
+        { wave: 'Wave 5 - This Week', vertical: 'Fractional Role' },
+      ],
       includeDrafted: true,
       includeInFlight: true,
       requireDm: false,

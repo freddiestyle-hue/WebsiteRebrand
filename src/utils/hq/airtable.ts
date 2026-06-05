@@ -315,8 +315,20 @@ export interface OutreachQueueRow {
   linkedinDm: string;
   auditUrl: string;
   attackWave: string;
+  vertical: string;
   priority: string;
   outreachStage: string;
+}
+
+/**
+ * A cohort filter combining wave + vertical. Used to scope the queue to a
+ * specific (wave, vertical) pair, e.g. Wave 3 Advertiser leftovers and Wave 5
+ * Fractional Role together but NOT Wave 3 Fractional or Wave 1 Advertiser.
+ * Either field can be omitted to mean "any value".
+ */
+export interface OutreachQueueCohort {
+  wave?: string;
+  vertical?: string;
 }
 
 /**
@@ -327,6 +339,13 @@ export interface OutreachQueueRow {
 export interface OutreachQueueOptions {
   /** Wave to scope to. `null` returns all waves AND prospects with no wave assigned. */
   wave?: string | null;
+  /**
+   * Cohort allowlist. A prospect passes if its (wave, vertical) matches ANY
+   * cohort entry. When provided, this is the ONLY filter that decides
+   * inclusion; `wave` is ignored. Used by /hq to scope to "Wave 3 Huber +
+   * Wave 5 Fractional" together with one call.
+   */
+  cohorts?: OutreachQueueCohort[];
   /** When true, also includes prospects at stage "Drafted" (copy written, never sent). */
   includeDrafted?: boolean;
   /** When true, also includes "Connection Sent" + "Sent" (in-flight; chase / follow up). */
@@ -351,28 +370,42 @@ export interface OutreachQueueOptions {
 export async function getOutreachQueueByWave(
   arg: string | OutreachQueueOptions,
 ): Promise<OutreachQueueRow[]> {
-  const opts: Required<OutreachQueueOptions> = typeof arg === 'string'
-    ? { wave: arg, includeDrafted: false, includeInFlight: false, requireDm: true, requireLinkedinUrl: true }
-    : {
-        wave: arg.wave ?? null,
-        includeDrafted: arg.includeDrafted ?? false,
-        includeInFlight: arg.includeInFlight ?? false,
-        requireDm: arg.requireDm ?? true,
-        requireLinkedinUrl: arg.requireLinkedinUrl ?? true,
-      };
+  const opts: Required<Omit<OutreachQueueOptions, 'cohorts'>> & { cohorts: OutreachQueueCohort[] | null } =
+    typeof arg === 'string'
+      ? { wave: arg, cohorts: null, includeDrafted: false, includeInFlight: false, requireDm: true, requireLinkedinUrl: true }
+      : {
+          wave: arg.wave ?? null,
+          cohorts: arg.cohorts ?? null,
+          includeDrafted: arg.includeDrafted ?? false,
+          includeInFlight: arg.includeInFlight ?? false,
+          requireDm: arg.requireDm ?? true,
+          requireLinkedinUrl: arg.requireLinkedinUrl ?? true,
+        };
 
   const stageList: string[] = ['Not Sent'];
   if (opts.includeDrafted) stageList.push('Drafted');
   if (opts.includeInFlight) stageList.push('Connection Sent', 'Connection Accepted', 'Sent', 'Bumped');
   const allowedStages = new Set<string>(stageList);
 
+  // Cohort match: returns true if no cohort filter set, or if (wave, vertical)
+  // matches any cohort. Empty fields on a cohort mean "any value for that
+  // field". The cohorts filter, when present, REPLACES the wave gate.
+  function matchesCohort(wave: string, vertical: string): boolean {
+    if (!opts.cohorts || opts.cohorts.length === 0) return true;
+    return opts.cohorts.some((c) => {
+      if (c.wave && c.wave !== wave) return false;
+      if (c.vertical && c.vertical !== vertical) return false;
+      return true;
+    });
+  }
+
   const all = await getProspectsBySlug();
   const queue: OutreachQueueRow[] = [];
   for (const info of all.values()) {
-    // Wave gate: only enforced when the caller asked for a specific wave.
-    // `wave: null` surfaces every prospect across all waves AND prospects
-    // with no Attack Wave assigned (the migration backlog lives here).
-    if (opts.wave !== null) {
+    // Cohort gate wins when set. Otherwise fall back to single-wave gate.
+    if (opts.cohorts && opts.cohorts.length > 0) {
+      if (!matchesCohort(info.attackWave, info.vertical)) continue;
+    } else if (opts.wave !== null) {
       if (!info.attackWave) continue;
       if (info.attackWave !== opts.wave) continue;
     }
@@ -396,6 +429,7 @@ export async function getOutreachQueueByWave(
       linkedinDm: info.linkedinDm,
       auditUrl: info.auditUrl,
       attackWave: info.attackWave,
+      vertical: info.vertical,
       priority: info.priority,
       outreachStage: info.outreachStage,
     });
