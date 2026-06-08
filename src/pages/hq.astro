@@ -412,7 +412,7 @@ const queueHtml = renderQueue();
 
 // analytics section index (chrome only; the components render the data)
 const WAVE3_SECTION = {
-  id: 'wave3', n: '00', icon: 'ic-14-outreach',
+  id: 'wave3', n: '00', icon: '',
   title: 'Wave 3 Huber', tail: 'live campaign.',
   sub: wave3State
     ? `${wave3State.delivery.sent}/${wave3State.campaign.totalLeads} sent`
@@ -431,7 +431,7 @@ const AN_SECTIONS = [
   { id: 'timeline', n: '09', icon: 'ic-04-cadence', title: 'Activity', tail: 'in sequence.', sub: `${activity.length}d` },
 ];
 const anHead = (s: typeof AN_SECTIONS[number]) =>
-  `<div class="an-head"><div class="l"><span class="snum">§ ${s.n}</span><span class="an-ic">${ic(s.icon)}</span><h2>${esc(s.title)} <span class="ital">${esc(s.tail)}</span></h2></div><span class="sub">${esc(s.sub)}</span></div>`;
+  `<div class="an-head"><div class="l"><span class="snum">§ ${s.n}</span>${s.icon ? `<span class="an-ic">${ic(s.icon)}</span>` : ''}<h2>${esc(s.title)} <span class="ital">${esc(s.tail)}</span></h2></div><span class="sub">${esc(s.sub)}</span></div>`;
 
 const today = new Date();
 const todayDisplay = `${today.getUTCFullYear()}·${String(today.getUTCMonth() + 1).padStart(2, '0')}·${String(today.getUTCDate()).padStart(2, '0')}`;
