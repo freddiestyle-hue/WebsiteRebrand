@@ -89,10 +89,13 @@ function fullUrl(path: string, surface: 'audit' | 'intake-review' | 'proposal' |
           </div>
           <div class="cell mono">{dwell(r.dwell_seconds)}</div>
           <div class="cell">
+            <span class={`mark ${m.cls}`} title={m.title}>{m.label}</span>
+          </div>
+          <div class="cell">
             {replay ? (
-              <a class={`mark ${m.cls}`} href={replay} target="_blank" rel="noopener" title={m.title}>{m.label}</a>
+              <a class="replay-link" href={replay} target="_blank" rel="noopener" title="Open PostHog session replay">↻ replay</a>
             ) : (
-              <span class={`mark ${m.cls}`} title={m.title}>{m.label}</span>
+              <span class="replay-na" title="No session id for this read">-</span>
             )}
           </div>
         </div>
@@ -115,12 +118,31 @@ function fullUrl(path: string, surface: 'audit' | 'intake-review' | 'proposal' |
   }
   .feed-row {
     display: grid;
-    grid-template-columns: 1.5fr 1.2fr 90px 110px 90px 80px;
+    grid-template-columns: 1.5fr 1.2fr 90px 110px 90px 80px 80px;
     gap: 16px;
     padding: 12px 18px;
     align-items: center;
     border-bottom: 1px solid var(--line, rgba(14,26,44,0.14));
     transition: background 120ms;
+  }
+  .replay-link {
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--accent, #3F7553);
+    text-decoration: none;
+    border-bottom: 1px dotted color-mix(in srgb, var(--accent, #3F7553) 50%, transparent);
+    white-space: nowrap;
+  }
+  .replay-link:hover {
+    color: var(--accent-deep, #2F5B40);
+    border-bottom-style: solid;
+  }
+  .replay-na {
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 0.72rem;
+    color: var(--ink-faint, #7A8597);
   }
   .feed-row:last-child { border-bottom: 0; }
   .feed-row:hover { background: var(--paper-2, #F4F2ED); }
