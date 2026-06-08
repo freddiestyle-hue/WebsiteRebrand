@@ -24,7 +24,7 @@ const tiles = [
   {
     label: 'Status',
     value: state.campaign.status,
-    sub: `${state.campaign.inboxes[0] || 'no inbox'} · ${state.campaign.scheduleTimezone}`,
+    sub: state.campaign.scheduleTimezone,
     statusColor: state.campaign.status === 'Active' ? 'go' : 'wait',
   },
   {
