@@ -430,8 +430,10 @@ const AN_SECTIONS = [
   { id: 'sources', n: '08', icon: 'ic-02-pipeline', title: 'Traffic sources', tail: 'how they arrived.', sub: `${sources.length}` },
   { id: 'timeline', n: '09', icon: 'ic-04-cadence', title: 'Activity', tail: 'in sequence.', sub: `${activity.length}d` },
 ];
-const anHead = (s: typeof AN_SECTIONS[number]) =>
-  `<div class="an-head"><div class="l"><span class="snum">§ ${s.n}</span>${s.icon ? `<span class="an-ic">${ic(s.icon)}</span>` : ''}<h2>${esc(s.title)} <span class="ital">${esc(s.tail)}</span></h2></div><span class="sub">${esc(s.sub)}</span></div>`;
+const anHead = (s: typeof AN_SECTIONS[number]) => {
+  const iconSpan = s.icon ? '<span class="an-ic">' + ic(s.icon) + '</span>' : '';
+  return `<div class="an-head"><div class="l"><span class="snum">§ ${s.n}</span>${iconSpan}<h2>${esc(s.title)} <span class="ital">${esc(s.tail)}</span></h2></div><span class="sub">${esc(s.sub)}</span></div>`;
+};
 
 const today = new Date();
 const todayDisplay = `${today.getUTCFullYear()}·${String(today.getUTCMonth() + 1).padStart(2, '0')}·${String(today.getUTCDate()).padStart(2, '0')}`;
