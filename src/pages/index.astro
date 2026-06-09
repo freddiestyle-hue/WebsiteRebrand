@@ -95,7 +95,7 @@ import Base from '../layouts/Base.astro';
     <!-- 01 · The work -->
     <div class="sec-head" id="work">
       <span class="lbl">The work<span class="num">01</span></span>
-      <h2>A fixed path <span class="ital">from leak to operating rhythm.</span></h2>
+      <h2>Diagnose, build, run. <span class="ital">Same operator.</span></h2>
     </div>
     <div class="sec-body">
       <p class="lede">First I find the leaks. Then I build the highest-value fixes. If the rhythm matters enough to keep, I run the system with dashboards, alerts, weekly decisions, and board-grade summaries.</p>
@@ -572,76 +572,58 @@ import Base from '../layouts/Base.astro';
   }
 
   /* One-shot sheen sweep on h2/h3 italic phrases when they scroll into
-     view. Mirrors the hero sheen, single pass instead of looping. */
+     view. Mirrors the hero sheen but a single, longer pass with a wider
+     bright band so the green lingers instead of flashing through. */
   .audit-first-home h2 .ital,
   .audit-first-home h3 .ital {
     display: inline-block;
     background-clip: text;
     -webkit-background-clip: text;
-    transition: opacity 600ms ease;
   }
   .audit-first-home h2 .ital.in-view,
   .audit-first-home h3 .ital.in-view {
     background: linear-gradient(
       90deg,
       var(--ink-italic, #3A4658) 0%,
-      var(--ink-italic, #3A4658) 38%,
-      rgba(143, 191, 63, 0.75) 50%,
-      var(--ink-italic, #3A4658) 62%,
+      var(--ink-italic, #3A4658) 30%,
+      rgba(143, 191, 63, 0.55) 42%,
+      rgba(143, 191, 63, 0.85) 50%,
+      rgba(143, 191, 63, 0.55) 58%,
+      var(--ink-italic, #3A4658) 70%,
       var(--ink-italic, #3A4658) 100%
     );
-    background-size: 240% 100%;
-    background-position: 100% 0;
+    background-size: 260% 100%;
+    background-position: 110% 0;
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
     color: transparent;
-    animation: section-ital-sheen 1.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    animation: section-ital-sheen 2.0s cubic-bezier(0.4, 0, 0.2, 1) forwards;
   }
   @keyframes section-ital-sheen {
-    0% { background-position: 100% 0; }
-    100% { background-position: -40% 0; }
+    0% { background-position: 110% 0; }
+    100% { background-position: -50% 0; }
   }
 
-  /* Module + audience cards: subtle lift + accent-tinted border on hover.
-     Reads as interactive without feeling like a SaaS landing page. */
+  /* Module + audience cards: refined lift with softer, more diffuse
+     shadow. Longer transition so it doesn't snap. */
   .audit-first-home .modules .mod,
   .audit-first-home .audience .col {
     transition:
-      transform 320ms cubic-bezier(0.22, 1, 0.36, 1),
-      box-shadow 320ms cubic-bezier(0.22, 1, 0.36, 1),
-      border-color 320ms cubic-bezier(0.22, 1, 0.36, 1);
+      transform 420ms cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 420ms cubic-bezier(0.22, 1, 0.36, 1),
+      border-color 420ms cubic-bezier(0.22, 1, 0.36, 1);
     will-change: transform;
   }
   .audit-first-home .modules .mod:hover,
   .audit-first-home .audience .col:hover {
-    transform: translateY(-3px);
+    transform: translateY(-4px);
     box-shadow:
-      0 12px 28px rgba(14, 26, 44, 0.06),
-      0 0 0 1px rgba(143, 191, 63, 0.20),
-      inset 0 1px 0 rgba(143, 191, 63, 0.15);
-  }
-
-  /* Subtle scale-in on numbox numbers as they enter view (paired with
-     the JS counter that animates the actual digits). */
-  .audit-first-home .numbox .v {
-    transition: transform 600ms cubic-bezier(0.22, 1, 0.36, 1);
-  }
-  .audit-first-home .numbox .v.counting {
-    transform: scale(1.02);
-  }
-  .audit-first-home .numbox .v.counting::after {
-    /* Tiny blinking cursor while the count animates - reads as
-       "system reading the number" rather than decoration. */
-    content: '_';
-    margin-left: 4px;
-    color: var(--accent, #8FBF3F);
-    opacity: 0.7;
-    animation: numbox-cursor-blink 0.6s steps(2) infinite;
-  }
-  @keyframes numbox-cursor-blink {
-    0%, 100% { opacity: 0.7; }
-    50% { opacity: 0; }
+      0 2px 4px rgba(14, 26, 44, 0.02),
+      0 8px 16px rgba(14, 26, 44, 0.04),
+      0 16px 32px rgba(14, 26, 44, 0.05),
+      0 0 0 1px rgba(143, 191, 63, 0.14),
+      inset 0 1px 0 rgba(143, 191, 63, 0.10);
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -654,11 +636,9 @@ import Base from '../layouts/Base.astro';
       color: var(--ink-italic, #3A4658);
     }
     .audit-first-home .modules .mod,
-    .audit-first-home .audience .col,
-    .audit-first-home .numbox .v { transition: none; }
+    .audit-first-home .audience .col { transition: none; }
     .audit-first-home .modules .mod:hover,
     .audit-first-home .audience .col:hover { transform: none; }
-    .audit-first-home .numbox .v.counting::after { display: none; }
   }
 
   /* -------- live scan overlay (lifted from /audit/v3) -------- */
@@ -903,53 +883,65 @@ import Base from '../layouts/Base.astro';
 
     // -- 3. Number counters on the proof / track-record numboxes.
     // Parses the leading number out of the .v text, animates 0 → target,
-    // preserves the existing suffix markup (e.g. <span class="ital">+</span>).
-    // Skips non-numeric or range values ("60–85", "0 / 15") so they stay static.
+    // preserves the existing suffix markup. Skips non-numeric or range
+    // values ("60–85", "0 / 15") so they stay static. Counters within
+    // the same .numbox row stagger by 110ms each so they don't all fire
+    // at once - reads more deliberate, less SaaS-landing-page.
     var nums = document.querySelectorAll('.audit-first-home .numbox .v');
     if (nums.length && 'IntersectionObserver' in window) {
-      function animateNumber(el) {
-        // Capture original markup so we can restore the italic suffix.
+      function animateNumber(el, delay) {
         var original = el.innerHTML;
-        // Try to find a leading integer optionally prefixed by $ and followed
-        // by an optional M/K. Anything that doesn't match cleanly is skipped.
         var m = el.textContent.trim().match(/^(\$?)(\d+)([MK]?)/);
         if (!m) return;
         var prefix = m[1] || '';
         var target = parseInt(m[2], 10);
         var suffix = m[3] || '';
         if (target <= 0) return;
-        // Preserve the trailing italic markup so the suffix returns intact.
         var italMatch = original.match(/<span class="ital"[^>]*>[\s\S]*<\/span>/);
         var italHtml = italMatch ? ' ' + italMatch[0] : '';
-        // Preserve zero-padding if the original was "04" or "05".
         var pad = (m[2].length > 1 && m[2].charAt(0) === '0') ? m[2].length : 0;
 
-        el.classList.add('counting');
-        var startTime = null;
-        var duration = 1200;
-        function step(t) {
-          if (!startTime) startTime = t;
-          var p = Math.min(1, (t - startTime) / duration);
-          // ease-out-cubic
-          var eased = 1 - Math.pow(1 - p, 3);
-          var v = Math.round(eased * target);
-          var vStr = pad ? String(v).padStart(pad, '0') : String(v);
-          el.innerHTML = prefix + vStr + suffix + italHtml;
-          if (p < 1) {
-            requestAnimationFrame(step);
-          } else {
-            el.classList.remove('counting');
-            el.innerHTML = original; // restore exact original markup
+        // Show the starting value (0) immediately so there is no flash of
+        // the final number while we wait for the stagger delay.
+        var zeroStr = pad ? String(0).padStart(pad, '0') : '0';
+        el.innerHTML = prefix + zeroStr + suffix + italHtml;
+
+        setTimeout(function () {
+          var startTime = null;
+          var duration = 2200;
+          function step(t) {
+            if (!startTime) startTime = t;
+            var p = Math.min(1, (t - startTime) / duration);
+            // ease-out-quart - very gentle deceleration, settles softly
+            var eased = 1 - Math.pow(1 - p, 4);
+            var v = Math.round(eased * target);
+            var vStr = pad ? String(v).padStart(pad, '0') : String(v);
+            el.innerHTML = prefix + vStr + suffix + italHtml;
+            if (p < 1) {
+              requestAnimationFrame(step);
+            } else {
+              el.innerHTML = original;
+            }
           }
-        }
-        requestAnimationFrame(step);
+          requestAnimationFrame(step);
+        }, delay || 0);
       }
       var numObs = new IntersectionObserver(function (entries) {
+        // Group entries by their containing .numbox so we can stagger
+        // siblings without staggering numbers in a different block.
+        var batches = {};
+        var batchKey = 0;
         entries.forEach(function (e) {
-          if (e.isIntersecting) {
-            animateNumber(e.target);
-            numObs.unobserve(e.target);
-          }
+          if (!e.isIntersecting) return;
+          var parent = e.target.closest('.numbox') || e.target.parentNode;
+          var key = parent.__rivBatchKey || (parent.__rivBatchKey = ++batchKey);
+          (batches[key] = batches[key] || []).push(e.target);
+          numObs.unobserve(e.target);
+        });
+        Object.keys(batches).forEach(function (k) {
+          batches[k].forEach(function (el, i) {
+            animateNumber(el, i * 110);
+          });
         });
       }, { threshold: 0.6 });
       nums.forEach(function (el) { numObs.observe(el); });
