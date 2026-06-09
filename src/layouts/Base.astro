@@ -6,6 +6,7 @@ import PostHog from '../components/PostHog.astro';
 import GoogleTags from '../components/GoogleTags.astro';
 import GtmNoscript from '../components/GtmNoscript.astro';
 import Nav from '../components/Nav.astro';
+import BookingProvider from '../components/diagnostic/BookingProvider.astro';
 import JsonLd from '../components/seo/JsonLd.astro';
 import { organizationSchema, websiteSchema, safeBuild } from '../utils/schema';
 import { buildCanonicalUrl } from '../utils/canonicalUrl';
@@ -119,18 +120,49 @@ const showFloatingCta = !(
 </head>
 <body>
   {showFloatingCta && (
-    <a
-      class="floating-cta"
-      href="/diagnostic#book"
-      data-cta="floating_book_call"
-      aria-label="Book a call with Fred"
-    >
-      <span class="floating-cta-dot" aria-hidden="true"></span>
-      <span class="floating-cta-label">Book a call</span>
-      <svg class="floating-cta-arrow" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
-        <path d="M3 8h10M9 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-    </a>
+    <>
+      <BookingProvider />
+      <a
+        class="floating-cta"
+        href="https://cal.com/fred-style/discovery?overlayCalendar=true"
+        target="_blank"
+        rel="noopener noreferrer"
+        data-cta="floating_book_call"
+        data-cal-link="fred-style/discovery"
+        aria-label="Book a call with Fred"
+      >
+        <span class="floating-cta-dot" aria-hidden="true"></span>
+        <span class="floating-cta-label">Book a call</span>
+        <svg class="floating-cta-arrow" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+          <path d="M3 8h10M9 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </a>
+      <script is:inline>
+        // Wire the floating CTA to open the Cal modal in-place. The anchor
+        // keeps a working https://cal.com/... href so the click still works
+        // if JS is off or Cal hasn't loaded yet. When Cal is ready, intercept
+        // and open the modal instead.
+        (function () {
+          var a = document.querySelector('a.floating-cta[data-cal-link]');
+          if (!a) return;
+          var link = a.getAttribute('data-cal-link');
+          a.addEventListener('click', function (e) {
+            var w = window;
+            var ns = w.__rivettCalNamespace;
+            if (w.Cal && ns && w.Cal.ns && w.Cal.ns[ns]) {
+              e.preventDefault();
+              if (w.posthog && w.posthog.capture) {
+                w.posthog.capture('floating_cta_modal_opened', {
+                  path: window.location.pathname,
+                }, { send_instantly: true, transport: 'sendBeacon' });
+              }
+              w.Cal.ns[ns]('modal', { calLink: link });
+            }
+            // else: fall through to the href (opens cal.com in a new tab)
+          });
+        })();
+      </script>
+    </>
   )}
   <GtmNoscript />
   <Nav current={currentNav} />
