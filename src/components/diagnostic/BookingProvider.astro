@@ -32,6 +32,13 @@ import { CAL_LINK, CAL_NAMESPACE } from '../../content/diagnostic';
   Cal("init", CAL_NAMESPACE, { origin: "https://app.cal.com" });
 
   Cal.ns[CAL_NAMESPACE]("ui", {
+    // Rivett palette. Mapped to Cal's full css-var surface so the modal
+    // matches the site (ink + paper + accent green) instead of Cal's
+    // default neutrals.
+    //   ink     #0E1A2C   - body text + headings
+    //   paper   #F6F4EF   - page background
+    //   accent  #8FBF3F   - green primary
+    //   accent-deep #4A6E18 - darker brand for hover/pressed states
     cssVarsPerTheme: {
       light: {
         "cal-brand": "#4A6E18",
@@ -40,13 +47,46 @@ import { CAL_LINK, CAL_NAMESPACE } from '../../content/diagnostic';
         "cal-bg": "#FFFFFF",
         "cal-bg-emphasis": "#F4F2ED",
         "cal-bg-muted": "#EBE6DC",
+        "cal-bg-info": "rgba(143,191,63,0.10)",
+        "cal-bg-success": "rgba(143,191,63,0.15)",
+        "cal-bg-attention": "rgba(214,158,46,0.12)",
+        "cal-bg-error": "rgba(180,40,40,0.10)",
         "cal-border": "rgba(14,26,44,0.14)",
+        "cal-border-emphasis": "rgba(14,26,44,0.24)",
         "cal-border-default": "rgba(14,26,44,0.14)",
         "cal-border-subtle": "rgba(14,26,44,0.08)",
+        "cal-border-booker": "rgba(14,26,44,0.10)",
         "cal-text": "#0E1A2C",
         "cal-text-emphasis": "#0E1A2C",
         "cal-text-subtle": "#3A4658",
         "cal-text-muted": "#5F6B7D",
+        "cal-text-inverted": "#FFFFFF",
+        "cal-text-info": "#4A6E18",
+        "cal-text-success": "#4A6E18",
+        "cal-text-attention": "#8a5a18",
+        "cal-text-error": "#b42828",
+      },
+      dark: {
+        "cal-brand": "#8FBF3F",
+        "cal-brand-emphasis": "#A3D44F",
+        "cal-brand-text": "#0E1A2C",
+        "cal-bg": "#0E1A2C",
+        "cal-bg-emphasis": "#16243A",
+        "cal-bg-muted": "#1E2E48",
+        "cal-border": "rgba(255,255,255,0.10)",
+        "cal-border-emphasis": "rgba(255,255,255,0.18)",
+        "cal-border-default": "rgba(255,255,255,0.10)",
+        "cal-border-subtle": "rgba(255,255,255,0.06)",
+        "cal-text": "#F6F4EF",
+        "cal-text-emphasis": "#FFFFFF",
+        "cal-text-subtle": "#B9C0CC",
+        "cal-text-muted": "#8B95A6",
+        "cal-text-inverted": "#0E1A2C",
+      },
+    },
+    styles: {
+      branding: {
+        brandColor: "#8FBF3F",
       },
     },
     hideEventTypeDetails: false,
