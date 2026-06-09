@@ -264,6 +264,46 @@ import Base from '../layouts/Base.astro';
       </div>
     </div>
 
+    <!-- Live scan overlay · animates while /audit/v3 POST is in flight.
+         Markup + CSS + JS lifted from src/pages/audit/v3.astro (commit 32518b6).
+         Browser POSTs the form to /audit/v3; this overlay covers the homepage
+         and animates until the response swaps the page. -->
+    <div class="scan on-ink" id="scanOverlay" role="status" aria-live="polite" aria-hidden="true">
+      <div class="scan-top">
+        <span><span class="dot-live"></span>Live scan · <b id="scanDomain">somewhere.com</b></span>
+        <a class="wordmark">rivett<span class="dot-mark" style="background: var(--accent);"></span></a>
+        <span><b>v3.4</b> · in-browser only</span>
+      </div>
+      <div class="scan-body">
+        <div class="scan-log">
+          <div class="log-head">stdout · run · audit.v3</div>
+          <div class="log-list" id="logList"></div>
+        </div>
+        <aside class="scan-side">
+          <h3>Reading the curve. <span class="ital">No deck. Just the numbers.</span></h3>
+          <div class="progress">
+            <div>
+              <span class="label">Scan progress</span>
+              <div class="pct"><span id="pctVal">0</span><sup>/100</sup></div>
+            </div>
+            <span class="label" id="elapsed">00.0s</span>
+          </div>
+          <div class="bar"><div class="fill" id="barFill"></div></div>
+          <div style="margin-top: var(--sp-7);">
+            <div class="lane" data-lane="0"><span class="ix">D · 01</span><span class="nm">Google index</span><span class="st">queued</span></div>
+            <div class="lane" data-lane="1"><span class="ix">D · 02</span><span class="nm">AI engines</span><span class="st">queued</span></div>
+            <div class="lane" data-lane="2"><span class="ix">D · 03</span><span class="nm">Page speed</span><span class="st">queued</span></div>
+            <div class="lane" data-lane="3"><span class="ix">D · 04</span><span class="nm">Measurement</span><span class="st">queued</span></div>
+            <div class="lane" data-lane="4"><span class="ix">D · 05</span><span class="nm">Ad libraries</span><span class="st">queued</span></div>
+            <div class="lane" data-lane="5"><span class="ix">D · 06</span><span class="nm">Conversion</span><span class="st">queued</span></div>
+            <div class="lane" data-lane="6"><span class="ix">D · 07</span><span class="nm">Mobile render</span><span class="st">queued</span></div>
+            <div class="lane" data-lane="7"><span class="ix">D · 08</span><span class="nm">Email auth (DoH)</span><span class="st">queued</span></div>
+            <div class="lane" data-lane="8"><span class="ix">D · 09</span><span class="nm">Tech fingerprint</span><span class="st">queued</span></div>
+          </div>
+        </aside>
+      </div>
+    </div>
+
   </div>
 
   <!-- Site footer (mock SiteFooter pattern) -->
@@ -331,33 +371,199 @@ import Base from '../layouts/Base.astro';
     max-width: 780px;
     line-height: 1.5;
   }
+
+  /* -------- live scan overlay (lifted from /audit/v3) -------- */
+  /* Fullscreen ID overrides the .scan { max-width: 1040px } rule from audit.css
+     so the overlay fills the viewport instead of being capped. */
+  #scanOverlay { position: fixed; inset: 0; max-width: none; width: 100vw; height: 100vh; border: 0; background: var(--ink); color: var(--on-ink); z-index: 9999; display: none; flex-direction: column; padding: var(--sp-10) var(--sp-12); overflow: hidden; font-family: var(--mono); }
+  #scanOverlay.live { display: flex; }
+  #scanOverlay .scan-top { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--on-ink-line); padding-bottom: var(--sp-5); margin-bottom: var(--sp-8); font-size: var(--t-meta); letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--on-ink-faint); }
+  #scanOverlay .scan-top b { color: var(--on-ink); font-weight: 500; }
+  #scanOverlay .scan-top .wordmark { color: var(--on-ink); font-family: var(--grotesk); font-weight: 700; font-size: 22px; letter-spacing: -0.05em; text-transform: none; }
+  #scanOverlay .dot-live { display: inline-block; width: 8px; height: 8px; border-radius: var(--r-pill); background: var(--accent); animation: pulse 1.2s var(--ease) infinite; margin-right: 12px; vertical-align: middle; }
+  #scanOverlay .scan-body { display: grid; grid-template-columns: 1.2fr 1fr; gap: var(--sp-12); height: 100%; overflow: hidden; }
+  @media (max-width: 980px) { #scanOverlay .scan-body { grid-template-columns: 1fr; } }
+  #scanOverlay .scan-log { border: 1px solid var(--on-ink-line); padding: var(--sp-6); height: 100%; overflow: hidden; position: relative; }
+  #scanOverlay .scan-log .log-head { font-size: 10.5px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--on-ink-faint); border-bottom: 1px solid var(--on-ink-line); padding-bottom: var(--sp-3); margin-bottom: var(--sp-4); }
+  #scanOverlay .scan-log .log-list { font-size: 12.5px; line-height: 1.7; color: var(--on-ink-dim); max-height: 60vh; overflow: hidden; }
+  #scanOverlay .scan-log .log-list .line { display: block; }
+  #scanOverlay .scan-log .log-list .ts { color: var(--on-ink-faint); margin-right: var(--sp-3); }
+  #scanOverlay .scan-log .log-list .tag { display: inline-block; min-width: 50px; }
+  #scanOverlay .scan-log .log-list .tag.ok { color: var(--accent); }
+  #scanOverlay .scan-log .log-list .tag.warn { color: var(--signal-warn); }
+  #scanOverlay .scan-log .log-list .tag.fail { color: var(--signal-halt); }
+  #scanOverlay .scan-log .log-list .tag.run { color: var(--on-ink); }
+  #scanOverlay .scan-log .log-list .arrow { color: var(--on-ink-faint); margin: 0 6px; }
+  #scanOverlay .scan-log .log-list .em { color: var(--on-ink); }
+  #scanOverlay .scan-side h3 { font-family: var(--grotesk); font-weight: 700; font-size: clamp(36px, 4.4vw, 56px); line-height: 1.02; letter-spacing: var(--track-h); margin: 0 0 var(--sp-6); color: var(--on-ink); text-wrap: balance; }
+  #scanOverlay .scan-side h3 .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--on-ink-italic); }
+  #scanOverlay .scan-side .progress { border-top: 1px solid var(--on-ink-line); border-bottom: 1px solid var(--on-ink-line); padding: var(--sp-5) 0; margin: var(--sp-7) 0; display: grid; grid-template-columns: 1fr auto; gap: var(--sp-3); align-items: baseline; }
+  #scanOverlay .scan-side .progress .pct { font-family: var(--grotesk); font-weight: 800; font-size: 96px; line-height: 0.9; letter-spacing: var(--track-display); color: var(--on-ink); }
+  #scanOverlay .scan-side .progress .pct sup { font-size: 0.32em; vertical-align: 38px; color: var(--on-ink-faint); margin-left: 4px; }
+  #scanOverlay .scan-side .progress .label { font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--on-ink-faint); }
+  #scanOverlay .scan-side .bar { height: 6px; background: var(--on-ink-line); margin-top: var(--sp-3); position: relative; overflow: hidden; }
+  #scanOverlay .scan-side .bar .fill { position: absolute; inset: 0 100% 0 0; background: var(--accent); transition: right 0.4s linear; }
+  #scanOverlay .scan-side .lane { display: grid; grid-template-columns: 22px 1fr auto; gap: var(--sp-3); padding: 10px 0; border-bottom: 1px solid var(--on-ink-line); align-items: center; }
+  #scanOverlay .scan-side .lane:last-child { border-bottom: 0; }
+  #scanOverlay .scan-side .lane .ix { font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); color: var(--on-ink-faint); }
+  #scanOverlay .scan-side .lane .nm { font-family: var(--grotesk); font-size: 15px; color: var(--on-ink-dim); }
+  #scanOverlay .scan-side .lane.done .nm { color: var(--on-ink); }
+  #scanOverlay .scan-side .lane .st { font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--on-ink-faint); }
+  #scanOverlay .scan-side .lane.done .st { color: var(--accent); }
+  #scanOverlay .scan-side .lane.run .st { color: var(--on-ink); }
 </style>
 
 <script is:inline>
-	  (function () {
-	    var form = document.getElementById('homeAuditForm');
-	    if (!form) return;
-	    form.addEventListener('submit', function () {
-	      var input = form.querySelector('input[name="url"]');
-	      var normalized = '';
-	      if (input) {
-	        normalized = input.value.trim().replace(/^https?:\/\//, '').replace(/\/$/, '');
-	        input.value = normalized;
-	      }
-	      if (window.posthog && window.posthog.capture) {
-	        window.posthog.capture('audit_form_submitted', {
-	          surface: 'homepage',
-	          form_id: 'homeAuditForm',
-	          input_domain: normalized,
-	          source: 'home_preview',
-	          path: window.location.pathname,
-	        }, { send_instantly: true, transport: 'sendBeacon' });
-	        window.posthog.capture('audit_v3_form_submitted', {
-	          input_domain: normalized,
-	          source: 'home_preview',
-	          path: window.location.pathname,
-	        }, { send_instantly: true, transport: 'sendBeacon' });
-	      }
-	    });
-	  })();
-	</script>
+  (function () {
+    var form = document.getElementById('homeAuditForm');
+    var overlay = document.getElementById('scanOverlay');
+    if (!form) return;
+
+    var logList = document.getElementById('logList');
+    var pctVal = document.getElementById('pctVal');
+    var barFill = document.getElementById('barFill');
+    var elapsed = document.getElementById('elapsed');
+    var scanDomain = document.getElementById('scanDomain');
+    var lanes = overlay ? overlay.querySelectorAll('.scan-side .lane') : [];
+
+    function makeScript(domain) {
+      return [
+        ['run',  'resolve dns ' + domain,                    'A record'],
+        ['ok',   'fetch / robots.txt',                       'parsing'],
+        ['ok',   'fetch / sitemap.xml',                      'parsing'],
+        ['ok',   'fetch /index.html (cold)',                 'live HTML'],
+        ['ok',   'parse <head>',                             'meta, canonical, og:type'],
+        ['ok',   'parse JSON-LD',                            'Organization + WebSite'],
+        ['run',  'PSI · mobile lighthouse',                  'started'],
+        ['ok',   'PSI · core web vitals',                    'LCP / FCP / CLS / INP'],
+        ['ok',   'fingerprint · static',                     'tech detection'],
+        ['run',  'headless · 390x844',                       'Chromium booting'],
+        ['ok',   'headless · scrollWidth + tap targets',     'real DOM'],
+        ['ok',   'fingerprint · runtime',                    'GTM-injected pixels'],
+        ['ok',   'DoH · SPF lookup',                         'Cloudflare 1.1.1.1'],
+        ['ok',   'DoH · DMARC lookup',                       'policy + MX'],
+        ['ok',   'fetch /llms.txt',                          'AEO probe'],
+        ['ok',   'Meta Ad Library',                          'active creatives'],
+        ['ok',   'LinkedIn Ad Library',                      'active creatives'],
+        ['ok',   'Google Ad Library',                        'active creatives'],
+        ['ok',   'score · composite',                        'weighted band'],
+        ['ok',   'memo · render',                            'verdict + fixes'],
+      ];
+    }
+
+    function pad(n) { return n < 10 ? '0' + n : '' + n; }
+    function tsAt(seconds) {
+      var s = Math.floor(seconds);
+      var ms = Math.floor((seconds - s) * 1000);
+      return pad(s) + '.' + pad(Math.floor(ms / 10));
+    }
+
+    var laneTriggers = {
+      0: { start: 1,  end: 5  },
+      1: { start: 14, end: 15 },
+      2: { start: 6,  end: 8  },
+      3: { start: 8,  end: 12 },
+      4: { start: 15, end: 18 },
+      5: { start: 4,  end: 6  },
+      6: { start: 9,  end: 11 },
+      7: { start: 12, end: 14 },
+      8: { start: 11, end: 12 },
+    };
+
+    function setLane(i, state) {
+      var l = lanes[i]; if (!l) return;
+      var st = l.querySelector('.st');
+      l.classList.remove('run', 'done');
+      if (state === 'run')  { l.classList.add('run');  if (st) st.textContent = 'running'; }
+      else if (state === 'done') { l.classList.add('done'); if (st) st.textContent = 'ok'; }
+      else if (st) st.textContent = 'queued';
+    }
+
+    function startScan(domain) {
+      if (!overlay) return;
+      if (scanDomain) scanDomain.textContent = domain;
+      overlay.setAttribute('aria-hidden', 'false');
+      overlay.classList.add('live');
+      if (logList) logList.innerHTML = '';
+      lanes.forEach(function (_, i) { setLane(i, 'queued'); });
+      if (pctVal) pctVal.textContent = '0';
+      if (barFill) barFill.style.right = '100%';
+      if (elapsed) elapsed.textContent = '00.0s';
+
+      var script = makeScript(domain);
+      var totalMs = 26000;
+      var perLine = totalMs / script.length;
+      var startTime = performance.now();
+
+      script.forEach(function (item, i) {
+        setTimeout(function () {
+          var t = (performance.now() - startTime) / 1000;
+          var doneRatio = (i + 1) / script.length;
+          if (pctVal) pctVal.textContent = Math.round(doneRatio * 92);
+          if (barFill) barFill.style.right = (100 - doneRatio * 92) + '%';
+          if (elapsed) elapsed.textContent = tsAt(t) + 's';
+
+          Object.keys(laneTriggers).forEach(function (li) {
+            var trig = laneTriggers[li];
+            if (i >= trig.start && i < trig.end) setLane(parseInt(li, 10), 'run');
+            if (i >= trig.end) setLane(parseInt(li, 10), 'done');
+          });
+
+          if (logList) {
+            var div = document.createElement('span');
+            div.className = 'line';
+            var tag = item[0].toUpperCase();
+            div.innerHTML =
+              '<span class="ts">' + tsAt(t) + 's</span>' +
+              '<span class="tag ' + item[0] + '">[' + tag + ']</span> ' +
+              item[1] +
+              ' <span class="arrow">→</span> <span class="em">' + item[2] + '</span>';
+            logList.appendChild(div);
+            while (logList.children.length > 14) logList.removeChild(logList.firstChild);
+          }
+        }, i * perLine);
+      });
+
+      setTimeout(function () {
+        lanes.forEach(function (_, i) { setLane(i, 'done'); });
+        var stall = 95;
+        var stallTimer = setInterval(function () {
+          if (stall >= 99) { clearInterval(stallTimer); return; }
+          stall += 0.4;
+          if (pctVal) pctVal.textContent = Math.round(stall);
+          if (barFill) barFill.style.right = (100 - stall) + '%';
+          var t = (performance.now() - startTime) / 1000;
+          if (elapsed) elapsed.textContent = tsAt(t) + 's';
+        }, 1500);
+      }, totalMs + 200);
+    }
+
+    form.addEventListener('submit', function () {
+      var input = form.querySelector('input[name="url"]');
+      var normalized = '';
+      if (input) {
+        normalized = input.value.trim().replace(/^https?:\/\//, '').replace(/\/$/, '');
+        input.value = normalized;
+      }
+      if (window.posthog && window.posthog.capture) {
+        window.posthog.capture('audit_form_submitted', {
+          surface: 'homepage',
+          form_id: 'homeAuditForm',
+          input_domain: normalized,
+          source: 'home_preview',
+          path: window.location.pathname,
+        }, { send_instantly: true, transport: 'sendBeacon' });
+        window.posthog.capture('audit_v3_form_submitted', {
+          input_domain: normalized,
+          source: 'home_preview',
+          path: window.location.pathname,
+        }, { send_instantly: true, transport: 'sendBeacon' });
+      }
+      // Don't preventDefault — the form POSTs naturally to /audit/v3.
+      // The browser waits up to ~30s for the response while this overlay
+      // animates. When /audit/v3 returns, the new page replaces this one
+      // and the overlay dies with it.
+      startScan(normalized || 'somewhere.com');
+    });
+  })();
+</script>
