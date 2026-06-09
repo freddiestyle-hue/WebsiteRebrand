@@ -22,14 +22,17 @@ import Base from '../layouts/Base.astro';
     <!-- Hero (audit-first) -->
     <header class="audit-hero">
       <span class="stamp">Ran growth at Somewhere.com · $100M+ managed</span>
-      <h1>I find where revenue leaks. <br/><span class="ital">Then I fix the system.</span></h1>
+      <h1>I find where revenue leaks. <br/><span class="ital sheen">Then I fix the system.</span></h1>
       <p class="dek">I work with profitable US operators to find the expensive leaks between demand and revenue, then rebuild the reporting, handoffs, follow-up, and AI-assisted workflows that keep money moving.</p>
 
       <form class="audit-form" method="POST" action="/audit/v3" id="homeAuditForm">
         <span class="prefix">https://</span>
         <input class="domain" type="text" name="url" inputmode="url" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="enter the site you want read" required aria-label="Domain" />
         <input type="hidden" name="source" value="home" />
-        <button class="btn btn--solid" type="submit" data-cta="home_audit_form_submit">Run audit <span aria-hidden="true">→</span></button>
+        <button class="btn btn--solid btn--with-dot" type="submit" data-cta="home_audit_form_submit">
+          <span class="btn-dot" aria-hidden="true"></span>
+          Run audit <span aria-hidden="true">→</span>
+        </button>
       </form>
 
       <div class="audit-meta">
@@ -40,6 +43,46 @@ import Base from '../layouts/Base.astro';
         <span>ranked fix list</span>
         <span class="sep">/</span>
         <span>operator field note</span>
+      </div>
+
+      {/* Past-employer marquee · CF-style horizontal scroll of credibility
+          wordmarks. Doubles the content so the loop is seamless. */}
+      <div class="hero-marquee" aria-label="Past employers" role="region">
+        <div class="hero-marquee-track">
+          <span class="hm-item">Somewhere</span>
+          <span class="hm-sep">·</span>
+          <span class="hm-item">Unilever</span>
+          <span class="hm-sep">·</span>
+          <span class="hm-item">Samsung</span>
+          <span class="hm-sep">·</span>
+          <span class="hm-item">Visa</span>
+          <span class="hm-sep">·</span>
+          <span class="hm-item">Vodafone</span>
+          <span class="hm-sep">·</span>
+          <span class="hm-item">$100M+ managed</span>
+          <span class="hm-sep">·</span>
+          <span class="hm-item">4 continents</span>
+          <span class="hm-sep">·</span>
+          <span class="hm-item">15 years</span>
+          <span class="hm-sep">·</span>
+          {/* Duplicate set so the scroll loops without a visible jump */}
+          <span class="hm-item" aria-hidden="true">Somewhere</span>
+          <span class="hm-sep" aria-hidden="true">·</span>
+          <span class="hm-item" aria-hidden="true">Unilever</span>
+          <span class="hm-sep" aria-hidden="true">·</span>
+          <span class="hm-item" aria-hidden="true">Samsung</span>
+          <span class="hm-sep" aria-hidden="true">·</span>
+          <span class="hm-item" aria-hidden="true">Visa</span>
+          <span class="hm-sep" aria-hidden="true">·</span>
+          <span class="hm-item" aria-hidden="true">Vodafone</span>
+          <span class="hm-sep" aria-hidden="true">·</span>
+          <span class="hm-item" aria-hidden="true">$100M+ managed</span>
+          <span class="hm-sep" aria-hidden="true">·</span>
+          <span class="hm-item" aria-hidden="true">4 continents</span>
+          <span class="hm-sep" aria-hidden="true">·</span>
+          <span class="hm-item" aria-hidden="true">15 years</span>
+          <span class="hm-sep" aria-hidden="true">·</span>
+        </div>
       </div>
     </header>
 
@@ -370,6 +413,128 @@ import Base from '../layouts/Base.astro';
   .audit-first-home .audit-sample .sample-note {
     max-width: 780px;
     line-height: 1.5;
+  }
+
+  /* -------- hero motion (CF-inspired, restrained for operator brand) -------- */
+
+  /* Slow oblique sheen across the H1 italic span. 8s ease-in-out so it
+     reads as ambient, not animated. Draws the eye to "Then I fix the system." */
+  .audit-first-home .audit-hero h1 .ital.sheen {
+    background: linear-gradient(
+      90deg,
+      var(--ink-italic, #2a3a5a) 0%,
+      var(--ink-italic, #2a3a5a) 40%,
+      rgba(143, 191, 63, 0.55) 50%,
+      var(--ink-italic, #2a3a5a) 60%,
+      var(--ink-italic, #2a3a5a) 100%
+    );
+    background-size: 220% 100%;
+    background-position: 100% 0;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    animation: hero-h1-sheen 8s ease-in-out infinite;
+    animation-delay: 1.5s;
+  }
+  @keyframes hero-h1-sheen {
+    0%, 100% { background-position: 100% 0; }
+    50% { background-position: -20% 0; }
+  }
+
+  /* Pulsing accent dot inside the form submit button. Same pattern as
+     .dot-live on /audit/v3, just sized for an inline button context. */
+  .audit-first-home .audit-form .btn--with-dot {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .audit-first-home .audit-form .btn-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent, #8FBF3F);
+    box-shadow: 0 0 0 0 rgba(143, 191, 63, 0.6);
+    animation: home-btn-dot-pulse 2.2s ease-in-out infinite;
+  }
+  @keyframes home-btn-dot-pulse {
+    0%, 100% {
+      transform: scale(1);
+      box-shadow: 0 0 0 0 rgba(143, 191, 63, 0.55);
+    }
+    50% {
+      transform: scale(1.15);
+      box-shadow: 0 0 0 6px rgba(143, 191, 63, 0);
+    }
+  }
+
+  /* Horizontal credibility marquee under the audit-meta row.
+     Mask-image fades the edges. Pauses on hover (CF pattern). */
+  .audit-first-home .hero-marquee {
+    margin-top: var(--sp-7, 36px);
+    overflow: hidden;
+    width: 100%;
+    max-width: 760px;
+    -webkit-mask-image: linear-gradient(
+      to right,
+      transparent 0,
+      black 8%,
+      black 92%,
+      transparent 100%
+    );
+    mask-image: linear-gradient(
+      to right,
+      transparent 0,
+      black 8%,
+      black 92%,
+      transparent 100%
+    );
+  }
+  .audit-first-home .hero-marquee-track {
+    display: inline-flex;
+    align-items: center;
+    gap: 0;
+    white-space: nowrap;
+    animation: hero-marquee-scroll 38s linear infinite;
+    will-change: transform;
+  }
+  .audit-first-home .hero-marquee:hover .hero-marquee-track {
+    animation-play-state: paused;
+  }
+  .audit-first-home .hm-item {
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 11.5px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-dim, #4a5468);
+    padding: 0 14px;
+  }
+  .audit-first-home .hm-sep {
+    color: var(--accent, #8FBF3F);
+    font-size: 12px;
+    opacity: 0.55;
+  }
+  @keyframes hero-marquee-scroll {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+
+  @media (max-width: 640px) {
+    .audit-first-home .hero-marquee { margin-top: var(--sp-5, 24px); }
+    .audit-first-home .hm-item { font-size: 10.5px; padding: 0 10px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .audit-first-home .audit-hero h1 .ital.sheen {
+      background: none;
+      -webkit-text-fill-color: var(--ink-italic, #2a3a5a);
+      color: var(--ink-italic, #2a3a5a);
+      animation: none;
+    }
+    .audit-first-home .audit-form .btn-dot { animation: none; }
+    .audit-first-home .hero-marquee-track { animation: none; }
   }
 
   /* -------- live scan overlay (lifted from /audit/v3) -------- */
