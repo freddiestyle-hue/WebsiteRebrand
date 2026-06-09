@@ -17,6 +17,12 @@ import Base from '../layouts/Base.astro';
     <symbol id="ic-cadence" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 6 V12 L17 14"/></symbol>
   </svg>
 
+  <!-- Thin accent line at top of viewport showing scroll progress. Pure
+       presentational; hidden when prefers-reduced-motion. -->
+  <div class="scroll-progress" aria-hidden="true">
+    <div class="scroll-progress-fill" id="scrollProgressFill"></div>
+  </div>
+
   <div class="page audit-first-home">
 
     <!-- Hero (audit-first) -->
@@ -538,6 +544,123 @@ import Base from '../layouts/Base.astro';
     .audit-first-home .hero-marquee-track { animation: none; }
   }
 
+  /* -------- scroll-driven motion (smart, sparing) -------- */
+
+  /* Thin scroll-progress line, fixed top edge. Accent green fill grows
+     left-to-right as the reader moves through the page. */
+  .scroll-progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: transparent;
+    z-index: 99;
+    pointer-events: none;
+  }
+  .scroll-progress-fill {
+    height: 100%;
+    width: 0;
+    background: linear-gradient(
+      90deg,
+      rgba(143, 191, 63, 0.5) 0%,
+      var(--accent, #8FBF3F) 60%,
+      var(--accent, #8FBF3F) 100%
+    );
+    box-shadow: 0 0 8px rgba(143, 191, 63, 0.4);
+    transition: width 80ms linear;
+  }
+
+  /* One-shot sheen sweep on h2/h3 italic phrases when they scroll into
+     view. Mirrors the hero sheen, single pass instead of looping. */
+  .audit-first-home h2 .ital,
+  .audit-first-home h3 .ital {
+    display: inline-block;
+    background-clip: text;
+    -webkit-background-clip: text;
+    transition: opacity 600ms ease;
+  }
+  .audit-first-home h2 .ital.in-view,
+  .audit-first-home h3 .ital.in-view {
+    background: linear-gradient(
+      90deg,
+      var(--ink-italic, #3A4658) 0%,
+      var(--ink-italic, #3A4658) 38%,
+      rgba(143, 191, 63, 0.75) 50%,
+      var(--ink-italic, #3A4658) 62%,
+      var(--ink-italic, #3A4658) 100%
+    );
+    background-size: 240% 100%;
+    background-position: 100% 0;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    animation: section-ital-sheen 1.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+  @keyframes section-ital-sheen {
+    0% { background-position: 100% 0; }
+    100% { background-position: -40% 0; }
+  }
+
+  /* Module + audience cards: subtle lift + accent-tinted border on hover.
+     Reads as interactive without feeling like a SaaS landing page. */
+  .audit-first-home .modules .mod,
+  .audit-first-home .audience .col {
+    transition:
+      transform 320ms cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 320ms cubic-bezier(0.22, 1, 0.36, 1),
+      border-color 320ms cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: transform;
+  }
+  .audit-first-home .modules .mod:hover,
+  .audit-first-home .audience .col:hover {
+    transform: translateY(-3px);
+    box-shadow:
+      0 12px 28px rgba(14, 26, 44, 0.06),
+      0 0 0 1px rgba(143, 191, 63, 0.20),
+      inset 0 1px 0 rgba(143, 191, 63, 0.15);
+  }
+
+  /* Subtle scale-in on numbox numbers as they enter view (paired with
+     the JS counter that animates the actual digits). */
+  .audit-first-home .numbox .v {
+    transition: transform 600ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .audit-first-home .numbox .v.counting {
+    transform: scale(1.02);
+  }
+  .audit-first-home .numbox .v.counting::after {
+    /* Tiny blinking cursor while the count animates - reads as
+       "system reading the number" rather than decoration. */
+    content: '_';
+    margin-left: 4px;
+    color: var(--accent, #8FBF3F);
+    opacity: 0.7;
+    animation: numbox-cursor-blink 0.6s steps(2) infinite;
+  }
+  @keyframes numbox-cursor-blink {
+    0%, 100% { opacity: 0.7; }
+    50% { opacity: 0; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .scroll-progress-fill { display: none; }
+    .audit-first-home h2 .ital.in-view,
+    .audit-first-home h3 .ital.in-view {
+      animation: none;
+      background: none;
+      -webkit-text-fill-color: var(--ink-italic, #3A4658);
+      color: var(--ink-italic, #3A4658);
+    }
+    .audit-first-home .modules .mod,
+    .audit-first-home .audience .col,
+    .audit-first-home .numbox .v { transition: none; }
+    .audit-first-home .modules .mod:hover,
+    .audit-first-home .audience .col:hover { transform: none; }
+    .audit-first-home .numbox .v.counting::after { display: none; }
+  }
+
   /* -------- live scan overlay (lifted from /audit/v3) -------- */
   /* Fullscreen ID overrides the .scan { max-width: 1040px } rule from audit.css
      so the overlay fills the viewport instead of being capped. */
@@ -731,5 +854,105 @@ import Base from '../layouts/Base.astro';
       // and the overlay dies with it.
       startScan(normalized || 'somewhere.com');
     });
+  })();
+</script>
+
+<script is:inline>
+  // Smart scroll motion: progress line, one-shot sheen on section italics,
+  // and counters on the proof-number blocks. All IntersectionObserver-driven,
+  // no library, respects prefers-reduced-motion.
+  (function () {
+    var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduced) return;
+
+    // -- 1. Scroll progress line at top of viewport.
+    var fill = document.getElementById('scrollProgressFill');
+    if (fill) {
+      var rafPending = false;
+      function updateProgress() {
+        rafPending = false;
+        var doc = document.documentElement;
+        var max = (doc.scrollHeight - doc.clientHeight) || 1;
+        var pct = Math.min(100, Math.max(0, (window.scrollY / max) * 100));
+        fill.style.width = pct.toFixed(2) + '%';
+      }
+      function onScroll() {
+        if (rafPending) return;
+        rafPending = true;
+        requestAnimationFrame(updateProgress);
+      }
+      window.addEventListener('scroll', onScroll, { passive: true });
+      updateProgress();
+    }
+
+    // -- 2. One-shot sheen sweep on section italics as they scroll in.
+    var italics = document.querySelectorAll(
+      '.audit-first-home h2 .ital, .audit-first-home h3 .ital'
+    );
+    if (italics.length && 'IntersectionObserver' in window) {
+      var italObs = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) {
+          if (e.isIntersecting) {
+            e.target.classList.add('in-view');
+            italObs.unobserve(e.target);
+          }
+        });
+      }, { threshold: 0.4, rootMargin: '0px 0px -10% 0px' });
+      italics.forEach(function (el) { italObs.observe(el); });
+    }
+
+    // -- 3. Number counters on the proof / track-record numboxes.
+    // Parses the leading number out of the .v text, animates 0 → target,
+    // preserves the existing suffix markup (e.g. <span class="ital">+</span>).
+    // Skips non-numeric or range values ("60–85", "0 / 15") so they stay static.
+    var nums = document.querySelectorAll('.audit-first-home .numbox .v');
+    if (nums.length && 'IntersectionObserver' in window) {
+      function animateNumber(el) {
+        // Capture original markup so we can restore the italic suffix.
+        var original = el.innerHTML;
+        // Try to find a leading integer optionally prefixed by $ and followed
+        // by an optional M/K. Anything that doesn't match cleanly is skipped.
+        var m = el.textContent.trim().match(/^(\$?)(\d+)([MK]?)/);
+        if (!m) return;
+        var prefix = m[1] || '';
+        var target = parseInt(m[2], 10);
+        var suffix = m[3] || '';
+        if (target <= 0) return;
+        // Preserve the trailing italic markup so the suffix returns intact.
+        var italMatch = original.match(/<span class="ital"[^>]*>[\s\S]*<\/span>/);
+        var italHtml = italMatch ? ' ' + italMatch[0] : '';
+        // Preserve zero-padding if the original was "04" or "05".
+        var pad = (m[2].length > 1 && m[2].charAt(0) === '0') ? m[2].length : 0;
+
+        el.classList.add('counting');
+        var startTime = null;
+        var duration = 1200;
+        function step(t) {
+          if (!startTime) startTime = t;
+          var p = Math.min(1, (t - startTime) / duration);
+          // ease-out-cubic
+          var eased = 1 - Math.pow(1 - p, 3);
+          var v = Math.round(eased * target);
+          var vStr = pad ? String(v).padStart(pad, '0') : String(v);
+          el.innerHTML = prefix + vStr + suffix + italHtml;
+          if (p < 1) {
+            requestAnimationFrame(step);
+          } else {
+            el.classList.remove('counting');
+            el.innerHTML = original; // restore exact original markup
+          }
+        }
+        requestAnimationFrame(step);
+      }
+      var numObs = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) {
+          if (e.isIntersecting) {
+            animateNumber(e.target);
+            numObs.unobserve(e.target);
+          }
+        });
+      }, { threshold: 0.6 });
+      nums.forEach(function (el) { numObs.observe(el); });
+    }
   })();
 </script>
