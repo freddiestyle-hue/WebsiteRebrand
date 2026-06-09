@@ -189,13 +189,28 @@ if (isPOST && !memo) {
             url: audit.url,
             fetchedAt: audit.fetchedAt,
           };
+          let cacheWriteSucceeded = false;
           try {
             const redis = Redis.fromEnv();
-            redis
-              .set(`audit-v3:${v3Slug}`, JSON.stringify(payload), { ex: 60 * 60 * 24 * 14 })
-              .catch((e) => console.error('[audit/v3] KV write failed', e));
+            // Await the write so the redirect below is safe — without this,
+            // the prospect lands on /audit/v3/<slug> before KV has the entry
+            // and gets a 404. A KV outage just falls through to the legacy
+            // inline render.
+            await redis.set(`audit-v3:${v3Slug}`, JSON.stringify(payload), { ex: 60 * 60 * 24 * 14 });
+            cacheWriteSucceeded = true;
           } catch (e) {
-            console.error('[audit/v3] KV init failed', e);
+            console.error('[audit/v3] KV write failed', e);
+          }
+          if (cacheWriteSucceeded && v3Slug) {
+            // Hand off to /audit/v3/[slug] so the prospect sees the newer
+            // design (letter grade, variant B reveal on cells 4-9). Cookie
+            // pins variant B so it survives the user stripping `?v=b`.
+            Astro.cookies.set('rivett_variant', 'b', {
+              path: '/',
+              maxAge: 60 * 60 * 24 * 14,
+              sameSite: 'lax',
+            });
+            return Astro.redirect(`/audit/v3/${v3Slug}?v=b`, 303);
           }
         }
         }
