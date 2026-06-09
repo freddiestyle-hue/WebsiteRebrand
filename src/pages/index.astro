@@ -22,7 +22,7 @@ import Base from '../layouts/Base.astro';
     <!-- Hero (audit-first) -->
     <header class="audit-hero">
       <span class="stamp">Ran growth at Somewhere.com · $100M+ managed</span>
-      <h1>I find where revenue leaks. <br/><span class="ital sheen">Then I fix the system.</span></h1>
+      <h1><span class="sheen">I find where revenue leaks.</span> <br/><span class="ital">Then I fix the system.</span></h1>
       <p class="dek">I work with profitable US operators to find the expensive leaks between demand and revenue, then rebuild the reporting, handoffs, follow-up, and AI-assisted workflows that keep money moving.</p>
 
       <form class="audit-form" method="POST" action="/audit/v3" id="homeAuditForm">
@@ -417,24 +417,25 @@ import Base from '../layouts/Base.astro';
 
   /* -------- hero motion (CF-inspired, restrained for operator brand) -------- */
 
-  /* Slow oblique sheen across the H1 italic span. 8s ease-in-out so it
-     reads as ambient, not animated. Draws the eye to "Then I fix the system." */
-  .audit-first-home .audit-hero h1 .ital.sheen {
+  /* Slow oblique sheen across the H1 main line ("I find where revenue
+     leaks."). Reads as ambient ink with a green accent sweep, not as a
+     loud animation. 9s ease-in-out fits the larger type. */
+  .audit-first-home .audit-hero h1 .sheen {
     background: linear-gradient(
       90deg,
-      var(--ink-italic, #2a3a5a) 0%,
-      var(--ink-italic, #2a3a5a) 40%,
-      rgba(143, 191, 63, 0.55) 50%,
-      var(--ink-italic, #2a3a5a) 60%,
-      var(--ink-italic, #2a3a5a) 100%
+      var(--ink, #0E1A2C) 0%,
+      var(--ink, #0E1A2C) 38%,
+      rgba(143, 191, 63, 0.65) 50%,
+      var(--ink, #0E1A2C) 62%,
+      var(--ink, #0E1A2C) 100%
     );
-    background-size: 220% 100%;
+    background-size: 240% 100%;
     background-position: 100% 0;
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
     color: transparent;
-    animation: hero-h1-sheen 8s ease-in-out infinite;
+    animation: hero-h1-sheen 9s ease-in-out infinite;
     animation-delay: 1.5s;
   }
   @keyframes hero-h1-sheen {
@@ -527,10 +528,10 @@ import Base from '../layouts/Base.astro';
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .audit-first-home .audit-hero h1 .ital.sheen {
+    .audit-first-home .audit-hero h1 .sheen {
       background: none;
-      -webkit-text-fill-color: var(--ink-italic, #2a3a5a);
-      color: var(--ink-italic, #2a3a5a);
+      -webkit-text-fill-color: var(--ink, #0E1A2C);
+      color: var(--ink, #0E1A2C);
       animation: none;
     }
     .audit-first-home .audit-form .btn-dot { animation: none; }
