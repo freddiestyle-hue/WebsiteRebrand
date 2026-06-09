@@ -55,6 +55,23 @@ const sitewideSchema = [
   safeBuild(() => websiteSchema, 'WebSite'),
   ...extraSchema,
 ].filter(Boolean) as Array<Record<string, unknown>>;
+
+// Floating "Book a call" pill is site-wide but suppressed on pages that
+// already carry an inline booking CTA, or on internal HQ surfaces.
+const _path = Astro.url.pathname;
+const showFloatingCta = !(
+  _path === '/diagnostic' ||
+  _path.startsWith('/diagnostic/') ||
+  _path.startsWith('/audit/v3') ||
+  _path.startsWith('/audit/p/') ||
+  _path.startsWith('/hq') ||
+  _path.startsWith('/brite/hq') ||
+  _path.startsWith('/action-center') ||
+  _path.startsWith('/internal/') ||
+  _path.startsWith('/p/') ||
+  _path.startsWith('/r/') ||
+  _path.startsWith('/q/')
+);
 ---
 <!doctype html>
 <html lang="en">
@@ -101,6 +118,20 @@ const sitewideSchema = [
   <PostHog capturePageview={posthogCapturePageview} optOutByDefault={posthogOptOutByDefault} />
 </head>
 <body>
+  {showFloatingCta && (
+    <a
+      class="floating-cta"
+      href="/diagnostic#book"
+      data-cta="floating_book_call"
+      aria-label="Book a call with Fred"
+    >
+      <span class="floating-cta-dot" aria-hidden="true"></span>
+      <span class="floating-cta-label">Book a call</span>
+      <svg class="floating-cta-arrow" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+        <path d="M3 8h10M9 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </a>
+  )}
   <GtmNoscript />
   <Nav current={currentNav} />
   <main id="main">
@@ -108,3 +139,76 @@ const sitewideSchema = [
   </main>
 </body>
 </html>
+
+<style is:global>
+  .floating-cta {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 100;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 18px 12px 16px;
+    background: var(--ink, #0E1A2C);
+    color: var(--on-ink, #ffffff);
+    border-radius: 999px;
+    font-family: var(--mono, 'DM Mono', monospace);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    text-decoration: none;
+    box-shadow:
+      0 8px 28px rgba(143, 191, 63, 0.22),
+      0 2px 6px rgba(0, 0, 0, 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1),
+                box-shadow 220ms cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: transform;
+  }
+  .floating-cta:hover,
+  .floating-cta:focus-visible {
+    transform: translateY(-1px) scale(1.03);
+    box-shadow:
+      0 12px 36px rgba(143, 191, 63, 0.32),
+      0 3px 8px rgba(0, 0, 0, 0.22),
+      inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    outline: none;
+  }
+  .floating-cta-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent, #8FBF3F);
+    box-shadow: 0 0 8px rgba(143, 191, 63, 0.6);
+    animation: floating-cta-pulse 2.4s ease-in-out infinite;
+  }
+  .floating-cta-arrow {
+    opacity: 0.7;
+    transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .floating-cta:hover .floating-cta-arrow {
+    transform: translateX(2px);
+    opacity: 1;
+  }
+  @keyframes floating-cta-pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.35); opacity: 0.7; }
+  }
+  @media (max-width: 640px) {
+    .floating-cta {
+      bottom: 16px;
+      right: 16px;
+      padding: 10px 14px 10px 12px;
+      font-size: 11px;
+      gap: 8px;
+    }
+    .floating-cta-arrow { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .floating-cta-dot { animation: none; }
+    .floating-cta { transition: none; }
+    .floating-cta:hover { transform: none; }
+  }
+</style>
