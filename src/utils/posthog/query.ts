@@ -50,7 +50,7 @@ const POSTHOG_PROJECT_ID = 373899;
 //     filters, and human_engaged (real pointer/scroll/key/touch input) joins
 //     the behavioural human filter + is_engaged flag. One-screen proposals
 //     that can't scroll now register a real reader while staying scanner-proof.
-const CACHE_VERSION = 'v14';
+const CACHE_VERSION = 'v15';
 
 // Lazy redis client. Construction is cheap but we only need one instance.
 // Use KV_REST_API_* env vars (set by Vercel KV / Upstash integration) since
@@ -151,12 +151,15 @@ const DATACENTER_CITIES = [
 
 // Hard denylist — the ONLY identity-based exclusion allowed. No heuristic
 // internal-labelling (the somewhere-com auto-binning threw away Dipen, a
-// real prospect). Add known self/test addresses here and nowhere else.
+// real prospect). Add known self/test/demo identities here and nowhere else.
+// 'anil' is the demo recipient tag on Brite walkthrough links — his sessions
+// painted engagement onto 12+ prospects' records before this exclusion.
 const DENYLIST_EMAILS = ['freddiestyle@gmail.com', 'frikkie.wolf.digital@gmail.com'];
+const DENYLIST_RECIPIENTS = ['anil'];
 
 const DENYLIST_EXCLUSION = `
   NOT (
-    properties.utm_recipient IN (${DENYLIST_EMAILS.map((e) => `'${e}'`).join(', ')})
+    properties.utm_recipient IN (${[...DENYLIST_EMAILS, ...DENYLIST_RECIPIENTS].map((e) => `'${e}'`).join(', ')})
     OR person.properties.email IN (${DENYLIST_EMAILS.map((e) => `'${e}'`).join(', ')})
     OR distinct_id IN (${DENYLIST_EMAILS.map((e) => `'${e}'`).join(', ')})
     OR distinct_id LIKE 'test@%'
@@ -1427,7 +1430,12 @@ export async function getCallList(range: DateRange): Promise<CallList> {
         ORDER BY last_event DESC
         LIMIT 25
       `),
-      // RAISED HAND - intent acts inside human-gated sessions.
+      // RAISED HAND - intent acts inside human-gated sessions that are
+      // PROVABLY the prospect's: the session arrived on their personal link
+      // (utm_recipient matches the slug directly or via email domain), or
+      // the device was already email-identified. Red-team finding: without
+      // this, a LinkedIn lurker browsing three memos in a minute became
+      // three different "hot prospects".
       runQuery(`
         SELECT
           prospect,
@@ -1441,6 +1449,7 @@ export async function getCallList(range: DateRange): Promise<CallList> {
             ${PROSPECT_SLUG_EXPR} AS prospect,
             properties.$session_id AS sid,
             max(toString(properties.utm_recipient)) AS recipient,
+            any(distinct_id) AS did,
             countIf(event = 'book_call_clicked' OR (event = 'cta_clicked' AND properties.cta LIKE '%book_call%')) AS book_clicks_s,
             countIf(event IN ${GAVE_EMAIL_EVENTS_SQL}) AS gave_email_s,
             countIf(event IN ${INTENT_EVENTS_SQL} AND event != 'book_call_clicked') AS scheduler_s,
@@ -1452,12 +1461,19 @@ export async function getCallList(range: DateRange): Promise<CallList> {
           GROUP BY prospect, sid
         ) AS s
         WHERE prospect != '' AND match(prospect, '^[a-z0-9]+(-[a-z0-9]+)*$')
+          AND (
+            lower(recipient) = prospect
+            OR (position(recipient, '@') > 0 AND replaceAll(replaceRegexpOne(lower(recipient), '^.*@', ''), '.', '-') = prospect)
+            OR (position(did, '@') > 0 AND replaceAll(replaceRegexpOne(lower(did), '^.*@', ''), '.', '-') = prospect)
+          )
         GROUP BY prospect
         HAVING (book_clicks + gave_email + scheduler_opens) > 0
         ORDER BY last_activity DESC
         LIMIT 25
       `),
-      // DUG IN - curiosity acts inside human-gated sessions.
+      // DUG IN - curiosity acts inside human-gated sessions, same identity
+      // proof as Raised hand: personal-link recipient or email-identified
+      // device matching the prospect.
       runQuery(`
         SELECT
           prospect,
@@ -1474,6 +1490,7 @@ export async function getCallList(range: DateRange): Promise<CallList> {
             ${PROSPECT_SLUG_EXPR} AS prospect,
             properties.$session_id AS sid,
             max(toString(properties.utm_recipient)) AS recipient,
+            any(distinct_id) AS did,
             arrayDistinct(groupArrayIf(
               if(event = 'finding_expanded' AND toString(properties.finding) != '',
                  toString(properties.finding),
@@ -1493,6 +1510,11 @@ export async function getCallList(range: DateRange): Promise<CallList> {
           GROUP BY prospect, sid
         ) AS s
         WHERE prospect != '' AND match(prospect, '^[a-z0-9]+(-[a-z0-9]+)*$')
+          AND (
+            lower(recipient) = prospect
+            OR (position(recipient, '@') > 0 AND replaceAll(replaceRegexpOne(lower(recipient), '^.*@', ''), '.', '-') = prospect)
+            OR (position(did, '@') > 0 AND replaceAll(replaceRegexpOne(lower(did), '^.*@', ''), '.', '-') = prospect)
+          )
         GROUP BY prospect
         HAVING (cell_expands + scroll_100s + copies + prints + verdict_expansions) > 0
         ORDER BY last_activity DESC
