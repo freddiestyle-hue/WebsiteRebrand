@@ -133,7 +133,14 @@ export const POST: APIRoute = async ({ request }) => {
       // the event stream. set_once keeps the first-booking timestamp stable.
       ...(eventName === 'call_booked'
         ? {
-            $set: { booked_call: true, last_booked_at: p.startTime ?? body.createdAt ?? null },
+            $set: {
+              booked_call: true,
+              last_booked_at: p.startTime ?? body.createdAt ?? null,
+              // Person-level identity so /hq renders a name, not a hash.
+              email: email || null,
+              name: name || null,
+              company_slug: slug,
+            },
             $set_once: { first_booked_at: p.startTime ?? body.createdAt ?? null },
           }
         : {}),
@@ -164,24 +171,37 @@ function resolveIdentity(
   emailDomain: string,
   uid: string | undefined,
 ): { distinctId: string; slug: string | null; method: string } {
-  // 1. Explicit prefilled `prospect` field (deterministic) - wins if present.
-  const prefilled = cleanStr(responses?.prospect?.value);
-  if (prefilled) return { distinctId: prefilled, slug: prefilled, method: 'prefill_field' };
+  // IDENTITY SPINE = the prospect's email (v11 decision). The same address
+  // appears as utm_recipient on audit reads and as the form email, so using
+  // it as distinct_id is what lets HQ stitch reads -> intent -> booking into
+  // one person. Company slug is attribution metadata, never the identity.
+  // (Pre-v11 this used the company slug as distinct_id, which parked
+  // Dipen's booking under person "somewhere-com" while his reads lived
+  // under his own ids.)
 
-  // 2. Work-email domain -> the same slug the v3 memo identified them under.
+  // Best slug we can derive, attached as a property either way.
+  const prefilled = cleanStr(responses?.prospect?.value);
+  let derived: string | null = null;
   if (emailDomain && !PERSONAL_EMAIL_DOMAINS.has(emailDomain)) {
     try {
-      const derived = normalizeDomainForSlug(emailDomain);
-      return { distinctId: derived, slug: derived, method: 'email_domain' };
+      derived = normalizeDomainForSlug(emailDomain);
     } catch {
-      /* not a usable domain - fall through */
+      /* not a usable domain */
     }
   }
+  const slug = prefilled || derived;
 
-  // 3. Raw email so the booking is still captured, just loosely linked.
-  if (email) return { distinctId: email, slug: null, method: 'email_raw' };
+  if (email) {
+    return {
+      distinctId: email.toLowerCase(),
+      slug,
+      method: prefilled ? 'email_spine_prefill' : derived ? 'email_spine_domain' : 'email_spine',
+    };
+  }
 
-  // 4. Nothing usable - anchor to the booking id so the event still lands.
+  // No email at all (shouldn't happen for real bookings) - fall back to the
+  // slug, then the booking id, so the event still lands somewhere queryable.
+  if (slug) return { distinctId: slug, slug, method: 'slug_no_email' };
   return { distinctId: uid ? `cal_${uid}` : 'cal_unknown', slug: null, method: 'none' };
 }
 
