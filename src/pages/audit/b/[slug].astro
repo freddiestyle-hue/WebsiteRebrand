@@ -58,6 +58,36 @@ const view = memo ? assembleBuyerView(memo) : null;
 const domain = memo?.domain ?? cached?.hostname ?? slug;
 const scanDate = (memo?.generatedAt ?? cached?.fetchedAt ?? '').slice(0, 10).replaceAll('-', '·');
 
+// Dimension icons + codes - verbatim from the control renderer
+// (src/pages/audit/v3/[slug].astro LOCK_ICON / DIM_CODE) for visual kinship.
+const LOCK_ICON: Record<string, string> = {
+  search: '<path d="M3 18 L9 12 L13 16 L21 6"/><circle class="dot" cx="21" cy="6" r="1.6"/>',
+  spark: '<circle cx="12" cy="12" r="9"/><path d="M12 12 L12 3 M12 12 L21 12"/><circle class="dot" cx="12" cy="12" r="1.2"/>',
+  bolt: '<circle cx="12" cy="12" r="9"/><path d="M12 6 V12 L17 14"/>',
+  target: '<path d="M3 21 V11 H7 V21 Z M10 21 V5 H14 V21 Z M17 21 V15 H21 V21 Z"/>',
+  megaphone: '<path d="M4 20 L12 4 L20 20 Z"/><path d="M12 11 V15"/><circle class="fill" cx="12" cy="17.5" r="0.8"/>',
+  eye: '<path d="M3 12 H8 L10 6 L14 18 L16 12 H21"/><circle class="dot" cx="14" cy="18" r="1.4"/>',
+  phone: '<path d="M3 12 H8 L10 6 L14 18 L16 12 H21"/><circle class="dot" cx="14" cy="18" r="1.4"/>',
+  mail: '<rect x="3" y="6" width="18" height="13"/><path d="M3 6 L12 14 L21 6"/>',
+  flag: '<path d="M3 7 L12 3 L21 7 L12 11 Z"/><path d="M3 12 L12 16 L21 12"/><path d="M3 17 L12 21 L21 17"/>',
+  bar: '<path d="M3 21 V11 H7 V21 Z M10 21 V5 H14 V21 Z M17 21 V15 H21 V21 Z"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 6 V12 L17 14"/>',
+};
+
+const DIM_CODE: Record<string, string> = {
+  search: '01',
+  spark: '02',
+  bolt: '03',
+  target: '04',
+  megaphone: '05',
+  eye: '06',
+  phone: '07',
+  mail: '08',
+  flag: '09',
+  bar: '10',
+  clock: '11',
+};
+
 const REL_LABEL: Record<string, string> = {
   verified: 'Verified reading',
   'soft-absence': 'Unconfirmed',
@@ -116,6 +146,13 @@ const DISCLAIMER =
         .cellcard:nth-child(2n) { border-right: 0; }
         .cellcard:nth-last-child(-n+2):nth-child(odd) { border-bottom: 0; }
       }
+      .lhead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+      .lhead .ic { display: inline-flex; align-items: center; justify-content: center; color: var(--ink); }
+      .lhead .ic svg { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: square; stroke-linejoin: miter; }
+      .lhead .ic svg :global(.dot) { fill: var(--accent); stroke: none; }
+      .lhead .ic svg :global(.fill) { fill: currentColor; stroke: none; }
+      .lhead .dcode { font-family: var(--mono); font-size: var(--t-meta); letter-spacing: var(--track-mono); color: var(--ink-faint); }
+      .lhead .dcode b { color: var(--ink); font-weight: 500; }
       .cellcard h3 { font-size: var(--t-h-sm); letter-spacing: var(--track-h-sm); margin-bottom: 6px; }
       .cellcard .val { display: block; font-size: var(--t-h-md); font-weight: 700; letter-spacing: var(--track-h-sm); }
       .cellcard .val.halt { color: var(--signal-halt); }
@@ -195,6 +232,12 @@ const DISCLAIMER =
                     const soft = c.checks.some((k) => k.ok === false && k.reliability === 'soft-absence');
                     return (
                       <div class="cellcard">
+                        <div class="lhead">
+                          <span class="ic" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" width="24" height="24" set:html={LOCK_ICON[c.icon] ?? LOCK_ICON.search} />
+                          </span>
+                          <span class="dcode">D · <b>{DIM_CODE[c.icon] ?? '·'}</b></span>
+                        </div>
                         <h3>{c.heading}</h3>
                         <span class={`val ${fails ? 'halt' : soft ? 'warn' : ''}`}>{c.value}</span>
                         {c.benchmark && <span class="mono sub">{c.benchmark}</span>}
@@ -235,6 +278,12 @@ const DISCLAIMER =
               <div class="grid">
                 {view.appendixCells.map((c) => (
                   <div class="cellcard">
+                    <div class="lhead">
+                      <span class="ic" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" width="24" height="24" set:html={LOCK_ICON[c.icon] ?? LOCK_ICON.search} />
+                      </span>
+                      <span class="dcode">D · <b>{DIM_CODE[c.icon] ?? '·'}</b></span>
+                    </div>
                     <h3>{c.heading}</h3>
                     <span class="val">{c.value}</span>
                     <p class="note">{c.note}</p>
