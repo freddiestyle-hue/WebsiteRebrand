@@ -173,6 +173,10 @@ const DISCLAIMER =
 
       .disclaimer { font-family: var(--serif); font-style: italic; color: var(--ink-dim); font-size: var(--t-body-md); line-height: var(--lh-body); margin: 28px 0; }
 
+      details.appendix { border-top: none; margin-top: 0; }
+      details.appendix > summary { padding: 0 0 14px; color: inherit; }
+      details.appendix > summary h2 { font-size: var(--t-h-md); letter-spacing: var(--track-h-sm); line-height: var(--lh-h-prose); margin: 8px 0 4px; color: var(--ink); }
+
       .closer { background: var(--ink); color: var(--on-ink); margin-top: 40px; }
       .closer .inner { max-width: 720px; margin: 0 auto; padding: 44px 20px 40px; }
       .closer .mono { color: var(--on-ink-faint); }
@@ -271,11 +275,15 @@ const DISCLAIMER =
 
           {view.appendixCells.length > 0 && (
             <section class="group">
-              <div class="divider">
-                <span class="mono status unconfirmed">● The appendix</span>
-                <h2>Everything else the scan checked.</h2>
-              </div>
-              <div class="grid">
+              {/* The appendix is for the forwarded-to team member, not the
+                  buyer - the one group that earns a collapse. Verdict groups
+                  stay open: gating findings was a verified mistake. */}
+              <details class="appendix">
+                <summary>
+                  <span class="mono status unconfirmed">+ The appendix</span>
+                  <h2>Everything else the scan checked.</h2>
+                </summary>
+                <div class="grid">
                 {view.appendixCells.map((c) => (
                   <div class="cellcard">
                     <div class="lhead">
@@ -303,7 +311,8 @@ const DISCLAIMER =
                     </details>
                   </div>
                 ))}
-              </div>
+                </div>
+              </details>
             </section>
           )}
 
