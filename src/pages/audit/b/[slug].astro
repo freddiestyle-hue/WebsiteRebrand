@@ -1,16 +1,18 @@
 ---
-// /audit/b/[slug] - PROTOTYPE buyer-shaped variant of the audit memo.
-// Reads the SAME audit-v3:{slug} KV memo as /audit/v3/[slug] and re-renders
-// it as 3 business consequences. The control page is untouched.
+// /audit/b/[slug] - variant B of the audit memo A/B (buyer-shaped page).
+// Reads the SAME audit-v3:{slug} KV memo as /audit/v3/[slug] (the control)
+// and re-renders it: strongest-finding lead, cells grouped money-first under
+// verdict headers. Copy is ASSEMBLED by buyer-view.ts under the R1-R7 rules;
+// no hand-written per-prospect prose anywhere in this file.
 //
-// Status: prototype. Deliberately:
-//   - no PostHog (so prototype views can never pollute the HQ call list)
-//   - noindex (not a public surface yet)
-//   - copy is ASSEMBLED by buyer-view.ts under the R1-R7 rules; no
-//     hand-written per-prospect prose anywhere in this file.
+// Analytics: same PostHog component + event taxonomy as the control
+// (finding_expanded / book_call_clicked / audit_v3_form_view) so HQ ranks
+// B-arm prospects identically; `audit_variant: 'b'` is registered as a
+// session super-property to split the arms in analysis.
 export const prerender = false;
 
 import { Redis } from '@upstash/redis';
+import PostHog from '../../../components/PostHog.astro';
 import BookingProvider from '../../../components/diagnostic/BookingProvider.astro';
 import type { Memo } from '../../../utils/audit/memo-schema';
 import { isValidV3Slug } from '../../../utils/audit/slug';
@@ -132,8 +134,22 @@ const DISCLAIMER =
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex, nofollow" />
-    <title>{domain} · Teardown · rivett · variant B</title>
+    <title>{domain} · Teardown · rivett</title>
     <link rel="stylesheet" href="/audit/tokens.css" />
+    <PostHog
+      capturePageview={true}
+      identifyAs={memo && cached ? slug : undefined}
+      personProperties={memo && cached ? {
+        type: 'memo_v3_slug',
+        slug,
+        domain: cached.hostname,
+        company_name: memo.companyName ?? null,
+        industry: memo.industry ?? null,
+        first_viewed_at: new Date().toISOString(),
+      } : undefined}
+      groupKey={memo?.domain}
+      groupType="company"
+    />
     <style>
       * { margin: 0; padding: 0; box-sizing: border-box; }
       body { background: var(--paper-2); color: var(--ink); font-family: var(--grotesk); }
@@ -324,7 +340,7 @@ const DISCLAIMER =
               </div>
             )}
             <p class="body">{view.lead.body}</p>
-            <a class="cta" href={CAL_URL}>Book 30 min with Fred →</a>
+            <a class="cta" href={CAL_URL} data-cta="memo_book_call" data-cta-location="memo_hero">Book 30 min with Fred →</a>
             <p class="cta-sub">We walk through your audit, not a slide deck.</p>
           </section>
 
@@ -356,7 +372,7 @@ const DISCLAIMER =
                         {c.benchmark && <span class="mono sub">{c.benchmark}</span>}
                         <p class="note">{c.note}</p>
                         <details>
-                          <summary class="mono">Show {c.checks.length} signals +</summary>
+                          <summary class="mono" data-cta={`cell_expand_${c.icon}`}>Show {c.checks.length} signals +</summary>
                           <div class="rows">
                             {c.checks.map((check) => {
                               const suppressed = isSuppressed(memo, check);
@@ -405,7 +421,7 @@ const DISCLAIMER =
                     <span class="val">{c.value}</span>
                     <p class="note">{c.note}</p>
                     <details>
-                      <summary class="mono">Show {c.checks.length} signals +</summary>
+                      <summary class="mono" data-cta={`cell_expand_${c.icon}`}>Show {c.checks.length} signals +</summary>
                       <div class="rows">
                         {c.checks.map((check) => (
                           <div class={`row ${check.ok ? 'ok' : 'fail'}`}>
@@ -428,6 +444,40 @@ const DISCLAIMER =
           <p class="disclaimer">{DISCLAIMER}</p>
         </div>
 
+        <script is:inline define:vars={{ slug, domain }}>
+          // Arm marker + the two events the A/B reads that PostHog.astro
+          // doesn't fire on its own. Event names match the control so HQ and
+          // existing insights pick both arms up; audit_variant splits them.
+          (function () {
+            function whenPosthog(fn, tries) {
+              if (window.posthog && window.posthog.capture) return fn(window.posthog);
+              if ((tries || 0) > 50) return;
+              setTimeout(function () { whenPosthog(fn, (tries || 0) + 1); }, 200);
+            }
+            whenPosthog(function (ph) {
+              try {
+                if (typeof ph.register_for_session === 'function') ph.register_for_session({ audit_variant: 'b' });
+                else ph.register({ audit_variant: 'b' });
+              } catch (e) {}
+              ph.capture('audit_v3_memo_rendered', { slug: slug, hostname: domain, audit_variant: 'b', url: window.location.href });
+            });
+            var fired = false;
+            var closer = document.querySelector('.closer');
+            if (closer && 'IntersectionObserver' in window) {
+              new IntersectionObserver(function (entries, obs) {
+                entries.forEach(function (en) {
+                  if (!en.isIntersecting || fired) return;
+                  fired = true;
+                  obs.disconnect();
+                  whenPosthog(function (ph) {
+                    ph.capture('audit_v3_form_view', { slug: slug, audit_variant: 'b' });
+                  });
+                });
+              }, { threshold: 0.4 }).observe(closer);
+            }
+          })();
+        </script>
+
         <div class="closer">
           <div class="inner">
             <span class="mono">30 min · no deck</span>
@@ -440,7 +490,7 @@ const DISCLAIMER =
               The cost of doing nothing is on this page. The call is the fix order, the math against your own
               analytics, and the things a scan cannot reach: your pipeline, your follow-up, your numbers.
             </p>
-            <a class="cta" href={CAL_URL}>Book a call →</a>
+            <a class="cta" href={CAL_URL} data-cta="memo_book_call" data-cta-location="memo_closer">Book a call →</a>
             <div class="sig">
               <span class="mono">Signature</span><br />
               Fred Style · rivett.tech · {scanDate}
