@@ -19,7 +19,10 @@ import { detectTechStack } from './tech-stack-check';
 import { checkAds } from './ads-check';
 import { extractSocialIdentity } from './social-identity';
 
-const DISCOVERY_MODEL = 'claude-haiku-4-5-20251001';
+// Sonnet, not Haiku: discovery quality IS the feature. Haiku named the
+// prospect's own former brand and a dead domain for a local roofing co;
+// local-SMB competitor knowledge needs the bigger model (~$0.02/memo).
+const DISCOVERY_MODEL = 'claude-sonnet-4-6';
 const DISCOVERY_TIMEOUT_MS = 15000;
 const SCAN_FETCH_TIMEOUT_MS = 9000;
 
@@ -56,7 +59,7 @@ export interface CompetitorContrast {
 
 interface Candidate { name: string; domain: string; reason: string }
 
-const DISCOVERY_SYSTEM = `You are a market analyst. Given a company's homepage text, name the 2 most direct competitors a BUYER would also consider: same offering, same buyer, similar size where possible. Prefer companies of comparable scale over giant household names. Never invent companies; if you are not confident real direct competitors exist, return fewer or none.
+const DISCOVERY_SYSTEM = `You are a market analyst. Given a company's homepage text, name up to 5 direct competitors a BUYER would also consider: same offering, same buyer, similar size where possible. Prefer companies of comparable scale over giant household names. Order by how directly they compete. CRITICAL: only name companies you are confident actually exist and operate TODAY, with their real current domain - every domain will be verified and a guessed or stale one wastes a slot. Exclude former names, sister brands, or acquisitions of the company being analysed. If you are not confident, return fewer or none.
 
 Output JSON only:
 {"competitors":[{"name":"...","domain":"example.com","reason":"one short clause on why a buyer would consider them"}]}`;
@@ -135,7 +138,7 @@ ${extractReadableText(homepageHtml)}`;
       const res = await client.messages.create(
         {
           model: DISCOVERY_MODEL,
-          max_tokens: 400,
+          max_tokens: 700,
           system: DISCOVERY_SYSTEM,
           messages: [{ role: 'user', content: user }],
         },
@@ -159,7 +162,7 @@ ${extractReadableText(homepageHtml)}`;
             reason: typeof c.reason === 'string' ? c.reason.trim().slice(0, 140) : '',
           }))
       : [];
-    return { candidates: list.slice(0, 3), model: DISCOVERY_MODEL };
+    return { candidates: list.slice(0, 5), model: DISCOVERY_MODEL };
   } catch (e) {
     console.warn('[competitor-contrast] discovery failed', e instanceof Error ? e.message : e);
     return null;
