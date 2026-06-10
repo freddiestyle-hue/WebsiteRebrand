@@ -1,0 +1,280 @@
+---
+// /audit/b/[slug] - PROTOTYPE buyer-shaped variant of the audit memo.
+// Reads the SAME audit-v3:{slug} KV memo as /audit/v3/[slug] and re-renders
+// it as 3 business consequences. The control page is untouched.
+//
+// Status: prototype. Deliberately:
+//   - no PostHog (so prototype views can never pollute the HQ call list)
+//   - noindex (not a public surface yet)
+//   - copy is ASSEMBLED by buyer-view.ts under the R1-R7 rules; no
+//     hand-written per-prospect prose anywhere in this file.
+export const prerender = false;
+
+import { Redis } from '@upstash/redis';
+import type { Memo } from '../../../utils/audit/memo-schema';
+import { isValidV3Slug } from '../../../utils/audit/slug';
+import { assembleBuyerView, isSuppressed, traceTextFor } from '../../../utils/audit/buyer-view';
+
+interface CachedV3 {
+  memo: Memo;
+  hostname: string;
+  fetchedAt: string;
+}
+
+const CAL_BASE_URL = 'https://cal.com/fred-style/discovery';
+const rawSlug = Astro.params.slug ?? '';
+const slug = rawSlug.replace(/[.,;)\]\s]+$/, '');
+const calUrl = new URL(CAL_BASE_URL);
+calUrl.searchParams.set('overlayCalendar', 'true');
+calUrl.searchParams.set('prospect', slug);
+calUrl.searchParams.set('utm_source', 'audit_memo');
+calUrl.searchParams.set('utm_medium', 'site');
+calUrl.searchParams.set('utm_content', 'memo_book_call_b');
+const CAL_URL = calUrl.toString();
+
+// Prod injects UPSTASH_*; local .env.local only has the Vercel KV names.
+// Resolve both so the prototype renders against real memos in dev.
+const kvUrl =
+  import.meta.env.UPSTASH_REDIS_REST_URL ?? process.env.UPSTASH_REDIS_REST_URL ??
+  import.meta.env.KV_REST_API_URL ?? process.env.KV_REST_API_URL;
+const kvToken =
+  import.meta.env.UPSTASH_REDIS_REST_TOKEN ?? process.env.UPSTASH_REDIS_REST_TOKEN ??
+  import.meta.env.KV_REST_API_TOKEN ?? process.env.KV_REST_API_TOKEN;
+
+let cached: CachedV3 | null = null;
+if (isValidV3Slug(slug) && kvUrl && kvToken) {
+  try {
+    const redis = new Redis({ url: kvUrl, token: kvToken });
+    const raw = await redis.get<unknown>(`audit-v3:${slug}`);
+    if (raw != null) cached = typeof raw === 'string' ? JSON.parse(raw) : (raw as CachedV3);
+  } catch (e) {
+    console.error('[audit/b/slug] KV read failed', e);
+  }
+}
+if (!cached) Astro.response.status = 404;
+
+const memo = cached?.memo ?? null;
+const view = memo ? assembleBuyerView(memo) : null;
+const domain = memo?.domain ?? cached?.hostname ?? slug;
+const scanDate = (memo?.generatedAt ?? cached?.fetchedAt ?? '').slice(0, 10).replaceAll('-', '·');
+
+const REL_LABEL: Record<string, string> = {
+  verified: 'Verified reading',
+  'soft-absence': 'Unconfirmed',
+  inferred: 'A read, not a measurement',
+  'verified-na': 'Verified not applicable',
+};
+
+// Closer restates the lead (R7): derive a short fragment from the headline.
+const closerEcho = view?.lead.headline.replace(/\.$/, '') ?? '';
+const DISCLAIMER =
+  'A read, not a measurement of your business. The audit reads the public surface of your domain in a real browser. It does not access dashboards, customer data, or anything behind a login.';
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>{domain} · Teardown · rivett · variant B</title>
+    <link rel="stylesheet" href="/audit/tokens.css" />
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { background: var(--paper-2); color: var(--ink); font-family: var(--grotesk); }
+      .wrap { max-width: 720px; margin: 0 auto; padding: 0 20px; }
+      .mono { font-family: var(--mono); font-size: var(--t-meta); letter-spacing: var(--track-mono); text-transform: uppercase; }
+
+      .topbar { display: flex; justify-content: space-between; padding: 14px 20px; border-bottom: 1px solid var(--line); color: var(--ink-faint); }
+      .topbar strong { color: var(--ink); font-weight: 500; }
+
+      .lead { padding: 36px 0 28px; }
+      .lead .kicker { color: var(--accent-deep); }
+      .lead h1 { font-size: var(--t-h-xl); letter-spacing: var(--track-h); line-height: var(--lh-h-prose); margin: 14px 0 18px; }
+      .stat { background: var(--paper); border: 1px solid var(--line); padding: 16px 18px; margin-bottom: 8px; font-size: var(--t-body); line-height: var(--lh-body); }
+      .stat .src { display: block; margin-top: 10px; color: var(--ink-faint); }
+      .lead .body { font-size: var(--t-body-xl); line-height: var(--lh-prose); color: var(--ink-dim); margin: 18px 0 22px; }
+
+      .cta { display: inline-block; background: var(--ink); color: var(--on-ink); text-decoration: none; font-family: var(--mono); font-size: var(--t-body-sm); letter-spacing: var(--track-mono-tight); text-transform: uppercase; padding: 14px 22px; }
+      .cta:hover { background: var(--ink-2); }
+      .cta-sub { margin-top: 10px; color: var(--ink-faint); font-size: var(--t-body-sm); }
+
+      .strip { display: flex; gap: 0; border: 1px solid var(--line); background: var(--paper); margin: 8px 0 36px; }
+      .strip > div { flex: 1; padding: 12px 14px; border-right: 1px solid var(--line); }
+      .strip > div:last-child { border-right: 0; }
+      .strip .n { font-size: var(--t-h-md); font-weight: 600; display: block; margin-top: 4px; }
+      .strip .lbl { color: var(--ink-faint); }
+
+      .cons { background: var(--paper); border: 1px solid var(--line); margin-bottom: 18px; padding: 22px 20px; }
+      .cons .status { font-weight: 500; }
+      .cons.problem .status { color: var(--ink); }
+      .cons.sound .status { color: var(--accent-deep); }
+      .cons.unconfirmed .status { color: var(--ink-faint); }
+      .cons h2 { font-size: var(--t-h-md); letter-spacing: var(--track-h-sm); line-height: var(--lh-h-prose); margin: 10px 0 12px; }
+      .cons .body { font-size: var(--t-body); line-height: var(--lh-body); color: var(--ink-dim); }
+      .cons .meta-block { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line-soft); }
+      .cons .meta-block .mono { color: var(--ink-faint); }
+      .cons .meta-block p { margin-top: 6px; font-size: var(--t-body-md); line-height: var(--lh-body); }
+
+      details { margin-top: 16px; border-top: 1px solid var(--line-soft); }
+      summary { cursor: pointer; padding: 12px 0 2px; color: var(--accent-deep); list-style: none; }
+      summary::-webkit-details-marker { display: none; }
+      .rows { padding: 10px 0 4px; }
+      .row { display: flex; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--line-soft); font-size: var(--t-body-sm); line-height: var(--lh-body); }
+      .row .mark { font-family: var(--mono); flex: 0 0 14px; }
+      .row.ok .mark { color: var(--accent-deep); }
+      .row.fail .mark { color: var(--ink); }
+      .row .rel { display: block; color: var(--ink-faint); font-size: var(--t-caption); font-family: var(--mono); letter-spacing: var(--track-mono-tight); text-transform: uppercase; margin-top: 3px; }
+      .row .trace { display: block; color: var(--ink-dim); font-style: italic; margin-top: 3px; }
+
+      .disclaimer { font-family: var(--serif); font-style: italic; color: var(--ink-dim); font-size: var(--t-body-md); line-height: var(--lh-body); margin: 28px 0; }
+
+      .closer { background: var(--ink); color: var(--on-ink); margin-top: 40px; }
+      .closer .inner { max-width: 720px; margin: 0 auto; padding: 44px 20px 40px; }
+      .closer .mono { color: var(--on-ink-faint); }
+      .closer h2 { font-size: var(--t-h-lg); letter-spacing: var(--track-h-md); line-height: var(--lh-h-prose); margin: 12px 0 6px; }
+      .closer .serif { font-family: var(--serif); font-style: italic; color: var(--on-ink-italic); font-size: var(--t-h-sm); margin-bottom: 18px; }
+      .closer blockquote { border-left: 2px solid var(--on-ink-line-2); padding-left: 14px; color: var(--on-ink-dim); font-size: var(--t-body); line-height: var(--lh-body); margin: 18px 0; }
+      .closer p.path { color: var(--on-ink-dim); font-size: var(--t-body); line-height: var(--lh-body); margin-bottom: 22px; }
+      .closer .cta { background: var(--accent); color: var(--ink); }
+      .closer .sig { margin-top: 30px; padding-top: 16px; border-top: 1px solid var(--on-ink-line); color: var(--on-ink-faint); font-size: var(--t-body-sm); }
+      .closer .sig .fine { display: block; margin-top: 10px; font-family: var(--serif); font-style: italic; color: var(--on-ink-faint); }
+    </style>
+  </head>
+  <body>
+    {!view && (
+      <div class="wrap" style="padding: 60px 20px;">
+        <span class="mono">Cached audit · not found</span>
+        <h1 style="margin-top: 12px;">This audit has expired or does not exist.</h1>
+      </div>
+    )}
+    {view && memo && (
+      <>
+        <div class="topbar mono">
+          <span><strong>rivett</strong> · teardown · {domain}</span>
+          <span>{scanDate}</span>
+        </div>
+
+        <div class="wrap">
+          <section class="lead">
+            <span class="mono kicker">The strongest finding · assembled from verified rows only</span>
+            <h1>{view.lead.headline}</h1>
+            {view.lead.stat && (
+              <div class="stat">
+                {view.lead.stat.text} — this page is on the wrong side of that line.
+                <span class="mono src">Source: {view.lead.stat.source} · your own analytics can confirm the exact number</span>
+              </div>
+            )}
+            <p class="body">{view.lead.body}</p>
+            <a class="cta" href={CAL_URL}>Book 30 min with Fred →</a>
+            <p class="cta-sub">We walk through your audit, not a slide deck.</p>
+          </section>
+
+          <div class="strip mono">
+            <div><span class="lbl">Problems</span><span class="n">{String(view.counts.problems).padStart(2, '0')}</span></div>
+            <div><span class="lbl">Sound</span><span class="n">{String(view.counts.sound).padStart(2, '0')}</span></div>
+            <div><span class="lbl">Unconfirmed</span><span class="n">{String(view.counts.unconfirmed).padStart(2, '0')}</span></div>
+            <div><span class="lbl">Scan</span><span class="n">{view.counts.cellsScanned} of {view.counts.cellsScanned}</span></div>
+          </div>
+
+          {view.consequences.map((cons) => {
+            const cls = cons.status === 'sound' ? 'sound' : cons.status === 'unconfirmed' ? 'unconfirmed' : 'problem';
+            return (
+              <section class={`cons ${cls}`}>
+                <span class="mono status">● {cons.statusLabel}</span>
+                <h2>{cons.heading}</h2>
+                {cons.body && <p class="body">{cons.body}</p>}
+                {cons.failRows.length > 0 && (
+                  <div class="rows" style="margin-top: 6px;">
+                    {cons.failRows.map((text) => (
+                      <div class="row fail">
+                        <span class="mark">×</span>
+                        <span>{text}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {cons.owner && (
+                  <div class="meta-block">
+                    <span class="mono">Who should have caught it</span>
+                    <p>{cons.owner}</p>
+                  </div>
+                )}
+                {cons.ignored && (
+                  <div class="meta-block">
+                    <span class="mono">If you ignore it</span>
+                    <p>{cons.ignored}</p>
+                  </div>
+                )}
+                <details>
+                  <summary class="mono">+ The evidence · verify it yourself</summary>
+                  <div class="rows">
+                    {cons.cells.flatMap((c) =>
+                      c.checks.map((check) => {
+                        const suppressed = isSuppressed(memo, check);
+                        const trace = suppressed ? traceTextFor(memo, check) : null;
+                        return (
+                          <div class={`row ${check.ok ? 'ok' : 'fail'}`}>
+                            <span class="mark">{check.ok ? '✓' : suppressed ? '~' : '×'}</span>
+                            <span>
+                              {check.text}
+                              {trace && <span class="trace">{trace}</span>}
+                              <span class="rel">{suppressed ? 'Superseded by a runtime detection' : REL_LABEL[check.reliability ?? 'verified']}</span>
+                            </span>
+                          </div>
+                        );
+                      }),
+                    )}
+                  </div>
+                </details>
+              </section>
+            );
+          })}
+
+          {view.appendixCells.length > 0 && (
+            <section class="cons unconfirmed">
+              <details>
+                <summary class="mono">+ Everything else the scan checked · the appendix</summary>
+                <div class="rows">
+                  {view.appendixCells.flatMap((c) =>
+                    c.checks.map((check) => (
+                      <div class={`row ${check.ok ? 'ok' : 'fail'}`}>
+                        <span class="mark">{check.ok ? '✓' : '×'}</span>
+                        <span>
+                          {check.text}
+                          <span class="rel">{REL_LABEL[check.reliability ?? 'verified']}</span>
+                        </span>
+                      </div>
+                    )),
+                  )}
+                </div>
+              </details>
+            </section>
+          )}
+
+          <p class="disclaimer">{DISCLAIMER}</p>
+        </div>
+
+        <div class="closer">
+          <div class="inner">
+            <span class="mono">30 min · no deck</span>
+            <h2>{closerEcho} — still true until it's fixed.</h2>
+            <p class="serif">Pick a time. We go through the fix order together.</p>
+            <blockquote>
+              "If I'm wrong about this, the call costs you thirty minutes. If I'm right, you keep paying for it every week it stands."
+            </blockquote>
+            <p class="path">
+              The cost of doing nothing is on this page. The call is the fix order, the math against your own
+              analytics, and the things a scan cannot reach: your pipeline, your follow-up, your numbers.
+            </p>
+            <a class="cta" href={CAL_URL}>Book a call →</a>
+            <div class="sig">
+              <span class="mono">Signature</span><br />
+              Fred Style · rivett.tech · {scanDate}
+              <span class="fine">{DISCLAIMER}</span>
+            </div>
+          </div>
+        </div>
+      </>
+    )}
+  </body>
+</html>
