@@ -50,7 +50,7 @@ const POSTHOG_PROJECT_ID = 373899;
 //     filters, and human_engaged (real pointer/scroll/key/touch input) joins
 //     the behavioural human filter + is_engaged flag. One-screen proposals
 //     that can't scroll now register a real reader while staying scanner-proof.
-const CACHE_VERSION = 'v16';
+const CACHE_VERSION = 'v17';
 
 // Lazy redis client. Construction is cheap but we only need one instance.
 // Use KV_REST_API_* env vars (set by Vercel KV / Upstash integration) since
@@ -1401,6 +1401,7 @@ export interface HandRaiseRow {
   book_clicks: number;
   gave_email: number;
   scheduler_opens: number;
+  replies: number;
   last_activity: string;
 }
 
@@ -1427,7 +1428,7 @@ const GAVE_EMAIL_EVENTS_SQL = `('audit_v3_form_submitted', 'audit_form_submitted
 
 export async function getCallList(range: DateRange): Promise<CallList> {
   return cached('callList', range, async () => {
-    const [bookedRes, handRes, dugRes] = await Promise.all([
+    const [bookedRes, handRes, dugRes, replyRes] = await Promise.all([
       // BOOKED - one row per booking_uid, latest webhook state wins.
       runQuery(`
         SELECT
@@ -1537,6 +1538,27 @@ export async function getCallList(range: DateRange): Promise<CallList> {
         ORDER BY last_activity DESC
         LIMIT 25
       `),
+      // EMAIL REPLIES - the strongest hand-raise there is. Server-side from
+      // the Instantly cron, classified; confirmed auto-replies (OOO, leaver
+      // bots) are excluded. Identity is the sender's email (the spine).
+      runQuery(`
+        SELECT
+          lower(coalesce(nullIf(toString(properties.email), ''), distinct_id)) AS email,
+          toString(any(properties.prospect_slug)) AS prospect,
+          count() AS replies,
+          toString(max(timestamp)) AS last_activity
+        FROM events
+        WHERE event = 'email_replied'
+          AND ${hogqlRangeClause(range)}
+          -- Only classifier-stamped events count. Legacy rows (no reply_kind)
+          -- predate classification and include at least one known auto-reply.
+          AND toString(properties.reply_kind) IN ('human', 'unknown')
+        GROUP BY email
+        HAVING email NOT LIKE 'test@%'
+          AND email NOT IN (${DENYLIST_EMAILS.map((e) => `'${e}'`).join(', ')})
+        ORDER BY last_activity DESC
+        LIMIT 25
+      `),
     ]);
 
     const bookedAll = rowsToObjects<BookedRow>(bookedRes);
@@ -1549,8 +1571,40 @@ export async function getCallList(range: DateRange): Promise<CallList> {
     const booked = bookedAll.filter(
       (b) => b.status === 'booked' || !activeBookedEmails.has(b.email)
     );
-    const raisedHand = rowsToObjects<HandRaiseRow>(handRes);
+    const raisedHand = rowsToObjects<HandRaiseRow>(handRes).map((h) => ({
+      ...h,
+      replies: 0,
+    }));
     const dugInAll = rowsToObjects<DugInRow>(dugRes);
+
+    // Merge classified human replies into the Raised-hand tier - a reply is
+    // the strongest hand-raise. If the prospect already has an on-page row,
+    // enrich it; otherwise create a reply-only row.
+    const replyRows = rowsToObjects<{ email: string; prospect: string; replies: number; last_activity: string }>(replyRes);
+    for (const r of replyRows) {
+      const slug =
+        r.prospect ||
+        (r.email.includes('@') ? r.email.split('@')[1].toLowerCase().replace(/\./g, '-') : '');
+      const existing = raisedHand.find(
+        (h) => h.prospect === slug || (h.email && h.email.toLowerCase() === r.email)
+      );
+      if (existing) {
+        existing.replies += r.replies;
+        if (r.last_activity > existing.last_activity) existing.last_activity = r.last_activity;
+        if (!existing.email) existing.email = r.email;
+      } else {
+        raisedHand.push({
+          prospect: slug,
+          email: r.email,
+          book_clicks: 0,
+          gave_email: 0,
+          scheduler_opens: 0,
+          replies: r.replies,
+          last_activity: r.last_activity,
+        });
+      }
+    }
+    raisedHand.sort((a, b) => (a.last_activity < b.last_activity ? 1 : -1));
 
     // De-duplicate up-tier: a prospect appears once, in their HIGHEST tier.
     const bookedSlugs = new Set(booked.map((b) => b.prospect_slug).filter(Boolean));
