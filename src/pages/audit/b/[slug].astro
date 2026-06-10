@@ -98,22 +98,30 @@ const DISCLAIMER =
       .cta:hover { background: var(--ink-2); }
       .cta-sub { margin-top: 10px; color: var(--ink-faint); font-size: var(--t-body-sm); }
 
-      .strip { display: flex; gap: 0; border: 1px solid var(--line); background: var(--paper); margin: 8px 0 36px; }
-      .strip > div { flex: 1; padding: 12px 14px; border-right: 1px solid var(--line); }
-      .strip > div:last-child { border-right: 0; }
-      .strip .n { font-size: var(--t-h-md); font-weight: 600; display: block; margin-top: 4px; }
-      .strip .lbl { color: var(--ink-faint); }
+      .group { margin: 26px 0 34px; }
+      .divider { margin-bottom: 14px; }
+      .divider .status { font-weight: 500; }
+      .divider .status.problem { color: var(--ink); }
+      .divider .status.sound { color: var(--accent-deep); }
+      .divider .status.unconfirmed { color: var(--ink-faint); }
+      .divider h2 { font-size: var(--t-h-md); letter-spacing: var(--track-h-sm); line-height: var(--lh-h-prose); margin: 8px 0 4px; }
+      .divider .owner { color: var(--ink-faint); font-size: var(--t-body-sm); line-height: var(--lh-body); }
 
-      .cons { background: var(--paper); border: 1px solid var(--line); margin-bottom: 18px; padding: 22px 20px; }
-      .cons .status { font-weight: 500; }
-      .cons.problem .status { color: var(--ink); }
-      .cons.sound .status { color: var(--accent-deep); }
-      .cons.unconfirmed .status { color: var(--ink-faint); }
-      .cons h2 { font-size: var(--t-h-md); letter-spacing: var(--track-h-sm); line-height: var(--lh-h-prose); margin: 10px 0 12px; }
-      .cons .body { font-size: var(--t-body); line-height: var(--lh-body); color: var(--ink-dim); }
-      .cons .meta-block { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line-soft); }
-      .cons .meta-block .mono { color: var(--ink-faint); }
-      .cons .meta-block p { margin-top: 6px; font-size: var(--t-body-md); line-height: var(--lh-body); }
+      .grid { display: grid; grid-template-columns: 1fr; border: 1px solid var(--line); background: var(--paper); }
+      @media (min-width: 720px) { .grid { grid-template-columns: 1fr 1fr; } }
+      .cellcard { padding: 20px; border-bottom: 1px solid var(--line); }
+      .cellcard:last-child { border-bottom: 0; }
+      @media (min-width: 720px) {
+        .cellcard { border-right: 1px solid var(--line); }
+        .cellcard:nth-child(2n) { border-right: 0; }
+        .cellcard:nth-last-child(-n+2):nth-child(odd) { border-bottom: 0; }
+      }
+      .cellcard h3 { font-size: var(--t-h-sm); letter-spacing: var(--track-h-sm); margin-bottom: 6px; }
+      .cellcard .val { display: block; font-size: var(--t-h-md); font-weight: 700; letter-spacing: var(--track-h-sm); }
+      .cellcard .val.halt { color: var(--signal-halt); }
+      .cellcard .val.warn { color: var(--signal-warn); }
+      .cellcard .sub { display: block; color: var(--ink-faint); margin-top: 4px; }
+      .cellcard .note { font-family: var(--mono); font-size: var(--t-body-sm); line-height: var(--lh-body); color: var(--ink-dim); margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line-soft); }
 
       details { margin-top: 16px; border-top: 1px solid var(--line-soft); }
       summary { cursor: pointer; padding: 12px 0 2px; color: var(--accent-deep); list-style: none; }
@@ -169,85 +177,84 @@ const DISCLAIMER =
             <p class="cta-sub">We walk through your audit, not a slide deck.</p>
           </section>
 
-          <div class="strip mono">
-            <div><span class="lbl">Problems</span><span class="n">{String(view.counts.problems).padStart(2, '0')}</span></div>
-            <div><span class="lbl">Sound</span><span class="n">{String(view.counts.sound).padStart(2, '0')}</span></div>
-            <div><span class="lbl">Unconfirmed</span><span class="n">{String(view.counts.unconfirmed).padStart(2, '0')}</span></div>
-            <div><span class="lbl">Scan</span><span class="n">{view.counts.cellsScanned} of {view.counts.cellsScanned}</span></div>
-          </div>
-
           {view.consequences.map((cons) => {
-            const cls = cons.status === 'sound' ? 'sound' : cons.status === 'unconfirmed' ? 'unconfirmed' : 'problem';
+            const isProblem = cons.status !== 'sound' && cons.status !== 'unconfirmed';
+            if (cons.cells.length === 0) return null;
             return (
-              <section class={`cons ${cls}`}>
-                <span class="mono status">● {cons.statusLabel}</span>
-                <h2>{cons.heading}</h2>
-                {cons.body && <p class="body">{cons.body}</p>}
-                {cons.failRows.length > 0 && (
-                  <div class="rows" style="margin-top: 6px;">
-                    {cons.failRows.map((text) => (
-                      <div class="row fail">
-                        <span class="mark">×</span>
-                        <span>{text}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {cons.owner && (
-                  <div class="meta-block">
-                    <span class="mono">Who should have caught it</span>
-                    <p>{cons.owner}</p>
-                  </div>
-                )}
-                {cons.ignored && (
-                  <div class="meta-block">
-                    <span class="mono">If you ignore it</span>
-                    <p>{cons.ignored}</p>
-                  </div>
-                )}
-                <details>
-                  <summary class="mono">+ The evidence · verify it yourself</summary>
-                  <div class="rows">
-                    {cons.cells.flatMap((c) =>
-                      c.checks.map((check) => {
-                        const suppressed = isSuppressed(memo, check);
-                        const trace = suppressed ? traceTextFor(memo, check) : null;
-                        return (
-                          <div class={`row ${check.ok ? 'ok' : 'fail'}`}>
-                            <span class="mark">{check.ok ? '✓' : suppressed ? '~' : '×'}</span>
-                            <span>
-                              {check.text}
-                              {trace && <span class="trace">{trace}</span>}
-                              <span class="rel">{suppressed ? 'Superseded by a runtime detection' : REL_LABEL[check.reliability ?? 'verified']}</span>
-                            </span>
+              <section class="group">
+                <div class="divider">
+                  <span class={`mono status ${isProblem ? 'problem' : cons.status}`}>● {cons.statusLabel}</span>
+                  <h2>{cons.heading}</h2>
+                  {cons.owner && <p class="owner">{cons.owner}</p>}
+                </div>
+                <div class="grid">
+                  {cons.cells.map((c) => {
+                    const fails = c.checks.some(
+                      (k) => k.ok === false && k.reliability === 'verified' && (k.weight ?? 1) > 0 && !isSuppressed(memo, k),
+                    );
+                    const soft = c.checks.some((k) => k.ok === false && k.reliability === 'soft-absence');
+                    return (
+                      <div class="cellcard">
+                        <h3>{c.heading}</h3>
+                        <span class={`val ${fails ? 'halt' : soft ? 'warn' : ''}`}>{c.value}</span>
+                        {c.benchmark && <span class="mono sub">{c.benchmark}</span>}
+                        <p class="note">{c.note}</p>
+                        <details>
+                          <summary class="mono">Show {c.checks.length} signals +</summary>
+                          <div class="rows">
+                            {c.checks.map((check) => {
+                              const suppressed = isSuppressed(memo, check);
+                              const trace = suppressed ? traceTextFor(memo, check) : null;
+                              return (
+                                <div class={`row ${check.ok ? 'ok' : 'fail'}`}>
+                                  <span class="mark">{check.ok ? '✓' : suppressed ? '~' : '×'}</span>
+                                  <span>
+                                    {check.text}
+                                    {trace && <span class="trace">{trace}</span>}
+                                    <span class="rel">{suppressed ? 'Superseded by a runtime detection' : REL_LABEL[check.reliability ?? 'verified']}</span>
+                                  </span>
+                                </div>
+                              );
+                            })}
                           </div>
-                        );
-                      }),
-                    )}
-                  </div>
-                </details>
+                        </details>
+                      </div>
+                    );
+                  })}
+                </div>
               </section>
             );
           })}
 
           {view.appendixCells.length > 0 && (
-            <section class="cons unconfirmed">
-              <details>
-                <summary class="mono">+ Everything else the scan checked · the appendix</summary>
-                <div class="rows">
-                  {view.appendixCells.flatMap((c) =>
-                    c.checks.map((check) => (
-                      <div class={`row ${check.ok ? 'ok' : 'fail'}`}>
-                        <span class="mark">{check.ok ? '✓' : '×'}</span>
-                        <span>
-                          {check.text}
-                          <span class="rel">{REL_LABEL[check.reliability ?? 'verified']}</span>
-                        </span>
+            <section class="group">
+              <div class="divider">
+                <span class="mono status unconfirmed">● The appendix</span>
+                <h2>Everything else the scan checked.</h2>
+              </div>
+              <div class="grid">
+                {view.appendixCells.map((c) => (
+                  <div class="cellcard">
+                    <h3>{c.heading}</h3>
+                    <span class="val">{c.value}</span>
+                    <p class="note">{c.note}</p>
+                    <details>
+                      <summary class="mono">Show {c.checks.length} signals +</summary>
+                      <div class="rows">
+                        {c.checks.map((check) => (
+                          <div class={`row ${check.ok ? 'ok' : 'fail'}`}>
+                            <span class="mark">{check.ok ? '✓' : '×'}</span>
+                            <span>
+                              {check.text}
+                              <span class="rel">{REL_LABEL[check.reliability ?? 'verified']}</span>
+                            </span>
+                          </div>
+                        ))}
                       </div>
-                    )),
-                  )}
-                </div>
-              </details>
+                    </details>
+                  </div>
+                ))}
+              </div>
             </section>
           )}
 
