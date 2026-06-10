@@ -73,7 +73,14 @@ const identifyPayload = identifyAs
           var v = p.get(k);
           if (v) supers[k] = v;
         });
-        if (Object.keys(supers).length) ph.register(supers);
+        // Session-scoped, NOT device-permanent: a permanent register() made
+        // utm_recipient stick to the device forever, so one QA click on a
+        // prospect's link painted their name onto every page visited for
+        // weeks. Cross-session identity is the rivett_recipient cookie's job.
+        if (Object.keys(supers).length) {
+          if (typeof ph.register_for_session === 'function') ph.register_for_session(supers);
+          else ph.register(supers);
+        }
       } catch (e) {}
 
       // v12 IDENTITY RULE: a visitor is only ever identified as a PERSON, and
