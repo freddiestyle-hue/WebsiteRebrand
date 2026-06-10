@@ -426,17 +426,16 @@ export async function getRecentReads(range: DateRange, mode: TrafficMode = 'huma
         properties.$geoip_city_name AS city,
         properties.$geoip_country_name AS country,
         count() AS events,
-        countIf(event = 'cta_clicked') AS cta_clicks,
+        countIf(event IN ('cta_clicked', 'book_call_clicked', 'finding_expanded')) AS cta_clicks,
         dateDiff('second', min(timestamp), max(timestamp)) AS dwell_seconds,
         max(timestamp) AS last_event,
-        -- v3.5 raw-vs-engaged flag. Scanners (SafeLinks/Mimecast/etc.) fire
-        -- pageview + web_vitals + tab_focus_time + pageleave but never any
-        -- of these. Real humans fire at least one. Used as a UI label, not
-        -- as a filter, so a real prospect who briefly lands and bounces is
-        -- not hidden.
+        -- v3.5 raw-vs-engaged flag, v11 tightened: scroll_depth and
+        -- human_engaged dropped (SafeLinks forges both on load). Only
+        -- explicit acts earn the badge. Used as a UI label, not a filter,
+        -- so a real prospect who briefly lands and bounces is not hidden.
         countIf(event IN (
-          'scroll_depth','cta_clicked','content_copied',
-          'content_printed','audit_v3_verdict_expanded','human_engaged'
+          'cta_clicked','book_call_clicked','finding_expanded','content_copied',
+          'content_printed','audit_v3_verdict_expanded','audit_v3_form_submitted'
         )) > 0 AS is_engaged
       FROM events
       WHERE ${hogqlRangeClause(range)}
@@ -624,7 +623,7 @@ export async function getTopProspects(range: DateRange, mode: TrafficMode = 'hum
         -- session expanded. cta is 'cell_expand_search', 'cell_expand_spark',
         -- etc. — strip the prefix client-side. Order preserved by first click
         -- within the session, deduped at the outer layer.
-        arrayDistinct(groupArrayIf(replaceOne(properties.cta, 'cell_expand_', ''), event = 'cta_clicked' AND properties.cta LIKE 'cell_expand_%')) AS session_expanded_dims,
+        arrayDistinct(groupArrayIf(replaceOne(properties.cta, 'cell_expand_', ''), event IN ('cta_clicked', 'finding_expanded') AND properties.cta LIKE 'cell_expand_%')) AS session_expanded_dims,
         dateDiff('second', min(timestamp), max(timestamp)) AS session_dwell,
         max(timestamp) AS last_event
       FROM events
@@ -980,7 +979,7 @@ export async function getCtaClicks(range: DateRange, mode: TrafficMode = 'humans
       properties.href AS href,
       timestamp AS when
     FROM events
-    WHERE event = 'cta_clicked'
+    WHERE event IN ('cta_clicked', 'book_call_clicked', 'finding_expanded')
       AND ${hogqlRangeClause(range)}
       ${lightHumanWhereFor(mode)}
     ORDER BY timestamp DESC
