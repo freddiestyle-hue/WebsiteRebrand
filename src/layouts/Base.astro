@@ -3,8 +3,6 @@ import '../styles/tokens.css';
 import '../styles/components.css';
 import '../styles/global.css';
 import PostHog from '../components/PostHog.astro';
-import GoogleTags from '../components/GoogleTags.astro';
-import GtmNoscript from '../components/GtmNoscript.astro';
 import Nav from '../components/Nav.astro';
 import BookingProvider from '../components/diagnostic/BookingProvider.astro';
 import JsonLd from '../components/seo/JsonLd.astro';
@@ -79,7 +77,6 @@ const showFloatingCta = !(
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <GoogleTags />
   <title>{title}</title>
   <meta name="description" content={description} />
   {noindex && <meta name="robots" content="noindex,nofollow" />}
@@ -164,7 +161,6 @@ const showFloatingCta = !(
       </script>
     </>
   )}
-  <GtmNoscript />
   <Nav current={currentNav} />
   <main id="main">
     <slot />
