@@ -302,20 +302,31 @@ const DISCLAIMER =
             <path d="M3 8h10M9 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </a>
-        <script is:inline>
-          // Same interception as the site-wide pill (Base.astro): open the
-          // Cal modal in place when Cal is ready; the href fallback keeps
-          // full prospect/utm attribution if JS or Cal is unavailable.
+        <script is:inline define:vars={{ slug }}>
+          // Every booking CTA (lead, closer, pill) opens the Cal modal in
+          // place instead of a new tab. Attribution rides along as modal
+          // config: utm params land on the booking page, metadata[prospect]
+          // comes back on the Cal webhook. The href fallback keeps the fully
+          // parameterised cal.com URL if JS or Cal is unavailable.
           (function () {
-            var a = document.querySelector('a.floating-cta[data-cal-link]');
-            if (!a) return;
-            var link = a.getAttribute('data-cal-link');
-            a.addEventListener('click', function (e) {
+            var config = {
+              prospect: slug,
+              utm_source: 'audit_memo',
+              utm_medium: 'site',
+              utm_content: 'memo_book_call_b',
+              'metadata[prospect]': slug,
+              'metadata[source]': 'audit_memo_b',
+            };
+            // Delegated: this script parses before the lead/closer anchors
+            // exist, so per-element binding would only ever catch the pill.
+            document.addEventListener('click', function (e) {
+              var a = e.target && e.target.closest && e.target.closest('a[data-cal-link]');
+              if (!a) return;
               var w = window;
               var ns = w.__rivettCalNamespace;
               if (w.Cal && ns && w.Cal.ns && w.Cal.ns[ns]) {
                 e.preventDefault();
-                w.Cal.ns[ns]('modal', { calLink: link });
+                w.Cal.ns[ns]('modal', { calLink: a.getAttribute('data-cal-link'), config: config });
               }
             });
           })();
@@ -340,7 +351,7 @@ const DISCLAIMER =
               </div>
             )}
             <p class="body">{view.lead.body}</p>
-            <a class="cta" href={CAL_URL} data-cta="memo_book_call" data-cta-location="memo_hero">Book 30 min with Fred →</a>
+            <a class="cta" href={CAL_URL} data-cta="memo_book_call" data-cta-location="memo_hero" data-cal-link="fred-style/discovery">Book 30 min with Fred →</a>
             <p class="cta-sub">We walk through your audit, not a slide deck.</p>
           </section>
 
@@ -461,20 +472,25 @@ const DISCLAIMER =
               } catch (e) {}
               ph.capture('audit_v3_memo_rendered', { slug: slug, hostname: domain, audit_variant: 'b', url: window.location.href });
             });
-            var fired = false;
-            var closer = document.querySelector('.closer');
-            if (closer && 'IntersectionObserver' in window) {
-              new IntersectionObserver(function (entries, obs) {
-                entries.forEach(function (en) {
-                  if (!en.isIntersecting || fired) return;
-                  fired = true;
-                  obs.disconnect();
-                  whenPosthog(function (ph) {
-                    ph.capture('audit_v3_form_view', { slug: slug, audit_variant: 'b' });
+            // This script parses before .closer exists - attach on DOM ready.
+            function armCloserObserver() {
+              var fired = false;
+              var closer = document.querySelector('.closer');
+              if (closer && 'IntersectionObserver' in window) {
+                new IntersectionObserver(function (entries, obs) {
+                  entries.forEach(function (en) {
+                    if (!en.isIntersecting || fired) return;
+                    fired = true;
+                    obs.disconnect();
+                    whenPosthog(function (ph) {
+                      ph.capture('audit_v3_form_view', { slug: slug, audit_variant: 'b' });
+                    });
                   });
-                });
-              }, { threshold: 0.4 }).observe(closer);
+                }, { threshold: 0.1 }).observe(closer);
+              }
             }
+            if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', armCloserObserver);
+            else armCloserObserver();
           })();
         </script>
 
@@ -490,7 +506,7 @@ const DISCLAIMER =
               The cost of doing nothing is on this page. The call is the fix order, the math against your own
               analytics, and the things a scan cannot reach: your pipeline, your follow-up, your numbers.
             </p>
-            <a class="cta" href={CAL_URL} data-cta="memo_book_call" data-cta-location="memo_closer">Book a call →</a>
+            <a class="cta" href={CAL_URL} data-cta="memo_book_call" data-cta-location="memo_closer" data-cal-link="fred-style/discovery">Book a call →</a>
             <div class="sig">
               <span class="mono">Signature</span><br />
               Fred Style · rivett.tech · {scanDate}
