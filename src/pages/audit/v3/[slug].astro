@@ -141,6 +141,30 @@ if (memo) {
   }
 }
 
+// Competitor contrast: read-only fetch (generate=0) so a cold cache never
+// delays the page. When absent, a client-side fire-and-forget kicks off
+// generation; the section appears from the next view onward.
+let contrastData: import('../../../utils/audit/competitor-contrast').CompetitorContrast | null = null;
+if (memo) {
+  try {
+    const cc = new AbortController();
+    const ct = setTimeout(() => cc.abort(), 3500);
+    try {
+      const res = await fetch(new URL(`/api/audit/v3/competitors/${slug}?generate=0`, Astro.url), {
+        signal: cc.signal,
+      });
+      if (res.ok) {
+        const j = (await res.json()) as { contrast?: typeof contrastData };
+        if (j?.contrast?.competitors?.length) contrastData = j.contrast;
+      }
+    } finally {
+      clearTimeout(ct);
+    }
+  } catch {
+    /* fail-open: no section */
+  }
+}
+
 const scorePercent = cached
   ? Math.round((cached.scoreNumeric / Math.max(cached.scoreMax, 1)) * 100)
   : 0;
@@ -1048,6 +1072,20 @@ const SCORE_GRADE = gradeFor(scorePercent);
 
   /* ===== Gated hero strength (Variant C only) ===== */
   .hero .strength[data-gated] .s-text { display: none; }
+
+  /* ===== Competitor contrast ===== */
+  .contrast-sec { margin: 64px 0 0; }
+  .contrast-head h2 { font-size: 1.4rem; margin: 0 0 6px; }
+  .contrast-ai { color: var(--ink-dim, #5c574b); font-style: italic; margin: 0 0 18px; max-width: 62ch; }
+  .contrast-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+  .contrast-card { border: 1px solid var(--line-2, #e2ddd2); border-radius: 10px; padding: 16px 18px; }
+  .contrast-card header strong { font-size: 1.05rem; }
+  .c-domain { display: inline-block; margin-left: 8px; font-family: var(--mono, monospace); font-size: 0.75rem; color: var(--ink-faint, #8a8270); }
+  .c-reason { margin: 4px 0 0; font-size: 0.82rem; color: var(--ink-dim, #5c574b); }
+  .c-rows { list-style: none; margin: 12px 0 0; padding: 0; }
+  .c-rows li { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-top: 1px solid var(--line-2, #eee9de); font-size: 0.88rem; }
+  .c-them { font-variant-numeric: tabular-nums; font-weight: 600; text-align: right; }
+  .contrast-note { margin-top: 14px; font-size: 0.75rem; color: var(--ink-faint, #8a8270); max-width: 70ch; }
 </style>
 </head>
 <body class={`variant-${VARIANT}`}>
@@ -1232,6 +1270,53 @@ const SCORE_GRADE = gradeFor(scorePercent);
       </div>
     </section>
 
+    {contrastData ? (
+      <section class="contrast-sec" aria-label="How you stack up">
+        <div class="contrast-head">
+          <h2>How you stack up</h2>
+          <p class="contrast-ai">{contrastData.aiLine}</p>
+        </div>
+        <div class="contrast-grid">
+          {contrastData.competitors.map((c) => (
+            <article class="contrast-card">
+              <header>
+                <strong>{c.name}</strong>
+                <span class="c-domain">{c.domain}</span>
+                {c.aiReason && <p class="c-reason">{c.aiReason}</p>}
+              </header>
+              <ul class="c-rows">
+                {c.adsTotal != null && (
+                  <li>
+                    <span>Active ads</span>
+                    <span class="c-them">{c.adsTotal}{c.adsBreakdown ? ` (${c.adsBreakdown})` : ''}</span>
+                  </li>
+                )}
+                {c.indexedPages != null && (
+                  <li><span>Pages Google can find</span><span class="c-them">{c.indexedPages}</span></li>
+                )}
+                {c.emailAuthOk != null && (
+                  <li><span>Email authentication</span><span class="c-them">{c.emailAuthOk ? 'In place' : 'Missing'}</span></li>
+                )}
+                {c.llmsTxt != null && (
+                  <li><span>Readable by AI search</span><span class="c-them">{c.llmsTxt ? 'Yes (llms.txt)' : 'No llms.txt'}</span></li>
+                )}
+                {c.hasBookingPath != null && (
+                  <li><span>Way to book or call on homepage</span><span class="c-them">{c.hasBookingPath ? 'Yes' : 'None found'}</span></li>
+                )}
+              </ul>
+            </article>
+          ))}
+        </div>
+        <p class="contrast-note">Competitor figures are a partial scan ({new Date(contrastData.generatedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}) across the same public checks used above. Your full audit is the grid you just read.</p>
+      </section>
+    ) : (
+      <div
+        id="contrast-primer"
+        data-slug={slug}
+        style="display:none"
+      ></div>
+    )}
+
     {topFixes.length ? (
       <section class="plan-preview" id="planPreview">
         <div class="lab">Where I'd start · the fix order</div>
@@ -1340,6 +1425,16 @@ const SCORE_GRADE = gradeFor(scorePercent);
 }}>
 (function () {
   'use strict';
+
+  // Prime competitor-contrast generation when the section hasn't been built
+  // yet. Fire-and-forget; the ~15s build happens server-side and caches, so
+  // the section exists for the next view. Never blocks or reflows this view.
+  var primer = document.getElementById('contrast-primer');
+  if (primer && primer.dataset.slug) {
+    try {
+      fetch('/api/audit/v3/competitors/' + primer.dataset.slug, { method: 'GET', keepalive: true }).catch(function () {});
+    } catch (e) {}
+  }
 
   var T0 = (window.performance && performance.now) ? performance.now() : Date.now();
   var prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
