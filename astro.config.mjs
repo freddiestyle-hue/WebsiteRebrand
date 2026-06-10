@@ -138,7 +138,10 @@ export default defineConfig({
   trailingSlash: 'never',
   // PageSpeed Insights API in /audit/v3 takes 20-30s on slow targets.
   // Hobby tier ceiling is 60s; bump from the 10s default.
-  adapter: vercel({ maxDuration: 60 }),
+  // edgeMiddleware runs src/middleware.ts in front of static routes too
+  // (blog, homepage), so bot_visit tagging covers the whole site, not just
+  // SSR pages.
+  adapter: vercel({ maxDuration: 60, edgeMiddleware: true }),
   integrations: [
     react(),
     sitemap({
