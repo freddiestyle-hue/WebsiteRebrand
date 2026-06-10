@@ -20,6 +20,28 @@ interface CachedV3 {
   memo: Memo;
   hostname: string;
   fetchedAt: string;
+  scoreNumeric: number;
+  scoreMax: number;
+}
+
+// Same US scale as the control ([slug].astro GRADE_SCALE) so the two pages
+// can never disagree about a prospect's letter. The variant renders ONLY the
+// letter - no field-average comparison, no engine version (both were
+// red-team credibility bombs).
+const GRADE_SCALE: Array<[number, string]> = [
+  [97, 'A+'], [93, 'A'], [90, 'A-'],
+  [87, 'B+'], [83, 'B'], [80, 'B-'],
+  [77, 'C+'], [73, 'C'], [70, 'C-'],
+  [67, 'D+'], [63, 'D'], [60, 'D-'],
+  [0, 'F'],
+];
+function gradeFor(pct: number): { label: string; tier: 'pass' | 'mid' | 'fail' } {
+  let label = 'F';
+  for (const [threshold, lab] of GRADE_SCALE) {
+    if (pct >= threshold) { label = lab; break; }
+  }
+  const base = label.charAt(0);
+  return { label, tier: base === 'D' || base === 'F' ? 'fail' : base === 'C' ? 'mid' : 'pass' };
 }
 
 const CAL_BASE_URL = 'https://cal.com/fred-style/discovery';
@@ -58,6 +80,8 @@ const memo = cached?.memo ?? null;
 const view = memo ? assembleBuyerView(memo) : null;
 const domain = memo?.domain ?? cached?.hostname ?? slug;
 const scanDate = (memo?.generatedAt ?? cached?.fetchedAt ?? '').slice(0, 10).replaceAll('-', '·');
+const grade =
+  cached && cached.scoreMax > 0 ? gradeFor(Math.round((cached.scoreNumeric / cached.scoreMax) * 100)) : null;
 
 // Dimension icons + codes - verbatim from the control renderer
 // (src/pages/audit/v3/[slug].astro LOCK_ICON / DIM_CODE) for visual kinship.
@@ -117,6 +141,11 @@ const DISCLAIMER =
 
       .topbar { display: flex; justify-content: space-between; padding: 14px 20px; border-bottom: 1px solid var(--line); color: var(--ink-faint); }
       .topbar strong { color: var(--ink); font-weight: 500; }
+      .topbar .grade { margin-right: 14px; }
+      .topbar .grade b { font-weight: 700; }
+      .topbar .grade.pass b { color: var(--accent-deep); }
+      .topbar .grade.mid b { color: var(--signal-warn); }
+      .topbar .grade.fail b { color: var(--signal-halt); }
 
       .lead { padding: 36px 0 28px; }
       .lead .kicker { color: var(--accent-deep); }
@@ -276,7 +305,10 @@ const DISCLAIMER =
 
         <div class="topbar mono">
           <span><strong>rivett</strong> · teardown · {domain}</span>
-          <span>{scanDate}</span>
+          <span>
+            {grade && <span class={`grade ${grade.tier}`}>Read · <b>{grade.label}</b></span>}
+            {scanDate}
+          </span>
         </div>
 
         <div class="wrap">
