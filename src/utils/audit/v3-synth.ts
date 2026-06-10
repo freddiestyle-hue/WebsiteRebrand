@@ -359,15 +359,22 @@ function adsCellFromResult(
 ): VerdictCell {
   const total = (a.metaActive ?? 0) + (a.googleActive ?? 0) + (a.linkedinActive ?? 0);
   const platformsLive = Number((a.metaActive ?? 0) > 0) + Number((a.googleActive ?? 0) > 0) + Number((a.linkedinActive ?? 0) > 0);
-  // 2026-06-10 (Move 1): the count is Google-only until Meta/LinkedIn can be
-  // keyed off a verified advertiser identity - say so in the value itself. A
-  // Meta-heavy buyer reading an unqualified "None active" knows it's wrong
-  // and bins the whole memo (red-team kill shot).
+  // 2026-06-10 v2: Meta/LinkedIn counts are published when keyed off the
+  // prospect's OWN social links (page-alias exact match - see ads-check.ts).
+  // The value names which libraries the count covers so a Meta-heavy buyer
+  // never reads an unqualified "None active" that they know is wrong
+  // (red-team kill shot).
+  const sources = [
+    a.googleActive != null ? 'Google' : null,
+    a.metaActive != null ? 'Meta' : null,
+    a.linkedinActive != null ? 'LinkedIn' : null,
+  ].filter(Boolean);
   const googleOnly = a.metaActive == null && a.linkedinActive == null;
+  const srcLabel = sources.join('+');
   const value =
     total === 0
-      ? googleOnly ? 'None · Google' : 'None active'
-      : googleOnly ? `${total} active · Google` : `${total} active`;
+      ? `None · ${srcLabel}`
+      : googleOnly ? `${total} active · Google` : `${total} active · ${srcLabel}`;
 
   // Money-page leak detection: if ads are running and a landing page scores
   // measurably worse than the homepage, that's the headline.
@@ -383,14 +390,13 @@ function adsCellFromResult(
       ? homepageRef - worstLanding.scorePercent
       : null;
 
-  // ads-check.ts only publishes a Google ad count right now (Meta/LinkedIn are
-  // null until the lookup can be keyed off a verified advertiser identity), so
-  // the synthesis note must not name Meta or LinkedIn as confirmed advertisers.
-  // "Ad platforms" reads honest whether the prospect runs only Google or also
-  // runs Meta/LinkedIn we can't verify.
+  // ads-check.ts publishes per-platform counts only when the lookup was keyed
+  // off the prospect's own self-declared identity (their footer's Facebook/
+  // LinkedIn links). Unverified platforms stay null and are never named as
+  // confirmed advertisers.
   let note: string;
   if (total === 0) {
-    note = `No active paid Google ads detected for this domain. Either paid is not part of the mix or campaigns are paused. Meta and LinkedIn counts are only shown when the advertiser identity verifies exactly.`;
+    note = `No active paid ads detected across the ${srcLabel} ad librar${sources.length === 1 ? 'y' : 'ies'} checked for this domain. Either paid is not part of the mix or campaigns are paused. Platforms are only counted when the advertiser identity verifies exactly.`;
   } else if (worstLanding && homepageVsLandingGap != null && homepageVsLandingGap >= 15) {
     note = `${total} active ${total === 1 ? 'ad' : 'ads'}, landing on a page scoring ${Math.round(worstLanding.scorePercent ?? 0)} versus the homepage at ${Math.round(homepageRef ?? 0)}. Paid clicks land where conversion gaps are worst.`;
   } else if (worstLanding && worstLanding.trackingGaps >= 2) {
