@@ -14,6 +14,7 @@ import { Redis } from '@upstash/redis';
 import BookingProvider from '../../../components/diagnostic/BookingProvider.astro';
 import type { Memo } from '../../../utils/audit/memo-schema';
 import { isValidV3Slug } from '../../../utils/audit/slug';
+import { deriveTone } from '../../../utils/audit/locked-observation';
 import { assembleBuyerView, isSuppressed, traceTextFor } from '../../../utils/audit/buyer-view';
 
 interface CachedV3 {
@@ -187,6 +188,7 @@ const DISCLAIMER =
       .cellcard .val { display: block; font-size: var(--t-h-md); font-weight: 700; letter-spacing: var(--track-h-sm); }
       .cellcard .val.halt { color: var(--signal-halt); }
       .cellcard .val.warn { color: var(--signal-warn); }
+      .cellcard .val.good { color: var(--accent-deep); }
       .cellcard .sub { display: block; color: var(--ink-faint); margin-top: 4px; }
       .cellcard .note { font-family: var(--mono); font-size: var(--t-body-sm); line-height: var(--lh-body); color: var(--ink-dim); margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line-soft); }
 
@@ -338,10 +340,9 @@ const DISCLAIMER =
                 </div>
                 <div class="grid">
                   {cons.cells.map((c) => {
-                    const fails = c.checks.some(
-                      (k) => k.ok === false && k.reliability === 'verified' && (k.weight ?? 1) > 0 && !isSuppressed(memo, k),
-                    );
-                    const soft = c.checks.some((k) => k.ok === false && k.reliability === 'soft-absence');
+                    // Same tone source as the control (deriveTone) so the two
+                    // arms can never disagree about a cell's colour.
+                    const tone = deriveTone(c);
                     return (
                       <div class="cellcard">
                         <div class="lhead">
@@ -351,7 +352,7 @@ const DISCLAIMER =
                           <span class="dcode">D · <b>{DIM_CODE[c.icon] ?? '·'}</b></span>
                         </div>
                         <h3>{c.heading}</h3>
-                        <span class={`val ${fails ? 'halt' : soft ? 'warn' : ''}`}>{c.value}</span>
+                        <span class={`val ${tone === 'none' ? '' : tone}`}>{c.value}</span>
                         {c.benchmark && <span class="mono sub">{c.benchmark}</span>}
                         <p class="note">{c.note}</p>
                         <details>

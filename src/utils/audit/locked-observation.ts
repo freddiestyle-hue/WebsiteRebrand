@@ -99,36 +99,46 @@ export function lockedMeta(icon: string): { shortLabel: string; valueLabel: stri
   return META[icon] ?? { shortLabel: 'Finding', valueLabel: 'Reading' };
 }
 
-// Tone for the big value: halt (red) = severe, warn (amber) = gaps present,
-// none (ink) = a neutral count. Ads and stack are counts, never alarm-toned.
-export type LockedTone = 'halt' | 'warn' | 'none';
+// Tone for the big value (2026-06-10 rubric, Fred): good (accent green) =
+// verified healthy, warn (amber) = mediocre/gaps, halt (red) = severe,
+// none (ink) = a neutral count. Ads and stack are counts, never toned.
+export type LockedTone = 'good' | 'halt' | 'warn' | 'none';
 
 export function deriveTone(cell: VerdictCell): LockedTone {
   if (cell.icon === 'megaphone' || cell.icon === 'flag') return 'none';
   const value = cell.value ?? '';
+  // Verdict strings carry their own polarity - they must never be re-toned by
+  // the passing-ratio fallback. "Verified path" was rendering halt-red when
+  // the cell's secondary rows (no tel link, no scheduling) outnumbered the
+  // passing path check: a positive verdict painted in the failure colour.
+  if (/^verified path$/i.test(value) || /^clean$/i.test(value)) return 'good';
+  if (/^verified gap$/i.test(value)) return 'halt';
+  // "Unconfirmed" is an absence of proof, not a proven failure - amber, never
+  // red. (Soft-absence philosophy: calm, never alarming.)
+  if (/^unconfirmed$/i.test(value)) return 'warn';
   // Page speed: a 0-100 score.
   const speed = value.match(/(\d+)\s*\/\s*100/);
   if (speed) {
     const n = Number(speed[1]);
-    return n < 50 ? 'halt' : n < 90 ? 'warn' : 'none';
+    return n < 50 ? 'halt' : n < 90 ? 'warn' : 'good';
   }
-  // "X of Y" / "X / Y": half or worse is halt, any gap is warn.
+  // "X of Y" / "X / Y": clean sweep is good, half or worse is halt, any gap is warn.
   const ratio = value.match(/(\d+)\s*(?:of|\/)\s*(\d+)/i);
   if (ratio) {
     const r = Number(ratio[1]) / Math.max(Number(ratio[2]), 1);
-    return r <= 0.5 ? 'halt' : r < 1 ? 'warn' : 'none';
+    return r <= 0.5 ? 'halt' : r < 1 ? 'warn' : 'good';
   }
-  // "N issues": any issue is warn, three or more is halt.
+  // "N issues": zero is good, any issue is warn, three or more is halt.
   const issues = value.match(/(\d+)\s*issue/i);
   if (issues) {
     const n = Number(issues[1]);
-    return n === 0 ? 'none' : n >= 3 ? 'halt' : 'warn';
+    return n === 0 ? 'good' : n >= 3 ? 'halt' : 'warn';
   }
   // Fallback: passing-check ratio.
   const checks = cell.checks ?? [];
   if (checks.length) {
     const r = checks.filter((c) => c.ok).length / checks.length;
-    return r <= 0.5 ? 'halt' : r < 1 ? 'warn' : 'none';
+    return r <= 0.5 ? 'halt' : r < 1 ? 'warn' : 'good';
   }
   return 'none';
 }

@@ -359,7 +359,15 @@ function adsCellFromResult(
 ): VerdictCell {
   const total = (a.metaActive ?? 0) + (a.googleActive ?? 0) + (a.linkedinActive ?? 0);
   const platformsLive = Number((a.metaActive ?? 0) > 0) + Number((a.googleActive ?? 0) > 0) + Number((a.linkedinActive ?? 0) > 0);
-  const value = total === 0 ? 'None active' : `${total} active`;
+  // 2026-06-10 (Move 1): the count is Google-only until Meta/LinkedIn can be
+  // keyed off a verified advertiser identity - say so in the value itself. A
+  // Meta-heavy buyer reading an unqualified "None active" knows it's wrong
+  // and bins the whole memo (red-team kill shot).
+  const googleOnly = a.metaActive == null && a.linkedinActive == null;
+  const value =
+    total === 0
+      ? googleOnly ? 'None · Google' : 'None active'
+      : googleOnly ? `${total} active · Google` : `${total} active`;
 
   // Money-page leak detection: if ads are running and a landing page scores
   // measurably worse than the homepage, that's the headline.
@@ -382,7 +390,7 @@ function adsCellFromResult(
   // runs Meta/LinkedIn we can't verify.
   let note: string;
   if (total === 0) {
-    note = `No active paid Google ads detected for this domain. Either paid is not part of the mix or campaigns are paused.`;
+    note = `No active paid Google ads detected for this domain. Either paid is not part of the mix or campaigns are paused. Meta and LinkedIn counts are only shown when the advertiser identity verifies exactly.`;
   } else if (worstLanding && homepageVsLandingGap != null && homepageVsLandingGap >= 15) {
     note = `${total} active ${total === 1 ? 'ad' : 'ads'}, landing on a page scoring ${Math.round(worstLanding.scorePercent ?? 0)} versus the homepage at ${Math.round(homepageRef ?? 0)}. Paid clicks land where conversion gaps are worst.`;
   } else if (worstLanding && worstLanding.trackingGaps >= 2) {
@@ -448,7 +456,9 @@ function adsCellFromResult(
       checks.push({ ok: false, text: `Ad landing page: ${shortenPath(lp)} (not audited)` });
     }
   }
-  const benchLeft = total === 0 ? '0 of 3 platforms' : `${platformsLive} of 3 platforms`;
+  const benchLeft = googleOnly
+    ? 'Google · verified count'
+    : total === 0 ? '0 of 3 platforms' : `${platformsLive} of 3 platforms`;
   // Format earliest as YYYY·MM if it parses, otherwise pass through verbatim.
   let benchRight: string | null = null;
   if (a.earliestSeen) {
