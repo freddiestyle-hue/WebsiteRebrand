@@ -406,6 +406,21 @@ function adsCellFromResult(
   }
 
   const checks: Array<{ ok: boolean; text: string }> = [];
+  // Combined line FIRST when more than one library returned a count: the LLM
+  // hero grounds its ad claims on these check lines, and without an explicit
+  // aggregate it cherry-picks one platform's number (shipped a memo saying
+  // "6 active ads" beside a cell saying 13).
+  const countedPlatforms = [
+    a.googleActive != null ? `Google ${a.googleActive}` : null,
+    a.metaActive != null ? `Meta ${a.metaActive}` : null,
+    a.linkedinActive != null ? `LinkedIn ${a.linkedinActive}` : null,
+  ].filter(Boolean);
+  if (countedPlatforms.length > 1) {
+    checks.push({
+      ok: total > 0,
+      text: `All verified ad libraries combined: ${total} active ${total === 1 ? 'creative' : 'creatives'} (${countedPlatforms.join(' + ')})`,
+    });
+  }
   if (a.metaActive != null) {
     checks.push({
       ok: a.metaActive > 0,
@@ -413,6 +428,11 @@ function adsCellFromResult(
         a.metaActive === 0
           ? `Meta Ad Library: no active creatives`
           : `Meta Ad Library: ${a.metaActive} active ${a.metaActive === 1 ? 'creative' : 'creatives'}`,
+    });
+  } else if (a.identityStatus?.meta === 'unverified-link') {
+    checks.push({
+      ok: false,
+      text: `Meta Ad Library: the site links a Facebook/Instagram profile but the advertiser identity could not be verified - count withheld rather than guessed`,
     });
   }
   if (a.googleActive != null) {
@@ -431,6 +451,11 @@ function adsCellFromResult(
         a.linkedinActive === 0
           ? `LinkedIn Ad Library: no active creatives`
           : `LinkedIn Ad Library: ${a.linkedinActive} active ${a.linkedinActive === 1 ? 'creative' : 'creatives'}`,
+    });
+  } else if (a.identityStatus?.linkedin === 'unverified-link') {
+    checks.push({
+      ok: false,
+      text: `LinkedIn Ad Library: the site links a LinkedIn company page but the advertiser identity could not be verified - count withheld rather than guessed`,
     });
   }
 

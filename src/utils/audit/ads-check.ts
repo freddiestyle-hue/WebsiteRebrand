@@ -26,12 +26,20 @@
 
 import { fetchSocialIdentity, type SocialIdentity } from './social-identity';
 
+export type PlatformIdentityStatus =
+  | 'verified'        // count published, keyed off the prospect's own link
+  | 'unverified-link' // the site links the platform but identity could not be matched - count withheld
+  | 'no-link';        // the site declares no profile on this platform
+
 export interface AdsResult {
   metaActive: number | null;
   googleActive: number | null;
   linkedinActive: number | null;
   /** How each published count was identity-verified, for honest labelling. */
   verifiedBy: { meta: string | null; linkedin: string | null };
+  /** Whether each gated platform had a link and whether it verified - lets
+   *  the memo say "linked but unverified - withheld" instead of silence. */
+  identityStatus: { meta: PlatformIdentityStatus; linkedin: PlatformIdentityStatus };
   earliestSeen: string | null;
   sampleLandingPages: string[];
   commentary: string;
@@ -113,30 +121,43 @@ function extractEarliest(json: any): string | null {
 const norm = (s: unknown) => String(s ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
 /** Resolve the Meta Ad Library page id from the prospect's self-declared
- *  Facebook slug (or Instagram handle as tiebreak). Exact alias match only. */
+ *  Facebook slug (or Instagram handle). Exact alias/handle match only.
+ *
+ *  Multiple SEARCH queries are tried because Meta's company search indexes
+ *  display names, not aliases: facebook.com/getmixmax is found by searching
+ *  "Mixmax" (the site's name), not "getmixmax". Verification never loosens -
+ *  whichever query finds the page, it only counts if page_alias or
+ *  ig_username exactly matches the prospect's own link. */
 async function resolveMetaPageId(
   identity: SocialIdentity,
   headers: Record<string, string>
 ): Promise<{ pageId: string; matchedOn: string } | null> {
   const fbTarget = norm(identity.facebookSlug);
   const igTarget = norm(identity.instagramHandle);
-  const query = identity.facebookSlug ?? identity.instagramHandle;
-  if (!query) return null;
-  const r = await safeJson(
-    `${SC_BASE}/facebook/adLibrary/search/companies?query=${encodeURIComponent(query)}`,
-    headers
-  );
-  if (!r.ok) return null;
-  const items: any[] = r.body?.searchResults ?? r.body?.results ?? [];
-  for (const c of items) {
-    if (c?.page_is_deleted) continue;
-    const alias = norm(c?.page_alias);
-    const ig = norm(c?.ig_username);
-    if (fbTarget && alias && alias === fbTarget) {
-      return { pageId: String(c.page_id), matchedOn: `facebook.com/${identity.facebookSlug}` };
-    }
-    if (igTarget && ig && ig === igTarget) {
-      return { pageId: String(c.page_id), matchedOn: `instagram.com/${identity.instagramHandle}` };
+  if (!fbTarget && !igTarget) return null;
+
+  const queries = [...new Set(
+    [identity.facebookSlug, identity.siteName, identity.instagramHandle]
+      .filter((q): q is string => Boolean(q && q.trim()))
+  )].slice(0, 3);
+
+  for (const query of queries) {
+    const r = await safeJson(
+      `${SC_BASE}/facebook/adLibrary/search/companies?query=${encodeURIComponent(query)}`,
+      headers
+    );
+    if (!r.ok) continue;
+    const items: any[] = r.body?.searchResults ?? r.body?.results ?? [];
+    for (const c of items) {
+      if (c?.page_is_deleted) continue;
+      const alias = norm(c?.page_alias);
+      const ig = norm(c?.ig_username);
+      if (fbTarget && alias && alias === fbTarget) {
+        return { pageId: String(c.page_id), matchedOn: `facebook.com/${identity.facebookSlug}` };
+      }
+      if (igTarget && ig && ig === igTarget) {
+        return { pageId: String(c.page_id), matchedOn: `instagram.com/${identity.instagramHandle}` };
+      }
     }
   }
   return null;
@@ -244,6 +265,20 @@ export async function checkAds(
       ? `No active paid ads detected for ${hostname} across ${parts.length > 1 ? 'the verified ad libraries' : 'the Google ad library'} (${parts.join(', ')}).`
       : `${total} active paid ${total === 1 ? 'ad' : 'ads'} detected for ${hostname} (${parts.join(', ')}).`;
 
+  const metaLinked = Boolean(identity.facebookSlug || identity.instagramHandle);
+  const identityStatus = {
+    meta: (metaActive !== null
+      ? 'verified'
+      : metaLinked
+        ? 'unverified-link'
+        : 'no-link') as PlatformIdentityStatus,
+    linkedin: (linkedinActive !== null
+      ? 'verified'
+      : identity.linkedinSlug
+        ? 'unverified-link'
+        : 'no-link') as PlatformIdentityStatus,
+  };
+
   return {
     metaActive,
     googleActive,
@@ -252,6 +287,7 @@ export async function checkAds(
       meta: metaPage?.matchedOn ?? null,
       linkedin: linkedinName ? `linkedin.com/company/${identity.linkedinSlug}` : null,
     },
+    identityStatus,
     earliestSeen,
     sampleLandingPages,
     commentary,

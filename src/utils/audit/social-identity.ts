@@ -11,6 +11,12 @@ export interface SocialIdentity {
   instagramHandle: string | null; // instagram.com/<handle>
   linkedinSlug: string | null;   // linkedin.com/company/<slug>
   tiktokHandle: string | null;   // tiktok.com/@<handle>
+  /** og:site_name or <title> head - used as an extra ad-library SEARCH query
+   *  (verification still requires an exact alias/handle match). Meta indexes
+   *  pages by display name, so searching the link slug alone can miss:
+   *  facebook.com/getmixmax is findable by searching "Mixmax", not
+   *  "getmixmax". */
+  siteName: string | null;
 }
 
 export const EMPTY_IDENTITY: SocialIdentity = {
@@ -18,6 +24,7 @@ export const EMPTY_IDENTITY: SocialIdentity = {
   instagramHandle: null,
   linkedinSlug: null,
   tiktokHandle: null,
+  siteName: null,
 };
 
 // Paths on each platform that are features, not profiles.
@@ -58,11 +65,24 @@ export function extractSocialIdentity(html: string): SocialIdentity {
     tt.push(m[1]);
   }
 
+  // Site display name: og:site_name wins, else the <title> head before the
+  // first separator. This is a SEARCH hint only, never a verification key.
+  let siteName: string | null = null;
+  const og = html.match(/property=["']og:site_name["'][^>]*content=["']([^"']{2,60})["']/i)
+    ?? html.match(/content=["']([^"']{2,60})["'][^>]*property=["']og:site_name["']/i);
+  if (og) siteName = og[1].trim();
+  if (!siteName) {
+    const title = html.match(/<title[^>]*>([^<]{2,120})<\/title>/i);
+    if (title) siteName = title[1].split(/[|·–\-—:]/)[0].trim() || null;
+  }
+  if (siteName && siteName.length < 2) siteName = null;
+
   return {
     facebookSlug: countWins(fb),
     instagramHandle: countWins(ig),
     linkedinSlug: countWins(li),
     tiktokHandle: countWins(tt),
+    siteName,
   };
 }
 

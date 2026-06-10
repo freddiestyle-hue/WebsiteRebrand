@@ -41,7 +41,15 @@ describe('extractSocialIdentity', () => {
       instagramHandle: null,
       linkedinSlug: null,
       tiktokHandle: null,
+      siteName: null,
     });
+  });
+
+  it('extracts the site name from og:site_name as a search hint', () => {
+    const html = `<meta property="og:site_name" content="Mixmax" /><a href="https://facebook.com/getmixmax">fb</a>`;
+    const id = extractSocialIdentity(html);
+    expect(id.siteName).toBe('Mixmax');
+    expect(id.facebookSlug).toBe('getmixmax');
   });
 });
 
@@ -72,7 +80,7 @@ describe('checkAds identity verification', () => {
       'adLibrary/company/ads': { searchResultsCount: 12, results: [] },
     });
     const r = await checkAds('acme.com', {
-      facebookSlug: 'acmecorp', instagramHandle: null, linkedinSlug: null, tiktokHandle: null,
+      facebookSlug: 'acmecorp', instagramHandle: null, linkedinSlug: null, tiktokHandle: null, siteName: null,
     });
     expect(r?.metaActive).toBe(12);
     expect(r?.googleActive).toBe(4);
@@ -88,7 +96,7 @@ describe('checkAds identity verification', () => {
       },
     });
     const r = await checkAds('recom.co', {
-      facebookSlug: 'recomofficial', instagramHandle: null, linkedinSlug: null, tiktokHandle: null,
+      facebookSlug: 'recomofficial', instagramHandle: null, linkedinSlug: null, tiktokHandle: null, siteName: null,
     });
     expect(r?.metaActive).toBeNull();
     expect(r?.googleActive).toBe(2);
@@ -99,7 +107,7 @@ describe('checkAds identity verification', () => {
     vi.stubEnv('SCRAPECREATORS_API_KEY', 'test');
     stubFetch({ 'google/company/ads': { number_of_ads_estimate: 0 } });
     const r = await checkAds('nolinks.com', {
-      facebookSlug: null, instagramHandle: null, linkedinSlug: null, tiktokHandle: null,
+      facebookSlug: null, instagramHandle: null, linkedinSlug: null, tiktokHandle: null, siteName: null,
     });
     expect(r?.googleActive).toBe(0);
     expect(r?.metaActive).toBeNull();
@@ -120,10 +128,59 @@ describe('checkAds identity verification', () => {
       },
     });
     const r = await checkAds('acme.com', {
-      facebookSlug: null, instagramHandle: null, linkedinSlug: 'acme-corp', tiktokHandle: null,
+      facebookSlug: null, instagramHandle: null, linkedinSlug: 'acme-corp', tiktokHandle: null, siteName: null,
     });
     // Mixed advertisers on the page -> count exact matches only, not the API total.
     expect(r?.linkedinActive).toBe(1);
     expect(r?.verifiedBy.linkedin).toBe('linkedin.com/company/acme-corp');
+  });
+});
+
+describe('checkAds multi-query Meta resolution (Mixmax case)', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+  });
+
+  it('finds the page via the site-name query when the slug query misses', async () => {
+    vi.stubEnv('SCRAPECREATORS_API_KEY', 'test');
+    const fetchMock = vi.fn(async (url: string) => {
+      const u = String(url);
+      if (u.includes('google/company/ads')) return { ok: true, json: async () => ({ number_of_ads_estimate: 6 }) } as any;
+      if (u.includes('search/companies')) {
+        // slug query returns nothing; site-name query returns the page whose
+        // alias matches the prospect's own facebook link
+        if (u.includes('getmixmax')) return { ok: true, json: async () => ({ searchResults: [] }) } as any;
+        if (u.includes('Mixmax')) return { ok: true, json: async () => ({ searchResults: [
+          { page_id: '777', page_alias: 'getmixmax', name: 'Mixmax', page_is_deleted: false },
+        ] }) } as any;
+      }
+      if (u.includes('adLibrary/company/ads')) return { ok: true, json: async () => ({ searchResultsCount: 9, results: [] }) } as any;
+      return { ok: true, json: async () => ({}) } as any;
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const r = await checkAds('mixmax.com', {
+      facebookSlug: 'getmixmax', instagramHandle: null, linkedinSlug: null, tiktokHandle: null, siteName: 'Mixmax',
+    });
+    expect(r?.metaActive).toBe(9);
+    expect(r?.verifiedBy.meta).toBe('facebook.com/getmixmax');
+    expect(r?.identityStatus.meta).toBe('verified');
+  });
+
+  it('marks unverified-link when no query produces an alias match', async () => {
+    vi.stubEnv('SCRAPECREATORS_API_KEY', 'test');
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      const u = String(url);
+      if (u.includes('google/company/ads')) return { ok: true, json: async () => ({ number_of_ads_estimate: 1 }) } as any;
+      if (u.includes('search/companies')) return { ok: true, json: async () => ({ searchResults: [
+        { page_id: '1', page_alias: 'somethingelse', page_is_deleted: false },
+      ] }) } as any;
+      return { ok: true, json: async () => ({}) } as any;
+    }));
+    const r = await checkAds('acme.com', {
+      facebookSlug: 'acmehq', instagramHandle: null, linkedinSlug: null, tiktokHandle: null, siteName: 'Acme',
+    });
+    expect(r?.metaActive).toBeNull();
+    expect(r?.identityStatus.meta).toBe('unverified-link');
   });
 });
