@@ -1,0 +1,262 @@
+---
+// /lab - the deep-dive companion to /hq. HQ decides; the Lab proves.
+//
+// Four instruments:
+//   1. Funnel      - Opened -> Read -> Raised hand -> Booked, with drop-off.
+//   2. Bot intel   - the bot_visit stream: LLM crawlers, AI user-fetches,
+//                    LinkedIn previews, scanners. Who's eating the site.
+//   3. Quarantine  - every prospect-page session the human gate REJECTED,
+//                    with the reason. The no-false-negatives guarantee:
+//                    nothing is deleted, everything is inspectable.
+//   4. Firehose    - the raw recent event tail, unfiltered, so every number
+//                    above can be cross-checked by eye.
+//
+// Same key gate as /hq.
+
+import {
+  getFunnelCounts,
+  getBotVisits,
+  getQuarantine,
+  getEventFirehose,
+  type FunnelCounts,
+  type BotVisitGroup,
+  type QuarantineRow,
+  type FirehoseEvent,
+} from '../utils/posthog/query';
+import { parseDateRange } from '../utils/posthog/dateRange';
+import DateRangeNav from '../components/hq/DateRangeNav.astro';
+import PostHog from '../components/PostHog.astro';
+
+export const prerender = false;
+
+const HQ_KEY = (process.env.HQ_KEY || import.meta.env.HQ_KEY || '').trim();
+const url = new URL(Astro.request.url);
+const providedKey = (url.searchParams.get('key') || '').trim();
+const cookieHeader = Astro.request.headers.get('cookie') || '';
+const cookieKey = (cookieHeader.match(/(?:^|;\s*)rivett_hq_key=([^;]+)/)?.[1] ?? '').trim();
+
+let authed = false;
+if (HQ_KEY && providedKey && providedKey === HQ_KEY) {
+  authed = true;
+  Astro.response.headers.set(
+    'Set-Cookie',
+    `rivett_hq_key=${HQ_KEY}; Path=/; Max-Age=31536000; HttpOnly; SameSite=Lax; Secure`
+  );
+} else if (HQ_KEY && cookieKey && cookieKey === HQ_KEY) {
+  authed = true;
+}
+if (!authed) { Astro.response.status = 404; }
+
+const range = parseDateRange(url.searchParams);
+
+let funnel: FunnelCounts = { opened: 0, read: 0, raised_hand: 0, booked: 0 };
+let bots: BotVisitGroup[] = [];
+let quarantine: QuarantineRow[] = [];
+let firehose: FirehoseEvent[] = [];
+let fetchError: string | null = null;
+
+if (authed) {
+  try {
+    [funnel, bots, quarantine, firehose] = await Promise.all([
+      getFunnelCounts(range),
+      getBotVisits(range),
+      getQuarantine(range),
+      getEventFirehose(range),
+    ]);
+  } catch (e) {
+    fetchError = e instanceof Error ? e.message : String(e);
+    console.error('[lab] fetch failed', e);
+  }
+}
+
+const pct = (a: number, b: number) => (b > 0 ? Math.round((a / b) * 100) : 0);
+const steps = [
+  { label: 'Opened', n: funnel.opened, sub: 'loaded a prospect page (self + denylist excluded, bots included if disguised)' },
+  { label: 'Read', n: funnel.read, sub: 'passed the human gate: explicit act 2s+ after first pageview' },
+  { label: 'Raised hand', n: funnel.raised_hand, sub: 'book-call click, scheduler open, or gave email' },
+  { label: 'Booked', n: funnel.booked, sub: 'Cal webhook truth, deduped per booking' },
+];
+
+const BOT_TYPE_LABEL: Record<string, string> = {
+  llm_user_fetch: 'AI fetch for a human',
+  llm_crawler: 'LLM crawler',
+  linkedin_preview: 'LinkedIn preview',
+  preview_bot: 'Chat link preview',
+  email_scanner: 'Email scanner (declared)',
+  search_crawler: 'Search / SEO crawler',
+  headless: 'Headless browser',
+  unknown_bot: 'Unclassified bot',
+};
+
+function timeAgo(iso: string): string {
+  const sec = Math.max(0, Math.round((Date.now() - new Date(iso + (iso.endsWith('Z') ? '' : 'Z')).getTime()) / 1000));
+  if (sec < 3600) return `${Math.max(1, Math.round(sec / 60))}m`;
+  const hr = Math.round(sec / 3600);
+  if (hr < 48) return `${hr}h`;
+  return `${Math.round(hr / 24)}d`;
+}
+---
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>{authed ? 'The Lab · Rivett' : 'Not found'}</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  {authed && <PostHog capturePageview={false} />}
+</head>
+<body>
+{!authed ? (
+  <main class="dead"><h1>404</h1></main>
+) : (
+<main class="lab">
+  <header class="head">
+    <div>
+      <span class="kicker">The Lab</span>
+      <h1>Every number, <span class="ital">with receipts.</span></h1>
+      <p class="note">
+        HQ shows decisions; this page shows proof. The model: a prospect is only
+        ever counted on an <strong>explicit act</strong> (book, reply, give email,
+        open a finding) fired <strong>2+ seconds after page load</strong> - the one
+        thing scanner robots can't fake. Everything that fails that gate isn't
+        deleted, it's quarantined below with its reason. <a href={`/hq${url.search}`}>← back to HQ</a>
+      </p>
+    </div>
+    <div class="rangebar"><DateRangeNav range={range} /><span class="win">Window · {range.label}</span></div>
+  </header>
+
+  {fetchError && <div class="err"><b>Could not load live data.</b> {fetchError}</div>}
+
+  <section class="sec">
+    <h2>§ 1 · The funnel</h2>
+    <div class="funnel">
+      {steps.map((s, i) => (
+        <div class="step">
+          <div class="n">{s.n}</div>
+          <div class="l">{s.label}</div>
+          <div class="s">{s.sub}</div>
+          {i > 0 && <div class="conv">{pct(s.n, steps[i - 1].n)}% of {steps[i - 1].label.toLowerCase()}</div>}
+        </div>
+      ))}
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2>§ 2 · Bot intel <span class="dim">— who's reading the site that isn't human</span></h2>
+    {bots.length === 0 ? (
+      <p class="empty">No classified bot visits in this window. (The classifier went live 2026-06-10; history starts there.)</p>
+    ) : (
+      <table>
+        <thead><tr><th>What it is</th><th>Agent</th><th class="num">Visits</th><th class="num">Paths</th><th>Where it went</th><th class="num">Last seen</th></tr></thead>
+        <tbody>
+          {bots.map((b) => (
+            <tr>
+              <td><span class={`chip chip--${b.bot_type}`}>{BOT_TYPE_LABEL[b.bot_type] ?? b.bot_type}</span></td>
+              <td class="mono">{b.bot_name}</td>
+              <td class="num">{b.visits}</td>
+              <td class="num">{b.unique_paths}</td>
+              <td class="mono paths">{(b.top_paths || []).join('  ·  ')}</td>
+              <td class="num">{timeAgo(b.last_seen)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    )}
+  </section>
+
+  <section class="sec">
+    <h2>§ 3 · Quarantine <span class="dim">— sessions the human gate rejected, and why</span></h2>
+    <p class="note">This is the no-false-negatives guarantee. If a real prospect ever lands here unfairly, you'll see them - tell me and the gate gets tuned.</p>
+    {quarantine.length === 0 ? (
+      <p class="empty">Nothing quarantined in this window.</p>
+    ) : (
+      <table>
+        <thead><tr><th>Prospect page</th><th>From</th><th class="num">Views</th><th class="num">Dwell</th><th class="num">Forged signals</th><th>Why rejected</th><th class="num">When</th></tr></thead>
+        <tbody>
+          {quarantine.map((q) => (
+            <tr>
+              <td class="mono">{q.prospect}</td>
+              <td>{[q.city, q.country].filter(Boolean).join(', ') || '—'}</td>
+              <td class="num">{q.views}</td>
+              <td class="num">{q.dwell_seconds}s</td>
+              <td class="num">{q.forged_signals}</td>
+              <td class="reason">{q.reason}</td>
+              <td class="num">{timeAgo(q.last_event)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    )}
+  </section>
+
+  <section class="sec">
+    <h2>§ 4 · Firehose <span class="dim">— the raw event tail, nothing hidden</span></h2>
+    {firehose.length === 0 ? (
+      <p class="empty">No events in this window.</p>
+    ) : (
+      <table class="fh">
+        <thead><tr><th>When</th><th>Event</th><th>Path</th><th>Detail</th><th>From</th><th>Who</th></tr></thead>
+        <tbody>
+          {firehose.map((e) => (
+            <tr class={e.event === 'bot_visit' ? 'is-bot' : ''}>
+              <td class="num mono">{timeAgo(e.ts)}</td>
+              <td class="mono">{e.event}</td>
+              <td class="mono paths">{e.path || '—'}</td>
+              <td class="mono">{e.detail || '—'}</td>
+              <td>{e.city || '—'}</td>
+              <td class="mono dim">{e.distinct_id}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    )}
+  </section>
+</main>
+)}
+
+<style is:global>
+  :root { color-scheme: light; }
+  body { margin: 0; background: #faf7f0; color: #1c1a16; font-family: 'Inter Tight', system-ui, sans-serif; }
+  .dead { display: grid; place-items: center; min-height: 100vh; }
+  .lab { max-width: 1100px; margin: 0 auto; padding: 40px 24px 80px; }
+  .head { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; flex-wrap: wrap; margin-bottom: 36px; }
+  .kicker { font-family: ui-monospace, monospace; font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: #8a4b2d; }
+  h1 { font-size: 2rem; margin: 6px 0 10px; }
+  h1 .ital { font-style: italic; font-weight: 400; color: #6b6557; }
+  .note { max-width: 64ch; color: #5c574b; font-size: 0.9rem; line-height: 1.55; margin: 0; }
+  .note a { color: inherit; }
+  .rangebar { display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
+  .win { font-family: ui-monospace, monospace; font-size: 0.72rem; color: #8a8270; }
+  .err { border: 1px solid #c33; background: #fee; padding: 12px 16px; border-radius: 8px; margin-bottom: 24px; }
+  .sec { margin-top: 44px; }
+  .sec h2 { font-size: 1.05rem; margin: 0 0 14px; }
+  .sec .dim { font-weight: 400; color: #8a8270; font-size: 0.85rem; }
+  .empty { color: #8a8270; font-size: 0.9rem; }
+
+  .funnel { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .step { border: 1px solid #e2ddd2; border-radius: 10px; padding: 16px; background: #fff; }
+  .step .n { font-size: 2.2rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .step .l { font-weight: 600; margin-top: 2px; }
+  .step .s { color: #8a8270; font-size: 0.75rem; line-height: 1.45; margin-top: 6px; }
+  .step .conv { margin-top: 8px; font-family: ui-monospace, monospace; font-size: 0.72rem; color: #8a4b2d; }
+  @media (max-width: 760px) { .funnel { grid-template-columns: repeat(2, 1fr); } }
+
+  table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid #e2ddd2; border-radius: 10px; overflow: hidden; font-size: 0.84rem; }
+  th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid #eee9de; vertical-align: top; }
+  th { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: #8a8270; background: #f5f1e8; }
+  tr:last-child td { border-bottom: none; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .mono { font-family: ui-monospace, monospace; font-size: 0.78rem; }
+  .paths { word-break: break-all; max-width: 320px; }
+  .reason { max-width: 280px; }
+  .chip { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 0.72rem; border: 1px solid #d8d2c4; background: #f5f1e8; white-space: nowrap; }
+  .chip--llm_user_fetch { background: #e8f3e8; border-color: #9c9; }
+  .chip--llm_crawler { background: #e8eef8; border-color: #9ab; }
+  .chip--email_scanner { background: #fbe9e9; border-color: #d99; }
+  .chip--linkedin_preview { background: #e9f0fb; border-color: #9ad; }
+  .fh .is-bot td { background: #f8f4ea; }
+</style>
+</body>
+</html>
