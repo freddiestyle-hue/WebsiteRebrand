@@ -138,10 +138,12 @@ export default defineConfig({
   trailingSlash: 'never',
   // PageSpeed Insights API in /audit/v3 takes 20-30s on slow targets.
   // Hobby tier ceiling is 60s; bump from the 10s default.
-  // edgeMiddleware runs src/middleware.ts in front of static routes too
-  // (blog, homepage), so bot_visit tagging covers the whole site, not just
-  // SSR pages.
-  adapter: vercel({ maxDuration: 60, edgeMiddleware: true }),
+  // NOTE: edgeMiddleware:true is OFF on purpose. It mangles query strings on
+  // SSR routes in production (?v=b broke memo lookup, ?key= broke /hq auth),
+  // and it never ran for static routes anyway (CDN serves them before the
+  // middleware chain). src/middleware.ts runs inside the SSR function, which
+  // covers every route that matters for bot tagging.
+  adapter: vercel({ maxDuration: 60 }),
   integrations: [
     react(),
     sitemap({
