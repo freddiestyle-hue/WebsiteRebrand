@@ -814,15 +814,12 @@ import Base from '../layouts/Base.astro';
         normalized = input.value.trim().replace(/^https?:\/\//, '').replace(/\/$/, '');
         input.value = normalized;
       }
+      // One submit = one event. This used to also fire audit_form_submitted,
+      // doubling every count downstream.
       if (window.posthog && window.posthog.capture) {
-        window.posthog.capture('audit_form_submitted', {
+        window.posthog.capture('audit_v3_form_submitted', {
           surface: 'homepage',
           form_id: 'homeAuditForm',
-          input_domain: normalized,
-          source: 'home_preview',
-          path: window.location.pathname,
-        }, { send_instantly: true, transport: 'sendBeacon' });
-        window.posthog.capture('audit_v3_form_submitted', {
           input_domain: normalized,
           source: 'home_preview',
           path: window.location.pathname,

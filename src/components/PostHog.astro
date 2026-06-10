@@ -164,7 +164,11 @@ const identifyPayload = identifyAs
     document.addEventListener('DOMContentLoaded', onScroll);
   })();
 
-  // CTA click tracking. Any element with [data-cta="<name>"] fires cta_clicked.
+  // Click tracking for [data-cta] elements, routed by behaviour so one event
+  // name never mixes curiosity with intent:
+  //   cell_expand_*   -> finding_expanded  (curiosity: opened a finding cell)
+  //   *book_call*     -> book_call_clicked (intent: wants a call)
+  //   everything else -> cta_clicked
   // send_instantly + sendBeacon transport so the event survives cross-origin
   // navigation to cal.com / mailto: links. The previous plain capture() was
   // being cancelled on page unload, leaving cta_clicked permanently at zero.
@@ -172,12 +176,22 @@ const identifyPayload = identifyAs
     var el = e.target.closest('[data-cta]');
     if (!el) return;
     if (!window.posthog || !window.posthog.capture) return;
-    window.posthog.capture('cta_clicked', {
-      cta: el.getAttribute('data-cta'),
+    var name = el.getAttribute('data-cta') || '';
+    var props = {
+      cta: name,
+      location: el.getAttribute('data-cta-location') || null,
       href: el.getAttribute('href') || null,
       text: (el.innerText || '').trim().slice(0, 80),
       path: window.location.pathname,
-    }, { send_instantly: true, transport: 'sendBeacon' });
+    };
+    var eventName = 'cta_clicked';
+    if (name.indexOf('cell_expand_') === 0) {
+      eventName = 'finding_expanded';
+      props.finding = name.slice('cell_expand_'.length);
+    } else if (name.indexOf('book_call') !== -1) {
+      eventName = 'book_call_clicked';
+    }
+    window.posthog.capture(eventName, props, { send_instantly: true, transport: 'sendBeacon' });
   }, true);
 
   // Copy event — someone selected and copied memo text. Strong sharing signal.
