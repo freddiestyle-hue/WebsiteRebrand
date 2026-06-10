@@ -1,0 +1,504 @@
+---
+// /audit/b/[slug] - variant B of the audit memo A/B (buyer-shaped page).
+// Reads the SAME audit-v3:{slug} KV memo as /audit/v3/[slug] (the control)
+// and re-renders it: strongest-finding lead, cells grouped money-first under
+// verdict headers. Copy is ASSEMBLED by buyer-view.ts under the R1-R7 rules;
+// no hand-written per-prospect prose anywhere in this file.
+//
+// Analytics: same PostHog component + event taxonomy as the control
+// (finding_expanded / book_call_clicked / audit_v3_form_view) so HQ ranks
+// B-arm prospects identically; `audit_variant: 'b'` is registered as a
+// session super-property to split the arms in analysis.
+export const prerender = false;
+
+import { Redis } from '@upstash/redis';
+import PostHog from '../../../components/PostHog.astro';
+import BookingProvider from '../../../components/diagnostic/BookingProvider.astro';
+import type { Memo } from '../../../utils/audit/memo-schema';
+import { isValidV3Slug } from '../../../utils/audit/slug';
+import { deriveTone } from '../../../utils/audit/locked-observation';
+import { assembleBuyerView, isSuppressed, traceTextFor } from '../../../utils/audit/buyer-view';
+
+interface CachedV3 {
+  memo: Memo;
+  hostname: string;
+  fetchedAt: string;
+  scoreNumeric: number;
+  scoreMax: number;
+}
+
+// Same US scale as the control ([slug].astro GRADE_SCALE) so the two pages
+// can never disagree about a prospect's letter. The variant renders ONLY the
+// letter - no field-average comparison, no engine version (both were
+// red-team credibility bombs).
+const GRADE_SCALE: Array<[number, string]> = [
+  [97, 'A+'], [93, 'A'], [90, 'A-'],
+  [87, 'B+'], [83, 'B'], [80, 'B-'],
+  [77, 'C+'], [73, 'C'], [70, 'C-'],
+  [67, 'D+'], [63, 'D'], [60, 'D-'],
+  [0, 'F'],
+];
+function gradeFor(pct: number): { label: string; tier: 'pass' | 'mid' | 'fail' } {
+  let label = 'F';
+  for (const [threshold, lab] of GRADE_SCALE) {
+    if (pct >= threshold) { label = lab; break; }
+  }
+  const base = label.charAt(0);
+  return { label, tier: base === 'D' || base === 'F' ? 'fail' : base === 'C' ? 'mid' : 'pass' };
+}
+
+const CAL_BASE_URL = 'https://cal.com/fred-style/discovery';
+const rawSlug = Astro.params.slug ?? '';
+const slug = rawSlug.replace(/[.,;)\]\s]+$/, '');
+const calUrl = new URL(CAL_BASE_URL);
+calUrl.searchParams.set('overlayCalendar', 'true');
+calUrl.searchParams.set('prospect', slug);
+calUrl.searchParams.set('utm_source', 'audit_memo');
+calUrl.searchParams.set('utm_medium', 'site');
+calUrl.searchParams.set('utm_content', 'memo_book_call_b');
+const CAL_URL = calUrl.toString();
+
+// Prod injects UPSTASH_*; local .env.local only has the Vercel KV names.
+// Resolve both so the prototype renders against real memos in dev.
+const kvUrl =
+  import.meta.env.UPSTASH_REDIS_REST_URL ?? process.env.UPSTASH_REDIS_REST_URL ??
+  import.meta.env.KV_REST_API_URL ?? process.env.KV_REST_API_URL;
+const kvToken =
+  import.meta.env.UPSTASH_REDIS_REST_TOKEN ?? process.env.UPSTASH_REDIS_REST_TOKEN ??
+  import.meta.env.KV_REST_API_TOKEN ?? process.env.KV_REST_API_TOKEN;
+
+let cached: CachedV3 | null = null;
+if (isValidV3Slug(slug) && kvUrl && kvToken) {
+  try {
+    const redis = new Redis({ url: kvUrl, token: kvToken });
+    const raw = await redis.get<unknown>(`audit-v3:${slug}`);
+    if (raw != null) cached = typeof raw === 'string' ? JSON.parse(raw) : (raw as CachedV3);
+  } catch (e) {
+    console.error('[audit/b/slug] KV read failed', e);
+  }
+}
+if (!cached) Astro.response.status = 404;
+
+const memo = cached?.memo ?? null;
+const view = memo ? assembleBuyerView(memo) : null;
+const domain = memo?.domain ?? cached?.hostname ?? slug;
+const scanDate = (memo?.generatedAt ?? cached?.fetchedAt ?? '').slice(0, 10).replaceAll('-', '·');
+const grade =
+  cached && cached.scoreMax > 0 ? gradeFor(Math.round((cached.scoreNumeric / cached.scoreMax) * 100)) : null;
+
+// Dimension icons + codes - verbatim from the control renderer
+// (src/pages/audit/v3/[slug].astro LOCK_ICON / DIM_CODE) for visual kinship.
+const LOCK_ICON: Record<string, string> = {
+  search: '<path d="M3 18 L9 12 L13 16 L21 6"/><circle class="dot" cx="21" cy="6" r="1.6"/>',
+  spark: '<circle cx="12" cy="12" r="9"/><path d="M12 12 L12 3 M12 12 L21 12"/><circle class="dot" cx="12" cy="12" r="1.2"/>',
+  bolt: '<circle cx="12" cy="12" r="9"/><path d="M12 6 V12 L17 14"/>',
+  target: '<path d="M3 21 V11 H7 V21 Z M10 21 V5 H14 V21 Z M17 21 V15 H21 V21 Z"/>',
+  megaphone: '<path d="M4 20 L12 4 L20 20 Z"/><path d="M12 11 V15"/><circle class="fill" cx="12" cy="17.5" r="0.8"/>',
+  eye: '<path d="M3 12 H8 L10 6 L14 18 L16 12 H21"/><circle class="dot" cx="14" cy="18" r="1.4"/>',
+  phone: '<path d="M3 12 H8 L10 6 L14 18 L16 12 H21"/><circle class="dot" cx="14" cy="18" r="1.4"/>',
+  mail: '<rect x="3" y="6" width="18" height="13"/><path d="M3 6 L12 14 L21 6"/>',
+  flag: '<path d="M3 7 L12 3 L21 7 L12 11 Z"/><path d="M3 12 L12 16 L21 12"/><path d="M3 17 L12 21 L21 17"/>',
+  bar: '<path d="M3 21 V11 H7 V21 Z M10 21 V5 H14 V21 Z M17 21 V15 H21 V21 Z"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 6 V12 L17 14"/>',
+};
+
+const DIM_CODE: Record<string, string> = {
+  search: '01',
+  spark: '02',
+  bolt: '03',
+  target: '04',
+  megaphone: '05',
+  eye: '06',
+  phone: '07',
+  mail: '08',
+  flag: '09',
+  bar: '10',
+  clock: '11',
+};
+
+const REL_LABEL: Record<string, string> = {
+  verified: 'Verified reading',
+  'soft-absence': 'Unconfirmed',
+  inferred: 'A read, not a measurement',
+  'verified-na': 'Verified not applicable',
+};
+
+// Closer restates the lead (R7): derive a short fragment from the headline.
+const closerEcho = view?.lead.headline.replace(/\.$/, '') ?? '';
+const DISCLAIMER =
+  'A read, not a measurement of your business. The audit reads the public surface of your domain in a real browser. It does not access dashboards, customer data, or anything behind a login.';
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>{domain} · Teardown · rivett</title>
+    <link rel="stylesheet" href="/audit/tokens.css" />
+    <PostHog
+      capturePageview={true}
+      identifyAs={memo && cached ? slug : undefined}
+      personProperties={memo && cached ? {
+        type: 'memo_v3_slug',
+        slug,
+        domain: cached.hostname,
+        company_name: memo.companyName ?? null,
+        industry: memo.industry ?? null,
+        first_viewed_at: new Date().toISOString(),
+      } : undefined}
+      groupKey={memo?.domain}
+      groupType="company"
+    />
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { background: var(--paper-2); color: var(--ink); font-family: var(--grotesk); }
+      .wrap { max-width: 720px; margin: 0 auto; padding: 0 20px; }
+      .mono { font-family: var(--mono); font-size: var(--t-meta); letter-spacing: var(--track-mono); text-transform: uppercase; }
+
+      .topbar { display: flex; justify-content: space-between; padding: 14px 20px; border-bottom: 1px solid var(--line); color: var(--ink-faint); }
+      .topbar strong { color: var(--ink); font-weight: 500; }
+      .topbar .grade { margin-right: 14px; }
+      .topbar .grade b { font-weight: 700; }
+      .topbar .grade.pass b { color: var(--accent-deep); }
+      .topbar .grade.mid b { color: var(--signal-warn); }
+      .topbar .grade.fail b { color: var(--signal-halt); }
+
+      .lead { padding: 36px 0 28px; }
+      .lead .kicker { color: var(--accent-deep); }
+      .lead h1 { font-size: var(--t-h-xl); letter-spacing: var(--track-h); line-height: var(--lh-h-prose); margin: 14px 0 18px; }
+      .stat { background: var(--paper); border: 1px solid var(--line); padding: 16px 18px; margin-bottom: 8px; font-size: var(--t-body); line-height: var(--lh-body); }
+      .stat .src { display: block; margin-top: 10px; color: var(--ink-faint); }
+      .lead .body { font-size: var(--t-body-xl); line-height: var(--lh-prose); color: var(--ink-dim); margin: 18px 0 22px; }
+
+      .cta { display: inline-block; background: var(--ink); color: var(--on-ink); text-decoration: none; font-family: var(--mono); font-size: var(--t-body-sm); letter-spacing: var(--track-mono-tight); text-transform: uppercase; padding: 14px 22px; }
+      .cta:hover { background: var(--ink-2); }
+      .cta-sub { margin-top: 10px; color: var(--ink-faint); font-size: var(--t-body-sm); }
+
+      .group { margin: 26px 0 34px; }
+      .divider { margin-bottom: 14px; }
+      .divider .status { font-weight: 500; }
+      .divider .status.problem { color: var(--ink); }
+      .divider .status.sound { color: var(--accent-deep); }
+      .divider .status.unconfirmed { color: var(--ink-faint); }
+      .divider h2 { font-size: var(--t-h-md); letter-spacing: var(--track-h-sm); line-height: var(--lh-h-prose); margin: 8px 0 4px; }
+      .divider .owner { color: var(--ink-faint); font-size: var(--t-body-sm); line-height: var(--lh-body); }
+
+      .grid { display: grid; grid-template-columns: 1fr; border: 1px solid var(--line); background: var(--paper); }
+      @media (min-width: 720px) { .grid { grid-template-columns: 1fr 1fr; } }
+      .cellcard { padding: 20px; border-bottom: 1px solid var(--line); }
+      .cellcard:last-child { border-bottom: 0; }
+      @media (min-width: 720px) {
+        .cellcard { border-right: 1px solid var(--line); }
+        .cellcard:nth-child(2n) { border-right: 0; }
+        .cellcard:nth-last-child(-n+2):nth-child(odd) { border-bottom: 0; }
+      }
+      .lhead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+      .lhead .ic { display: inline-flex; align-items: center; justify-content: center; color: var(--ink); }
+      .lhead .ic svg { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: square; stroke-linejoin: miter; }
+      .lhead .ic svg :global(.dot) { fill: var(--accent); stroke: none; }
+      .lhead .ic svg :global(.fill) { fill: currentColor; stroke: none; }
+      .lhead .dcode { font-family: var(--mono); font-size: var(--t-meta); letter-spacing: var(--track-mono); color: var(--ink-faint); }
+      .lhead .dcode b { color: var(--ink); font-weight: 500; }
+      .cellcard h3 { font-size: var(--t-h-sm); letter-spacing: var(--track-h-sm); margin-bottom: 6px; }
+      .cellcard .val { display: block; font-size: var(--t-h-md); font-weight: 700; letter-spacing: var(--track-h-sm); }
+      .cellcard .val.halt { color: var(--signal-halt); }
+      .cellcard .val.warn { color: var(--signal-warn); }
+      .cellcard .val.good { color: var(--accent-deep); }
+      .cellcard .sub { display: block; color: var(--ink-faint); margin-top: 4px; }
+      .cellcard .note { font-family: var(--mono); font-size: var(--t-body-sm); line-height: var(--lh-body); color: var(--ink-dim); margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line-soft); }
+
+      details { margin-top: 16px; border-top: 1px solid var(--line-soft); }
+      summary { cursor: pointer; padding: 12px 0 2px; color: var(--accent-deep); list-style: none; }
+      summary::-webkit-details-marker { display: none; }
+      .rows { padding: 10px 0 4px; }
+      .row { display: flex; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--line-soft); font-size: var(--t-body-sm); line-height: var(--lh-body); }
+      .row .mark { font-family: var(--mono); flex: 0 0 14px; }
+      .row.ok .mark { color: var(--accent-deep); }
+      .row.fail .mark { color: var(--ink); }
+      .row .rel { display: block; color: var(--ink-faint); font-size: var(--t-caption); font-family: var(--mono); letter-spacing: var(--track-mono-tight); text-transform: uppercase; margin-top: 3px; }
+      .row .trace { display: block; color: var(--ink-dim); font-style: italic; margin-top: 3px; }
+
+      .disclaimer { font-family: var(--serif); font-style: italic; color: var(--ink-dim); font-size: var(--t-body-md); line-height: var(--lh-body); margin: 28px 0; }
+
+      /* Floating "Book a call" pill - verbatim from Base.astro for kinship. */
+      .floating-cta {
+        position: fixed; bottom: 24px; right: 24px; z-index: 100;
+        display: inline-flex; align-items: center; gap: 10px;
+        padding: 12px 18px 12px 16px;
+        background: var(--ink); color: var(--on-ink);
+        border-radius: 999px;
+        font-family: var(--mono); font-size: 12px; font-weight: 500;
+        letter-spacing: 0.06em; text-transform: uppercase; text-decoration: none;
+        box-shadow: 0 8px 28px rgba(143, 191, 63, 0.22), 0 2px 6px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 220ms cubic-bezier(0.16, 1, 0.3, 1);
+        will-change: transform;
+      }
+      .floating-cta:hover, .floating-cta:focus-visible {
+        transform: translateY(-1px) scale(1.03);
+        box-shadow: 0 12px 36px rgba(143, 191, 63, 0.32), 0 3px 8px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+        outline: none;
+      }
+      .floating-cta-dot {
+        width: 8px; height: 8px; border-radius: 50%;
+        background: var(--accent);
+        box-shadow: 0 0 8px rgba(143, 191, 63, 0.6);
+        animation: floating-cta-pulse 2.4s ease-in-out infinite;
+      }
+      .floating-cta-arrow { opacity: 0.7; transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1); }
+      .floating-cta:hover .floating-cta-arrow { transform: translateX(2px); opacity: 1; }
+      @keyframes floating-cta-pulse {
+        0%, 100% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.35); opacity: 0.7; }
+      }
+      @media (max-width: 640px) {
+        .floating-cta { bottom: 16px; right: 16px; padding: 10px 14px 10px 12px; font-size: 11px; gap: 8px; }
+        .floating-cta-arrow { display: none; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .floating-cta-dot { animation: none; }
+        .floating-cta { transition: none; }
+        .floating-cta:hover { transform: none; }
+      }
+
+      details.appendix { border-top: none; margin-top: 0; }
+      details.appendix > summary { padding: 0 0 14px; color: inherit; }
+      details.appendix > summary h2 { font-size: var(--t-h-md); letter-spacing: var(--track-h-sm); line-height: var(--lh-h-prose); margin: 8px 0 4px; color: var(--ink); }
+
+      .closer { background: var(--ink); color: var(--on-ink); margin-top: 40px; }
+      .closer .inner { max-width: 720px; margin: 0 auto; padding: 44px 20px 40px; }
+      .closer .mono { color: var(--on-ink-faint); }
+      .closer h2 { font-size: var(--t-h-lg); letter-spacing: var(--track-h-md); line-height: var(--lh-h-prose); margin: 12px 0 6px; }
+      .closer .serif { font-family: var(--serif); font-style: italic; color: var(--on-ink-italic); font-size: var(--t-h-sm); margin-bottom: 18px; }
+      .closer blockquote { border-left: 2px solid var(--on-ink-line-2); padding-left: 14px; color: var(--on-ink-dim); font-size: var(--t-body); line-height: var(--lh-body); margin: 18px 0; }
+      .closer p.path { color: var(--on-ink-dim); font-size: var(--t-body); line-height: var(--lh-body); margin-bottom: 22px; }
+      .closer .cta { background: var(--accent); color: var(--ink); }
+      .closer .sig { margin-top: 30px; padding-top: 16px; border-top: 1px solid var(--on-ink-line); color: var(--on-ink-faint); font-size: var(--t-body-sm); }
+      .closer .sig .fine { display: block; margin-top: 10px; font-family: var(--serif); font-style: italic; color: var(--on-ink-faint); }
+    </style>
+  </head>
+  <body>
+    {!view && (
+      <div class="wrap" style="padding: 60px 20px;">
+        <span class="mono">Cached audit · not found</span>
+        <h1 style="margin-top: 12px;">This audit has expired or does not exist.</h1>
+      </div>
+    )}
+    {view && memo && (
+      <>
+        <BookingProvider />
+        <a
+          class="floating-cta"
+          href={CAL_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          data-cta="floating_book_call"
+          data-cal-link="fred-style/discovery"
+          aria-label="Book a call with Fred"
+        >
+          <span class="floating-cta-dot" aria-hidden="true"></span>
+          <span class="floating-cta-label">Book a call</span>
+          <svg class="floating-cta-arrow" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+            <path d="M3 8h10M9 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </a>
+        <script is:inline>
+          // Same interception as the site-wide pill (Base.astro): open the
+          // Cal modal in place when Cal is ready; the href fallback keeps
+          // full prospect/utm attribution if JS or Cal is unavailable.
+          (function () {
+            var a = document.querySelector('a.floating-cta[data-cal-link]');
+            if (!a) return;
+            var link = a.getAttribute('data-cal-link');
+            a.addEventListener('click', function (e) {
+              var w = window;
+              var ns = w.__rivettCalNamespace;
+              if (w.Cal && ns && w.Cal.ns && w.Cal.ns[ns]) {
+                e.preventDefault();
+                w.Cal.ns[ns]('modal', { calLink: link });
+              }
+            });
+          })();
+        </script>
+
+        <div class="topbar mono">
+          <span><strong>rivett</strong> · teardown · {domain}</span>
+          <span>
+            {grade && <span class={`grade ${grade.tier}`}>Read · <b>{grade.label}</b></span>}
+            {scanDate}
+          </span>
+        </div>
+
+        <div class="wrap">
+          <section class="lead">
+            <span class="mono kicker">The strongest finding · assembled from verified rows only</span>
+            <h1>{view.lead.headline}</h1>
+            {view.lead.stat && (
+              <div class="stat">
+                {view.lead.stat.text} — this page is on the wrong side of that line.
+                <span class="mono src">Source: {view.lead.stat.source} · your own analytics can confirm the exact number</span>
+              </div>
+            )}
+            <p class="body">{view.lead.body}</p>
+            <a class="cta" href={CAL_URL} data-cta="memo_book_call" data-cta-location="memo_hero">Book 30 min with Fred →</a>
+            <p class="cta-sub">We walk through your audit, not a slide deck.</p>
+          </section>
+
+          {view.consequences.map((cons) => {
+            const isProblem = cons.status !== 'sound' && cons.status !== 'unconfirmed';
+            if (cons.cells.length === 0) return null;
+            return (
+              <section class="group">
+                <div class="divider">
+                  <span class={`mono status ${isProblem ? 'problem' : cons.status}`}>● {cons.statusLabel}</span>
+                  <h2>{cons.heading}</h2>
+                  {cons.owner && <p class="owner">{cons.owner}</p>}
+                </div>
+                <div class="grid">
+                  {cons.cells.map((c) => {
+                    // Same tone source as the control (deriveTone) so the two
+                    // arms can never disagree about a cell's colour.
+                    const tone = deriveTone(c);
+                    return (
+                      <div class="cellcard">
+                        <div class="lhead">
+                          <span class="ic" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" width="24" height="24" set:html={LOCK_ICON[c.icon] ?? LOCK_ICON.search} />
+                          </span>
+                          <span class="dcode">D · <b>{DIM_CODE[c.icon] ?? '·'}</b></span>
+                        </div>
+                        <h3>{c.heading}</h3>
+                        <span class={`val ${tone === 'none' ? '' : tone}`}>{c.value}</span>
+                        {c.benchmark && <span class="mono sub">{c.benchmark}</span>}
+                        <p class="note">{c.note}</p>
+                        <details>
+                          <summary class="mono" data-cta={`cell_expand_${c.icon}`}>Show {c.checks.length} signals +</summary>
+                          <div class="rows">
+                            {c.checks.map((check) => {
+                              const suppressed = isSuppressed(memo, check);
+                              const trace = suppressed ? traceTextFor(memo, check) : null;
+                              return (
+                                <div class={`row ${check.ok ? 'ok' : 'fail'}`}>
+                                  <span class="mark">{check.ok ? '✓' : suppressed ? '~' : '×'}</span>
+                                  <span>
+                                    {check.text}
+                                    {trace && <span class="trace">{trace}</span>}
+                                    <span class="rel">{suppressed ? 'Superseded by a runtime detection' : REL_LABEL[check.reliability ?? 'verified']}</span>
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </details>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            );
+          })}
+
+          {view.appendixCells.length > 0 && (
+            <section class="group">
+              {/* The appendix is for the forwarded-to team member, not the
+                  buyer - the one group that earns a collapse. Verdict groups
+                  stay open: gating findings was a verified mistake. */}
+              <details class="appendix">
+                <summary>
+                  <span class="mono status unconfirmed">+ The appendix</span>
+                  <h2>Everything else the scan checked.</h2>
+                </summary>
+                <div class="grid">
+                {view.appendixCells.map((c) => (
+                  <div class="cellcard">
+                    <div class="lhead">
+                      <span class="ic" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" width="24" height="24" set:html={LOCK_ICON[c.icon] ?? LOCK_ICON.search} />
+                      </span>
+                      <span class="dcode">D · <b>{DIM_CODE[c.icon] ?? '·'}</b></span>
+                    </div>
+                    <h3>{c.heading}</h3>
+                    <span class="val">{c.value}</span>
+                    <p class="note">{c.note}</p>
+                    <details>
+                      <summary class="mono" data-cta={`cell_expand_${c.icon}`}>Show {c.checks.length} signals +</summary>
+                      <div class="rows">
+                        {c.checks.map((check) => (
+                          <div class={`row ${check.ok ? 'ok' : 'fail'}`}>
+                            <span class="mark">{check.ok ? '✓' : '×'}</span>
+                            <span>
+                              {check.text}
+                              <span class="rel">{REL_LABEL[check.reliability ?? 'verified']}</span>
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </details>
+                  </div>
+                ))}
+                </div>
+              </details>
+            </section>
+          )}
+
+          <p class="disclaimer">{DISCLAIMER}</p>
+        </div>
+
+        <script is:inline define:vars={{ slug, domain }}>
+          // Arm marker + the two events the A/B reads that PostHog.astro
+          // doesn't fire on its own. Event names match the control so HQ and
+          // existing insights pick both arms up; audit_variant splits them.
+          (function () {
+            function whenPosthog(fn, tries) {
+              if (window.posthog && window.posthog.capture) return fn(window.posthog);
+              if ((tries || 0) > 50) return;
+              setTimeout(function () { whenPosthog(fn, (tries || 0) + 1); }, 200);
+            }
+            whenPosthog(function (ph) {
+              try {
+                if (typeof ph.register_for_session === 'function') ph.register_for_session({ audit_variant: 'b' });
+                else ph.register({ audit_variant: 'b' });
+              } catch (e) {}
+              ph.capture('audit_v3_memo_rendered', { slug: slug, hostname: domain, audit_variant: 'b', url: window.location.href });
+            });
+            var fired = false;
+            var closer = document.querySelector('.closer');
+            if (closer && 'IntersectionObserver' in window) {
+              new IntersectionObserver(function (entries, obs) {
+                entries.forEach(function (en) {
+                  if (!en.isIntersecting || fired) return;
+                  fired = true;
+                  obs.disconnect();
+                  whenPosthog(function (ph) {
+                    ph.capture('audit_v3_form_view', { slug: slug, audit_variant: 'b' });
+                  });
+                });
+              }, { threshold: 0.4 }).observe(closer);
+            }
+          })();
+        </script>
+
+        <div class="closer">
+          <div class="inner">
+            <span class="mono">30 min · no deck</span>
+            <h2>{closerEcho} — still true until it's fixed.</h2>
+            <p class="serif">Pick a time. We go through the fix order together.</p>
+            <blockquote>
+              "If I'm wrong about this, the call costs you thirty minutes. If I'm right, you keep paying for it every week it stands."
+            </blockquote>
+            <p class="path">
+              The cost of doing nothing is on this page. The call is the fix order, the math against your own
+              analytics, and the things a scan cannot reach: your pipeline, your follow-up, your numbers.
+            </p>
+            <a class="cta" href={CAL_URL} data-cta="memo_book_call" data-cta-location="memo_closer">Book a call →</a>
+            <div class="sig">
+              <span class="mono">Signature</span><br />
+              Fred Style · rivett.tech · {scanDate}
+              <span class="fine">{DISCLAIMER}</span>
+            </div>
+          </div>
+        </div>
+      </>
+    )}
+  </body>
+</html>

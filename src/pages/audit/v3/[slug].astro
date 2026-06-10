@@ -81,7 +81,16 @@ if (!isValidV3Slug(slug)) {
   Astro.response.status = 404;
 } else {
   try {
-    const redis = Redis.fromEnv();
+    // Prod injects UPSTASH_*; local .env.local only carries the Vercel KV
+    // names. Resolve both so the page renders against real memos in dev
+    // (same fallback as /audit/b). Behaviour in prod is unchanged.
+    const kvUrl =
+      import.meta.env.UPSTASH_REDIS_REST_URL ?? process.env.UPSTASH_REDIS_REST_URL ??
+      import.meta.env.KV_REST_API_URL ?? process.env.KV_REST_API_URL;
+    const kvToken =
+      import.meta.env.UPSTASH_REDIS_REST_TOKEN ?? process.env.UPSTASH_REDIS_REST_TOKEN ??
+      import.meta.env.KV_REST_API_TOKEN ?? process.env.KV_REST_API_TOKEN;
+    const redis = kvUrl && kvToken ? new Redis({ url: kvUrl, token: kvToken }) : Redis.fromEnv();
     const raw = await redis.get<unknown>(`audit-v3:${slug}`);
     if (raw == null) {
       kvError = 'not_found';
@@ -187,15 +196,13 @@ const heroQuote: IcpQuote | null = icpEntry?.quotes?.[0] ?? null;
 // no flash of ungated content (FOUC) before the JS runs, and no-JS readers
 // see the variant correctly.
 type Variant = 'a' | 'b' | 'c';
-const variantParam = (Astro.url.searchParams.get('v') ?? '').toLowerCase();
-const variantCookie = (Astro.cookies.get('rivett_variant')?.value ?? '').toLowerCase();
-const VARIANT: Variant = (
-  variantParam === 'b' || variantParam === 'c' || variantParam === 'a'
-    ? variantParam
-    : variantCookie === 'b' || variantCookie === 'c' || variantCookie === 'a'
-      ? variantCookie
-      : 'a'
-) as Variant;
+// 2026-06-10: reveal-gate experiment ENDED (Move 1, AI-HQ design brief).
+// Gating findings was a red-team kill shot ("you can't run a reliability
+// framework and a slot-machine reveal mechanic on the same page") and the
+// page-level A/B is now /audit/v3 (control) vs /audit/b (buyer-shaped).
+// Everyone gets the ungated page; ?v= and the rivett_variant cookie are
+// ignored. The gating machinery below is dormant, kept for git history.
+const VARIANT: Variant = 'a';
 
 // Per-cell gate opener copy. Mirrors the client-side COPY object below so the
 // server emits the same label JS would have appended on mount.
@@ -272,6 +279,10 @@ function gradeFor(pct: number): GradeInfo {
   return { label, base, sign, tier };
 }
 
+// 2026-06-10: the field-average benchmark row was removed from the grade
+// card (Move 1) - a hardcoded constant presented as a peer comparison was a
+// red-team credibility bomb. Constant kept only because the inline tracking
+// script still reports it for continuity of existing PostHog insights.
 // Field average benchmark. v1: hardcoded to HubSpot's published industry
 // median. Replace with our own rolling 90-day composite median once the
 // audit corpus crosses ~100 scanned domains (sample stability). Tracked as
@@ -500,6 +511,7 @@ const SCORE_GRADE = gradeFor(scorePercent);
   }
   .v3-lock .reading.warn { color: var(--signal-warn); }
   .v3-lock .reading.halt { color: var(--signal-halt); }
+  .v3-lock .reading.good { color: var(--accent-deep); }
   .v3-lock .reading-k {
     margin-top: 4px; font-family: var(--mono); font-size: 10.5px;
     letter-spacing: var(--track-mono); text-transform: uppercase;
@@ -1088,21 +1100,21 @@ const SCORE_GRADE = gradeFor(scorePercent);
          Replaces the raw 21/27.5 composite. Spec: grade-score-brief.md.
          The grade is always visible (even in Variant C of the reveal test):
          it is the hook that pulls the reader into revealing the cells. */}
+      {/* 2026-06-10 credibility fixes (Move 1, see AI-HQ design brief): the
+          "Field average" benchmark was a hardcoded constant presented as a
+          peer comparison, and "v3.4" shipped our engine version to buyers.
+          Both were red-team kill shots. The letter stands on its own. */}
       <aside
         class="score-card"
         id="scoreCard"
         role="img"
-        aria-label={`Composite read: grade ${SCORE_GRADE.label.replace('+', ' plus').replace('-', ' minus')}. Field average: grade ${FIELD_AVG_GRADE.label.replace('+', ' plus').replace('-', ' minus')}, ${FIELD_AVG_NUMERIC} out of 100.`}
+        aria-label={`The read: grade ${SCORE_GRADE.label.replace('+', ' plus').replace('-', ' minus')}.`}
       >
-        <span class="lab" aria-hidden="true">Composite read · v3.4</span>
+        <span class="lab" aria-hidden="true">The read</span>
         <div class="grade-row" aria-hidden="true">
           <span class={`grade ${SCORE_GRADE.tier === 'fail' ? 'is-fail' : ''}`.trim()}>
             {SCORE_GRADE.base}{SCORE_GRADE.sign ? <span class="sgn">{SCORE_GRADE.sign === '-' ? '−' : SCORE_GRADE.sign}</span> : null}
           </span>
-          <div class="bench">
-            <span class="bk">Field average</span>
-            <span class="bv">{FIELD_AVG_GRADE.label.replace('-', '−')} <span class="bg">· {FIELD_AVG_NUMERIC} / 100</span></span>
-          </div>
         </div>
         <div class="band" aria-hidden="true">{bandLabel(scorePercent)}</div>
         <div class="scale" aria-hidden="true">
@@ -1357,13 +1369,10 @@ const SCORE_GRADE = gradeFor(scorePercent);
     return m ? decodeURIComponent(m[1]) : null;
   }
   function resolveVariant() {
-    try {
-      var p = new URLSearchParams(window.location.search).get('v');
-      if (p) p = p.toLowerCase();
-      if (p === 'a' || p === 'b' || p === 'c') return p;
-      var c = readCookie('rivett_variant');
-      if (c === 'a' || c === 'b' || c === 'c') return c.toLowerCase();
-    } catch (e) {}
+    // 2026-06-10: reveal-gate experiment ENDED (Move 1). The client used to
+    // re-resolve ?v=/cookie here and rebuild gating even when the server
+    // rendered ungated. Everyone gets the ungated page; the page-level A/B
+    // is now /audit/v3 vs /audit/b.
     return 'a';
   }
   var VARIANT = resolveVariant();

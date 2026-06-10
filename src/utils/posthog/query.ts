@@ -363,8 +363,11 @@ const PROSPECT_PATH_FILTER = `(
 
 // Top-prospects path filter: same, but only the v3 audit format (since the
 // older v1/v2 audits are deprecated and shouldn't pollute the leaderboard).
+// /audit/b/ is the 2026-06-10 buyer-shaped A/B variant of the same memo -
+// a prospect reading their B-arm page must rank exactly like a control read.
 const PROSPECT_PATH_FILTER_TOP = `(
   properties.$pathname ILIKE '/audit/v3/%'
+  OR properties.$pathname ILIKE '/audit/b/%'
   OR properties.$pathname ILIKE '/intake-review/%'
   OR properties.$pathname ILIKE '/p/%'
 )`;
@@ -375,7 +378,7 @@ const PROSPECT_PATH_FILTER_TOP = `(
 // sometimes append punctuation to URLs ("/audit/v3/signaturit-com." in
 // the wild — break the Airtable slug join unless we normalise here).
 const PROSPECT_SLUG_EXPR =
-  `replaceRegexpOne(replaceRegexpOne(properties.$pathname, '^/(audit/(v3|p)|intake-review|p)(/|$)', ''), '[\\\\s./]+$', '')`;
+  `replaceRegexpOne(replaceRegexpOne(properties.$pathname, '^/(audit/(v3|b|p)|intake-review|p)(/|$)', ''), '[\\\\s./]+$', '')`;
 
 // Surface classification — inspect the path. Cheaper than reading the
 // PostHog super-property and works on historic events too.
