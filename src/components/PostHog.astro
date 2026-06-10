@@ -76,13 +76,17 @@ const identifyPayload = identifyAs
         if (Object.keys(supers).length) ph.register(supers);
       } catch (e) {}
 
-      // Identify the visitor if the caller knows who they are (e.g. memo slug).
-      // Also persist the slug as a 30-day cookie so subsequent visits to ANY
-      // page on rivett.tech (blog, MRI, etc) attribute back to this prospect
-      // even after the PostHog session expires. This is the sticky-identity
-      // play — a prospect who reads the memo Monday and the AI blog Friday
-      // shows up in HQ as one trail, not two anonymous visits.
-      var COOKIE_NAME = 'rivett_prospect';
+      // v12 IDENTITY RULE: a visitor is only ever identified as a PERSON, and
+      // only when they arrive through their own personal link (utm_recipient
+      // carries their email). The page slug is attached as a property, never
+      // used as the identity. Anyone else - LinkedIn lurkers, demo viewers,
+      // forwarded links, scanners - stays anonymous.
+      //
+      // The previous version identified EVERY visitor as the page's slug and
+      // stamped a 30-day sticky cookie. One demo session painted engagement
+      // onto a dozen prospects' records and split real people across four
+      // identities. Never again.
+      var COOKIE_NAME = 'rivett_recipient';
       function readCookie(name) {
         try {
           var m = document.cookie.match(new RegExp('(?:^|;\\s*)' + name + '=([^;]+)'));
@@ -96,25 +100,21 @@ const identifyPayload = identifyAs
             '; Max-Age=' + maxAge + '; Path=/; SameSite=Lax';
         } catch (e) {}
       }
+      // Retire the old slug cookie so historic devices stop re-branding.
+      try { document.cookie = 'rivett_prospect=; Max-Age=0; Path=/'; } catch (e) {}
 
-      if (identifyPayload && identifyPayload.id) {
-        var props = Object.assign({}, identifyPayload.props || {}, {
+      var recipient = (((typeof supers === 'object' && supers) || {}).utm_recipient
+        || readCookie(COOKIE_NAME) || '').trim().toLowerCase();
+      if (recipient.indexOf('@') > 0) {
+        var props = Object.assign({}, (identifyPayload && identifyPayload.props) || {}, {
           first_seen_path: window.location.pathname,
         });
-        ph.identify(identifyPayload.id, props);
-        if (identifyPayload.groupKey) {
+        if (identifyPayload && identifyPayload.id) props.prospect_slug = identifyPayload.id;
+        ph.identify(recipient, props);
+        if (identifyPayload && identifyPayload.groupKey) {
           ph.group(identifyPayload.groupType, identifyPayload.groupKey);
         }
-        // Stamp the slug so future visits to other pages re-identify.
-        writeCookie(COOKIE_NAME, identifyPayload.id);
-      } else {
-        // No explicit identify on this page. Check the cookie — if a prior
-        // memo visit stamped one, re-identify so this page's events
-        // attribute to the prospect.
-        var stickySlug = readCookie(COOKIE_NAME);
-        if (stickySlug) {
-          ph.identify(stickySlug, { sticky_identity_path: window.location.pathname });
-        }
+        writeCookie(COOKIE_NAME, recipient);
       }
 
       // Force session recording on (init flag alone gates by sample rate).
