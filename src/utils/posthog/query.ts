@@ -149,21 +149,47 @@ const DATACENTER_CITIES = [
   'Quincy', 'Cheyenne', 'Moncks Corner',
 ];
 
-const SELF_CITY_EXCLUSION = `
-  NOT (properties.$geoip_city_name IN (${SELF_CITIES.map((c) => `'${c}'`).join(', ')}))
+// Hard denylist — the ONLY identity-based exclusion allowed. No heuristic
+// internal-labelling (the somewhere-com auto-binning threw away Dipen, a
+// real prospect). Add known self/test addresses here and nowhere else.
+const DENYLIST_EMAILS = ['freddiestyle@gmail.com', 'frikkie.wolf.digital@gmail.com'];
+
+const DENYLIST_EXCLUSION = `
+  NOT (
+    properties.utm_recipient IN (${DENYLIST_EMAILS.map((e) => `'${e}'`).join(', ')})
+    OR person.properties.email IN (${DENYLIST_EMAILS.map((e) => `'${e}'`).join(', ')})
+    OR distinct_id IN (${DENYLIST_EMAILS.map((e) => `'${e}'`).join(', ')})
+    OR distinct_id LIKE 'test@%'
+    OR person.properties.email LIKE 'test@%'
+  )
 `;
+
+const SELF_CITY_EXCLUSION = `(
+  NOT (properties.$geoip_city_name IN (${SELF_CITIES.map((c) => `'${c}'`).join(', ')}))
+  AND ${DENYLIST_EXCLUSION}
+)`;
 
 // Events that prove a session was driven by a human. A scanner that just
 // loads the page and fires $pageview/$pageleave won't appear here.
+//
+// v11: dropped human_engaged, scroll_depth, audit_v3_scroll_depth, and
+// audit_v3_dwell — SafeLinks/Mimecast headless Chrome fires pointer/scroll
+// synthetics on page load (confirmed on base64-404 pages), so movement and
+// scroll prove nothing. Only explicit acts qualify. The timing predicate in
+// humanSessionsSubquery is the second gate. finding_expanded /
+// book_call_clicked / scheduler_opened / email_captured are the clean-
+// taxonomy names; old names stay so history still qualifies.
 const HUMAN_SIGNAL_EVENTS = [
-  'human_engaged',
-  'scroll_depth',
-  'audit_v3_scroll_depth',
   'cta_clicked',
+  'finding_expanded',
+  'book_call_clicked',
+  'scheduler_opened',
+  'floating_cta_modal_opened',
+  'cal_popup_open',
   'audit_v3_verdict_expanded',
-  'audit_v3_section_viewed',
-  'audit_v3_dwell',
   'audit_v3_full_audit_requested',
+  'audit_v3_form_submitted',
+  'email_captured',
   'content_copied',
   'audit_v3_content_copied',
   'content_printed',
@@ -172,6 +198,7 @@ const HUMAN_SIGNAL_EVENTS = [
   'diagnostic_booking_modal_opened',
   'diagnostic_booking_complete',
   'call_booked',
+  'email_replied',
   'revenue_mri_email_captured',
   'mri_email_captured',
   'mri_book_diagnostic_clicked',
@@ -201,12 +228,20 @@ const REVENUE_SIGNAL_EVENTS = [
  * the STRICT filter (Top Prospects, Action Queue) - top-of-funnel
  * counters use lightHumanWhere() instead.
  */
+// A session qualifies as human when it fired an explicit reader action at
+// least 2 seconds AFTER its first pageview. SafeLinks-class scanners load
+// the page and fire their synthetic signals in a sub-2s burst; no human
+// reads, finds, and clicks anything in under 2 seconds. Sessions with
+// signal events but no pageview at all (beacon weirdness) are excluded.
 function humanSessionsSubquery(timeWhere: string): string {
   return `(
-    SELECT DISTINCT properties.$session_id
+    SELECT properties.$session_id
     FROM events
     WHERE ${timeWhere}
-      AND event IN (${HUMAN_SIGNAL_EVENTS})
+    GROUP BY properties.$session_id
+    HAVING countIf(event = '$pageview') > 0
+      AND maxIf(timestamp, event IN (${HUMAN_SIGNAL_EVENTS}))
+        >= minIf(timestamp, event = '$pageview') + INTERVAL 2 SECOND
   )`;
 }
 
@@ -464,6 +499,7 @@ export interface TopProspect {
 	  revenue_signals: number;        // full audit requests, diagnostic/booking/MRI money-path signals
 	  // v9 stickiness signal
   related_clicks: number;         // cta_clicked with cta=memo_related (blog read-next) or memo_to_mri
+  cell_expands: number;           // curiosity: finding cells opened (cell_expand_* / finding_expanded)
   // v3.5 per-cell drill-down signal (which dimensions did they expand on the audit)
   // Each entry is the dimension icon key (e.g. 'search', 'spark', 'mail'),
   // distinct, ordered by first-click time within the time window.
@@ -480,32 +516,35 @@ export interface TopProspect {
 // the datacenter-city filter misses one). Bumping queue threshold to >=25 so
 // pure dwell never crosses on its own.
 //
+// v11: multi-visitor bonuses REMOVED. Multiple distinct visitors on one
+// audit is scanner fanout (SafeLinks fans a link across datacenter geos),
+// not "an exec forwarded it". The queue was inverted: radleys-com/beaphar/
+// base64-404 slugs ranked above gocharting/cleric-ai purely on fanout.
+// cta_clicks now means INTENT clicks only (book-call family); cell expands
+// are curiosity and get their own capped weight.
+//
 // Weights (per occurrence unless noted):
 //   prints:                      +40
 //   copies:                      +30
-//   distinct_visitors >= 2:      +35  (internal-share signal — exec forwarded)
-//   distinct_visitors >= 3:      +25  (additive — team is reviewing)
-//   distinct_visitors >= 4:      +25  (additive — many stakeholders, buy signal)
-//   cta_clicks:                  +25
+//   cta_clicks (intent only):    +25
 //   revenue_signals:             +45  (full audit, booking, MRI lead/path signal)
 //   related_clicks:              +20  (memo_related / memo_to_mri — sticky signal)
 //   scroll_100s:                 +15
 //   verdict_expansions:          +10
+//   cell_expands:                +8, capped at +24 (curiosity, not intent)
 //   return_visitor (bool):       +30, ONLY if there is also explicit interaction
 //   focus_seconds_total / 10:    +1, capped at +20
 //   total_dwell_seconds / 30:    +1, capped at +10
 const HEAT_SCORE_SQL = `(
   (prints * 40) +
   (copies * 30) +
-  (if(distinct_visitors >= 2, 35, 0)) +
-	  (if(distinct_visitors >= 3, 25, 0)) +
-	  (if(distinct_visitors >= 4, 25, 0)) +
 	  (cta_clicks * 25) +
 	  (revenue_signals * 45) +
 	  (related_clicks * 20) +
   (scroll_100s * 15) +
   (verdict_expansions * 10) +
-	  (if(unique_sessions > 1 AND (scroll_100s > 0 OR verdict_expansions > 0 OR cta_clicks > 0 OR copies > 0 OR prints > 0 OR related_clicks > 0 OR revenue_signals > 0), 30, 0)) +
+  least(24, cell_expands * 8) +
+	  (if(unique_sessions > 1 AND (scroll_100s > 0 OR verdict_expansions > 0 OR cta_clicks > 0 OR copies > 0 OR prints > 0 OR related_clicks > 0 OR revenue_signals > 0 OR cell_expands > 0), 30, 0)) +
   least(20, intDiv(focus_seconds_total, 10)) +
   least(10, intDiv(total_dwell_seconds, 30))
 )`;
@@ -531,6 +570,7 @@ export async function getTopProspects(range: DateRange, mode: TrafficMode = 'hum
 	      sum(session_focus) AS focus_seconds_total,
 	      sum(session_revenue_signals) AS revenue_signals,
 	      sum(session_related) AS related_clicks,
+	      sum(session_cell_expands) AS cell_expands,
       arrayDistinct(arrayFlatten(groupArray(session_expanded_dims))) AS expanded_dimensions,
       ${HEAT_SCORE_SQL} AS heat_score,
       max(last_event) AS last_view,
@@ -557,7 +597,13 @@ export async function getTopProspects(range: DateRange, mode: TrafficMode = 'hum
         properties.$session_id AS sid,
         toString(any(person_id)) AS session_person_id,
         countIf(event = '$pageview') AS session_views,
-        countIf(event = 'cta_clicked') AS session_clicks,
+        -- Intent clicks only. cell_expand_* under cta_clicked is curiosity
+        -- and counted separately below. book_call_clicked is the clean-
+        -- taxonomy name; the rest are legacy intent events.
+        countIf(
+          (event = 'cta_clicked' AND NOT (properties.cta LIKE 'cell_expand_%'))
+          OR event IN ('book_call_clicked', 'floating_cta_modal_opened', 'cal_popup_open', 'scheduler_opened')
+        ) AS session_clicks,
 	        countIf(event = 'audit_v3_verdict_expanded') AS session_verdicts,
 	        countIf(event IN ('scroll_depth', 'audit_v3_scroll_depth') AND toInt(properties.depth) = 100) AS session_scroll_100,
 	        max(if(event IN ('scroll_depth', 'audit_v3_scroll_depth'), toInt(properties.depth), 0)) AS session_max_scroll,
@@ -566,7 +612,10 @@ export async function getTopProspects(range: DateRange, mode: TrafficMode = 'hum
 	        sumIf(toInt(properties.focus_seconds), event = 'tab_focus_time') AS session_focus,
 	        countIf(event IN (${REVENUE_SIGNAL_EVENTS})) AS session_revenue_signals,
 	        countIf(event = 'cta_clicked' AND (properties.cta = 'memo_related' OR properties.cta = 'memo_to_mri')) AS session_related,
-        countIf(event = 'cta_clicked' AND properties.cta LIKE 'cell_expand_%') AS session_cell_expands,
+        countIf(
+          (event = 'cta_clicked' AND properties.cta LIKE 'cell_expand_%')
+          OR event = 'finding_expanded'
+        ) AS session_cell_expands,
         toString(any(properties.$geoip_city_name)) AS session_city,
         toString(any(properties.$geoip_country_name)) AS session_country,
         toString(any(properties.utm_source)) AS session_source,
@@ -584,7 +633,11 @@ export async function getTopProspects(range: DateRange, mode: TrafficMode = 'hum
         ${humanWhereFor(mode, range)}
       GROUP BY prospect, surface, sid
     ) AS sessions
+    -- Slug shape guard: real prospect slugs are lowercase domain-derived
+    -- ("gocharting-com"). The btoa() slug bug minted mixed-case base64
+    -- fragments that 404 but still fired events; scanners hammer them.
     WHERE prospect != ''
+      AND match(prospect, '^[a-z0-9]+(-[a-z0-9]+)*$')
     GROUP BY prospect, surface
     -- Defence in depth: even with the strict humanWhereFor session filter
     -- above, require that the aggregate across all of a prospect's sessions
@@ -618,6 +671,7 @@ export async function getTopProspects(range: DateRange, mode: TrafficMode = 'hum
 	    focus_seconds_total: number;
 	    revenue_signals: number;
 	    related_clicks: number;
+    cell_expands: number;
     expanded_dimensions: string[];
     heat_score: number;
     last_view: string;
@@ -654,6 +708,7 @@ export async function getTopProspects(range: DateRange, mode: TrafficMode = 'hum
 	    focus_seconds_total: row.focus_seconds_total ?? 0,
 	    revenue_signals: row.revenue_signals ?? 0,
 	    related_clicks: row.related_clicks ?? 0,
+    cell_expands: row.cell_expands ?? 0,
     expanded_dimensions: (row.expanded_dimensions ?? []).filter((d) => d && d !== ''),
     return_visitor: row.unique_sessions > 1,
     heat_score: row.heat_score ?? 0,
@@ -855,10 +910,13 @@ export async function getActiveNow(): Promise<ActiveNow> {
   const activeTimeWhere = `timestamp >= now() - INTERVAL 30 MINUTE`;
   const activeHumanWhere = `
     AND properties.$session_id IN (
-      SELECT DISTINCT properties.$session_id FROM events
+      SELECT properties.$session_id FROM events
       WHERE ${activeTimeWhere}
         AND (properties.$pathname LIKE '/audit/v3/%' OR properties.$pathname LIKE '/audit/p/%')
-        AND event IN (${HUMAN_SIGNAL_EVENTS})
+      GROUP BY properties.$session_id
+      HAVING countIf(event = '$pageview') > 0
+        AND maxIf(timestamp, event IN (${HUMAN_SIGNAL_EVENTS}))
+          >= minIf(timestamp, event = '$pageview') + INTERVAL 2 SECOND
     )
     AND ${SELF_CITY_EXCLUSION}
   `;

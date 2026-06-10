@@ -17,19 +17,23 @@
 // thresholds. If you change one, change both — and update the unit
 // tests so the drift is caught.
 //
-// Reference weights (from HEAT_SCORE_SQL):
+// Reference weights (from HEAT_SCORE_SQL, v11):
 //   prints * 40
 //   copies * 30
-//   distinct_visitors >= 2  → +35  (multi-viewer)
-//   distinct_visitors >= 3  → +25  additive
-//   distinct_visitors >= 4  → +25  additive
-//   cta_clicks * 25
+//   cta_clicks * 25  (INTENT only — book-call family; cell expands excluded)
+//   revenue_signals * 45
 //   related_clicks * 20  (memo_related / memo_to_mri)
 //   scroll_100s * 15
 //   verdict_expansions * 10
+//   cell_expands * 8, capped 24  (curiosity)
 //   return_visitor (when explicitly engaged) → +30
 //   focus_seconds_total / 10, capped 20
 //   total_dwell_seconds / 30, capped 10
+//
+// v11: multi-visitor bonuses removed from the score — distinct_visitors
+// fanout is a scanner fingerprint, not exec forwarding. The multi_viewer
+// classification below survives only because it also requires explicit
+// interaction, which the upstream timing filter de-noises.
 //
 // The thresholds below are the "should I write a DM today" cut, NOT the
 // heat-score sort. The score sorts within the actionable set; this
