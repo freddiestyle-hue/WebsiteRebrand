@@ -50,7 +50,7 @@ const POSTHOG_PROJECT_ID = 373899;
 //     filters, and human_engaged (real pointer/scroll/key/touch input) joins
 //     the behavioural human filter + is_engaged flag. One-screen proposals
 //     that can't scroll now register a real reader while staying scanner-proof.
-const CACHE_VERSION = 'v13';
+const CACHE_VERSION = 'v14';
 
 // Lazy redis client. Construction is cheap but we only need one instance.
 // Use KV_REST_API_* env vars (set by Vercel KV / Upstash integration) since
@@ -442,7 +442,10 @@ export async function getRecentReads(range: DateRange, mode: TrafficMode = 'huma
         AND ${PROSPECT_PATH_FILTER}
         ${lightHumanWhereFor(mode)}
       GROUP BY path, prospect, surface, session_id, distinct_id, city, country
-      HAVING dwell_seconds >= ${minDwell} AND prospect != ''
+      -- v12: humans mode shows ENGAGED sessions only. Scanner-shaped rows
+      -- are not deleted - they live in /lab's quarantine and reappear here
+      -- under the 'all' traffic toggle.
+      HAVING dwell_seconds >= ${minDwell} AND prospect != ''${mode === 'humans' ? ' AND is_engaged' : ''}
       ORDER BY last_event DESC
       LIMIT 50
     `);

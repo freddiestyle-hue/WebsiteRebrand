@@ -46,9 +46,9 @@ function mark(r: RecentRead): { label: string; cls: string; title: string } {
   if (r.dwell_seconds >= 60) return { label: 'DEEP', cls: 'mark--warm', title: 'Read for ≥60s' };
   if (r.is_engaged) return { label: 'READ', cls: 'mark--cool', title: 'Fired a scroll/click/copy event but didn\'t dwell long' };
   // No real engagement events — likely a SafeLinks / Mimecast / Proofpoint
-  // scanner doing email-gateway link prefetch. Shown but flagged so you
-  // don't follow up on a non-read.
-  return { label: 'RAW', cls: 'mark--raw', title: 'No engagement events — likely an email-security scanner, not a real read. Wait for a second hit from a non-datacenter IP.' };
+  // scanner doing email-gateway link prefetch. Hidden from the default
+  // humans view (v12); appears only under the All-traffic toggle.
+  return { label: 'NO PROOF', cls: 'mark--raw', title: 'No human-proof action fired — scanner-shaped. The rejection reason lives in /lab quarantine.' };
 }
 function fullUrl(path: string, surface: 'audit' | 'intake-review' | 'proposal' | undefined): string {
   if (surface === 'intake-review') return `https://intake-reviews.vercel.app${path}`;
