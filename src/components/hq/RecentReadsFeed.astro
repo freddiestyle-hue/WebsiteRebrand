@@ -64,19 +64,26 @@ function fullUrl(path: string, surface: 'audit' | 'intake-review' | 'proposal' |
       const m = mark(r);
       const replay = sessionReplayUrl(r.session_id);
       const info = r.prospect ? prospectInfo?.get(r.prospect) : undefined;
-      const displayName = info?.firstName || r.prospect || '(unknown)';
+      // Only wear the prospect's name when the session is provably theirs
+      // (arrived on their personal link). Anyone else - lurkers, demos,
+      // forwards - is labelled as an unverified reader of the page.
+      const displayName = r.identity_proven
+        ? (info?.firstName || r.prospect || '(unknown)')
+        : 'Unverified reader';
       const displayCo = info?.company || (r.prospect ? slugToDomain(r.prospect) : '');
       const geo = [r.city, r.country].filter(Boolean).join(', ');
-      const liHref = info?.linkedinUrl || (r.prospect ? findOnLinkedinUrl(r.prospect) : '');
+      const liHref = r.identity_proven
+        ? (info?.linkedinUrl || (r.prospect ? findOnLinkedinUrl(r.prospect) : ''))
+        : '';
       return (
         <div class="feed-row">
           <div class="cell name">
             {liHref ? (
               <a href={liHref} target="_blank" rel="noopener" title={info?.linkedinUrl ? "Open LinkedIn profile" : "Google site:linkedin.com search"}>{displayName}<span class="li-arrow" aria-hidden="true"> ↗</span></a>
             ) : (
-              <span>{displayName}</span>
+              <span class={r.identity_proven ? '' : 'unverified'} title={r.identity_proven ? undefined : `Someone read ${displayCo}'s page without a personal link - could be a forward, a LinkedIn visitor, or a demo. Not necessarily the prospect.`}>{displayName}</span>
             )}
-            {info?.title && <span class="title-ital">, {info.title}</span>}
+            {r.identity_proven && info?.title && <span class="title-ital">, {info.title}</span>}
           </div>
           <div class="cell co">
             {displayCo}
@@ -171,6 +178,11 @@ function fullUrl(path: string, surface: 'audit' | 'intake-review' | 'proposal' |
     font-size: 13px;
     color: var(--ink-dim, #3A4658);
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .unverified {
+    color: var(--ink-faint, #8a8270);
+    font-style: italic;
+    font-weight: 400;
   }
   .co {
     font-family: var(--serif, 'Newsreader', Georgia, serif);
