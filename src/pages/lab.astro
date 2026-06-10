@@ -137,7 +137,8 @@ function timeAgo(iso: string): string {
           <div class="n">{s.n}</div>
           <div class="l">{s.label}</div>
           <div class="s">{s.sub}</div>
-          {i > 0 && <div class="conv">{pct(s.n, steps[i - 1].n)}% of {steps[i - 1].label.toLowerCase()}</div>}
+          {i > 0 && i < 3 && <div class="conv">{pct(s.n, steps[i - 1].n)}% of {steps[i - 1].label.toLowerCase()}</div>}
+          {i === 3 && <div class="conv">via Cal - can convert from the inbox, not just the page</div>}
         </div>
       ))}
     </div>
