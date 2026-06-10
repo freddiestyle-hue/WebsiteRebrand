@@ -1,6 +1,4 @@
 ---
-import GoogleTags from '../components/GoogleTags.astro';
-import GtmNoscript from '../components/GtmNoscript.astro';
 import PostHog from '../components/PostHog.astro';
 ---
 <!doctype html>
@@ -8,7 +6,6 @@ import PostHog from '../components/PostHog.astro';
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <GoogleTags />
     <title>Revenue Leak MRI · Rivett</title>
     <meta name="description" content="A free operator diagnostic from Rivett. Nine honest numbers. One readout showing where paid demand is leaking and what to fix first." />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
@@ -211,7 +208,6 @@ import PostHog from '../components/PostHog.astro';
     </style>
   </head>
   <body>
-<GtmNoscript />
 <div class="progress"><div class="fill" id="fill"></div></div>
 
 <div class="topbar">
