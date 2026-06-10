@@ -81,6 +81,27 @@ if (!cached) Astro.response.status = 404;
 
 const memo = cached?.memo ?? null;
 const view = memo ? assembleBuyerView(memo) : null;
+
+// Competitor contrast - read-only (generation is primed by the control page
+// or the outreach pipeline; either arm shows it once cached).
+let contrastData: import('../../../utils/audit/competitor-contrast').CompetitorContrast | null = null;
+if (memo) {
+  try {
+    const cc = new AbortController();
+    const ct = setTimeout(() => cc.abort(), 3500);
+    try {
+      const res = await fetch(new URL(`/api/audit/v3/competitors/${slug}?generate=0`, Astro.url), { signal: cc.signal });
+      if (res.ok) {
+        const j = (await res.json()) as { contrast?: typeof contrastData };
+        if (j?.contrast?.competitors?.length) contrastData = j.contrast;
+      }
+    } finally {
+      clearTimeout(ct);
+    }
+  } catch {
+    /* fail-open */
+  }
+}
 const domain = memo?.domain ?? cached?.hostname ?? slug;
 const scanDate = (memo?.generatedAt ?? cached?.fetchedAt ?? '').slice(0, 10).replaceAll('-', '·');
 const grade =
@@ -275,6 +296,15 @@ const DISCLAIMER =
       .closer .cta { background: var(--accent); color: var(--ink); }
       .closer .sig { margin-top: 30px; padding-top: 16px; border-top: 1px solid var(--on-ink-line); color: var(--on-ink-faint); font-size: var(--t-body-sm); }
       .closer .sig .fine { display: block; margin-top: 10px; font-family: var(--serif); font-style: italic; color: var(--on-ink-faint); }
+
+      /* Competitor contrast (buyer arm) - neutral weight, no verdict tones */
+      .contrast-b > h2 { font-size: var(--t-h-md, 1.3rem); margin-bottom: 4px; }
+      .contrast-b .contrast-ai { font-family: var(--serif); font-style: italic; color: var(--ink-dim); margin: 0 0 14px; max-width: 62ch; }
+      .contrast-comp .c-dom { font-family: var(--mono); font-size: 0.72rem; color: var(--ink-faint); font-weight: 400; }
+      .c-rows-b { list-style: none; margin: 12px 0 0; padding: 0; max-width: 560px; }
+      .c-rows-b li { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-top: 1px solid var(--line-2); font-size: var(--t-body-sm, 0.88rem); }
+      .c-rows-b li span:last-child { font-variant-numeric: tabular-nums; font-weight: 600; }
+      .c-note { margin-top: 10px; font-size: 0.72rem; color: var(--ink-faint); }
     </style>
   </head>
   <body>
@@ -408,6 +438,29 @@ const DISCLAIMER =
               </section>
             );
           })}
+
+          {contrastData && (
+            <section class="group contrast-b">
+              <h2>How you stack up</h2>
+              <p class="contrast-ai">{contrastData.aiLine}</p>
+              {contrastData.competitors.map((c) => (
+                <details class="appendix contrast-comp">
+                  <summary>
+                    <span class="mono status unconfirmed">vs</span>
+                    <h2>{c.name} <span class="c-dom">({c.domain})</span></h2>
+                  </summary>
+                  <ul class="c-rows-b">
+                    {c.adsTotal != null && <li><span>Active ads</span><span>{c.adsTotal}{c.adsBreakdown ? ` (${c.adsBreakdown})` : ''}</span></li>}
+                    {c.indexedPages != null && <li><span>Pages Google can find</span><span>{c.indexedPages}</span></li>}
+                    {c.emailAuthOk != null && <li><span>Email authentication</span><span>{c.emailAuthOk ? 'In place' : 'Missing'}</span></li>}
+                    {c.llmsTxt != null && <li><span>Readable by AI search</span><span>{c.llmsTxt ? 'Yes' : 'No'}</span></li>}
+                    {c.hasBookingPath != null && <li><span>Booking path on homepage</span><span>{c.hasBookingPath ? 'Yes' : 'None found'}</span></li>}
+                  </ul>
+                  <p class="c-note">Partial scan, same public checks as your audit.</p>
+                </details>
+              ))}
+            </section>
+          )}
 
           {view.appendixCells.length > 0 && (
             <section class="group">
