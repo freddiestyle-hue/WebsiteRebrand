@@ -75,15 +75,19 @@ const bookedRows: Row[] = list.booked.map((b) => {
 const handRows: Row[] = list.raisedHand.map((h) => {
   const base = infoFor(h.prospect, h.email);
   const ev: string[] = [];
+  if (h.replies > 0) ev.push('replied to your email (human-classified)');
   if (h.book_clicks > 0) ev.push(`${h.book_clicks}× book-a-call click`);
   if (h.scheduler_opens > 0) ev.push(`${h.scheduler_opens}× opened the scheduler`);
   if (h.gave_email > 0) ev.push('gave their email');
-  ev.push('passed the human gate');
+  if (h.book_clicks + h.scheduler_opens + h.gave_email > 0) ev.push('passed the human gate');
   return {
     key: `h-${h.prospect}`,
     ...base,
     evidence: ev,
-    next: 'Strike today - they reached for the calendar and stopped',
+    next:
+      h.replies > 0
+        ? 'Answer the reply - same day, from your inbox'
+        : 'Strike today - they reached for the calendar and stopped',
     when: h.last_activity,
     slug: h.prospect,
   };

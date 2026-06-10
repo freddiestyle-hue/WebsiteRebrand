@@ -164,16 +164,23 @@ export const GET: APIRoute = async ({ request, url }) => {
             }
           }
           if (update.newReplies > 0) {
+            // Classify the reply before celebrating it. The first reply this
+            // system ever captured was an "I have left the company" auto-
+            // responder; an OOO bot must never reach the Raised-hand tier.
+            const replyKind = await classifyLatestReply(apiKey, email);
             for (let i = 0; i < update.newReplies; i += 1) {
               await captureServerEvent({
                 event: 'email_replied',
-                distinctId: prospect.slug,
+                // Identity spine = the prospect's email, same as bookings.
+                distinctId: email,
                 properties: {
                   source: 'instantly',
                   campaign_id: campaign.id,
                   campaign_name: campaign.name,
                   instantly_lead_id: lead.id,
                   email,
+                  prospect_slug: prospect.slug,
+                  reply_kind: replyKind,
                 },
               });
               repliesFired += 1;
@@ -367,6 +374,48 @@ function buildUpdate(
   if (repliedAtChanged) update.repliedAt = repliedAt;
 
   return { update, newOpens, newClicks, newReplies, firstSeenSent };
+}
+
+// Auto-reply fingerprints. Subject markers are the strongest signal (mail
+// clients stamp them); body markers catch leavers and delivery bounces.
+const AUTO_REPLY_RE =
+  /automatic reply|auto-?reply|autoreply|out of (the )?office|i have (now )?left|no longer (with|at|work)|on (annual |parental |maternity |sick )?leave|delivery (status |has )?fail|undeliverable|mailer-daemon|do not reply/i;
+
+/**
+ * Fetch the most recent INCOMING email from this address and classify it.
+ * Returns 'human' | 'auto' | 'unknown'. Fails open to 'unknown' (never
+ * blocks the event) - the call list treats only confirmed 'auto' as noise.
+ */
+async function classifyLatestReply(apiKey: string, leadEmail: string): Promise<string> {
+  try {
+    const u = new URL(`${INSTANTLY_BASE}/emails`);
+    u.searchParams.set('search', leadEmail);
+    u.searchParams.set('limit', '10');
+    const res = await fetch(u.toString(), {
+      headers: { Authorization: `Bearer ${apiKey}` },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return 'unknown';
+    const data = (await res.json()) as {
+      items?: Array<{
+        from_address_email?: string;
+        subject?: string;
+        timestamp_created?: string;
+        body?: { text?: string } | string;
+      }>;
+    };
+    const incoming = (data.items ?? [])
+      .filter((e) => (e.from_address_email || '').toLowerCase() === leadEmail.toLowerCase())
+      .sort((a, b) => Date.parse(b.timestamp_created || '') - Date.parse(a.timestamp_created || ''));
+    const latest = incoming[0];
+    if (!latest) return 'unknown';
+    const bodyText =
+      typeof latest.body === 'string' ? latest.body : latest.body?.text || '';
+    const haystack = `${latest.subject || ''}\n${bodyText}`.slice(0, 2000);
+    return AUTO_REPLY_RE.test(haystack) ? 'auto' : 'human';
+  } catch {
+    return 'unknown';
+  }
 }
 
 function pickLatest(candidates: string[]): string {
