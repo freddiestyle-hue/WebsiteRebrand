@@ -23,6 +23,12 @@ const DISCOVERY_MODEL = 'claude-haiku-4-5-20251001';
 const DISCOVERY_TIMEOUT_MS = 15000;
 const SCAN_FETCH_TIMEOUT_MS = 9000;
 
+// Full browser UA everywhere: WAFs on SMB sites (Wix, Cloudflare, GoDaddy
+// builders) block honest bot UAs - a valid competitor (roofsbydon.com) was
+// rejected in validation because "RivettAudit/1.0" couldn't load the page.
+const BROWSER_UA =
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36';
+
 export interface CompetitorScan {
   domain: string;
   name: string;
@@ -93,7 +99,7 @@ export async function validateCandidate(
       const res = await fetch(`https://${domain}`, {
         redirect: 'follow',
         signal: ctrl.signal,
-        headers: { 'user-agent': 'Mozilla/5.0 (compatible; RivettAudit/1.0)' },
+        headers: { 'user-agent': BROWSER_UA },
       });
       if (!res.ok) return null;
       const finalHost = new URL(res.url).hostname.toLowerCase().replace(/^www\./, '');
@@ -171,10 +177,7 @@ export async function scanCompetitor(cand: Candidate): Promise<CompetitorScan | 
       const res = await fetch(`https://${cand.domain}`, {
         redirect: 'follow',
         signal: ctrl.signal,
-        headers: {
-          'user-agent':
-            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36',
-        },
+        headers: { 'user-agent': BROWSER_UA },
       });
       if (!res.ok) return null;
       html = (await res.text()).slice(0, 900_000);
