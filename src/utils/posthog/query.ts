@@ -50,7 +50,7 @@ const POSTHOG_PROJECT_ID = 373899;
 //     filters, and human_engaged (real pointer/scroll/key/touch input) joins
 //     the behavioural human filter + is_engaged flag. One-screen proposals
 //     that can't scroll now register a real reader while staying scanner-proof.
-const CACHE_VERSION = 'v12';
+const CACHE_VERSION = 'v13';
 
 // Lazy redis client. Construction is cheap but we only need one instance.
 // Use KV_REST_API_* env vars (set by Vercel KV / Upstash integration) since
@@ -1340,4 +1340,353 @@ export function sessionReplayUrl(sessionId: string | null): string | null {
 
 export function personDetailUrl(distinctId: string): string {
   return `https://us.posthog.com/project/${POSTHOG_PROJECT_ID}/person/${encodeURIComponent(distinctId)}`;
+}
+
+// ============================================================================
+// v11 CALL LIST + LAB QUERIES
+//
+// The evidence-tier model. "100% actionable" is defined as: every row in the
+// call list is backed by an explicit act a scanner cannot plausibly fake,
+// AND every excluded session remains inspectable in the quarantine - so
+// nothing is silently invented (no false positives) and nothing is silently
+// dropped (no false negatives). Ambiguity is quarantined, never blended.
+//
+//   Tier BOOKED      - call_booked from the Cal webhook. Server-to-server
+//                      truth; a scanner cannot complete a Cal booking.
+//   Tier RAISED HAND - book-call click / scheduler open / gave email, in a
+//                      session that passed the human gate (explicit act >=2s
+//                      after first pageview).
+//   Tier DUG IN      - opened findings / copied / printed / full read, same
+//                      human gate. Curiosity, not intent - chase order 3.
+//   QUARANTINE       - prospect-page sessions that failed the gate, with the
+//                      reason (burst fingerprint vs open-only). Lab-only.
+// ============================================================================
+
+export interface BookedRow {
+  booking_uid: string;
+  status: 'booked' | 'cancelled';
+  email: string;
+  name: string;
+  prospect_slug: string | null;
+  start_time: string | null;
+  last_event: string;
+}
+
+export interface HandRaiseRow {
+  prospect: string;
+  email: string | null;
+  book_clicks: number;
+  gave_email: number;
+  scheduler_opens: number;
+  last_activity: string;
+}
+
+export interface DugInRow {
+  prospect: string;
+  email: string | null;
+  findings: string[];        // dimension keys opened (search, bolt, spark...)
+  cell_expands: number;
+  scroll_100s: number;
+  copies: number;
+  prints: number;
+  verdict_expansions: number;
+  last_activity: string;
+}
+
+export interface CallList {
+  booked: BookedRow[];
+  raisedHand: HandRaiseRow[];
+  dugIn: DugInRow[];
+}
+
+const INTENT_EVENTS_SQL = `('book_call_clicked', 'floating_cta_modal_opened', 'cal_popup_open', 'scheduler_opened', 'diagnostic_booking_modal_opened', 'diagnostic_cta_click')`;
+const GAVE_EMAIL_EVENTS_SQL = `('audit_v3_form_submitted', 'audit_form_submitted', 'email_captured', 'revenue_mri_email_captured', 'mri_email_captured', 'audit_v3_full_audit_requested')`;
+
+export async function getCallList(range: DateRange): Promise<CallList> {
+  return cached('callList', range, async () => {
+    const [bookedRes, handRes, dugRes] = await Promise.all([
+      // BOOKED - one row per booking_uid, latest webhook state wins.
+      runQuery(`
+        SELECT
+          toString(properties.booking_uid) AS booking_uid,
+          if(argMax(event, timestamp) = 'call_cancelled', 'cancelled', 'booked') AS status,
+          lower(argMax(coalesce(nullIf(toString(properties.attendee_email), ''), distinct_id), timestamp)) AS email,
+          argMax(toString(properties.attendee_name), timestamp) AS name,
+          argMax(toString(properties.prospect_slug), timestamp) AS prospect_slug,
+          argMax(toString(properties.start_time), timestamp) AS start_time,
+          toString(max(timestamp)) AS last_event
+        FROM events
+        WHERE event IN ('call_booked', 'call_cancelled')
+          AND ${hogqlRangeClause(range)}
+        GROUP BY booking_uid
+        HAVING email NOT LIKE 'test@%'
+          AND email NOT IN (${DENYLIST_EMAILS.map((e) => `'${e}'`).join(', ')})
+        ORDER BY last_event DESC
+        LIMIT 25
+      `),
+      // RAISED HAND - intent acts inside human-gated sessions.
+      runQuery(`
+        SELECT
+          prospect,
+          nullIf(max(recipient), '') AS email,
+          sum(book_clicks_s) AS book_clicks,
+          sum(gave_email_s) AS gave_email,
+          sum(scheduler_s) AS scheduler_opens,
+          toString(max(last_s)) AS last_activity
+        FROM (
+          SELECT
+            ${PROSPECT_SLUG_EXPR} AS prospect,
+            properties.$session_id AS sid,
+            max(toString(properties.utm_recipient)) AS recipient,
+            countIf(event = 'book_call_clicked' OR (event = 'cta_clicked' AND properties.cta LIKE '%book_call%')) AS book_clicks_s,
+            countIf(event IN ${GAVE_EMAIL_EVENTS_SQL}) AS gave_email_s,
+            countIf(event IN ${INTENT_EVENTS_SQL} AND event != 'book_call_clicked') AS scheduler_s,
+            max(timestamp) AS last_s
+          FROM events
+          WHERE ${hogqlRangeClause(range)}
+            AND ${PROSPECT_PATH_FILTER}
+            ${humanWhere(range)}
+          GROUP BY prospect, sid
+        ) AS s
+        WHERE prospect != '' AND match(prospect, '^[a-z0-9]+(-[a-z0-9]+)*$')
+        GROUP BY prospect
+        HAVING (book_clicks + gave_email + scheduler_opens) > 0
+        ORDER BY last_activity DESC
+        LIMIT 25
+      `),
+      // DUG IN - curiosity acts inside human-gated sessions.
+      runQuery(`
+        SELECT
+          prospect,
+          nullIf(max(recipient), '') AS email,
+          arrayDistinct(arrayFlatten(groupArray(findings_s))) AS findings,
+          sum(cells_s) AS cell_expands,
+          sum(scroll_s) AS scroll_100s,
+          sum(copies_s) AS copies,
+          sum(prints_s) AS prints,
+          sum(verdicts_s) AS verdict_expansions,
+          toString(max(last_s)) AS last_activity
+        FROM (
+          SELECT
+            ${PROSPECT_SLUG_EXPR} AS prospect,
+            properties.$session_id AS sid,
+            max(toString(properties.utm_recipient)) AS recipient,
+            arrayDistinct(groupArrayIf(
+              if(event = 'finding_expanded' AND toString(properties.finding) != '',
+                 toString(properties.finding),
+                 replaceOne(toString(properties.cta), 'cell_expand_', '')),
+              event = 'finding_expanded' OR (event = 'cta_clicked' AND properties.cta LIKE 'cell_expand_%')
+            )) AS findings_s,
+            countIf(event = 'finding_expanded' OR (event = 'cta_clicked' AND properties.cta LIKE 'cell_expand_%')) AS cells_s,
+            countIf(event IN ('scroll_depth', 'audit_v3_scroll_depth') AND toInt(properties.depth) = 100) AS scroll_s,
+            countIf(event IN ('content_copied', 'audit_v3_content_copied')) AS copies_s,
+            countIf(event IN ('content_printed', 'audit_v3_print')) AS prints_s,
+            countIf(event = 'audit_v3_verdict_expanded') AS verdicts_s,
+            max(timestamp) AS last_s
+          FROM events
+          WHERE ${hogqlRangeClause(range)}
+            AND ${PROSPECT_PATH_FILTER}
+            ${humanWhere(range)}
+          GROUP BY prospect, sid
+        ) AS s
+        WHERE prospect != '' AND match(prospect, '^[a-z0-9]+(-[a-z0-9]+)*$')
+        GROUP BY prospect
+        HAVING (cell_expands + scroll_100s + copies + prints + verdict_expansions) > 0
+        ORDER BY last_activity DESC
+        LIMIT 25
+      `),
+    ]);
+
+    const bookedAll = rowsToObjects<BookedRow>(bookedRes);
+    // A cancellation is only actionable if the person did NOT rebook. Gannon
+    // cancelled May 29 and rebooked for Jun 2 - showing "recover this" next
+    // to his live booking is stale advice.
+    const activeBookedEmails = new Set(
+      bookedAll.filter((b) => b.status === 'booked').map((b) => b.email)
+    );
+    const booked = bookedAll.filter(
+      (b) => b.status === 'booked' || !activeBookedEmails.has(b.email)
+    );
+    const raisedHand = rowsToObjects<HandRaiseRow>(handRes);
+    const dugInAll = rowsToObjects<DugInRow>(dugRes);
+
+    // De-duplicate up-tier: a prospect appears once, in their HIGHEST tier.
+    const bookedSlugs = new Set(booked.map((b) => b.prospect_slug).filter(Boolean));
+    const bookedEmails = new Set(booked.map((b) => b.email));
+    const handSlugs = new Set(raisedHand.map((h) => h.prospect));
+    const raisedFiltered = raisedHand.filter(
+      (h) => !bookedSlugs.has(h.prospect) && !(h.email && bookedEmails.has(h.email.toLowerCase()))
+    );
+    const dugIn = dugInAll.filter(
+      (d) =>
+        !bookedSlugs.has(d.prospect) &&
+        !handSlugs.has(d.prospect) &&
+        !(d.email && bookedEmails.has(d.email.toLowerCase()))
+    );
+
+    return { booked, raisedHand: raisedFiltered, dugIn };
+  });
+}
+
+// --------------------------------------------------------------------------
+// Funnel: Opened -> Read -> Raised hand -> Booked. Each step is a strict
+// subset definition, so the numbers can only narrow. Opened uses the light
+// filter only (it is the volume number); Read applies the full human gate.
+// --------------------------------------------------------------------------
+
+export interface FunnelCounts {
+  opened: number;        // unique sessions that loaded a prospect page (self/denylist excluded)
+  read: number;          // of those, sessions that passed the human gate
+  raised_hand: number;   // of those, sessions with an intent act
+  booked: number;        // unique bookings (webhook truth, deduped by uid)
+}
+
+export async function getFunnelCounts(range: DateRange): Promise<FunnelCounts> {
+  return cached('funnelCounts', range, async () => {
+    const [openRes, readRes, handRes, bookRes] = await Promise.all([
+      runQuery(`
+        SELECT uniq(properties.$session_id) AS n FROM events
+        WHERE ${hogqlRangeClause(range)} AND event = '$pageview'
+          AND ${PROSPECT_PATH_FILTER} AND ${SELF_CITY_EXCLUSION}
+      `),
+      runQuery(`
+        SELECT uniq(properties.$session_id) AS n FROM events
+        WHERE ${hogqlRangeClause(range)} AND ${PROSPECT_PATH_FILTER}
+          ${humanWhere(range)}
+      `),
+      runQuery(`
+        SELECT uniq(properties.$session_id) AS n FROM events
+        WHERE ${hogqlRangeClause(range)} AND ${PROSPECT_PATH_FILTER}
+          AND (event = 'book_call_clicked' OR (event = 'cta_clicked' AND properties.cta LIKE '%book_call%') OR event IN ${INTENT_EVENTS_SQL} OR event IN ${GAVE_EMAIL_EVENTS_SQL})
+          ${humanWhere(range)}
+      `),
+      runQuery(`
+        SELECT uniq(toString(properties.booking_uid)) AS n FROM events
+        WHERE ${hogqlRangeClause(range)} AND event = 'call_booked'
+          AND coalesce(nullIf(toString(properties.attendee_email), ''), distinct_id) NOT LIKE 'test@%'
+          AND coalesce(nullIf(toString(properties.attendee_email), ''), distinct_id) NOT IN (${DENYLIST_EMAILS.map((e) => `'${e}'`).join(', ')})
+      `),
+    ]);
+    const n = (r: HogQLResult) => Number(r.results?.[0]?.[0] ?? 0);
+    return { opened: n(openRes), read: n(readRes), raised_hand: n(handRes), booked: n(bookRes) };
+  });
+}
+
+// --------------------------------------------------------------------------
+// Bot intel - the bot_visit stream from the edge classifier.
+// --------------------------------------------------------------------------
+
+export interface BotVisitGroup {
+  bot_type: string;
+  bot_name: string;
+  visits: number;
+  unique_paths: number;
+  top_paths: string[];
+  last_seen: string;
+}
+
+export async function getBotVisits(range: DateRange): Promise<BotVisitGroup[]> {
+  return cached('botVisits', range, async () => {
+    const r = await runQuery(`
+      SELECT
+        toString(properties.bot_type) AS bot_type,
+        toString(properties.bot_name) AS bot_name,
+        count() AS visits,
+        uniq(toString(properties.path)) AS unique_paths,
+        topK(3)(toString(properties.path)) AS top_paths,
+        toString(max(timestamp)) AS last_seen
+      FROM events
+      WHERE ${hogqlRangeClause(range)} AND event = 'bot_visit'
+      GROUP BY bot_type, bot_name
+      ORDER BY visits DESC
+      LIMIT 40
+    `);
+    return rowsToObjects<BotVisitGroup>(r);
+  });
+}
+
+// --------------------------------------------------------------------------
+// Quarantine - prospect-page sessions that FAILED the human gate, with the
+// reason. This is the no-false-negatives guarantee: nothing is deleted,
+// everything excluded is inspectable here.
+// --------------------------------------------------------------------------
+
+export interface QuarantineRow {
+  prospect: string;
+  sid: string;
+  city: string | null;
+  country: string | null;
+  views: number;
+  dwell_seconds: number;
+  forged_signals: number;   // scanner-forgeable events it fired (scroll/pointer)
+  reason: string;
+  last_event: string;
+}
+
+export async function getQuarantine(range: DateRange): Promise<QuarantineRow[]> {
+  return cached('quarantine', range, async () => {
+    const r = await runQuery(`
+      SELECT
+        ${PROSPECT_SLUG_EXPR} AS prospect,
+        properties.$session_id AS sid,
+        toString(any(properties.$geoip_city_name)) AS city,
+        toString(any(properties.$geoip_country_name)) AS country,
+        countIf(event = '$pageview') AS views,
+        dateDiff('second', min(timestamp), max(timestamp)) AS dwell_seconds,
+        countIf(event IN ('human_engaged', 'scroll_depth', 'audit_v3_scroll_depth', 'audit_v3_dwell')) AS forged_signals,
+        if(countIf(event IN ('human_engaged', 'scroll_depth', 'audit_v3_scroll_depth', 'audit_v3_dwell', 'cta_clicked', 'finding_expanded')) > 0,
+           'burst fingerprint - signals fired inside the 2s load window',
+           'open only - no human action of any kind') AS reason,
+        toString(max(timestamp)) AS last_event
+      FROM events
+      WHERE ${hogqlRangeClause(range)}
+        AND ${PROSPECT_PATH_FILTER}
+        AND properties.$session_id NOT IN ${humanSessionsSubquery(hogqlRangeClause(range))}
+        AND NOT (properties.$geoip_city_name IN (${SELF_CITIES.map((c) => `'${c}'`).join(', ')}))
+      GROUP BY prospect, sid
+      HAVING prospect != ''
+      ORDER BY last_event DESC
+      LIMIT 50
+    `);
+    return rowsToObjects<QuarantineRow>(r);
+  });
+}
+
+// --------------------------------------------------------------------------
+// Firehose - the raw recent event tail for the Lab. Everything, unfiltered,
+// so the filtered views above can always be cross-checked by eye.
+// --------------------------------------------------------------------------
+
+export interface FirehoseEvent {
+  ts: string;
+  event: string;
+  path: string;
+  city: string | null;
+  distinct_id: string;
+  detail: string | null;
+}
+
+export async function getEventFirehose(range: DateRange): Promise<FirehoseEvent[]> {
+  return cached('firehose', range, async () => {
+    const r = await runQuery(`
+      SELECT
+        toString(timestamp) AS ts,
+        event,
+        toString(coalesce(nullIf(toString(properties.path), ''), toString(properties.$pathname))) AS path,
+        toString(properties.$geoip_city_name) AS city,
+        substring(distinct_id, 1, 40) AS distinct_id,
+        toString(coalesce(
+          nullIf(toString(properties.bot_name), ''),
+          nullIf(toString(properties.cta), ''),
+          nullIf(toString(properties.finding), ''),
+          nullIf(toString(properties.attendee_email), '')
+        )) AS detail
+      FROM events
+      WHERE ${hogqlRangeClause(range)}
+        AND event NOT IN ('$web_vitals', '$ai_generation', '$ai_span', '$ai_trace', '$groupidentify', '$set')
+      ORDER BY timestamp DESC
+      LIMIT 100
+    `);
+    return rowsToObjects<FirehoseEvent>(r);
+  });
 }

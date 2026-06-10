@@ -26,6 +26,8 @@ import {
   getTrafficSources,
   getActivityTimeline,
   getActiveNow,
+  getCallList,
+  type CallList as CallListData,
   type RecentRead,
   type TopProspect,
   type HeadlineMetrics,
@@ -58,6 +60,7 @@ import ReferrerTable from '../components/hq/ReferrerTable.astro';
 import ActivityTimeline from '../components/hq/ActivityTimeline.astro';
 import DateRangeNav from '../components/hq/DateRangeNav.astro';
 import PredictionsTile from '../components/hq/PredictionsTile.astro';
+import CallList from '../components/hq/CallList.astro';
 import testsData from '../data/tests.json';
 import { classifyProspectSignal, filterActionable } from '../utils/hq/signal-filter';
 
@@ -103,6 +106,7 @@ let devices: DeviceRow[] = [];
 let sources: TrafficSource[] = [];
 let activity: ActivityDay[] = [];
 let activeNow: ActiveNow | null = null;
+let callList: CallListData = { booked: [], raisedHand: [], dugIn: [] };
 let prospectInfo: Map<string, ProspectInfo> = new Map();
 const CURRENT_WAVE = 'Wave 3 - This Week';
 let outreachQueue: OutreachQueueRow[] = [];
@@ -110,7 +114,7 @@ let fetchError: string | null = null;
 
 if (authed) {
   try {
-    const [h, r, t, c, b, co, ci, dv, sr, ac, an, pi] = await Promise.all([
+    const [h, r, t, c, b, co, ci, dv, sr, ac, an, pi, cl] = await Promise.all([
       getHeadlineMetrics(range),
       getRecentReads(range, trafficMode),
       getTopProspects(range, trafficMode),
@@ -123,9 +127,11 @@ if (authed) {
       getActivityTimeline(range, trafficMode),
       getActiveNow(),
       getProspectsBySlug(),
+      getCallList(range),
     ]);
     headline = h; recent = r; top = t; ctas = c; blog = b; countries = co;
     cities = ci; devices = dv; sources = sr; activity = ac; activeNow = an; prospectInfo = pi;
+    callList = cl;
   } catch (e) {
     fetchError = e instanceof Error ? e.message : String(e);
     console.error('[hq] PostHog fetch failed', e);
@@ -1765,6 +1771,13 @@ body { font-size: var(--t-body); }
 .kicker--neutral { color: var(--ink-faint); }
 .kicker--neutral::before { background: var(--ink-faint); }
 
+.calllist-note {
+  margin: calc(-1 * var(--sp-5)) 0 var(--sp-6);
+  color: var(--ink-dim);
+  font-size: var(--t-small, 0.85rem);
+}
+.calllist-note a { color: inherit; text-decoration: underline; }
+
 .modehead h1 {
   font-family: var(--grotesk);
   font-weight: 700;
@@ -2770,7 +2783,10 @@ details.exp .expbody { padding: 0 var(--sp-4) var(--sp-4); }
         )}
 
         <div class="only-cockpit">
-          <div class="modehead"><div><span class="kicker">The cockpit</span><h1>The next batch. <span class="ital">What to send now.</span></h1></div></div>
+          <div class="modehead"><div><span class="kicker">The call list</span><h1>Who earned a follow-up. <span class="ital">Evidence attached.</span></h1></div></div>
+          <p class="calllist-note">Every row below is backed by an act a scanner cannot fake. Anything ambiguous is quarantined in <a href={`/lab${url.search}`}>the Lab</a>, not blended in here. Window: {range.label}.</p>
+          <CallList list={callList} prospectInfo={prospectInfo} />
+          <div class="modehead" style="margin-top:var(--sp-10)"><div><span class="kicker">The cockpit</span><h1>The next batch. <span class="ital">What to send now.</span></h1></div></div>
           <PredictionsTile tests={testsData.tests as any} />
           <div id="pulse" class="pulse" set:html={pulseHtml}></div>
           <div id="queue" set:html={queueHtml}></div>

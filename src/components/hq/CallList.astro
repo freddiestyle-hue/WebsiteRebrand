@@ -1,0 +1,182 @@
+---
+// The Call List - HQ's decision surface. Three tiers, strongest first.
+// EVERY row is backed by an explicit act a scanner cannot fake; the evidence
+// chain is printed on the row so the "why am I seeing this" is never hidden.
+// Ambiguous traffic never reaches this component - it lives in /lab's
+// quarantine instead.
+
+import type { CallList } from '../../utils/posthog/query';
+import type { ProspectInfo } from '../../utils/hq/airtable';
+import { slugToDomain, findOnLinkedinUrl } from '../../utils/hq/messaged';
+import { lockedMeta } from '../../utils/audit/locked-observation';
+
+interface Props {
+  list: CallList;
+  prospectInfo?: Map<string, ProspectInfo>;
+}
+
+const { list, prospectInfo } = Astro.props;
+
+function timeAgo(iso: string): string {
+  const sec = Math.max(0, Math.round((Date.now() - new Date(iso + (iso.endsWith('Z') ? '' : 'Z')).getTime()) / 1000));
+  if (sec < 3600) return `${Math.max(1, Math.round(sec / 60))}m ago`;
+  const hr = Math.round(sec / 3600);
+  if (hr < 48) return `${hr}h ago`;
+  return `${Math.round(hr / 24)}d ago`;
+}
+
+function findingLabels(keys: string[]): string[] {
+  return (keys || []).filter(Boolean).map((k) => lockedMeta(k).shortLabel);
+}
+
+interface Row {
+  key: string;
+  name: string;
+  title: string;
+  company: string;
+  liHref: string;
+  email: string | null;
+  evidence: string[];
+  next: string;
+  when: string;
+  slug: string | null;
+}
+
+function infoFor(slug: string | null, email: string | null) {
+  const info = slug ? prospectInfo?.get(slug) : undefined;
+  return {
+    name: info?.firstName || info?.displayName || email || (slug ? slugToDomain(slug) : 'Unknown'),
+    title: info?.title || '',
+    company: info?.company || (slug ? slugToDomain(slug) : ''),
+    liHref: info?.linkedinUrl || (slug ? findOnLinkedinUrl(slug) : ''),
+    email: email || info?.email || null,
+  };
+}
+
+const bookedRows: Row[] = list.booked.map((b) => {
+  const base = infoFor(b.prospect_slug, b.email);
+  const name = b.name || base.name;
+  const startDate = b.start_time ? new Date(b.start_time).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : null;
+  return {
+    key: `b-${b.booking_uid}`,
+    ...base,
+    name,
+    evidence: [
+      b.status === 'cancelled'
+        ? `Cancelled the ${startDate ?? ''} call (Cal webhook)`
+        : `Booked a call${startDate ? ` for ${startDate}` : ''} (Cal webhook - server truth)`,
+    ],
+    next: b.status === 'cancelled' ? 'Recover: offer two new slots' : 'Prep the call - reread their audit first',
+    when: b.last_event,
+    slug: b.prospect_slug,
+  };
+});
+
+const handRows: Row[] = list.raisedHand.map((h) => {
+  const base = infoFor(h.prospect, h.email);
+  const ev: string[] = [];
+  if (h.book_clicks > 0) ev.push(`${h.book_clicks}× book-a-call click`);
+  if (h.scheduler_opens > 0) ev.push(`${h.scheduler_opens}× opened the scheduler`);
+  if (h.gave_email > 0) ev.push('gave their email');
+  ev.push('passed the human gate');
+  return {
+    key: `h-${h.prospect}`,
+    ...base,
+    evidence: ev,
+    next: 'Strike today - they reached for the calendar and stopped',
+    when: h.last_activity,
+    slug: h.prospect,
+  };
+});
+
+const dugRows: Row[] = list.dugIn.map((d) => {
+  const base = infoFor(d.prospect, d.email);
+  const labels = findingLabels(d.findings);
+  const ev: string[] = [];
+  if (labels.length > 0) ev.push(`opened: ${labels.join(', ')}`);
+  else if (d.cell_expands > 0) ev.push(`${d.cell_expands}× opened findings`);
+  if (d.scroll_100s > 0) ev.push(`${d.scroll_100s}× read to the end`);
+  if (d.copies > 0) ev.push('copied memo text');
+  if (d.prints > 0) ev.push('printed / saved PDF');
+  if (d.verdict_expansions > 0) ev.push('expanded the verdict');
+  ev.push('passed the human gate');
+  return {
+    key: `d-${d.prospect}`,
+    ...base,
+    evidence: ev,
+    next: labels.length > 0 ? `Follow up about ${labels[0]} - that's what hooked them` : 'Follow up referencing the audit',
+    when: d.last_activity,
+    slug: d.prospect,
+  };
+});
+
+const tiers: { label: string; sub: string; cls: string; rows: Row[] }[] = [
+  { label: 'Booked', sub: 'Cal webhook - cannot be faked', cls: 'booked', rows: bookedRows },
+  { label: 'Raised a hand', sub: 'intent acts past the human gate', cls: 'hand', rows: handRows },
+  { label: 'Dug in', sub: 'curiosity acts past the human gate', cls: 'dug', rows: dugRows },
+];
+const total = bookedRows.length + handRows.length + dugRows.length;
+---
+
+<div class="calllist">
+  {total === 0 && (
+    <p class="empty">No evidence-backed prospects in this window. That's a true zero, not a filter accident - check the quarantine in <a href="/lab">the Lab</a> if you doubt it.</p>
+  )}
+  {tiers.map((t) => t.rows.length > 0 && (
+    <div class={`tier tier--${t.cls}`}>
+      <div class="tier-head">
+        <span class="tier-name">{t.label}</span>
+        <span class="tier-sub">{t.sub}</span>
+        <span class="tier-count">{t.rows.length}</span>
+      </div>
+      {t.rows.map((r) => (
+        <div class="row" data-key={r.key}>
+          <div class="who">
+            {r.liHref ? (
+              <a href={r.liHref} target="_blank" rel="noopener"><strong>{r.name}</strong> ↗</a>
+            ) : (
+              <strong>{r.name}</strong>
+            )}
+            {r.title && <span class="t">, {r.title}</span>}
+            <span class="co"> · {r.company}</span>
+            {r.email && <span class="em"> · {r.email}</span>}
+          </div>
+          <div class="ev">{r.evidence.join(' · ')}</div>
+          <div class="act">
+            <span class="next">→ {r.next}</span>
+            <span class="when">{timeAgo(r.when)}</span>
+            {r.slug && <a class="memo" href={`/audit/v3/${r.slug}`} target="_blank" rel="noopener">memo ↗</a>}
+          </div>
+        </div>
+      ))}
+    </div>
+  ))}
+</div>
+
+<style>
+  .calllist { display: flex; flex-direction: column; gap: var(--sp-5, 20px); }
+  .empty { color: var(--ink-3, #777); font-size: 0.95rem; }
+  .empty a { color: inherit; text-decoration: underline; }
+  .tier { border: 1px solid var(--line-2, #e2ddd2); border-radius: 10px; overflow: hidden; }
+  .tier-head { display: flex; align-items: baseline; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--line-2, #e2ddd2); }
+  .tier-name { font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase; font-size: 0.78rem; }
+  .tier-sub { color: var(--ink-3, #777); font-size: 0.78rem; }
+  .tier-count { margin-left: auto; font-variant-numeric: tabular-nums; font-size: 0.8rem; color: var(--ink-3, #777); }
+  .tier--booked .tier-head { background: color-mix(in srgb, seagreen 8%, transparent); }
+  .tier--hand .tier-head { background: color-mix(in srgb, firebrick 7%, transparent); }
+  .tier--dug .tier-head { background: color-mix(in srgb, darkorange 8%, transparent); }
+  .row { padding: 12px 14px; border-bottom: 1px solid var(--line-2, #eee9de); display: flex; flex-direction: column; gap: 4px; }
+  .row:last-child { border-bottom: none; }
+  .who { font-size: 0.95rem; }
+  .who a { color: inherit; text-decoration: none; }
+  .who a:hover { text-decoration: underline; }
+  .who .t { font-style: italic; color: var(--ink-2, #555); }
+  .who .co { color: var(--ink-2, #555); }
+  .who .em { color: var(--ink-3, #888); font-size: 0.85rem; }
+  .ev { color: var(--ink-2, #555); font-size: 0.85rem; }
+  .act { display: flex; align-items: baseline; gap: 12px; font-size: 0.85rem; }
+  .next { font-weight: 600; }
+  .when { color: var(--ink-3, #888); font-variant-numeric: tabular-nums; }
+  .memo { margin-left: auto; color: var(--ink-3, #888); text-decoration: none; }
+  .memo:hover { text-decoration: underline; }
+</style>
