@@ -1369,13 +1369,10 @@ const SCORE_GRADE = gradeFor(scorePercent);
     return m ? decodeURIComponent(m[1]) : null;
   }
   function resolveVariant() {
-    try {
-      var p = new URLSearchParams(window.location.search).get('v');
-      if (p) p = p.toLowerCase();
-      if (p === 'a' || p === 'b' || p === 'c') return p;
-      var c = readCookie('rivett_variant');
-      if (c === 'a' || c === 'b' || c === 'c') return c.toLowerCase();
-    } catch (e) {}
+    // 2026-06-10: reveal-gate experiment ENDED (Move 1). The client used to
+    // re-resolve ?v=/cookie here and rebuild gating even when the server
+    // rendered ungated. Everyone gets the ungated page; the page-level A/B
+    // is now /audit/v3 vs /audit/b.
     return 'a';
   }
   var VARIANT = resolveVariant();
