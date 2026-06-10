@@ -50,7 +50,7 @@ const POSTHOG_PROJECT_ID = 373899;
 //     filters, and human_engaged (real pointer/scroll/key/touch input) joins
 //     the behavioural human filter + is_engaged flag. One-screen proposals
 //     that can't scroll now register a real reader while staying scanner-proof.
-const CACHE_VERSION = 'v15';
+const CACHE_VERSION = 'v16';
 
 // Lazy redis client. Construction is cheap but we only need one instance.
 // Use KV_REST_API_* env vars (set by Vercel KV / Upstash integration) since
@@ -412,6 +412,10 @@ export interface RecentRead {
   // only (the email-scanner fingerprint). Used by RecentReadsFeed to badge
   // "raw" rows so Fred can see signal vs noise at a glance — never hides.
   is_engaged: boolean;
+  /** True only when the session arrived on the prospect's own personal link
+   *  (or an email-identified device). False = "someone on their page" - the
+   *  feed must not display the prospect's name as if they were the reader. */
+  identity_proven: boolean;
 }
 
 export async function getRecentReads(range: DateRange, mode: TrafficMode = 'humans'): Promise<RecentRead[]> {
@@ -439,7 +443,17 @@ export async function getRecentReads(range: DateRange, mode: TrafficMode = 'huma
         countIf(event IN (
           'cta_clicked','book_call_clicked','finding_expanded','content_copied',
           'content_printed','audit_v3_verdict_expanded','audit_v3_form_submitted'
-        )) > 0 AS is_engaged
+        )) > 0 AS is_engaged,
+        -- v13 identity proof: did this session arrive on the prospect's own
+        -- personal link (or an email-identified device matching the slug)?
+        -- False = "someone on their page" - the UI must not show their name.
+        (
+          lower(max(toString(properties.utm_recipient))) = prospect
+          OR (position(max(toString(properties.utm_recipient)), '@') > 0
+              AND replaceAll(replaceRegexpOne(lower(max(toString(properties.utm_recipient))), '^.*@', ''), '.', '-') = prospect)
+          OR (position(distinct_id, '@') > 0
+              AND replaceAll(replaceRegexpOne(lower(distinct_id), '^.*@', ''), '.', '-') = prospect)
+        ) AS identity_proven
       FROM events
       WHERE ${hogqlRangeClause(range)}
         AND ${PROSPECT_PATH_FILTER}
@@ -452,11 +466,14 @@ export async function getRecentReads(range: DateRange, mode: TrafficMode = 'huma
       ORDER BY last_event DESC
       LIMIT 50
     `);
-    const raw = rowsToObjects<Omit<RecentRead, 'is_engaged'> & { is_engaged: boolean | number }>(r);
-    // HogQL returns the boolean as 0/1 in some serializations — coerce.
+    const raw = rowsToObjects<
+      Omit<RecentRead, 'is_engaged' | 'identity_proven'> & { is_engaged: boolean | number; identity_proven: boolean | number }
+    >(r);
+    // HogQL returns booleans as 0/1 in some serializations — coerce.
     return raw.map((row) => ({
       ...row,
       is_engaged: Boolean(row.is_engaged),
+      identity_proven: Boolean(row.identity_proven),
     }));
   }, mode);
 }
