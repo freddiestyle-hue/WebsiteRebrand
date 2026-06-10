@@ -11,6 +11,7 @@
 export const prerender = false;
 
 import { Redis } from '@upstash/redis';
+import BookingProvider from '../../../components/diagnostic/BookingProvider.astro';
 import type { Memo } from '../../../utils/audit/memo-schema';
 import { isValidV3Slug } from '../../../utils/audit/slug';
 import { assembleBuyerView, isSuppressed, traceTextFor } from '../../../utils/audit/buyer-view';
@@ -173,6 +174,46 @@ const DISCLAIMER =
 
       .disclaimer { font-family: var(--serif); font-style: italic; color: var(--ink-dim); font-size: var(--t-body-md); line-height: var(--lh-body); margin: 28px 0; }
 
+      /* Floating "Book a call" pill - verbatim from Base.astro for kinship. */
+      .floating-cta {
+        position: fixed; bottom: 24px; right: 24px; z-index: 100;
+        display: inline-flex; align-items: center; gap: 10px;
+        padding: 12px 18px 12px 16px;
+        background: var(--ink); color: var(--on-ink);
+        border-radius: 999px;
+        font-family: var(--mono); font-size: 12px; font-weight: 500;
+        letter-spacing: 0.06em; text-transform: uppercase; text-decoration: none;
+        box-shadow: 0 8px 28px rgba(143, 191, 63, 0.22), 0 2px 6px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 220ms cubic-bezier(0.16, 1, 0.3, 1);
+        will-change: transform;
+      }
+      .floating-cta:hover, .floating-cta:focus-visible {
+        transform: translateY(-1px) scale(1.03);
+        box-shadow: 0 12px 36px rgba(143, 191, 63, 0.32), 0 3px 8px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+        outline: none;
+      }
+      .floating-cta-dot {
+        width: 8px; height: 8px; border-radius: 50%;
+        background: var(--accent);
+        box-shadow: 0 0 8px rgba(143, 191, 63, 0.6);
+        animation: floating-cta-pulse 2.4s ease-in-out infinite;
+      }
+      .floating-cta-arrow { opacity: 0.7; transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1); }
+      .floating-cta:hover .floating-cta-arrow { transform: translateX(2px); opacity: 1; }
+      @keyframes floating-cta-pulse {
+        0%, 100% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.35); opacity: 0.7; }
+      }
+      @media (max-width: 640px) {
+        .floating-cta { bottom: 16px; right: 16px; padding: 10px 14px 10px 12px; font-size: 11px; gap: 8px; }
+        .floating-cta-arrow { display: none; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .floating-cta-dot { animation: none; }
+        .floating-cta { transition: none; }
+        .floating-cta:hover { transform: none; }
+      }
+
       details.appendix { border-top: none; margin-top: 0; }
       details.appendix > summary { padding: 0 0 14px; color: inherit; }
       details.appendix > summary h2 { font-size: var(--t-h-md); letter-spacing: var(--track-h-sm); line-height: var(--lh-h-prose); margin: 8px 0 4px; color: var(--ink); }
@@ -198,6 +239,41 @@ const DISCLAIMER =
     )}
     {view && memo && (
       <>
+        <BookingProvider />
+        <a
+          class="floating-cta"
+          href={CAL_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          data-cta="floating_book_call"
+          data-cal-link="fred-style/discovery"
+          aria-label="Book a call with Fred"
+        >
+          <span class="floating-cta-dot" aria-hidden="true"></span>
+          <span class="floating-cta-label">Book a call</span>
+          <svg class="floating-cta-arrow" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+            <path d="M3 8h10M9 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </a>
+        <script is:inline>
+          // Same interception as the site-wide pill (Base.astro): open the
+          // Cal modal in place when Cal is ready; the href fallback keeps
+          // full prospect/utm attribution if JS or Cal is unavailable.
+          (function () {
+            var a = document.querySelector('a.floating-cta[data-cal-link]');
+            if (!a) return;
+            var link = a.getAttribute('data-cal-link');
+            a.addEventListener('click', function (e) {
+              var w = window;
+              var ns = w.__rivettCalNamespace;
+              if (w.Cal && ns && w.Cal.ns && w.Cal.ns[ns]) {
+                e.preventDefault();
+                w.Cal.ns[ns]('modal', { calLink: link });
+              }
+            });
+          })();
+        </script>
+
         <div class="topbar mono">
           <span><strong>rivett</strong> · teardown · {domain}</span>
           <span>{scanDate}</span>
