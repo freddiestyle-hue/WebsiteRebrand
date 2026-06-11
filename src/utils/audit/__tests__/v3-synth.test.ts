@@ -479,7 +479,7 @@ describe('buildConversionCell with headless trace', () => {
     const conv = memo.verdictCells.find((c) => c.icon === 'eye');
     expect(conv?.value).toBe('Verified gap');
     expect(conv?.benchmark).toBe('Path · blocked');
-    expect(conv?.benchmarkRight).toBe('No form within 1 click');
+    expect(conv?.benchmarkRight).toBe('No form within 13s');
   });
 
   it('falls back to verified checks when trace did not run, ignoring soft-absences in gap count', () => {

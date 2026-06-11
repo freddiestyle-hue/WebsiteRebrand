@@ -26,7 +26,7 @@ export interface PageSpeedResult {
 }
 
 const PSI_URL = 'https://www.googleapis.com/pagespeedonline/v5/runPagespeed';
-const PSI_TIMEOUT_FIRST_MS = 45000;
+const PSI_TIMEOUT_FIRST_MS = 60000;
 const PSI_TIMEOUT_RETRY_MS = 12000;
 const PSI_RETRY_BACKOFF_MS = 800;
 
