@@ -869,7 +869,7 @@ export async function runAudit(rawUrl: string, opts?: RunAuditOptions): Promise<
         ? `A form sits on the ${onOther.role} page${fieldNote}, but not the homepage. A cold visitor landing on the front door has to navigate to convert - that extra step costs roughly half the completions.`
         : formViaTrace
           ? 'A submittable form exists - the rendered-browser trace reached it from the primary CTA. It is JS-embedded and off the homepage, so it loads late and costs a click, but the path is real.'
-          : 'No form for a cold visitor to convert through. Put a short form on the homepage - two extra clicks to find one costs roughly half the completions.';
+          : 'No form detectable for a cold visitor to convert through - none in the page markup, and none appeared in the rendered-browser trace. Put a short form on the homepage - two extra clicks to find one costs roughly half the completions.';
     draft.push({
       id: 'conversion-form-on-page',
       category: 'conversion',
@@ -938,8 +938,12 @@ export async function runAudit(rawUrl: string, opts?: RunAuditOptions): Promise<
         cpFinding = `The primary CTA (${cta}) leads to a submittable form in one click. A cold visitor has a clear, short path to convert.`;
         break;
       case 'no-form-reached':
-        cpEvidence = `${cta} clicked, no form within 1 click`;
-        cpFinding = `The primary CTA (${cta}) was clicked, but it did not lead to a submittable form within one click. A cold visitor following the obvious next step does not reach a way to convert.`;
+        // "13 seconds" = the form-hydration polling budget in the headless
+        // trace (13 x 1s in browserless-render.js / headless-check.ts). Keep
+        // aligned. Phrased as a timed observation: even if a form eventually
+        // hydrates (somewhere.com's takes 25s+), no real visitor waits.
+        cpEvidence = `${cta} clicked, no form appeared within 13s`;
+        cpFinding = `The primary CTA (${cta}) was clicked, and no submittable form appeared within 13 seconds. A cold visitor following the obvious next step is left waiting, with no way to convert.`;
         break;
       case 'no-cta':
         cpEvidence = 'no clear primary CTA on the homepage';

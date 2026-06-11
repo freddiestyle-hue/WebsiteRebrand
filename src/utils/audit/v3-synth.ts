@@ -901,9 +901,12 @@ function buildConversionCell(
   } else if (traceOutcome === 'no-form-reached') {
     const cta = cp?.primaryCtaText ? `"${cp.primaryCtaText}"` : 'the primary CTA';
     headlineValue = 'Verified gap';
-    headlineNote = `Clicking ${cta} did not reach a submittable form within one click. A cold visitor following the obvious next step has no way to convert.`;
+    // Timed observation, not an ontological claim - a form may eventually
+    // hydrate (somewhere.com's takes 25s+), but no cold visitor waits 13s.
+    // "13 seconds" = the trace polling budget; keep aligned with engine.ts.
+    headlineNote = `Clicking ${cta} produced no submittable form within 13 seconds. A cold visitor following the obvious next step is left waiting, with no way to convert.`;
     benchmarkLeft = 'Path · blocked';
-    benchmarkRight = 'No form within 1 click';
+    benchmarkRight = 'No form within 13s';
   } else if (traceOutcome === 'no-cta') {
     headlineValue = 'Verified gap';
     headlineNote = 'No clear primary call-to-action on the homepage for a visitor to follow.';
