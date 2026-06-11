@@ -79,6 +79,34 @@ export function checkAntiAiTell(text: string): AntiTellResult {
   return { clean: tells.length === 0, tells };
 }
 
+// Absolute claims the hero may only make when the audit corpus itself asserts
+// them. The conversion trace reports timed observations ("no submittable form
+// within 13 seconds"); a hero that inflates that to "never produces a form"
+// states something the scan did not measure - and a prospect who clicks the
+// CTA and reaches a slow-hydrating form has caught the audit lying. Same
+// philosophy as number grounding: the word must trace to the corpus.
+const ABSOLUTE_PATTERNS: ReadonlyArray<{ word: string; re: RegExp }> = [
+  { word: 'never', re: /\bnever\b/i },
+  { word: 'impossible', re: /\bimpossible\b/i },
+  { word: 'no way to', re: /\bno way to\b/i },
+  { word: 'always', re: /\balways\b/i },
+];
+
+export interface AbsolutesResult {
+  grounded: boolean;
+  unsupported: string[];
+}
+
+// Every absolute in the hero must appear in the audit corpus. A corpus that
+// says "within 13 seconds" does not license "never".
+export function checkAbsolutes(text: string, auditCorpus: string): AbsolutesResult {
+  const unsupported: string[] = [];
+  for (const { word, re } of ABSOLUTE_PATTERNS) {
+    if (re.test(text) && !re.test(auditCorpus)) unsupported.push(word);
+  }
+  return { grounded: unsupported.length === 0, unsupported };
+}
+
 export interface ShapeResult {
   ok: boolean;
   issues: string[];
@@ -113,6 +141,16 @@ export function evaluateHero(hero: HeroResult, auditCorpus: string): HeroEvalRes
   const grounding = checkHeroGrounding(hero, auditCorpus);
   if (!grounding.grounded) {
     failures.push(`ungrounded numbers: ${grounding.ungroundedNumbers.join(', ')}`);
+  }
+
+  for (const [field, text] of [
+    ['pageHero', hero.pageHero],
+    ['dmOneLiner', hero.dmOneLiner],
+  ] as const) {
+    const absolutes = checkAbsolutes(text ?? '', auditCorpus);
+    if (!absolutes.grounded) {
+      failures.push(`${field}: unsupported absolute: ${absolutes.unsupported.join(', ')}`);
+    }
   }
 
   for (const issue of checkHeroShape(hero).issues) {
