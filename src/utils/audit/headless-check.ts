@@ -79,10 +79,21 @@ async function hasSubmittableForm(page: Page): Promise<boolean> {
   const inDom = await page
     .evaluate(() => {
       const forms = Array.from(document.querySelectorAll('form'));
-      return forms.some((f) => {
-        const r = f.getBoundingClientRect();
-        if (r.width < 40 || r.height < 20) return false;
-        return !!f.querySelector('input:not([type=hidden]), textarea');
+      if (
+        forms.some((f) => {
+          const r = f.getBoundingClientRect();
+          if (r.width < 40 || r.height < 20) return false;
+          return !!f.querySelector('input:not([type=hidden]), textarea');
+        })
+      )
+        return true;
+      // A form-embed loader is proof a form lives on the page even before it
+      // hydrates - HubSpot forms on slow pages can take 15s+ to paint, far
+      // past any sane polling budget. Same loader-as-proof rule the static
+      // crawl applies. Keep aligned with browserless-render.js.
+      return Array.from(document.querySelectorAll('script[src], div[class], iframe[src]')).some((el) => {
+        const sig = (el.getAttribute('src') || '') + ' ' + (el.getAttribute('class') || '');
+        return /js\.hsforms\.net|hs-form-frame|hbspt-form|embed\.typeform\.com|form\.jotform|jotfor\.ms|tally\.so\/embed|marketo\.com\/js\/forms2|go\.pardot\.com/i.test(sig);
       });
     })
     .catch(() => false);
