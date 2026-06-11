@@ -1,16 +1,22 @@
-// LLM-written teardown hero. Calls Claude Sonnet to diagnose a prospect's
-// growth operation from the calibrated audit synthesis (Upgrade 7) and write
-// the per-prospect hero: a page headline, a cold-DM one-liner, and one honest
-// strength.
+// LLM-written teardown hero. Calls a frontier Claude model to diagnose a
+// prospect's growth operation from the calibrated audit synthesis (Upgrade 7)
+// and write the per-prospect hero: a page headline, a cold-DM one-liner, and
+// one honest strength.
 //
 // Phase 1 of the teardown rebuild. pickHeroFinding (pick-hero.ts) stays as the
 // rule-based fallback - generateHero returns null on any failure, and the
 // caller falls back to it.
 //
-// Cost: Claude Sonnet, ~1-3s per call, a few dollars across the full prospect
-// list. Prompt caching is deliberately not used: the static system prompt is
-// well under Sonnet's 2048-token minimum cacheable prefix, so a cache_control
-// breakpoint would silently do nothing.
+// Cost: Claude Fable 5 ($10/$50 per MTok), ~5 cents per memo at ~3K input
+// tokens. The hero is the single most-read sentence of the whole pipeline, so
+// the frontier model is the cheapest quality lever available; it also fails
+// the voice/eval gate less often than Sonnet did, which means fewer prospects
+// ever see the rule-based fallback. Prompt caching is deliberately not used:
+// the static system prompt is well under the 2048-token minimum cacheable
+// prefix, so a cache_control breakpoint would silently do nothing.
+//
+// Fable 5 rejects temperature/top_p/top_k and an explicit thinking:disabled
+// (400s) - keep sampling params and the thinking field omitted.
 //
 // Security: the audit scrapes prospect websites, so its text is untrusted. All
 // audit content enters the prompt only as JSON-encoded data, and the system
@@ -21,8 +27,8 @@ import Anthropic from '@anthropic-ai/sdk';
 import type { Memo } from './memo-schema';
 import { checkHeroGrounding } from './hero-grounding';
 
-const MODEL = 'claude-sonnet-4-6';
-const MAX_TOKENS = 1024;
+const MODEL = 'claude-fable-5';
+const MAX_TOKENS = 2048;
 const TIMEOUT_MS = 20_000;
 
 export interface HeroResult {

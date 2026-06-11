@@ -826,7 +826,9 @@ export function buildTrackingCell(
                 ? ` ${unconfirmedAbsent} other tracker${unconfirmedAbsent === 1 ? '' : 's'} couldn't be confirmed (may be consent-gated or late-loading).`
                 : '')
           : `${firing} of ${installed} present trackers confirmed firing` +
-            (idle > 0 ? `, ${idle} installed but not observed firing` : '') +
+            (idle > 0
+              ? `, ${idle} installed but unconfirmed (consent banners can hide firing from this scan)`
+              : '') +
             '.' +
             (unconfirmedAbsent > 0
               ? ` ${unconfirmedAbsent} other tracker${unconfirmedAbsent === 1 ? '' : 's'} couldn't be confirmed.`
@@ -837,7 +839,7 @@ export function buildTrackingCell(
         ? 'Unconfirmed'
         : firing === installed
           ? 'All present firing'
-          : `${idle} not firing`,
+          : `${idle} unconfirmed`,
     checks: augmentedChecks,
   };
 }

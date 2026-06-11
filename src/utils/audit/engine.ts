@@ -17,6 +17,7 @@ import {
 } from './crawl';
 import type { ConversionPathResult } from './conversion-path';
 import type { SerpResult } from './serp';
+import { checkAiBotsBlocked } from './robots';
 
 // Upgrade 7 - how far a finding can be trusted, especially a negative one.
 //   verified     - confirmed present, or a real measurement, or an
@@ -488,21 +489,28 @@ export async function runAudit(rawUrl: string, opts?: RunAuditOptions): Promise<
   }
   {
     const ok = robots.ok;
-    const text = robots.ok ? robots.text.toLowerCase() : '';
-    // Check if AI bots are blocked
-    const blocksAi = ok && /user-agent:\s*(gptbot|google-extended|perplexitybot|claudebot|chatgpt-user)/i.test(text) && /disallow:\s*\//i.test(text);
-    const passed = ok && !blocksAi;
+    // Per-user-agent parse (robots.ts): a bot counts as blocked only when the
+    // group that actually applies to it disallows the site root. The old flat
+    // regex false-positived on files that blocked a different crawler.
+    const aiBlock = ok
+      ? checkAiBotsBlocked(robots.text)
+      : { blocked: false, blockedBots: [], viaWildcardOnly: false };
+    const passed = ok && !aiBlock.blocked;
     draft.push({
       id: 'robots',
       category: 'crawl',
       label: 'robots.txt present, AI bots not blocked',
       passed,
       weight: 2,
-      evidence: ok ? `200 at /robots.txt; AI bots ${blocksAi ? 'blocked' : 'allowed'}` : `404 at /robots.txt`,
+      evidence: ok
+        ? `200 at /robots.txt; AI bots ${aiBlock.blocked ? `blocked (${aiBlock.blockedBots.join(', ')})` : 'allowed'}`
+        : `404 at /robots.txt`,
       finding: !ok
         ? `No robots.txt. Most crawlers tolerate this, but the absence means you're not signaling preferences to anyone. Ship a permissive robots.txt that explicitly allows GPTBot, Google-Extended, PerplexityBot, ClaudeBot, and points to your sitemap.`
-        : blocksAi
-          ? `robots.txt is explicitly blocking one or more AI crawlers (GPTBot, ClaudeBot, PerplexityBot, or Google-Extended). If you want AI engines to find and cite you, remove those Disallow rules.`
+        : aiBlock.blocked
+          ? aiBlock.viaWildcardOnly
+            ? `robots.txt blocks the whole site for all crawlers (User-agent: * with Disallow: /), which shuts out AI engines along with everything else. If that's not intentional, remove the root Disallow.`
+            : `robots.txt is explicitly blocking ${aiBlock.blockedBots.join(', ')} at the site root. If you want AI engines to find and cite you, remove those Disallow rules.`
           : `robots.txt is present and not blocking AI crawlers. Baseline hygiene.`,
     });
   }
@@ -690,7 +698,7 @@ export async function runAudit(rawUrl: string, opts?: RunAuditOptions): Promise<
         : m.state === 'firing'
           ? 'beacon observed firing during the scan'
           : m.state === 'present'
-            ? 'tag code on the page; not observed firing'
+            ? 'tag code on the page; firing unconfirmed (consent banners can gate it)'
             : 'not detected';
     const finding =
       m.state === 'events-observed'
@@ -708,7 +716,7 @@ export async function runAudit(rawUrl: string, opts?: RunAuditOptions): Promise<
       absent:
         'No Meta Pixel detected. If you are spending on Meta ads, the algorithm cannot learn from conversions on this page. Install the pixel and configure the lead event.',
       present:
-        'Meta Pixel code is on the page, but we did not see it send data during the scan. Confirm it fires a PageView and a lead or purchase event.',
+        'Meta Pixel code is on the page, but this scan could not confirm it sending data. If the site runs a consent banner, the pixel may fire only after a visitor accepts. Worth confirming it fires a PageView and a lead or purchase event.',
       firing: 'Meta Pixel is firing. Meta is receiving page data it can optimize ad bidding against.',
     }),
   );
@@ -717,7 +725,7 @@ export async function runAudit(rawUrl: string, opts?: RunAuditOptions): Promise<
       absent:
         'No GTM container. Every new tracking tag requires a developer. Add GTM once and you can wire pixels and conversion events without redeploying.',
       present:
-        'A GTM container is on the page, but we did not see it execute during the scan. Confirm the container is published and loading.',
+        'A GTM container is on the page, but this scan could not confirm it executing. A consent banner can hold tags back until a visitor accepts. Worth confirming the container is published and loading.',
       firing: 'A GTM container is live and running. New tags can be wired without code changes.',
     }),
   );
@@ -726,7 +734,7 @@ export async function runAudit(rawUrl: string, opts?: RunAuditOptions): Promise<
       absent:
         'No GA4 detected. Google Ads cannot optimize for conversions and any SEO work is unmeasurable. Install GA4, most easily via Google Tag Manager.',
       present:
-        'GA4 appears to be configured, but we did not confirm it sending data during the scan. Verify a GA4 configuration tag fires on every page.',
+        'GA4 appears to be configured, but this scan could not confirm it sending data. A consent banner can hold it back until a visitor accepts. Worth verifying a GA4 configuration tag fires on every page.',
       firing:
         'GA4 is installed and sending data. Google Ads bidding and SEO measurement both have what they need.',
     }),
@@ -736,7 +744,8 @@ export async function runAudit(rawUrl: string, opts?: RunAuditOptions): Promise<
   draft.push(
     trackingCheck('tracking-linkedin-insight', 'LinkedIn Insight tag', 0, measured.linkedinInsight, {
       absent: 'No LinkedIn Insight tag. Only relevant if you advertise on LinkedIn.',
-      present: 'LinkedIn Insight code is on the page, but not observed firing in this scan.',
+      present:
+        'LinkedIn Insight code is on the page; firing unconfirmed in this scan (consent banners can gate it).',
       firing:
         'LinkedIn Insight is firing. If you run LinkedIn Ads, retargeting and conversion attribution will work.',
     }),
@@ -744,7 +753,8 @@ export async function runAudit(rawUrl: string, opts?: RunAuditOptions): Promise<
   draft.push(
     trackingCheck('tracking-tiktok-pixel', 'TikTok Pixel', 0, measured.tiktokPixel, {
       absent: 'No TikTok Pixel. Only relevant if your buyers are on TikTok.',
-      present: 'TikTok Pixel code is on the page, but not observed firing in this scan.',
+      present:
+        'TikTok Pixel code is on the page; firing unconfirmed in this scan (consent banners can gate it).',
       firing: 'TikTok Pixel is firing.',
     }),
   );
@@ -752,7 +762,8 @@ export async function runAudit(rawUrl: string, opts?: RunAuditOptions): Promise<
     trackingCheck('tracking-posthog', 'PostHog product analytics', 0, measured.postHog, {
       absent:
         'No PostHog. Not strictly required, but if you want feature flags, session replay, or product analytics later, it is the cheapest entry point.',
-      present: 'PostHog code is on the page, but not observed firing in this scan.',
+      present:
+        'PostHog code is on the page; firing unconfirmed in this scan (consent banners can gate it).',
       firing: 'PostHog is installed and sending data. Product analytics infrastructure is in place.',
     }),
   );
