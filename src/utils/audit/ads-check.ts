@@ -130,16 +130,25 @@ const norm = (s: unknown) => String(s ?? '').toLowerCase().replace(/[^a-z0-9]/g,
  *  ig_username exactly matches the prospect's own link. */
 async function resolveMetaPageId(
   identity: SocialIdentity,
-  headers: Record<string, string>
+  headers: Record<string, string>,
+  hostname: string
 ): Promise<{ pageId: string; matchedOn: string } | null> {
   const fbTarget = norm(identity.facebookSlug);
   const igTarget = norm(identity.instagramHandle);
-  if (!fbTarget && !igTarget) return null;
+  // Domain-identity fallback tier, for sites that link no social profiles at
+  // all (somewhere.com case: real Meta page, zero links anywhere in the
+  // rendered DOM). A page NAMED for the domain ("Somewhere.com", alias
+  // "somewheredotcom") is as self-declared as a footer link - the page owner
+  // typed the domain. Only active when NO fb/ig link exists; an existing
+  // link's exact-match verification is never loosened.
+  const bareHost = hostname.replace(/^www\./, '');
+  const domainTarget = norm(bareHost);
+  const domainDotTarget = norm(bareHost.replace(/\./g, 'dot'));
 
   const queries = [...new Set(
-    [identity.facebookSlug, identity.siteName, identity.instagramHandle]
+    [identity.facebookSlug, identity.siteName, identity.instagramHandle, bareHost]
       .filter((q): q is string => Boolean(q && q.trim()))
-  )].slice(0, 3);
+  )].slice(0, 4);
 
   for (const query of queries) {
     const r = await safeJson(
@@ -157,6 +166,16 @@ async function resolveMetaPageId(
       }
       if (igTarget && ig && ig === igTarget) {
         return { pageId: String(c.page_id), matchedOn: `instagram.com/${identity.instagramHandle}` };
+      }
+      if (!fbTarget && !igTarget) {
+        const pageName = norm(c?.name);
+        if (
+          (domainTarget && pageName === domainTarget) ||
+          (domainTarget && alias === domainTarget) ||
+          (domainDotTarget && alias === domainDotTarget)
+        ) {
+          return { pageId: String(c.page_id), matchedOn: `page "${c?.name}" matches domain ${bareHost}` };
+        }
       }
     }
   }
@@ -176,6 +195,45 @@ async function resolveLinkedinName(
   if (!r.ok) return null;
   const name = r.body?.name ?? r.body?.companyName ?? null;
   return typeof name === 'string' && name.trim() ? name.trim() : null;
+}
+
+/** Fallback identity when the site links no LinkedIn profile: guess the
+ *  company slug from the domain / site name, fetch the company page, and
+ *  accept ONLY when that page's own declared website matches the audited
+ *  domain. The platform-side declaration is as strong as a footer link.
+ *  A bare name match never counts (recom.co rule). */
+async function resolveLinkedinNameByDomain(
+  hostname: string,
+  siteName: string | null,
+  headers: Record<string, string>
+): Promise<string | null> {
+  const bare = hostname.replace(/^www\./, '').toLowerCase();
+  const nameSlug = siteName
+    ? siteName.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+    : null;
+  const slugs = [...new Set(
+    [bare.replace(/\./g, '-'), bare.split('.')[0], nameSlug]
+      .filter((s): s is string => Boolean(s && s.length >= 2))
+  )].slice(0, 3);
+
+  for (const slug of slugs) {
+    const r = await safeJson(
+      `${SC_BASE}/linkedin/company?url=${encodeURIComponent(`https://www.linkedin.com/company/${slug}`)}`,
+      headers
+    );
+    if (!r.ok) continue;
+    const name = r.body?.name ?? r.body?.companyName ?? null;
+    const website = r.body?.website ?? r.body?.websiteUrl ?? r.body?.website_url ?? null;
+    if (typeof name !== 'string' || !name.trim() || typeof website !== 'string') continue;
+    let siteHost: string;
+    try {
+      siteHost = new URL(website).hostname.replace(/^www\./, '').toLowerCase();
+    } catch {
+      continue;
+    }
+    if (siteHost === bare) return name.trim();
+  }
+  return null;
 }
 
 /** Count LinkedIn ads whose advertiser matches the verified company name. */
@@ -213,8 +271,10 @@ export async function checkAds(
 
   const [googleResp, metaPage, linkedinName] = await Promise.all([
     safeJson(googleUrl, headers),
-    resolveMetaPageId(identity, headers),
-    identity.linkedinSlug ? resolveLinkedinName(identity.linkedinSlug, headers) : Promise.resolve(null),
+    resolveMetaPageId(identity, headers, hostname),
+    identity.linkedinSlug
+      ? resolveLinkedinName(identity.linkedinSlug, headers)
+      : resolveLinkedinNameByDomain(hostname, identity.siteName, headers),
   ]);
 
   const [metaResp, linkedinResp] = await Promise.all([

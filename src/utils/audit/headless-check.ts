@@ -58,16 +58,18 @@ export interface HeadlessResult {
 // sites - 60s lets the page actually finish settling before scroll simulation.
 // Vercel's default function timeout is 60s on Pro, so this is the hard ceiling.
 const HEADLESS_TIMEOUT_MS = 60000;
-// Cap the Browserless /function render so headless + PSI (which run in parallel)
-// + the crawl + the LLM memo build all fit inside the 60s function ceiling.
-// Browserless enforces this server-side via the &timeout query param; most
-// real renders finish in well under 15s, so this only bites pathological sites.
-const BROWSERLESS_FN_TIMEOUT_MS = 30000;
+// Cap the Browserless /function render via the &timeout query param, which
+// Browserless enforces server-side. v3.astro runs at maxDuration 300 now (not
+// the old 60s ceiling), so the cap exists to bound cost, not to dodge a 504.
+// 45s = nav (≤15s) + conversion trace with form-hydration polling (≤16s) +
+// beacon settle, with headroom. Most real renders still finish well under 15s.
+const BROWSERLESS_FN_TIMEOUT_MS = 45000;
 const NAV_TIMEOUT_MS = 20000;
-// Trace budget covers homepage + up to 2 deep-page escalations.
-// Each trace = (enumerate + click + settle) ~3s; deep nav = ~2s. Worst case
-// 3 + 2 + 3 + 2 + 3 = 13s. Cap at 15s for headroom.
-const TRACE_TIMEOUT_MS = 15000;
+// Trace budget covers homepage + up to 2 deep-page escalations, where each
+// trace now includes up to ~9s of form-hydration polling (JS-embedded forms
+// on slow pages paint seconds after navigation). Matches the 16s in-function
+// budget in browserless-render.js with headroom.
+const TRACE_TIMEOUT_MS = 18000;
 
 // --- Upgrade 4: conversion-path trace -------------------------------------
 
@@ -325,9 +327,15 @@ async function traceConversionPath(page: Page): Promise<ConversionPathResult> {
     }
 
     // Let the click settle - it may navigate, open a modal, or reveal a form.
+    // Poll rather than single-check: JS-embedded forms (HubSpot et al) on slow
+    // pages hydrate seconds after navigation. Early-exits on first sighting.
+    // Mirrors the polling in browserless-render.js - keep aligned.
     await page.waitForLoadState('domcontentloaded', { timeout: 2500 }).catch(() => {});
-    await page.waitForTimeout(1000);
-    const reached = await hasSubmittableForm(page);
+    let reached = false;
+    for (let i = 0; i < 10 && !reached; i++) {
+      await page.waitForTimeout(900);
+      reached = await hasSubmittableForm(page);
+    }
     return {
       primaryCtaText: primary.text,
       outcome: reached ? 'form-after-click' : 'no-form-reached',

@@ -29,7 +29,7 @@ export default async ({ page, context }) => {
   // Keep the whole render inside Browserless's ~30s server-side cap (set by the
   // caller's &timeout) so it returns usable data instead of being killed.
   const NAV_TIMEOUT_MS = 15000;
-  const TRACE_TIMEOUT_MS = 8000;
+  const TRACE_TIMEOUT_MS = 16000; // covers click + nav + up to ~9s of form-hydration polling
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
   // --- inlined from tracking.ts: which hosts are analytics/ads beacons ---
@@ -60,7 +60,7 @@ export default async ({ page, context }) => {
   ];
 
   // --- inlined from conversion-path.ts: primary-CTA picker (pure) ---
-  const HIGH_INTENT = /\b(get started|start (free|now)|free trial|try (it )?free|book (a |your )?(call|demo|consult\w*|appointment|tour|session|visit)|request (a |your )?(quote|demo|call|consult\w*|info|information|brochure|tour|callback)|get (a |your )?(quote|estimate|demo|callback|started|in touch)|schedule (a |your )?(call|demo|consult\w*|appointment|tour|visit)|talk to (us|sales|an expert|a specialist)|contact us|get in touch|book now|enquire|enquir(e|y)|inquire|claim your|sign up|join (now|today|free|the)|create (a |an |your )?account|register|apply (now|today|here)|see (our )?(pricing|plans|prices)|view (our )?(pricing|plans|prices)|get (the |a |our )?(app|free)|download|free (consultation|estimate|quote|assessment|audit)|find (out|your)|learn how|see how (it )?works|watch (a |the )?demo|shop( all| now| the| our)?|buy( now| it)?|add to (cart|bag)|order now|browse (our )?(collection|store|shop)|view (the |our |all )?(collection|products|store)|see (the |our )?(collection|catalog)|reserve (your |a )?(spot|seat|space|table)|donate( now| today)?|give (now|today)|volunteer|pledge)\b/i;
+  const HIGH_INTENT = /\b(get started|start (free|now|hiring)|free trial|try (it )?free|book (a |your )?(call|demo|consult\w*|appointment|tour|session|visit)|request (a |your )?(quote|demo|call|consult\w*|info|information|brochure|tour|callback)|get (a |your )?(quote|estimate|demo|callback|started|in touch)|schedule (a |your )?(call|demo|consult\w*|appointment|tour|visit)|talk to (us|sales|an expert|a specialist)|contact us|get in touch|book now|enquire|enquir(e|y)|inquire|claim your|sign up|join (now|today|free|the)|create (a |an |your )?account|register|apply (now|today|here)|see (our )?(pricing|plans|prices)|view (our )?(pricing|plans|prices)|get (the |a |our )?(app|free)|download|free (consultation|estimate|quote|assessment|audit)|find (out|your)|learn how|see how (it )?works|watch (a |the )?demo|shop( all| now| the| our)?|buy( now| it)?|add to (cart|bag)|order now|browse (our )?(collection|store|shop)|view (the |our |all )?(collection|products|store)|see (the |our )?(collection|catalog)|reserve (your |a )?(spot|seat|space|table)|donate( now| today)?|give (now|today)|volunteer|pledge|hire (now|today|top|talent|remote|offshore|with)|find talent|post a (job|role)|hire (a |an )?(va|developer|designer|assistant|team))\b/i;
   const CTA_CLASS = /\b(cta|btn-primary|primary-cta|hero-cta|btn-cta|action-btn|primary-button)\b/i;
   const SKIP_HREF = /^\s*(mailto:|tel:)/i;
   const pickPrimaryCta = (candidates) => {
@@ -293,8 +293,15 @@ export default async ({ page, context }) => {
         .catch(() => false);
       if (!clicked) return { primaryCtaText: primary.text, outcome: 'trace-failed', clicksToForm: null };
       await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 2500 }).catch(() => {});
-      await sleep(1000);
-      const reached = await hasSubmittableForm();
+      // Poll for the form instead of a single check: JS-embedded forms
+      // (HubSpot et al) on slow pages hydrate seconds after navigation -
+      // somewhere.com's /form/contact took ~8s to paint its form. Early-exits
+      // the moment the form appears, so fast sites pay one 900ms tick.
+      let reached = false;
+      for (let i = 0; i < 10 && !reached; i++) {
+        await sleep(900);
+        reached = await hasSubmittableForm();
+      }
       return {
         primaryCtaText: primary.text,
         outcome: reached ? 'form-after-click' : 'no-form-reached',

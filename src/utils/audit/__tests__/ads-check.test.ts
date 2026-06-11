@@ -180,3 +180,85 @@ describe('checkAds', () => {
     expect(r!.commentary).not.toMatch(/Meta \d/);
   });
 });
+
+describe('checkAds - domain-identity fallback (sites that link no socials)', () => {
+  // somewhere.com regression: real Meta page + 23 LinkedIn ads, but zero
+  // social links anywhere in the site's HTML, so the link-keyed lookups never
+  // ran and the artifact showed Google only. The fallback verifies identity
+  // through the PLATFORM's own declaration: a Meta page named for the domain,
+  // or a LinkedIn company page whose website field is the audited domain.
+  // Bare name matches still never count.
+
+  it('publishes a Meta count when the page name matches the domain', async () => {
+    mockFetch([
+      ['google/company/ads', { results: [] }],
+      [
+        'facebook/adLibrary/search/companies',
+        {
+          searchResults: [
+            { page_id: '111', page_alias: 'somewhereelse', ig_username: null, name: 'Somewhere Else Travel' },
+            { page_id: '999', page_alias: 'somewheredotcom', ig_username: 'hirewithsomewhere', name: 'Somewhere.com' },
+          ],
+        },
+      ],
+      ['facebook/adLibrary/company/ads', { number_of_ads_estimate: 1, results: [] }],
+      ['linkedin/company', 404],
+    ]);
+    const r = await checkAds('somewhere.com', NO_IDENTITY);
+    expect(r!.metaActive).toBe(1);
+    expect(r!.identityStatus.meta).toBe('verified');
+    const calls = (fetch as ReturnType<typeof vi.fn>).mock.calls.map((c) => String(c[0]));
+    expect(calls.some((u) => u.includes('pageId=999'))).toBe(true);
+    expect(calls.some((u) => u.includes('pageId=111'))).toBe(false);
+  });
+
+  it('never domain-matches when the site DOES declare a Facebook link', async () => {
+    // An existing link's exact-match verification must not loosen: the linked
+    // slug matches nothing, so the count is withheld even though a page name
+    // happens to match the domain.
+    mockFetch([
+      ['google/company/ads', { results: [] }],
+      [
+        'facebook/adLibrary/search/companies',
+        { searchResults: [{ page_id: '999', page_alias: 'somewheredotcom', ig_username: null, name: 'Somewhere.com' }] },
+      ],
+      ['linkedin/company', 404],
+    ]);
+    const r = await checkAds('somewhere.com', { ...NO_IDENTITY, facebookSlug: 'real-somewhere-page' });
+    expect(r!.metaActive).toBeNull();
+    expect(r!.identityStatus.meta).toBe('unverified-link');
+  });
+
+  it('publishes a LinkedIn count when the company page website matches the domain', async () => {
+    mockFetch([
+      ['google/company/ads', { results: [] }],
+      ['facebook/adLibrary/search/companies', { searchResults: [] }],
+      ['linkedin/company', { name: 'Somewhere', website: 'https://somewhere.com/' }],
+      [
+        'linkedin/ads/search',
+        {
+          searchResultsCount: 24,
+          ads: [
+            { advertiser: { name: 'Somewhere' } },
+            { advertiser: { name: 'Somewhere on Earth: The Global Tech Podcast' } },
+          ],
+        },
+      ],
+    ]);
+    const r = await checkAds('somewhere.com', { ...NO_IDENTITY, siteName: 'Somewhere' });
+    // Only the exact-name advertiser counts - the podcast near-miss is filtered.
+    expect(r!.linkedinActive).toBe(1);
+    expect(r!.identityStatus.linkedin).toBe('verified');
+  });
+
+  it('withholds LinkedIn when the company page website is a different domain', async () => {
+    mockFetch([
+      ['google/company/ads', { results: [] }],
+      ['facebook/adLibrary/search/companies', { searchResults: [] }],
+      ['linkedin/company', { name: 'Somewhere', website: 'https://somewhere-travel.io/' }],
+    ]);
+    const r = await checkAds('somewhere.com', NO_IDENTITY);
+    expect(r!.linkedinActive).toBeNull();
+    expect(r!.identityStatus.linkedin).toBe('no-link');
+  });
+});

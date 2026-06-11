@@ -252,10 +252,23 @@ export function countFormFields(html: string): { total: number; required: number
 // homepage; the crawl checks them on the other key pages so a form on
 // /contact or a CTA on /pricing is no longer invisible to the audit.
 export function detectConversionSignals(html: string): ConversionSignals {
-  const heroText = html.slice(0, 4000);
+  // Hero = the first stretch of BODY markup. Slicing from offset 0 made the
+  // hero window pure <head> boilerplate on script-heavy builders (Webflow
+  // heads alone run past 4000 chars - somewhere.com's "Start Hiring" header
+  // CTA was invisible to this check until the slice anchored on <body>).
+  const bodyStart = html.search(/<body\b[^>]*>/i);
+  const heroText = bodyStart >= 0 ? html.slice(bodyStart, bodyStart + 8000) : html.slice(0, 4000);
   const fields = countFormFields(html);
   return {
-    hasForm: /<form\b[^>]*>/i.test(html),
+    // A literal <form> tag, or a known JS form-embed loader. Embedded forms
+    // (HubSpot, Typeform, Jotform...) inject the <form> at runtime, so the
+    // static fetch sees only the loader script - which is still proof a form
+    // lives on the page.
+    hasForm:
+      /<form\b[^>]*>/i.test(html) ||
+      /(js\.hsforms\.net|hbspt\.forms\.create|embed\.typeform\.com|form\.jotform|jotfor\.ms|tally\.so\/embed|marketo\.com\/js\/forms2|go\.pardot\.com)/i.test(
+        html,
+      ),
     hasTelLink: /\bhref=["']tel:/i.test(html),
     hasScheduling:
       /(calendly\.com|cal\.com\/[a-z]|calendar\.app\.google|hubspot\.com\/meetings|chilipiper\.com|savvycal\.com|tidycal\.com)/i.test(
@@ -269,7 +282,7 @@ export function detectConversionSignals(html: string): ConversionSignals {
       /<(a|button)[^>]*\b(class|id)=["'][^"']*(cta|btn-primary|primary-cta|hero-cta|book|start|get-started|trial)/i.test(
         heroText,
       ) ||
-      /<(a|button)[^>]*>([^<]*\b(get started|start free|book a (call|demo)|request (a )?(quote|demo)|schedule (a )?(call|demo)|talk to|contact us)\b)/i.test(
+      /<(a|button)[^>]*>([^<]*\b(get started|start free|start hiring|hire (now|talent|top)|find talent|book a (call|demo)|request (a )?(quote|demo)|schedule (a )?(call|demo)|talk to|contact us)\b)/i.test(
         heroText,
       ),
     formFieldCount: fields.total,
