@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { checkAntiAiTell, checkHeroShape, evaluateHero, BANNED_WORDS } from '../hero-eval';
+import { checkAbsolutes, checkAntiAiTell, checkHeroShape, evaluateHero, BANNED_WORDS } from '../hero-eval';
 import { HERO_SYSTEM_PROMPT } from '../hero-llm';
 import type { HeroResult } from '../hero-llm';
 
@@ -95,6 +95,56 @@ describe('evaluateHero', () => {
     const r = evaluateHero(hero({ pageHero: 'You can unlock more revenue here.' }), corpus);
     expect(r.pass).toBe(false);
     expect(r.failures).toContain('pageHero: banned word: unlock');
+  });
+});
+
+describe('checkAbsolutes', () => {
+  const timedCorpus = 'Clicking "Start Hiring" produced no submittable form within 13 seconds.';
+
+  it('rejects "never" when the corpus only made a timed observation', () => {
+    const r = checkAbsolutes('Clicking Start Hiring never produces a form.', timedCorpus);
+    expect(r.grounded).toBe(false);
+    expect(r.unsupported).toContain('never');
+  });
+
+  it('allows an absolute the corpus itself asserts', () => {
+    const r = checkAbsolutes(
+      'The main CTA never reaches a form.',
+      'The CTA never resolves to a form element on any crawled page.',
+    );
+    expect(r.grounded).toBe(true);
+  });
+
+  it('allows time-bounded phrasing', () => {
+    const r = checkAbsolutes('No submittable form within 13 seconds of the click.', timedCorpus);
+    expect(r.grounded).toBe(true);
+  });
+
+  it('catches "impossible" and "no way to"', () => {
+    const r = checkAbsolutes('There is no way to convert, and checkout is impossible.', timedCorpus);
+    expect(r.grounded).toBe(false);
+    expect(r.unsupported).toEqual(expect.arrayContaining(['impossible', 'no way to']));
+  });
+});
+
+describe('evaluateHero absolutes gate', () => {
+  const corpus = 'AUDIT_JSON: { "lcp": "4.6s", "conversion": "no submittable form within 13 seconds" }';
+
+  it('fails a hero that inflates a timed observation into never, naming the field', () => {
+    const r = evaluateHero(
+      hero({ dmOneLiner: 'Your 4.6s homepage CTA never produces a form for paid clicks.' }),
+      corpus,
+    );
+    expect(r.pass).toBe(false);
+    expect(r.failures).toContain('dmOneLiner: unsupported absolute: never');
+  });
+
+  it('does not police the strength field for absolutes', () => {
+    const r = evaluateHero(
+      hero({ strength: 'Your emails always authenticate, so outbound lands.' }),
+      corpus,
+    );
+    expect(r.pass).toBe(true);
   });
 });
 
