@@ -36,6 +36,12 @@ export interface ConversionPathResult {
   outcome: ConversionPathOutcome;
   // 0 = form already on the homepage, 1 = one click from the CTA, null = further or unknown.
   clicksToForm: number | null;
+  // RENDERED-DOM truth for "is there a real CTA above the fold". The static
+  // hasPromptCta regex cannot see CTAs whose text is split across animated
+  // spans (somewhere.com's "Start Hiring" renders one <span> per character) -
+  // the headless enumeration reads innerText, which collapses them. Optional:
+  // older cached traces and failed renders leave it undefined (= unknown).
+  ctaAboveFold?: boolean;
 }
 
 // High-intent CTA wording - the verbs a primary conversion button uses.
@@ -62,6 +68,19 @@ const SKIP_HREF = /^\s*(mailto:|tel:)/i;
  * considered; prominence then breaks ties. Returns null when nothing on the
  * page reads as a real CTA. Pure.
  */
+/** Rendered-DOM check for a real above-the-fold CTA: any visible clickable
+ *  whose wording or class self-identifies as a call-to-action. Pure. */
+export function hasAboveFoldCta(candidates: CtaCandidate[]): boolean {
+  return candidates.some(
+    (c) =>
+      c.aboveFold &&
+      !!c.text.trim() &&
+      c.text.length <= 48 &&
+      !(c.href !== null && SKIP_HREF.test(c.href)) &&
+      (HIGH_INTENT.test(c.text) || CTA_CLASS.test(c.classId)),
+  );
+}
+
 export function pickPrimaryCta(candidates: CtaCandidate[]): PrimaryCta | null {
   let best: { cand: CtaCandidate; score: number } | null = null;
   for (const c of candidates) {

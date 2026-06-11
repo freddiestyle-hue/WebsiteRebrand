@@ -774,6 +774,18 @@ export async function runAudit(rawUrl: string, opts?: RunAuditOptions): Promise<
   // names where it was found, and a signal that exists only off the homepage
   // is reported honestly as present-but-not-on-the-front-door.
   const homeSignals = detectConversionSignals(checkHtml);
+  // Rendered-DOM overrides from the headless pass - the static regexes lie on
+  // JS-heavy builds (somewhere.com: "Start Hiring" renders one <span> per
+  // character, and its HubSpot form is JS-injected one click away). The
+  // headless trace SAW these; its testimony outranks a static parse. Only
+  // upgrades fail->pass, never the reverse: absence of headless data means
+  // unknown, not absent.
+  const cpEarly = opts?.conversionPath;
+  if (cpEarly?.ctaAboveFold === true) homeSignals.hasPromptCta = true;
+  const formViaTrace =
+    !homeSignals.hasForm &&
+    (cpEarly?.outcome === 'form-on-homepage' || cpEarly?.outcome === 'form-after-click');
+  if (cpEarly?.outcome === 'form-on-homepage') homeSignals.hasForm = true;
   // The 4 boolean conversion signals that go through conversionCheck. hasForm
   // is handled separately below because it enriches its evidence with the
   // form field count (Upgrade 9). formFieldCount/formRequiredCount are numbers,
@@ -846,19 +858,23 @@ export async function runAudit(rawUrl: string, opts?: RunAuditOptions): Promise<
       ? `form on the homepage${fieldNote}`
       : onOther
         ? `form on the ${onOther.role} page${fieldNote}, not the homepage`
-        : others > 0
-          ? `no form on the homepage or ${others} other key page${others === 1 ? '' : 's'}`
-          : 'no form on the homepage';
+        : formViaTrace
+          ? `form reached by clicking the primary CTA (rendered-browser trace); invisible to the static parse`
+          : others > 0
+            ? `no form on the homepage or ${others} other key page${others === 1 ? '' : 's'}`
+            : 'no form on the homepage';
     const finding = onHomepage
       ? `The homepage carries a form${fieldNote}. A cold visitor can convert without an extra click.`
       : onOther
         ? `A form sits on the ${onOther.role} page${fieldNote}, but not the homepage. A cold visitor landing on the front door has to navigate to convert - that extra step costs roughly half the completions.`
-        : 'No form for a cold visitor to convert through. Put a short form on the homepage - two extra clicks to find one costs roughly half the completions.';
+        : formViaTrace
+          ? 'A submittable form exists - the rendered-browser trace reached it from the primary CTA. It is JS-embedded and off the homepage, so it loads late and costs a click, but the path is real.'
+          : 'No form for a cold visitor to convert through. Put a short form on the homepage - two extra clicks to find one costs roughly half the completions.';
     draft.push({
       id: 'conversion-form-on-page',
       category: 'conversion',
       label: `Form available on the site${labelSuffix}`,
-      passed: onHomepage || !!onOther,
+      passed: onHomepage || !!onOther || formViaTrace,
       weight: 1,
       evidence,
       finding,

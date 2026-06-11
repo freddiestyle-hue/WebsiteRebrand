@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { pickPrimaryCta, type CtaCandidate } from '../conversion-path';
+import { pickPrimaryCta, hasAboveFoldCta, type CtaCandidate } from '../conversion-path';
 
 /**
  * Upgrade 4 - conversion-path trace. Tests for pickPrimaryCta: the pure
@@ -142,5 +142,26 @@ describe('pickPrimaryCta - staffing vocabulary (somewhere.com regression)', () =
       const picked = pickPrimaryCta([cand({ index: 0, text })]);
       expect(picked?.index, text).toBe(0);
     }
+  });
+});
+
+describe('hasAboveFoldCta', () => {
+  it('sees a rendered CTA the static regex cannot (char-span text via innerText)', () => {
+    expect(hasAboveFoldCta([
+      cand({ index: 0, text: 'Start Hiring', classId: 'btn-animate-chars' }),
+    ])).toBe(true);
+  });
+
+  it('false for below-fold CTAs and plain nav links', () => {
+    expect(hasAboveFoldCta([
+      cand({ index: 0, text: 'Start Hiring', aboveFold: false }),
+      cand({ index: 1, text: 'Blog', href: '/blog' }),
+    ])).toBe(false);
+  });
+
+  it('ignores tel/mailto even with CTA wording', () => {
+    expect(hasAboveFoldCta([
+      cand({ index: 0, text: 'Contact us', href: 'mailto:x@y.com' }),
+    ])).toBe(false);
   });
 });
