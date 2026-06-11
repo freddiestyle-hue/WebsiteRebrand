@@ -67,10 +67,16 @@ const POOR_SPEED: PageSpeedResult = {
 };
 
 describe('synthesizeDiagnosis', () => {
-  it('picks the worst failing check when there is no enrichment', () => {
+  it('picks the worst verified failing check when there is no enrichment', () => {
     const s = synthesizeDiagnosis(
       mkAudit([
-        mkCheck({ id: 'org-schema', category: 'schema', passed: false, weight: 2 }),
+        mkCheck({
+          id: 'org-schema',
+          category: 'schema',
+          passed: false,
+          weight: 2,
+          reliability: 'verified',
+        }),
         mkCheck({ id: 'meta-author', category: 'meta', passed: false, weight: 1 }),
       ]),
       undefined,
@@ -78,6 +84,59 @@ describe('synthesizeDiagnosis', () => {
     );
     expect(s.primaryIssue?.dimension).toBe('org-schema');
     expect(s.crossSignals).toEqual([]);
+  });
+
+  it('never nominates a soft-absence failure as the primary issue', () => {
+    // The hero prompt forbids leading with soft-absence findings, so a brief
+    // that nominates one is self-contradicting. Soft-only audits get a null
+    // primary (the clean-read framing) instead.
+    const s = synthesizeDiagnosis(
+      mkAudit([mkCheck({ id: 'org-schema', category: 'schema', passed: false, weight: 2 })]),
+      undefined,
+      [],
+    );
+    expect(s.primaryIssue).toBeNull();
+  });
+
+  it('a lone weight-1 verified failure is below the materiality floor', () => {
+    const s = synthesizeDiagnosis(
+      mkAudit([
+        mkCheck({
+          id: 'og-type',
+          category: 'meta',
+          passed: false,
+          weight: 1,
+          reliability: 'verified',
+        }),
+      ]),
+      undefined,
+      [],
+    );
+    expect(s.primaryIssue).toBeNull();
+  });
+
+  it('fallback ties prefer conversion/tracking over crawl', () => {
+    const s = synthesizeDiagnosis(
+      mkAudit([
+        mkCheck({
+          id: 'sitemap-size',
+          category: 'crawl',
+          passed: false,
+          weight: 2,
+          reliability: 'verified',
+        }),
+        mkCheck({
+          id: 'tracking-ga4',
+          category: 'tracking',
+          passed: false,
+          weight: 2,
+          reliability: 'verified',
+        }),
+      ]),
+      undefined,
+      [],
+    );
+    expect(s.primaryIssue?.dimension).toBe('tracking-ga4');
   });
 
   it('leads with page speed when ads run into a slow homepage', () => {
@@ -91,17 +150,25 @@ describe('synthesizeDiagnosis', () => {
     expect(s.crossSignals[0].reliability).toBe('verified');
   });
 
-  it('leads with the conversion path when ads run into a leaky page', () => {
+  it('leads with the conversion path when ads run into a verified leaky page', () => {
     const s = synthesizeDiagnosis(
-      mkAudit([mkCheck({ id: 'conversion-form-on-page', category: 'conversion', passed: false })]),
+      mkAudit([
+        mkCheck({
+          id: 'conversion-form-on-page',
+          category: 'conversion',
+          passed: false,
+          reliability: 'verified',
+        }),
+      ]),
       mkEnrich({ ads: { metaActive: 2, googleActive: 1, linkedinActive: 0 } as AdsResult }),
       [],
     );
     expect(s.primaryIssue?.icon).toBe('eye');
+    expect(s.primaryIssue?.reliability).toBe('verified');
     expect(s.crossSignals.map((c) => c.key)).toContain('ads-running-conversion-gaps');
   });
 
-  it('a soft conversion gap stays soft - the cross-signal is never asserted as fact', () => {
+  it('a soft conversion gap stays soft - signalled but never the primary issue', () => {
     const s = synthesizeDiagnosis(
       mkAudit([
         mkCheck({
@@ -116,7 +183,160 @@ describe('synthesizeDiagnosis', () => {
     );
     const sig = s.crossSignals.find((c) => c.key === 'ads-running-conversion-gaps');
     expect(sig?.reliability).toBe('soft-absence');
-    expect(s.primaryIssue?.reliability).toBe('soft-absence');
+    // No verified gap, no other rung applies: the brief must not nominate
+    // the soft finding as the headline.
+    expect(s.primaryIssue).toBeNull();
+  });
+
+  it('headline gap count includes verified gaps only when soft gaps are mixed in', () => {
+    const s = synthesizeDiagnosis(
+      mkAudit([
+        mkCheck({
+          id: 'conversion-form-on-page',
+          category: 'conversion',
+          passed: false,
+          reliability: 'verified',
+        }),
+        mkCheck({
+          id: 'conversion-cta',
+          category: 'conversion',
+          passed: false,
+          reliability: 'soft-absence',
+        }),
+      ]),
+      mkEnrich({ ads: { metaActive: 2, googleActive: 0, linkedinActive: 0 } as AdsResult }),
+      [],
+    );
+    expect(s.primaryIssue?.summary).toContain('1 verified');
+    expect(s.primaryIssue?.reliability).toBe('verified');
+  });
+
+  it('weight-0 channel checks never inflate the gap headline', () => {
+    // TikTok / LinkedIn Insight / PostHog say in their own finding text that
+    // they only matter for specific channels - a missing TikTok pixel must
+    // not become a "conversion or tracking gap" in the headline.
+    const s = synthesizeDiagnosis(
+      mkAudit([
+        mkCheck({
+          id: 'tracking-tiktok-pixel',
+          category: 'tracking',
+          passed: false,
+          weight: 0,
+          reliability: 'verified',
+        }),
+      ]),
+      mkEnrich({ ads: { metaActive: 3, googleActive: 0, linkedinActive: 0 } as AdsResult }),
+      [],
+    );
+    expect(s.primaryIssue).toBeNull();
+    expect(s.crossSignals.map((c) => c.key)).not.toContain('ads-running-conversion-gaps');
+  });
+
+  it('withheld ad counts surface as unmeasured, never as "no ads"', () => {
+    const s = synthesizeDiagnosis(
+      mkAudit([]),
+      mkEnrich({
+        ads: {
+          metaActive: null,
+          googleActive: 0,
+          linkedinActive: null,
+          identityStatus: { meta: 'unverified-link', linkedin: 'no-link' },
+        } as AdsResult,
+      }),
+      [],
+    );
+    const sig = s.crossSignals.find((c) => c.key === 'ads-unmeasured');
+    expect(sig).toBeDefined();
+    expect(sig?.reliability).toBe('soft-absence');
+    expect(sig?.detail).toContain('withheld, not zero');
+  });
+
+  it('a failed ads probe surfaces as unmeasured, never as "no ads"', () => {
+    const s = synthesizeDiagnosis(mkAudit([]), mkEnrich({ ads: null }), []);
+    const sig = s.crossSignals.find((c) => c.key === 'ads-unmeasured');
+    expect(sig).toBeDefined();
+    expect(sig?.detail).toContain('not evidence the business runs no ads');
+  });
+
+  it('flags unmeasured page speed when ads are running', () => {
+    const s = synthesizeDiagnosis(
+      mkAudit([]),
+      mkEnrich({ ads: { metaActive: 2, googleActive: 0, linkedinActive: 0 } as AdsResult }),
+      [],
+    );
+    expect(s.crossSignals.map((c) => c.key)).toContain('speed-unmeasured');
+  });
+
+  it('a conversion dead-end headlines for organic-only sites', () => {
+    const deadEndChecks = ['conversion-form', 'conversion-tel', 'conversion-cta'].map((id) =>
+      mkCheck({ id, category: 'conversion' as const, passed: false, reliability: 'verified' }),
+    );
+    const s = synthesizeDiagnosis(mkAudit(deadEndChecks), mkEnrich(), []);
+    expect(s.primaryIssue?.icon).toBe('eye');
+    expect(s.primaryIssue?.dimension).toBe('Conversion path');
+    expect(s.primaryIssue?.summary).toContain('no measurable way to convert');
+    expect(s.primaryIssue?.reliability).toBe('verified');
+  });
+
+  it('a slow homepage outranks missing DMARC for organic sites', () => {
+    const s = synthesizeDiagnosis(
+      mkAudit([]),
+      mkEnrich({
+        pageSpeed: POOR_SPEED,
+        deliverability: { dmarcPresent: false } as DeliverabilityResult,
+      }),
+      [],
+    );
+    expect(s.primaryIssue?.icon).toBe('bolt');
+  });
+
+  it('a single ad is phrased as one ad, not as "paid traffic"', () => {
+    const s = synthesizeDiagnosis(
+      mkAudit([]),
+      mkEnrich({
+        pageSpeed: POOR_SPEED,
+        ads: { metaActive: 0, googleActive: 1, linkedinActive: 0 } as AdsResult,
+      }),
+      [],
+    );
+    expect(s.primaryIssue?.summary).toContain('1 paid ad is sending traffic');
+  });
+
+  it('a slow audited landing page beats the homepage story', () => {
+    const s = synthesizeDiagnosis(
+      mkAudit([]),
+      mkEnrich({
+        ads: { metaActive: 3, googleActive: 0, linkedinActive: 0 } as AdsResult,
+        pageSpeed: POOR_SPEED,
+        landing: {
+          durationMs: 1,
+          pages: [{ url: 'https://acme.test/lp/offer', scorePercent: 22, lcpMs: 6100 }],
+        } as never,
+      }),
+      [],
+    );
+    expect(s.primaryIssue?.summary).toContain('/lp/offer');
+    expect(s.crossSignals.map((c) => c.key)).toContain('ads-running-slow-landing');
+  });
+
+  it('fast landing pages kill the "paid traffic on slow homepage" story', () => {
+    // Ads provably land on audited pages that are fine; the slow homepage is
+    // an organic problem and the brief must not claim paid clicks suffer it.
+    const s = synthesizeDiagnosis(
+      mkAudit([]),
+      mkEnrich({
+        ads: { metaActive: 3, googleActive: 0, linkedinActive: 0 } as AdsResult,
+        pageSpeed: POOR_SPEED,
+        landing: {
+          durationMs: 1,
+          pages: [{ url: 'https://acme.test/lp/offer', scorePercent: 92, lcpMs: 1400 }],
+        } as never,
+      }),
+      [],
+    );
+    expect(s.primaryIssue?.summary).not.toMatch(/paid/i);
+    expect(s.crossSignals.map((c) => c.key)).toContain('slow-page');
+    expect(s.crossSignals.map((c) => c.key)).not.toContain('ads-running-slow-page');
   });
 
   it('keeps verified not-applicable conversion checks out of gap synthesis', () => {
@@ -285,7 +505,7 @@ describe('buildMemoFromAudit (Upgrade 7 wiring)', () => {
   const audit = mkAudit([
     mkCheck({ id: 'sitemap', category: 'crawl', passed: true }),
     mkCheck({ id: 'org-schema', category: 'schema', passed: false }),
-    mkCheck({ id: 'llms-txt', category: 'aeo', passed: false, reliability: 'verified' }),
+    mkCheck({ id: 'llms-txt', category: 'aeo', passed: false, weight: 2, reliability: 'verified' }),
     mkCheck({ id: 'conversion-form-on-page', category: 'conversion', passed: false }),
   ]);
 

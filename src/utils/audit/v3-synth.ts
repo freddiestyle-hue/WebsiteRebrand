@@ -826,7 +826,9 @@ export function buildTrackingCell(
                 ? ` ${unconfirmedAbsent} other tracker${unconfirmedAbsent === 1 ? '' : 's'} couldn't be confirmed (may be consent-gated or late-loading).`
                 : '')
           : `${firing} of ${installed} present trackers confirmed firing` +
-            (idle > 0 ? `, ${idle} installed but not observed firing` : '') +
+            (idle > 0
+              ? `, ${idle} installed but unconfirmed (consent banners can hide firing from this scan)`
+              : '') +
             '.' +
             (unconfirmedAbsent > 0
               ? ` ${unconfirmedAbsent} other tracker${unconfirmedAbsent === 1 ? '' : 's'} couldn't be confirmed.`
@@ -837,7 +839,7 @@ export function buildTrackingCell(
         ? 'Unconfirmed'
         : firing === installed
           ? 'All present firing'
-          : `${idle} not firing`,
+          : `${idle} unconfirmed`,
     checks: augmentedChecks,
   };
 }
@@ -1052,22 +1054,68 @@ export function synthesizeDiagnosis(
   cells: VerdictCell[],
 ): Synthesis {
   const ads = enrich?.ads;
-  const adsTotal = ads ? (ads.metaActive ?? 0) + (ads.googleActive ?? 0) + (ads.linkedinActive ?? 0) : 0;
+  // Verified counts only. A null platform count means "withheld or
+  // unmeasured" (identity unverifiable, probe failed), never zero - the
+  // distinction the ads check goes to great lengths to preserve. Flattening
+  // null to 0 silently is fine for THIS sum (we can only headline verified
+  // spend), but the unmeasured state must surface as a cross-signal below so
+  // the brief never reads "no ads found" when the truth is "couldn't look".
+  const adsTotal = ads
+    ? (ads.metaActive ?? 0) + (ads.googleActive ?? 0) + (ads.linkedinActive ?? 0)
+    : 0;
   const adsRunning = adsTotal > 0;
+  const adsUnmeasured = enrich != null && !ads;
+  const adsWithheld =
+    !!ads &&
+    (ads.identityStatus?.meta === 'unverified-link' ||
+      ads.identityStatus?.linkedin === 'unverified-link');
   const adWord = adsTotal === 1 ? 'ad' : 'ads';
   const ps = enrich?.pageSpeed;
   const speedPoor = ps?.band === 'poor';
+  // Paid-traffic context lowers the speed bar: a "needs improvement" page is
+  // worth headlining when someone is paying for the clicks landing on it. The
+  // organic slow-page rung keeps the stricter 'poor' bar.
+  const speedSlow = ps?.band === 'poor' || ps?.band === 'needs-improvement';
   const noDmarc = enrich?.deliverability?.dmarcPresent === false;
 
   // Conversion + tracking gaps - the failures that cost paid traffic money.
+  // Weight-0 channel checks (TikTok, LinkedIn Insight, PostHog) are excluded:
+  // their own finding text says they only matter for specific channels, so
+  // they must not inflate the headline gap count.
   const adGaps = audit.checks.filter(
-    (c) => isApplicableFailure(c) && (c.category === 'conversion' || c.category === 'tracking'),
+    (c) =>
+      isApplicableFailure(c) &&
+      c.weight > 0 &&
+      (c.category === 'conversion' || c.category === 'tracking'),
   );
-  const adGapsHardFact = adGaps.length > 0 && adGaps.every((c) => c.reliability === 'verified');
+  const verifiedAdGaps = adGaps.filter((c) => c.reliability === 'verified');
+  const adGapsHardFact = adGaps.length > 0 && adGaps.length === verifiedAdGaps.length;
   const adGapWord = adGaps.length === 1 ? 'gap' : 'gaps';
 
+  // The audited ad landing pages, when the landing sub-audit ran. When these
+  // exist they are where paid clicks actually go - the homepage causal story
+  // ("paid traffic lands on a slow homepage") is only honest without them.
+  const landingPages = (enrich?.landing?.pages ?? []).filter((p) => !p.fetchError);
+  const isSlowLanding = (p: LandingPageResult) =>
+    (p.scorePercent != null && p.scorePercent < 50) || (p.lcpMs != null && p.lcpMs >= 4000);
+  const worstLanding =
+    landingPages
+      .filter(isSlowLanding)
+      .sort((a, b) => (a.scorePercent ?? 101) - (b.scorePercent ?? 101))[0] ?? null;
+  const slowLandingDesc = worstLanding
+    ? worstLanding.scorePercent != null
+      ? `scores ${Math.round(worstLanding.scorePercent)}/100 on mobile speed`
+      : `takes ${fmtMs(worstLanding.lcpMs)} to render on mobile`
+    : '';
+
   const crossSignals: CrossSignal[] = [];
-  if (adsRunning && speedPoor) {
+  if (adsRunning && worstLanding) {
+    crossSignals.push({
+      key: 'ads-running-slow-landing',
+      detail: `Running ${adsTotal} paid ${adWord} into ${shortenPath(worstLanding.url)}, which ${slowLandingDesc}. Paid clicks bounce before the offer renders.`,
+      reliability: 'verified',
+    });
+  } else if (adsRunning && landingPages.length === 0 && speedSlow) {
     crossSignals.push({
       key: 'ads-running-slow-page',
       detail: `Running ${adsTotal} paid ${adWord} into a homepage that loads slowly on mobile (LCP ${fmtMs(ps!.lcpMs)}). Paid clicks bounce before the offer renders.`,
@@ -1081,7 +1129,10 @@ export function synthesizeDiagnosis(
       reliability: adGapsHardFact ? 'verified' : 'soft-absence',
     });
   }
-  if (speedPoor && !adsRunning) {
+  // Organic slow-page signal - also fires when ads run but the audited
+  // landing pages are fine: the homepage problem is then an organic problem,
+  // and claiming paid clicks suffer it would be unsupported.
+  if (speedPoor && (!adsRunning || (landingPages.length > 0 && !worstLanding))) {
     crossSignals.push({
       key: 'slow-page',
       detail: `The homepage loads slowly on mobile (LCP ${fmtMs(ps!.lcpMs)}), the point most visitors decide to stay or leave.`,
@@ -1091,32 +1142,81 @@ export function synthesizeDiagnosis(
   if (noDmarc) {
     crossSignals.push({
       key: 'no-dmarc',
-      detail: 'The sending domain has no DMARC record, so outbound mail risks the spam folder.',
+      detail:
+        'The sending domain has no DMARC record, which weakens outbound deliverability and leaves the domain spoofable.',
       reliability: 'verified',
     });
   }
+  // Honest-absence signals: things the scan could NOT measure, surfaced so
+  // the hero never converts a measurement failure into a clean bill.
+  if (!adsRunning && (adsUnmeasured || adsWithheld)) {
+    crossSignals.push({
+      key: 'ads-unmeasured',
+      detail: adsWithheld
+        ? 'The site links social profiles whose ad activity could not be identity-verified this scan; those ad counts are withheld, not zero.'
+        : 'Ad activity was not measured this scan; the absence of ad findings is not evidence the business runs no ads.',
+      reliability: 'soft-absence',
+    });
+  }
+  if (adsRunning && enrich != null && !ps) {
+    crossSignals.push({
+      key: 'speed-unmeasured',
+      detail:
+        'Page speed was not measured this scan, so the absence of load-time findings is not a pass.',
+      reliability: 'soft-absence',
+    });
+  }
 
-  // primaryIssue - the systemic headline, in priority order.
+  // Conversion dead-end: the site offers no measurable way to convert at
+  // all. Requires every applicable conversion check to be a verified failure
+  // and enough checks ran to mean something - this is a stronger systemic
+  // story than anything below the ads rungs, ads or no ads.
+  const convChecks = audit.checks.filter(
+    (c) => c.category === 'conversion' && c.reliability !== 'verified-na',
+  );
+  const conversionDeadEnd =
+    convChecks.length >= 3 && convChecks.every((c) => !c.passed && c.reliability === 'verified');
+
+  // primaryIssue - the systemic headline, in priority order. Invariant: a
+  // nominated primary issue is ALWAYS reliability 'verified'. The hero prompt
+  // forbids leading with soft-absence findings, so nominating one would hand
+  // the model a self-contradicting brief.
   let primaryIssue: Synthesis['primaryIssue'] = null;
-  if (adsRunning && speedPoor) {
+  if (adsRunning && worstLanding) {
+    // The strongest version of the money-leak story: the actual audited page
+    // the ads point at is slow. Beats the homepage variant because it names
+    // the page paid clicks really land on.
     primaryIssue = {
       icon: 'bolt',
       dimension: 'Page speed',
-      summary: `Paid traffic is landing on a homepage that takes too long to render on mobile (LCP ${fmtMs(ps!.lcpMs)}).`,
+      summary: `Paid traffic is landing on ${shortenPath(worstLanding.url)}, which ${slowLandingDesc}.`,
       reliability: 'verified',
     };
-  } else if (adsRunning && adGaps.length > 0) {
+  } else if (adsRunning && landingPages.length === 0 && speedSlow) {
+    // No landing pages were sampled, so the homepage is the best-evidence
+    // landing surface. The count keeps the claim magnitude-honest: one stale
+    // ad reads as one ad, not as "paid traffic".
+    primaryIssue = {
+      icon: 'bolt',
+      dimension: 'Page speed',
+      summary: `${adsTotal} paid ${adWord} ${adsTotal === 1 ? 'is' : 'are'} sending traffic to a homepage that takes too long to render on mobile (LCP ${fmtMs(ps!.lcpMs)}).`,
+      reliability: 'verified',
+    };
+  } else if (adsRunning && verifiedAdGaps.length > 0) {
+    // Verified gaps only in the headline count; soft gaps stay in the
+    // cross-signal where their reliability tag travels with them.
     primaryIssue = {
       icon: 'eye',
       dimension: 'Conversion path',
-      summary: `Paid traffic is landing on a page with ${adGaps.length} measurable conversion or tracking ${adGapWord}.`,
-      reliability: adGapsHardFact ? 'verified' : 'soft-absence',
+      summary: `Paid traffic is landing on a page with ${verifiedAdGaps.length} verified conversion or tracking ${verifiedAdGaps.length === 1 ? 'gap' : 'gaps'}.`,
+      reliability: 'verified',
     };
-  } else if (noDmarc) {
+  } else if (conversionDeadEnd) {
     primaryIssue = {
-      icon: 'mail',
-      dimension: 'Email reputation',
-      summary: 'The sending domain is missing DMARC; outbound mail is at deliverability risk.',
+      icon: 'eye',
+      dimension: 'Conversion path',
+      summary:
+        'The site gives visitors no measurable way to convert - no form, booking link, or tappable phone number was found on the pages scanned.',
       reliability: 'verified',
     };
   } else if (speedPoor) {
@@ -1126,15 +1226,31 @@ export function synthesizeDiagnosis(
       summary: `The homepage loads slowly on mobile (LCP ${fmtMs(ps!.lcpMs)}).`,
       reliability: 'verified',
     };
+  } else if (noDmarc) {
+    // Below speed deliberately: most SMBs lack DMARC, so this rung would
+    // otherwise dominate the organic population with the same samey headline.
+    primaryIssue = {
+      icon: 'mail',
+      dimension: 'Email reputation',
+      summary:
+        'The sending domain has no DMARC record, which weakens outbound deliverability and leaves the domain spoofable.',
+      reliability: 'verified',
+    };
   } else {
-    // Fall back to the worst failing audit check, verified failures first.
+    // Fall back to the worst failing audit check - verified failures only
+    // (the no-soft-primary invariant) and weight 2+ only (a weight-1 cosmetic
+    // miss must not be presented as the most important truth about the
+    // business). Ties prefer conversion and tracking over crawl/schema/meta,
+    // countering the insertion-order bias toward crawl checks. When nothing
+    // clears the bar, primaryIssue stays null and the hero takes the
+    // honest clean-site framing instead of a nitpick.
+    const categoryRank = (c: CheckResult) =>
+      c.category === 'conversion' ? 0 : c.category === 'tracking' ? 1 : 2;
     const worst = audit.checks
-      .filter(isApplicableFailure)
+      .filter((c) => isApplicableFailure(c) && c.reliability === 'verified' && c.weight >= 2)
       .sort((a, b) => {
-        const ra = a.reliability === 'verified' ? 1 : 0;
-        const rb = b.reliability === 'verified' ? 1 : 0;
-        if (ra !== rb) return rb - ra;
-        return b.weight - a.weight;
+        if (b.weight !== a.weight) return b.weight - a.weight;
+        return categoryRank(a) - categoryRank(b);
       })[0];
     if (worst) {
       primaryIssue = {
@@ -1288,9 +1404,11 @@ export function buildMemoFromAudit(audit: AuditResult, enrich?: EnrichmentBundle
   // to one tight clause - the dek and observation carry the longer story.
   // For ad-spending operators, conversion + tracking gaps land harder than
   // generic "X ads running" - those gaps are where paid clicks bleed.
+  // Weight-0 channel checks excluded, same as the synthesis gap count - a
+  // missing TikTok pixel must not inflate the cover's "N gaps" claim.
   const adConvGapCount = adsRunning
     ? audit.checks.filter(
-        (c) => isApplicableFailure(c) && AD_OPERATOR_PRIORITY.has(c.category),
+        (c) => isApplicableFailure(c) && c.weight > 0 && AD_OPERATOR_PRIORITY.has(c.category),
       ).length
     : 0;
   // Default: just the band label as a one-word verdict.

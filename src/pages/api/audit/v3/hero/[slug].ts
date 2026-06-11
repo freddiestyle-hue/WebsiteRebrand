@@ -2,10 +2,14 @@
 //
 // Phase 1 rewrite. On request it returns the cached LLM hero
 // (audit-v3-hero:{slug}). On a cache miss it loads the cached audit memo
-// (audit-v3:{slug}), generates the hero with Claude Sonnet, caches it, and
-// returns it. If generation fails or comes back ungrounded, generateHero
+// (audit-v3:{slug}), generates the hero with the frontier model, caches it,
+// and returns it. If generation fails or comes back ungrounded, generateHero
 // returns null and the endpoint falls back to the rule-based pickHeroFinding,
 // returning that WITHOUT caching so a later request retries the LLM.
+//
+// The eval suite (grounding + shape + anti-AI-tell) is a GATE, not a flag: a
+// hero that fails it gets one regeneration attempt, and if that fails too the
+// rule-based fallback ships instead. A flagged hero never reaches a prospect.
 //
 // Rollback: flush audit-v3-hero:* in KV and every prospect instantly reverts
 // to the rule-based hero - no deploy.
@@ -47,8 +51,8 @@ interface CachedHero {
   // sync downstream) has it without a second round trip to the memo.
   score: number;
   // Hero eval verdict (grounding, shape, anti-AI-tell). Set on the LLM path
-  // only; the rule-based fallback is flagged by source instead. Observational,
-  // not a gate - the hero ships regardless so the bulk run can review failures.
+  // only; the rule-based fallback is flagged by source instead. A cached LLM
+  // hero always has evaluation.pass === true - failures are gated upstream.
   evaluation?: HeroEvalResult;
 }
 
@@ -121,12 +125,28 @@ export const GET: APIRoute = async ({ params }) => {
     revenueEstimate: buildRevenueEstimate(payload.memo),
     industryContext: buildIndustryContext(slug),
   };
-  const llm = await generateHero(heroInput);
-  if (llm) {
-    // Evaluate after generation, never gate it: a hero that trips a check
-    // still ships, flagged, so the bulk run can surface it for review rather
-    // than silently swapping in a weaker rule-based hero.
-    const evaluation = evaluateHero(llm, buildHeroUserPrompt(heroInput));
+  // The eval suite gates the LLM hero. A hero that trips any check (banned
+  // word, rule-of-three cadence, broken shape, ungrounded number) must never
+  // reach a prospect - it reads as AI slop and burns the credibility the rest
+  // of the memo earns. One regeneration attempt before giving up: voice slips
+  // are stochastic, so a second sample usually clears the gate.
+  const userPromptForEval = buildHeroUserPrompt(heroInput);
+  let llm = await generateHero(heroInput);
+  let evaluation = llm ? evaluateHero(llm, userPromptForEval) : null;
+  if (llm && evaluation && !evaluation.pass) {
+    console.warn(
+      `[api/audit/v3/hero] hero failed eval gate (${evaluation.failures.join('; ')}); regenerating once for ${slug}`,
+    );
+    llm = await generateHero(heroInput);
+    evaluation = llm ? evaluateHero(llm, userPromptForEval) : null;
+    if (llm && evaluation && !evaluation.pass) {
+      console.warn(
+        `[api/audit/v3/hero] regenerated hero failed eval gate too (${evaluation.failures.join('; ')}); falling back for ${slug}`,
+      );
+      llm = null;
+    }
+  }
+  if (llm && evaluation) {
     const record: CachedHero = {
       slug,
       domain: payload.hostname,
