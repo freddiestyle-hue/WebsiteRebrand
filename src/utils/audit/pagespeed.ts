@@ -4,11 +4,13 @@
 // per IP). For prod traffic, set GOOGLE_PSI_API_KEY in the Vercel project
 // env and we'll include it on each request.
 //
-// PSI is slow (real Lighthouse run, 15-25 seconds typical). It shares the
-// Vercel function's 60s Hobby ceiling with the headless pass, the crawl, and
-// the LLM memo build, so it is tightly bounded: one 20s attempt, with a short
-// retry ONLY for fast transient failures (5xx / network), never for a timeout.
-// A second long PSI wait after a timeout was the main cause of audit 504s.
+// PSI is slow (real Lighthouse run, 15-25 seconds typical; slow sites run
+// 35s+ - somewhere.com clocked 36s, so a 20s budget failed it on every scan).
+// The function now runs under v3.astro's maxDuration of 300s, not the old 60s
+// Hobby ceiling, so the first attempt gets 45s. Still one attempt, with a
+// short retry ONLY for fast transient failures (5xx / network), never for a
+// timeout - a second long PSI wait after a timeout was the main cause of
+// audit 504s under the old cap.
 // On failure we return null and the page degrades the "How fast it loads"
 // verdict cell to a "we'll measure on the call" teaser via the slug render.
 
@@ -24,7 +26,7 @@ export interface PageSpeedResult {
 }
 
 const PSI_URL = 'https://www.googleapis.com/pagespeedonline/v5/runPagespeed';
-const PSI_TIMEOUT_FIRST_MS = 20000;
+const PSI_TIMEOUT_FIRST_MS = 45000;
 const PSI_TIMEOUT_RETRY_MS = 12000;
 const PSI_RETRY_BACKOFF_MS = 800;
 
