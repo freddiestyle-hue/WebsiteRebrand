@@ -26,7 +26,7 @@
 import chromium from '@sparticuz/chromium';
 import { chromium as playwright, type Page } from 'playwright-core';
 import { isTrackingHost, type HeadlessTrackingCapture } from './tracking';
-import { pickPrimaryCta, type CtaCandidate, type ConversionPathResult } from './conversion-path';
+import { pickPrimaryCta, hasAboveFoldCta, type CtaCandidate, type ConversionPathResult } from './conversion-path';
 // Raw source of the Browserless /function payload (Puppeteer, runs on Browserless's
 // servers). Imported as a string via Vite ?raw so it ships in the SSR bundle.
 import browserlessRenderFn from './browserless-render.js?raw';
@@ -63,13 +63,13 @@ const HEADLESS_TIMEOUT_MS = 60000;
 // the old 60s ceiling), so the cap exists to bound cost, not to dodge a 504.
 // 45s = nav (≤15s) + conversion trace with form-hydration polling (≤16s) +
 // beacon settle, with headroom. Most real renders still finish well under 15s.
-const BROWSERLESS_FN_TIMEOUT_MS = 45000;
+const BROWSERLESS_FN_TIMEOUT_MS = 55000;
 const NAV_TIMEOUT_MS = 20000;
 // Trace budget covers homepage + up to 2 deep-page escalations, where each
-// trace now includes up to ~9s of form-hydration polling (JS-embedded forms
-// on slow pages paint seconds after navigation). Matches the 16s in-function
+// trace now includes up to ~13s of form-hydration polling (JS-embedded forms
+// on slow pages paint seconds after navigation). Matches the 22s in-function
 // budget in browserless-render.js with headroom.
-const TRACE_TIMEOUT_MS = 18000;
+const TRACE_TIMEOUT_MS = 24000;
 
 // --- Upgrade 4: conversion-path trace -------------------------------------
 
@@ -309,12 +309,13 @@ async function traceConversionPath(page: Page): Promise<ConversionPathResult> {
   try {
     const candidates = await enumerateCtas(page);
     const primary = pickPrimaryCta(candidates);
+    const ctaAboveFold = hasAboveFoldCta(candidates);
 
     if (await hasSubmittableForm(page)) {
-      return { primaryCtaText: primary?.text ?? null, outcome: 'form-on-homepage', clicksToForm: 0 };
+      return { primaryCtaText: primary?.text ?? null, outcome: 'form-on-homepage', clicksToForm: 0, ctaAboveFold };
     }
     if (!primary) {
-      return { primaryCtaText: null, outcome: 'no-cta', clicksToForm: null };
+      return { primaryCtaText: null, outcome: 'no-cta', clicksToForm: null, ctaAboveFold };
     }
 
     await dismissCookieBanner(page);
@@ -323,7 +324,7 @@ async function traceConversionPath(page: Page): Promise<ConversionPathResult> {
       .then(() => true)
       .catch(() => false);
     if (!clicked) {
-      return { primaryCtaText: primary.text, outcome: 'trace-failed', clicksToForm: null };
+      return { primaryCtaText: primary.text, outcome: 'trace-failed', clicksToForm: null, ctaAboveFold };
     }
 
     // Let the click settle - it may navigate, open a modal, or reveal a form.
@@ -332,14 +333,15 @@ async function traceConversionPath(page: Page): Promise<ConversionPathResult> {
     // Mirrors the polling in browserless-render.js - keep aligned.
     await page.waitForLoadState('domcontentloaded', { timeout: 2500 }).catch(() => {});
     let reached = false;
-    for (let i = 0; i < 10 && !reached; i++) {
-      await page.waitForTimeout(900);
+    for (let i = 0; i < 13 && !reached; i++) {
+      await page.waitForTimeout(1000);
       reached = await hasSubmittableForm(page);
     }
     return {
       primaryCtaText: primary.text,
       outcome: reached ? 'form-after-click' : 'no-form-reached',
       clicksToForm: reached ? 1 : null,
+      ctaAboveFold,
     };
   } catch {
     return { primaryCtaText: null, outcome: 'trace-failed', clicksToForm: null };

@@ -29,7 +29,7 @@ export default async ({ page, context }) => {
   // Keep the whole render inside Browserless's ~30s server-side cap (set by the
   // caller's &timeout) so it returns usable data instead of being killed.
   const NAV_TIMEOUT_MS = 15000;
-  const TRACE_TIMEOUT_MS = 16000; // covers click + nav + up to ~9s of form-hydration polling
+  const TRACE_TIMEOUT_MS = 22000; // covers click + nav + up to ~13s of form-hydration polling
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
   // --- inlined from tracking.ts: which hosts are analytics/ads beacons ---
@@ -278,10 +278,21 @@ export default async ({ page, context }) => {
     try {
       const candidates = await enumerateCtas();
       const primary = pickPrimaryCta(candidates);
+      // Rendered-DOM above-the-fold CTA truth - the static regex cannot see
+      // CTAs whose text renders as per-character animated spans; innerText
+      // here collapses them. Mirrors hasAboveFoldCta in conversion-path.ts.
+      const ctaAboveFold = candidates.some(
+        (c) =>
+          c.aboveFold &&
+          !!c.text.trim() &&
+          c.text.length <= 48 &&
+          !(c.href !== null && /^\s*(mailto:|tel:)/i.test(c.href)) &&
+          (HIGH_INTENT.test(c.text) || CTA_CLASS.test(c.classId))
+      );
       if (await hasSubmittableForm()) {
-        return { primaryCtaText: primary ? primary.text : null, outcome: 'form-on-homepage', clicksToForm: 0 };
+        return { primaryCtaText: primary ? primary.text : null, outcome: 'form-on-homepage', clicksToForm: 0, ctaAboveFold };
       }
-      if (!primary) return { primaryCtaText: null, outcome: 'no-cta', clicksToForm: null };
+      if (!primary) return { primaryCtaText: null, outcome: 'no-cta', clicksToForm: null, ctaAboveFold };
       await dismissCookieBanner();
       const clicked = await page
         .evaluate((idx) => {
@@ -291,21 +302,23 @@ export default async ({ page, context }) => {
           return true;
         }, primary.index)
         .catch(() => false);
-      if (!clicked) return { primaryCtaText: primary.text, outcome: 'trace-failed', clicksToForm: null };
+      if (!clicked) return { primaryCtaText: primary.text, outcome: 'trace-failed', clicksToForm: null, ctaAboveFold };
       await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 2500 }).catch(() => {});
       // Poll for the form instead of a single check: JS-embedded forms
       // (HubSpot et al) on slow pages hydrate seconds after navigation -
-      // somewhere.com's /form/contact took ~8s to paint its form. Early-exits
-      // the moment the form appears, so fast sites pay one 900ms tick.
+      // somewhere.com's /form/contact took ~8s after a completed nav, and the
+      // nav itself can eat seconds on a 13.7s-LCP site. Early-exits the
+      // moment the form appears, so fast sites pay one 1s tick.
       let reached = false;
-      for (let i = 0; i < 10 && !reached; i++) {
-        await sleep(900);
+      for (let i = 0; i < 13 && !reached; i++) {
+        await sleep(1000);
         reached = await hasSubmittableForm();
       }
       return {
         primaryCtaText: primary.text,
         outcome: reached ? 'form-after-click' : 'no-form-reached',
         clicksToForm: reached ? 1 : null,
+        ctaAboveFold,
       };
     } catch (e) {
       return { primaryCtaText: null, outcome: 'trace-failed', clicksToForm: null };
