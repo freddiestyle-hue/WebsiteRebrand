@@ -122,3 +122,25 @@ describe('pickPrimaryCta', () => {
     });
   });
 });
+
+describe('pickPrimaryCta - staffing vocabulary (somewhere.com regression)', () => {
+  it('"Start Hiring" beats a class-matched nav Search button', () => {
+    // The real somewhere.com fold: a "Search" button carrying a cta- class and
+    // the actual primary CTA "Start Hiring" with no CTA class. Before the
+    // staffing vocabulary landed, the trace clicked Search and reported a
+    // false conversion dead-end.
+    const picked = pickPrimaryCta([
+      cand({ index: 0, text: 'Search', classId: 'cta-header_button w-button', area: 3980 }),
+      cand({ index: 1, text: 'Start Hiring', classId: 'btn-animate-chars', area: 3766 }),
+    ]);
+    expect(picked?.index).toBe(1);
+    expect(picked?.text).toBe('Start Hiring');
+  });
+
+  it('matches the wider hiring family', () => {
+    for (const text of ['Hire now', 'Find Talent', 'Post a job', 'Hire top talent']) {
+      const picked = pickPrimaryCta([cand({ index: 0, text })]);
+      expect(picked?.index, text).toBe(0);
+    }
+  });
+});

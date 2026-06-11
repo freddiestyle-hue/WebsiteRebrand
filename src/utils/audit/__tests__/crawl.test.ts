@@ -297,3 +297,27 @@ describe('crawlPages', () => {
     expect(result.pages).toEqual([]);
   });
 });
+
+describe('detectConversionSignals - rendered-reality fixes (somewhere.com regression)', () => {
+  it('finds a hero CTA past a script-heavy head - the slice anchors on <body>', () => {
+    const head = '<head><style>' + 'x'.repeat(5000) + '</style></head>';
+    const html = '<html>' + head + '<body><nav><a class="btn-animate-chars" href="/form/contact">Start Hiring</a></nav></body></html>';
+    expect(detectConversionSignals(html).hasPromptCta).toBe(true);
+  });
+
+  it('still fails when the body has no CTA', () => {
+    const head = '<head><style>' + 'x'.repeat(5000) + '</style></head>';
+    const html = '<html>' + head + '<body><a href="/blog">Blog</a></body></html>';
+    expect(detectConversionSignals(html).hasPromptCta).toBe(false);
+  });
+
+  it('counts a HubSpot form-embed loader as a form', () => {
+    const html = '<html><body><script src="https://js.hsforms.net/forms/embed/v2.js"></script></body></html>';
+    expect(detectConversionSignals(html).hasForm).toBe(true);
+  });
+
+  it('counts a Typeform embed as a form', () => {
+    const html = '<html><body><iframe src="https://embed.typeform.com/to/abc"></iframe></body></html>';
+    expect(detectConversionSignals(html).hasForm).toBe(true);
+  });
+});
