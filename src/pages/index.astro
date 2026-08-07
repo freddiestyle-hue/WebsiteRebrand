@@ -1,947 +1,524 @@
 ---
-import Base from '../layouts/Base.astro';
+// Homepage — 2026 Rivett rebrand.
+//
+// Ported verbatim from the "Rivett Homepage" handoff bundle. The handoff
+// ships as a React/DC component; everything here is the same markup with the
+// runtime bindings resolved: sc-if -> hidden panels driven by the inline
+// script, style-hover -> the .rv-* classes in the style block, and the two
+// scan forms wired to the live /audit/v3 endpoint.
+import HomeBase from '../layouts/HomeBase.astro';
+
+// Logo strip. Three slots, each flipping to the next brand every 6s — slot k
+// shows brands[(idx + k*2) % N] with brands[(idx + 1 + k*2) % N] queued below.
+const brands = [
+  { name: 'Samsung', src: '/img/brands/samsung.svg', h: '19px' },
+  { name: 'Visa', src: '/img/brands/visa.svg', h: '22px' },
+  { name: 'Unilever', src: '/img/brands/unilever.svg', h: '24px' },
+  { name: 'Al Jazeera', src: '/img/brands/aljazeera.svg', h: '36px' },
+  { name: 'WPP', src: '/img/brands/wpp.svg', h: '26px' },
+  { name: 'Publicis Groupe', src: '/img/brands/publicis.svg', h: '48px' },
+  { name: 'Vodafone', src: '/img/brands/vodafone.svg', h: '30px' },
+  { name: 'Somewhere', src: '/img/brands/somewhere.svg', h: '22px', w: '65%' },
+];
+const N = brands.length;
+const slots = [0, 1, 2].map((k) => ({
+  k,
+  cur: brands[(k * 2) % N],
+  next: brands[(1 + k * 2) % N],
+}));
+const logoImgStyle = (b: (typeof brands)[number]) =>
+  `height:${b.h};width:${b.w || '100%'};object-fit:contain;filter:grayscale(1) opacity(0.62)`;
 ---
-<Base
-  title="Rivett · I find where revenue leaks. Then I fix the system."
-  description="A senior growth practice for profitable US operators. Request the gated audit, diagnose the leaks, and rebuild the system between demand and revenue."
-  fontWeights="Inter+Tight:wght@400;500;600;700;800"
-  currentNav="home"
+<HomeBase
+  title="Rivett · I run ads that make you money"
+  description="And I fix everything between the click and the contract. Fifteen years, $100M+ of ad spend, one person on your account."
 >
-  <link rel="stylesheet" href="/audit/v3-css/kit.css" />
-  <link rel="stylesheet" href="/audit/v3-css/audit.css" />
-  <link rel="stylesheet" href="/audit/v3-css/v2.css" />
-
-  <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
-    <symbol id="ic-diagnostic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="6"/><path d="M15.5 15.5 L20 20"/><circle class="dot" cx="11" cy="11" r="1.4" fill="var(--accent)" stroke="none"/></symbol>
-    <symbol id="ic-stack" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7 L12 3 L21 7 L12 11 Z"/><path d="M3 12 L12 16 L21 12"/><path d="M3 17 L12 21 L21 17"/></symbol>
-    <symbol id="ic-cadence" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 6 V12 L17 14"/></symbol>
-  </svg>
-
-  <!-- Thin accent line at top of viewport showing scroll progress. Pure
-       presentational; hidden when prefers-reduced-motion. -->
-  <div class="scroll-progress" aria-hidden="true">
-    <div class="scroll-progress-fill" id="scrollProgressFill"></div>
-  </div>
-
-  <div class="page audit-first-home">
-
-    <!-- Hero (audit-first) -->
-    <header class="audit-hero">
-      <span class="stamp">Ran growth at Somewhere.com · $100M+ managed</span>
-      <h1><span class="sheen">I find where revenue leaks.</span> <br/><span class="ital">Then I fix the system.</span></h1>
-      <p class="dek">I work with profitable US operators to find the expensive leaks between demand and revenue, then rebuild the reporting, handoffs, follow-up, and AI-assisted workflows that keep money moving.</p>
-
-      <form class="audit-form" method="POST" action="/audit/v3" id="homeAuditForm">
-        <span class="prefix">https://</span>
-        <input class="domain" type="text" name="url" inputmode="url" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="enter the site you want read" required aria-label="Domain" />
-        <input type="hidden" name="source" value="home" />
-        <button class="btn btn--solid btn--with-dot" type="submit" data-cta="home_audit_form_submit">
-          <span class="btn-dot" aria-hidden="true"></span>
-          Run audit <span aria-hidden="true">→</span>
-        </button>
-      </form>
-
-      <div class="audit-meta">
-        <span><b>~30s</b> to run</span>
-        <span class="sep">/</span>
-        <span><b>9</b> dimensions</span>
-        <span class="sep">/</span>
-        <span>ranked fix list</span>
-        <span class="sep">/</span>
-        <span>operator field note</span>
-      </div>
-
-      {/* Past-employer marquee · CF-style horizontal scroll of credibility
-          wordmarks. Doubles the content so the loop is seamless. */}
-      <div class="hero-marquee" aria-label="Past employers" role="region">
-        <div class="hero-marquee-track">
-          <span class="hm-item">Somewhere</span>
-          <span class="hm-sep">·</span>
-          <span class="hm-item">Unilever</span>
-          <span class="hm-sep">·</span>
-          <span class="hm-item">Samsung</span>
-          <span class="hm-sep">·</span>
-          <span class="hm-item">Visa</span>
-          <span class="hm-sep">·</span>
-          <span class="hm-item">Vodafone</span>
-          <span class="hm-sep">·</span>
-          <span class="hm-item">$100M+ managed</span>
-          <span class="hm-sep">·</span>
-          <span class="hm-item">4 continents</span>
-          <span class="hm-sep">·</span>
-          <span class="hm-item">15 years</span>
-          <span class="hm-sep">·</span>
-          {/* Duplicate set so the scroll loops without a visible jump */}
-          <span class="hm-item" aria-hidden="true">Somewhere</span>
-          <span class="hm-sep" aria-hidden="true">·</span>
-          <span class="hm-item" aria-hidden="true">Unilever</span>
-          <span class="hm-sep" aria-hidden="true">·</span>
-          <span class="hm-item" aria-hidden="true">Samsung</span>
-          <span class="hm-sep" aria-hidden="true">·</span>
-          <span class="hm-item" aria-hidden="true">Visa</span>
-          <span class="hm-sep" aria-hidden="true">·</span>
-          <span class="hm-item" aria-hidden="true">Vodafone</span>
-          <span class="hm-sep" aria-hidden="true">·</span>
-          <span class="hm-item" aria-hidden="true">$100M+ managed</span>
-          <span class="hm-sep" aria-hidden="true">·</span>
-          <span class="hm-item" aria-hidden="true">4 continents</span>
-          <span class="hm-sep" aria-hidden="true">·</span>
-          <span class="hm-item" aria-hidden="true">15 years</span>
-          <span class="hm-sep" aria-hidden="true">·</span>
-        </div>
-      </div>
-    </header>
-
-    <!-- 01 · The work -->
-    <div class="sec-head" id="work">
-      <span class="lbl">The work<span class="num">01</span></span>
-      <h2>Diagnose, build, run. <span class="ital">Same operator.</span></h2>
-    </div>
-    <div class="sec-body">
-      <p class="lede">First I find the leaks. Then I build the highest-value fixes. If the rhythm matters enough to keep, I run the system with dashboards, alerts, weekly decisions, and board-grade summaries.</p>
-
-      <div class="modules">
-        <div class="mod">
-          <div class="head">
-            <svg class="ic" width="24" height="24"><use href="#ic-diagnostic"/></svg>
-            <span class="mod-code">M · 01</span>
-          </div>
-          <h3>Diagnostic. <span class="ital">Two weeks.</span></h3>
-          <p>Find the leaks, name the constraints, and decide what is worth fixing. Acquisition + channel teardown, funnel + lifecycle audit, tooling + AI workflow review, prioritised 90-day fix list.</p>
-          <div class="meta">
-            <span><b>02</b> wks</span>
-            <span>One memo <span class="ital">fixed scope</span></span>
-          </div>
-        </div>
-
-        <div class="mod">
-          <div class="head">
-            <svg class="ic" width="24" height="24"><use href="#ic-stack"/></svg>
-            <span class="mod-code">M · 02</span>
-          </div>
-          <h3>Build. <span class="ital">Stack + instrumentation.</span></h3>
-          <p>Rebuild acquisition and revenue operations around the highest-value fixes. Paid media, SEO foundations, lifecycle + CRM, AI-assisted workflows with approval gates.</p>
-          <div class="meta">
-            <span><b>04–06</b> wks</span>
-            <span>Scoped <span class="ital">after M01</span></span>
-          </div>
-        </div>
-
-        <div class="mod">
-          <div class="head">
-            <svg class="ic" width="24" height="24"><use href="#ic-cadence"/></svg>
-            <span class="mod-code">M · 03</span>
-          </div>
-          <h3>Run. <span class="ital">Cadence over volume.</span></h3>
-          <p>Maintain the weekly rhythm that keeps revenue moving. Working sessions, live dashboard + alerting, monthly board summary. Cancel any month.</p>
-          <div class="meta">
-            <span><b>Monthly</b></span>
-            <span>Scoped <span class="ital">after M01</span></span>
-          </div>
-        </div>
-      </div>
-
-      <p class="post-note">M01 fee credits in full toward M02 if you continue. <span class="ital">No long contracts. No retainer creep.</span></p>
-    </div>
-
-    <!-- 02 · Who this is for -->
-    <div class="sec-head" id="who">
-      <span class="lbl">Who this is for<span class="num">02</span></span>
-      <h2>Operators of profitable, <span class="ital">un-glamorous businesses.</span></h2>
-    </div>
-    <div class="sec-body">
-      <p class="lede">Real revenue, ready to compound. You already have demand. The problem is what happens around it.</p>
-
-      <div class="audience">
-        <div class="col">
-          <span class="stamp">01 · Real estate</span>
-          <h4>Operators <span class="ital">+ brokerages.</span></h4>
-          <p>Self-storage, multifamily, brokerage, REPE. Capital raise, sphere and farm, leasing pipeline.</p>
-        </div>
-        <div class="col">
-          <span class="stamp">02 · Services</span>
-          <h4>Boring, profitable, <span class="ital">growing.</span></h4>
-          <p>Construction, manufacturing, professional services, agency owners. 50–500 people, real revenue, ready to compound.</p>
-        </div>
-        <div class="col">
-          <span class="stamp">03 · Mid-market</span>
-          <h4>Founders <span class="ital">+ operators.</span></h4>
-          <p>50–500 people, profitable, ready to compound. You do not want a slick agency. You want senior judgment on the growth system underneath the business.</p>
-        </div>
-      </div>
-
-      <div class="exclusion">
-        <span class="stamp stamp--neutral">If you do not see yourself here</span>
-        <p>Email me anyway. I will tell you straight if I am the wrong call. <span class="ital">Probably not: you want a junior to take orders, a yes-person, or a generic AI roadmap.</span></p>
-      </div>
-    </div>
-
-    <!-- 03 · Track record -->
-    <div class="sec-head" id="about">
-      <span class="lbl">Track record<span class="num">03</span></span>
-      <h2>Fifteen years inside acquisition. <span class="ital">Now applied to the whole system.</span></h2>
-    </div>
-    <div class="sec-body">
-      <div class="bio">
-        <div class="bio-l">
-          <span class="stamp stamp--neutral">Founder · operator · sole point of contact</span>
-          <h3 class="bio-name">Fred Style.</h3>
-          <p class="bio-tag"><span class="ital">Paid acquisition is the proof. Revenue operations are the work.</span></p>
-          <p class="bio-body">Fifteen years on growth at <b>Somewhere</b>, <b>Unilever</b>, <b>Samsung</b>, <b>Visa</b>, and <b>Vodafone</b>. <span class="ital">In-house, agency, and vendor.</span> Most recently a year running growth at Somewhere.com, the global recruiting platform. Roughly $100M in managed spend across four continents.</p>
-          <p class="bio-body">Independent. Cape Town based. Available to a small number of operators per quarter.</p>
-        </div>
-        <div class="bio-r">
-          <figure class="bio-portrait">
-            <div class="pre">
-              <span>Portrait · <b>Fred Style</b> · Cape Town</span>
-              <span>2026·05</span>
-            </div>
-            <div class="frame">
-              <img src="/img/fred.png" alt="Portrait of Fred Style" width="800" height="800" />
-            </div>
-            <div class="post">
-              <span class="name">Fred Style.</span>
-              <span class="role">Founder · operator · <span class="ital">sole point of contact</span></span>
-            </div>
-          </figure>
-        </div>
-      </div>
-
-      <div style="margin-top: var(--sp-10);">
-        <div class="numbox">
-          <div><span class="k">Career</span><span class="v">15 <span class="ital">yrs</span></span></div>
-          <div><span class="k">Managed spend</span><span class="v">$100M <span class="ital">+</span></span></div>
-          <div><span class="k">Continents</span><span class="v">04 <span class="ital"></span></span></div>
-          <div><span class="k">Sectors</span><span class="v">05 <span class="ital">+</span></span></div>
-        </div>
-      </div>
-
-      <div class="proof">
-        <span class="stamp">Proof from the work</span>
-        <h4 class="proof-h">Before selling the system, <span class="ital">I ran it on my own pipeline for 90 days.</span></h4>
-        <p class="proof-body">The first hard failure was caught internally, rebuilt, and turned into the approval discipline clients get.</p>
-        <div class="numbox">
-          <div><span class="k">Throughput</span><span class="v">10 <span class="ital">/ hr to queue</span></span></div>
-          <div><span class="k">Review rhythm</span><span class="v">80 <span class="ital">/ day at pace</span></span></div>
-          <div><span class="k">Calibration</span><span class="v">60–85 <span class="ital">% by week 12</span></span></div>
-          <div><span class="k">Failure caught</span><span class="v">0 / 15 <span class="ital">ICP miss</span></span></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 04 · The deal -->
-    <div class="sec-head">
-      <span class="lbl">The deal<span class="num">04</span></span>
-      <h2>Senior judgment. <span class="ital">Different cost structure. No agency markup.</span></h2>
-    </div>
-    <div class="sec-body">
-      <p class="lede">I work from Cape Town by design. The advantage is not "cheap." It is structural: direct access to the operator doing the work, senior growth judgment on the system, and AI-assisted execution underneath without paying for a US agency org chart.</p>
-
-      <table class="deal-table">
-        <thead>
-          <tr>
-            <th>Senior growth support</th>
-            <th class="r">Annualised</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>US agency, retainer</td>
-            <td class="r">$300–500k</td>
-          </tr>
-          <tr>
-            <td>In-house VP marketing</td>
-            <td class="r">$220–280k</td>
-          </tr>
-          <tr>
-            <td>Boutique consultancy</td>
-            <td class="r">$180–240k</td>
-          </tr>
-          <tr class="hi">
-            <td><b>Rivett · M03 retainer</b></td>
-            <td class="r"><b>~⅓ <span class="ital">of the above</span></b></td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <!-- 05 · AI in the work -->
-    <div class="sec-head" id="approach">
-      <span class="lbl">AI in the work<span class="num">05</span></span>
-      <h2>AI belongs <span class="ital">below the judgment layer.</span></h2>
-    </div>
-    <div class="sec-body">
-      <p class="lede">The valuable work is deciding what matters. AI belongs underneath that judgment, not in place of it. Most agencies are now selling the busywork as the product. I am selling senior judgment, with the busywork automated underneath. <span class="ital">Different deal.</span></p>
-
-      <div class="two-col">
-        <div class="col">
-          <span class="stamp">What I automate</span>
-          <ul class="bare">
-            <li>Lead enrichment + routing.</li>
-            <li>Draft outreach + sequencing.</li>
-            <li>Daily, weekly reporting.</li>
-            <li>Anomaly + spend alerts.</li>
-            <li>Content briefs at scale.</li>
-          </ul>
-        </div>
-        <div class="col col-r">
-          <span class="stamp stamp--neutral">What stays human</span>
-          <ul class="bare">
-            <li>Audience + positioning calls.</li>
-            <li>Channel mix + budget.</li>
-            <li>Creative + message strategy.</li>
-            <li>Pricing + offer design.</li>
-            <li><span class="ital">The hard conversation about why it is not working.</span></li>
-          </ul>
-        </div>
-      </div>
-    </div>
-
-    <!-- Pull quote -->
-    <div class="pull">
-      <blockquote>"Run the audit. If it finds a real leak, book a call and I will walk you through the full read. The diagnostic turns that signal into a one-page memo with the halt list and the next 90 days. Two weeks, fixed scope."</blockquote>
-      <cite>— Section 06 · next step</cite>
-    </div>
-
-    <!-- End CTA · dark closer -->
-    <div class="end-cta" id="contact">
-      <h3>Ready to find the leaks? <span class="ital">Run the audit.</span></h3>
-      <div class="right">
-        <span class="stamp stamp--on-ink">9 dimensions · ranked fixes · operator field note</span>
-        <p>Enter your site, see where the revenue leaks. If the read points at something real, book a call and I will walk you through the full diagnostic.</p>
-        <a class="btn btn--inv" data-cta="home_closer_run_audit" href="#homeAuditForm">Run audit <span aria-hidden="true">→</span></a>
-      </div>
-    </div>
-
-    <!-- Live scan overlay · animates while /audit/v3 POST is in flight.
-         Markup + CSS + JS lifted from src/pages/audit/v3.astro (commit 32518b6).
-         Browser POSTs the form to /audit/v3; this overlay covers the homepage
-         and animates until the response swaps the page. -->
-    <div class="scan on-ink" id="scanOverlay" role="status" aria-live="polite" aria-hidden="true">
-      <div class="scan-top">
-        <span><span class="dot-live"></span>Live scan · <b id="scanDomain">somewhere.com</b></span>
-        <a class="wordmark">rivett<span class="dot-mark" style="background: var(--accent);"></span></a>
-        <span><b>v3.4</b> · in-browser only</span>
-      </div>
-      <div class="scan-body">
-        <div class="scan-log">
-          <div class="log-head">stdout · run · audit.v3</div>
-          <div class="log-list" id="logList"></div>
-        </div>
-        <aside class="scan-side">
-          <h3>Reading the curve. <span class="ital">No deck. Just the numbers.</span></h3>
-          <div class="progress">
-            <div>
-              <span class="label">Scan progress</span>
-              <div class="pct"><span id="pctVal">0</span><sup>/100</sup></div>
-            </div>
-            <span class="label" id="elapsed">00.0s</span>
-          </div>
-          <div class="bar"><div class="fill" id="barFill"></div></div>
-          <div style="margin-top: var(--sp-7);">
-            <div class="lane" data-lane="0"><span class="ix">D · 01</span><span class="nm">Google index</span><span class="st">queued</span></div>
-            <div class="lane" data-lane="1"><span class="ix">D · 02</span><span class="nm">AI engines</span><span class="st">queued</span></div>
-            <div class="lane" data-lane="2"><span class="ix">D · 03</span><span class="nm">Page speed</span><span class="st">queued</span></div>
-            <div class="lane" data-lane="3"><span class="ix">D · 04</span><span class="nm">Measurement</span><span class="st">queued</span></div>
-            <div class="lane" data-lane="4"><span class="ix">D · 05</span><span class="nm">Ad libraries</span><span class="st">queued</span></div>
-            <div class="lane" data-lane="5"><span class="ix">D · 06</span><span class="nm">Conversion</span><span class="st">queued</span></div>
-            <div class="lane" data-lane="6"><span class="ix">D · 07</span><span class="nm">Mobile render</span><span class="st">queued</span></div>
-            <div class="lane" data-lane="7"><span class="ix">D · 08</span><span class="nm">Email auth (DoH)</span><span class="st">queued</span></div>
-            <div class="lane" data-lane="8"><span class="ix">D · 09</span><span class="nm">Tech fingerprint</span><span class="st">queued</span></div>
-          </div>
-        </aside>
-      </div>
-    </div>
-
-  </div>
-
-  <!-- Site footer (mock SiteFooter pattern) -->
-  <footer class="site-foot">
-    <div class="page">
-      <div class="row">
-        <div>
-          <a href="/" class="wm wm--inv" aria-label="Rivett, home">
-            rivett<span class="dot" aria-hidden="true"></span>
-          </a>
-        </div>
-        <div class="col">
-          <span class="col-h">The work</span>
-          <a href="#work">Diagnostic</a>
-          <a href="#work">Build</a>
-          <a href="#work">Run</a>
-          <a href="#homeAuditForm" data-cta="home_footer_run_audit">Run audit</a>
-        </div>
-        <div class="col">
-          <span class="col-h">Field notes</span>
-          <a href="/blog">All notes</a>
-          <a href="/blog">Cadence</a>
-          <a href="/blog">Instrumentation</a>
-          <a href="/blog">Decline</a>
-        </div>
-        <div class="col">
-          <span class="col-h">Contact</span>
-          <a href="mailto:fred@rivett.tech">fred@rivett.tech</a>
-          <a href="/diagnostic">Talk to Fred</a>
-          <a href="https://www.linkedin.com/in/fredstyle/">LinkedIn</a>
-        </div>
-      </div>
-      <div class="bot">
-        <span>© rivett · 2026</span>
-        <span>v1.0 · Cape Town &amp; remote</span>
-      </div>
-    </div>
-  </footer>
-</Base>
-
 <style is:global>
-  /* v2.css is the source of truth for .audit-hero, .sec-head, .sec-body,
-     .modules, .mod, .audience, .lede, .post-note, .exclusion, .bio,
-     .bio-portrait, .bio-name, .bio-tag, .bio-body, .proof, .deal-table,
-     .two-col, .pull, .end-cta, .numbox. Don't override here - just
-     position the page chrome and account for the site Nav above. */
-  body { background: var(--paper, #f6f4ef); }
-  body main { display: block; }
-  .audit-first-home {
-    max-width: var(--page-max, 1240px);
-    margin: 0 auto;
-    padding: 0 var(--page-pad, 32px);
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #FFFFFF;
+    color: #163300;
+    font-family: 'Instrument Sans', system-ui, sans-serif;
+    font-size: 16px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
-  @media (max-width: 780px) {
-    .audit-first-home { padding: 0 24px; }
+  a { color: #163300; text-decoration: none; }
+  a:hover { color: #4A6E18; }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  img, svg { display: block; max-width: 100%; }
+  ::selection { background: #A5E85C; color: #163300; }
+  :focus { outline: none; }
+  :focus-visible { outline: 2px solid #4A6E18; outline-offset: 2px; }
+  .riv-rail::-webkit-scrollbar { display: none; }
+  @media (max-width: 560px) {
+    .riv-logoslot { flex: 0 1 200px !important; }
+    .riv-logoslot1, .riv-logoslot2 { display: none !important; }
   }
-  /* Tighten the audit-hero top padding since our site Nav already sits above
-     the page (the mock's .page has its own Nav inside). */
-  .audit-first-home .audit-hero { padding-top: var(--sp-10, 48px); }
+  @media (max-width: 720px) {
+    .riv-navlinks { display: none !important; }
+    .riv-tabs button { font-size: 13px !important; padding: 12px 2px !important; white-space: nowrap; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 
-  .audit-first-home .audit-sample {
-    align-items: flex-start;
-  }
-  .audit-first-home .audit-sample .sample-note {
-    max-width: 780px;
-    line-height: 1.5;
-  }
-
-  /* -------- hero motion (CF-inspired, restrained for operator brand) -------- */
-
-  /* Slow oblique sheen across the H1 main line ("I find where revenue
-     leaks."). Reads as ambient ink with a green accent sweep, not as a
-     loud animation. 9s ease-in-out fits the larger type. */
-  .audit-first-home .audit-hero h1 .sheen {
-    background: linear-gradient(
-      90deg,
-      var(--ink, #0E1A2C) 0%,
-      var(--ink, #0E1A2C) 38%,
-      rgba(143, 191, 63, 0.65) 50%,
-      var(--ink, #0E1A2C) 62%,
-      var(--ink, #0E1A2C) 100%
-    );
-    background-size: 240% 100%;
-    background-position: 100% 0;
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    color: transparent;
-    animation: hero-h1-sheen 9s ease-in-out infinite;
-    animation-delay: 1.5s;
-  }
-  @keyframes hero-h1-sheen {
-    0%, 100% { background-position: 100% 0; }
-    50% { background-position: -20% 0; }
-  }
-
-  /* Pulsing accent dot inside the form submit button. Same pattern as
-     .dot-live on /audit/v3, just sized for an inline button context. */
-  .audit-first-home .audit-form .btn--with-dot {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-  }
-  .audit-first-home .audit-form .btn-dot {
-    display: inline-block;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--accent, #8FBF3F);
-    box-shadow: 0 0 0 0 rgba(143, 191, 63, 0.6);
-    animation: home-btn-dot-pulse 2.2s ease-in-out infinite;
-  }
-  @keyframes home-btn-dot-pulse {
-    0%, 100% {
-      transform: scale(1);
-      box-shadow: 0 0 0 0 rgba(143, 191, 63, 0.55);
-    }
-    50% {
-      transform: scale(1.15);
-      box-shadow: 0 0 0 6px rgba(143, 191, 63, 0);
-    }
-  }
-
-  /* Horizontal credibility marquee under the audit-meta row.
-     Mask-image fades the edges. Pauses on hover (CF pattern). */
-  .audit-first-home .hero-marquee {
-    margin-top: var(--sp-7, 36px);
-    overflow: hidden;
-    width: 100%;
-    max-width: 760px;
-    -webkit-mask-image: linear-gradient(
-      to right,
-      transparent 0,
-      black 8%,
-      black 92%,
-      transparent 100%
-    );
-    mask-image: linear-gradient(
-      to right,
-      transparent 0,
-      black 8%,
-      black 92%,
-      transparent 100%
-    );
-  }
-  .audit-first-home .hero-marquee-track {
-    display: inline-flex;
-    align-items: center;
-    gap: 0;
-    white-space: nowrap;
-    animation: hero-marquee-scroll 38s linear infinite;
-    will-change: transform;
-  }
-  .audit-first-home .hero-marquee:hover .hero-marquee-track {
-    animation-play-state: paused;
-  }
-  .audit-first-home .hm-item {
-    font-family: var(--mono, 'DM Mono', monospace);
-    font-size: 11.5px;
-    font-weight: 500;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--ink-dim, #4a5468);
-    padding: 0 14px;
-  }
-  .audit-first-home .hm-sep {
-    color: var(--accent, #8FBF3F);
-    font-size: 12px;
-    opacity: 0.55;
-  }
-  @keyframes hero-marquee-scroll {
-    0% { transform: translateX(0); }
-    100% { transform: translateX(-50%); }
-  }
-
-  @media (max-width: 640px) {
-    .audit-first-home .hero-marquee { margin-top: var(--sp-5, 24px); }
-    .audit-first-home .hm-item { font-size: 10.5px; padding: 0 10px; }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .audit-first-home .audit-hero h1 .sheen {
-      background: none;
-      -webkit-text-fill-color: var(--ink, #0E1A2C);
-      color: var(--ink, #0E1A2C);
-      animation: none;
-    }
-    .audit-first-home .audit-form .btn-dot { animation: none; }
-    .audit-first-home .hero-marquee-track { animation: none; }
-  }
-
-  /* -------- scroll-driven motion (smart, sparing) -------- */
-
-  /* Thin scroll-progress line, fixed top edge. Accent green fill grows
-     left-to-right as the reader moves through the page. */
-  .scroll-progress {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: transparent;
-    z-index: 99;
-    pointer-events: none;
-  }
-  .scroll-progress-fill {
-    height: 100%;
-    width: 0;
-    background: linear-gradient(
-      90deg,
-      rgba(143, 191, 63, 0.5) 0%,
-      var(--accent, #8FBF3F) 60%,
-      var(--accent, #8FBF3F) 100%
-    );
-    box-shadow: 0 0 8px rgba(143, 191, 63, 0.4);
-    transition: width 80ms linear;
-  }
-
-  /* One-shot sheen sweep on h2/h3 italic phrases when they scroll into
-     view. Mirrors the hero sheen but a single, longer pass with a wider
-     bright band so the green lingers instead of flashing through. */
-  .audit-first-home h2 .ital,
-  .audit-first-home h3 .ital {
-    display: inline-block;
-    background-clip: text;
-    -webkit-background-clip: text;
-  }
-  .audit-first-home h2 .ital.in-view,
-  .audit-first-home h3 .ital.in-view {
-    background: linear-gradient(
-      90deg,
-      var(--ink-italic, #3A4658) 0%,
-      var(--ink-italic, #3A4658) 30%,
-      rgba(143, 191, 63, 0.55) 42%,
-      rgba(143, 191, 63, 0.85) 50%,
-      rgba(143, 191, 63, 0.55) 58%,
-      var(--ink-italic, #3A4658) 70%,
-      var(--ink-italic, #3A4658) 100%
-    );
-    background-size: 260% 100%;
-    background-position: 110% 0;
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    color: transparent;
-    animation: section-ital-sheen 2.0s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-  }
-  @keyframes section-ital-sheen {
-    0% { background-position: 110% 0; }
-    100% { background-position: -50% 0; }
-  }
-
-  /* Module + audience cards: refined lift with softer, more diffuse
-     shadow. Longer transition so it doesn't snap. */
-  .audit-first-home .modules .mod,
-  .audit-first-home .audience .col {
-    transition:
-      transform 420ms cubic-bezier(0.22, 1, 0.36, 1),
-      box-shadow 420ms cubic-bezier(0.22, 1, 0.36, 1),
-      border-color 420ms cubic-bezier(0.22, 1, 0.36, 1);
-    will-change: transform;
-  }
-  .audit-first-home .modules .mod:hover,
-  .audit-first-home .audience .col:hover {
-    transform: translateY(-4px);
-    box-shadow:
-      0 2px 4px rgba(14, 26, 44, 0.02),
-      0 8px 16px rgba(14, 26, 44, 0.04),
-      0 16px 32px rgba(14, 26, 44, 0.05),
-      0 0 0 1px rgba(143, 191, 63, 0.14),
-      inset 0 1px 0 rgba(143, 191, 63, 0.10);
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .scroll-progress-fill { display: none; }
-    .audit-first-home h2 .ital.in-view,
-    .audit-first-home h3 .ital.in-view {
-      animation: none;
-      background: none;
-      -webkit-text-fill-color: var(--ink-italic, #3A4658);
-      color: var(--ink-italic, #3A4658);
-    }
-    .audit-first-home .modules .mod,
-    .audit-first-home .audience .col { transition: none; }
-    .audit-first-home .modules .mod:hover,
-    .audit-first-home .audience .col:hover { transform: none; }
-  }
-
-  /* -------- live scan overlay (lifted from /audit/v3) -------- */
-  /* Fullscreen ID overrides the .scan { max-width: 1040px } rule from audit.css
-     so the overlay fills the viewport instead of being capped. */
-  #scanOverlay { position: fixed; inset: 0; max-width: none; width: 100vw; height: 100vh; border: 0; background: var(--ink); color: var(--on-ink); z-index: 9999; display: none; flex-direction: column; padding: var(--sp-10) var(--sp-12); overflow: hidden; font-family: var(--mono); }
-  #scanOverlay.live { display: flex; }
-  #scanOverlay .scan-top { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--on-ink-line); padding-bottom: var(--sp-5); margin-bottom: var(--sp-8); font-size: var(--t-meta); letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--on-ink-faint); }
-  #scanOverlay .scan-top b { color: var(--on-ink); font-weight: 500; }
-  #scanOverlay .scan-top .wordmark { color: var(--on-ink); font-family: var(--grotesk); font-weight: 700; font-size: 22px; letter-spacing: -0.05em; text-transform: none; }
-  #scanOverlay .dot-live { display: inline-block; width: 8px; height: 8px; border-radius: var(--r-pill); background: var(--accent); animation: pulse 1.2s var(--ease) infinite; margin-right: 12px; vertical-align: middle; }
-  #scanOverlay .scan-body { display: grid; grid-template-columns: 1.2fr 1fr; gap: var(--sp-12); height: 100%; overflow: hidden; }
-  @media (max-width: 980px) { #scanOverlay .scan-body { grid-template-columns: 1fr; } }
-  #scanOverlay .scan-log { border: 1px solid var(--on-ink-line); padding: var(--sp-6); height: 100%; overflow: hidden; position: relative; }
-  #scanOverlay .scan-log .log-head { font-size: 10.5px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--on-ink-faint); border-bottom: 1px solid var(--on-ink-line); padding-bottom: var(--sp-3); margin-bottom: var(--sp-4); }
-  #scanOverlay .scan-log .log-list { font-size: 12.5px; line-height: 1.7; color: var(--on-ink-dim); max-height: 60vh; overflow: hidden; }
-  #scanOverlay .scan-log .log-list .line { display: block; }
-  #scanOverlay .scan-log .log-list .ts { color: var(--on-ink-faint); margin-right: var(--sp-3); }
-  #scanOverlay .scan-log .log-list .tag { display: inline-block; min-width: 50px; }
-  #scanOverlay .scan-log .log-list .tag.ok { color: var(--accent); }
-  #scanOverlay .scan-log .log-list .tag.warn { color: var(--signal-warn); }
-  #scanOverlay .scan-log .log-list .tag.fail { color: var(--signal-halt); }
-  #scanOverlay .scan-log .log-list .tag.run { color: var(--on-ink); }
-  #scanOverlay .scan-log .log-list .arrow { color: var(--on-ink-faint); margin: 0 6px; }
-  #scanOverlay .scan-log .log-list .em { color: var(--on-ink); }
-  #scanOverlay .scan-side h3 { font-family: var(--grotesk); font-weight: 700; font-size: clamp(36px, 4.4vw, 56px); line-height: 1.02; letter-spacing: var(--track-h); margin: 0 0 var(--sp-6); color: var(--on-ink); text-wrap: balance; }
-  #scanOverlay .scan-side h3 .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--on-ink-italic); }
-  #scanOverlay .scan-side .progress { border-top: 1px solid var(--on-ink-line); border-bottom: 1px solid var(--on-ink-line); padding: var(--sp-5) 0; margin: var(--sp-7) 0; display: grid; grid-template-columns: 1fr auto; gap: var(--sp-3); align-items: baseline; }
-  #scanOverlay .scan-side .progress .pct { font-family: var(--grotesk); font-weight: 800; font-size: 96px; line-height: 0.9; letter-spacing: var(--track-display); color: var(--on-ink); }
-  #scanOverlay .scan-side .progress .pct sup { font-size: 0.32em; vertical-align: 38px; color: var(--on-ink-faint); margin-left: 4px; }
-  #scanOverlay .scan-side .progress .label { font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--on-ink-faint); }
-  #scanOverlay .scan-side .bar { height: 6px; background: var(--on-ink-line); margin-top: var(--sp-3); position: relative; overflow: hidden; }
-  #scanOverlay .scan-side .bar .fill { position: absolute; inset: 0 100% 0 0; background: var(--accent); transition: right 0.4s linear; }
-  #scanOverlay .scan-side .lane { display: grid; grid-template-columns: 22px 1fr auto; gap: var(--sp-3); padding: 10px 0; border-bottom: 1px solid var(--on-ink-line); align-items: center; }
-  #scanOverlay .scan-side .lane:last-child { border-bottom: 0; }
-  #scanOverlay .scan-side .lane .ix { font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); color: var(--on-ink-faint); }
-  #scanOverlay .scan-side .lane .nm { font-family: var(--grotesk); font-size: 15px; color: var(--on-ink-dim); }
-  #scanOverlay .scan-side .lane.done .nm { color: var(--on-ink); }
-  #scanOverlay .scan-side .lane .st { font-family: var(--mono); font-size: 10.5px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--on-ink-faint); }
-  #scanOverlay .scan-side .lane.done .st { color: var(--accent); }
-  #scanOverlay .scan-side .lane.run .st { color: var(--on-ink); }
+  /* Hover states — the handoff carries these as style-hover attributes on
+     elements whose base colours are inline, so they live here instead. */
+  .rv-navlink { color: #FFFFFF; }
+  .rv-navlink:hover { color: #A5E85C; }
+  .rv-navcta { background: #A5E85C; color: #163300; }
+  .rv-navcta:hover { background: #FFFFFF; color: #163300; }
+  .rv-submit { background: #163300; color: #FFFFFF; }
+  .rv-submit:hover { background: #FFFFFF; color: #163300; }
+  .rv-ctadark { background: #163300; color: #FFFFFF; }
+  .rv-ctadark:hover { background: #A5E85C; color: #163300; }
+  .rv-railbtn { background: #FFFFFF; }
+  .rv-railbtn:hover { background: #F2F5EC; }
+  .rv-note { background: #F2F5EC; }
+  .rv-note:hover { background: #EEF7E0; }
+  [hidden] { display: none !important; }
 </style>
 
-<script is:inline>
+<div style="background:#163300"><nav style="max-width:1280px;margin:0 auto;padding:22px clamp(20px,4vw,56px);display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:20px 32px">
+  <a href="#top" aria-label="Rivett, home" style="display:inline-flex;align-items:center;gap:0.12em;font-family:'Inter Tight',system-ui,sans-serif;font-weight:700;font-size:28px;letter-spacing:-0.05em;line-height:1;color:#A5E85C">rivett<span style="display:inline-block;width:0.32em;height:0.32em;border-radius:999px;background:#FFFFFF;transform:translateY(0.04em)"></span></a>
+  <div class="riv-navlinks" style="display:flex;flex-wrap:wrap;align-items:center;gap:12px 30px;font-size:16px;font-weight:500">
+    <a class="rv-navlink" href="#work">What I do</a>
+    <a class="rv-navlink" href="#cost">What it costs</a>
+    <a class="rv-navlink" href="#notes">Notes</a>
+    <a class="rv-navlink" href="#about">About me</a>
+    <a class="rv-navlink" href="#faq">Questions</a>
+  </div>
+  <a class="rv-navcta" href="#scan" style="display:inline-flex;align-items:center;gap:8px;font-weight:600;font-size:15px;padding:12px 22px;border-radius:999px">Check my site →</a>
+</nav>
+
+<header id="top" style="max-width:1180px;margin:0 auto;padding:clamp(48px,7vw,84px) clamp(20px,4vw,56px) clamp(32px,4vw,48px);text-align:center">
+  <h1 style="font-family:Archivo,sans-serif;font-weight:900;font-variation-settings:'wdth' 87;text-transform:uppercase;font-size:clamp(44px,7.4vw,104px);line-height:0.86;letter-spacing:-0.035em;margin:0 auto;max-width:14ch;color:#FFFFFF;text-wrap:balance">I run ads that make you money</h1>
+  <p style="font-size:20px;line-height:1.5;color:rgba(255,255,255,0.78);max-width:560px;margin:26px auto 0;text-wrap:pretty">And I fix everything between the click and the contract. Fifteen years, $100M+ of ad spend, one person on your account.</p>
+</header>
+
+<section style="max-width:1280px;margin:0 auto;padding:0 clamp(20px,4vw,56px) clamp(56px,7vw,88px)">
+  <div style="background:#A5E85C;border-radius:28px;padding:clamp(24px,3vw,36px);max-width:860px;margin:0 auto">
+    <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;align-items:center;font-weight:600;font-size:13px;color:#2C4408">
+      <span style="display:inline-flex;align-items:center;gap:10px"><span style="width:8px;height:8px;border-radius:999px;background:#163300"></span>Free check · yoursite.com</span>
+      <span>Nine things · thirty seconds</span>
+    </div>
+    <form id="scan" method="POST" action="/audit/v3" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;background:#FFFFFF;border-radius:999px;padding:8px 8px 8px 24px;margin-top:22px">
+      <span style="font-size:15px;color:#6F7A64;flex-shrink:0">https://</span>
+      <input type="text" name="url" required placeholder="type your website address" aria-label="Your website address" autocomplete="off" spellcheck="false" style="flex:1 1 160px;min-width:0;border:0;background:transparent;font-family:'Instrument Sans',sans-serif;font-size:16px;color:#163300;padding:12px 0;outline:none">
+      <input type="hidden" name="source" value="home">
+      <button class="rv-submit" type="submit" data-cta="home_audit_form_submit" style="display:inline-flex;align-items:center;gap:10px;font-family:'Instrument Sans',sans-serif;font-weight:600;font-size:16px;padding:15px 26px;border:0;border-radius:999px;cursor:pointer;flex-shrink:0">Check my site →</button>
+    </form>
+    <div style="display:flex;flex-wrap:wrap;gap:12px 28px;justify-content:center;margin-top:22px;font-weight:600;font-size:14px;color:#1C2B18">
+      <span>15 years of ads</span><span>·</span><span>$100M+ of ads run</span><span>·</span><span>No account managers</span>
+    </div>
+  </div>
+</section></div>
+
+<section aria-label="Brands I have run ads for" style="padding:clamp(36px,5vw,56px) 0 8px">
+  <div style="text-align:center;font-weight:600;font-size:13.5px;letter-spacing:0.08em;text-transform:uppercase;color:#6F7A64;margin-bottom:26px">Brands I've run ads for</div>
+  <div style="display:flex;justify-content:center;align-items:center;gap:clamp(28px,6vw,88px);padding:0 clamp(20px,4vw,56px)">
+    {slots.map((s) => (
+      <div class={`riv-logoslot riv-logoslot${s.k}`} data-slot={String(s.k)} style="position:relative;overflow:hidden;height:60px;flex:0 1 clamp(120px,20vw,190px)">
+        <span data-face="cur" style="position:absolute;inset:0;display:grid;place-items:center;transform:translateY(0);transition:none"><img src={s.cur.src} alt={s.cur.name} style={logoImgStyle(s.cur)} /></span>
+        <span data-face="next" aria-hidden="true" style="position:absolute;inset:0;display:grid;place-items:center;transform:translateY(100%);transition:none"><img src={s.next.src} alt="" style={logoImgStyle(s.next)} /></span>
+      </div>
+    ))}
+  </div>
+  <div aria-hidden="true" style="position:absolute;width:1px;height:1px;overflow:hidden;opacity:0">
+    {brands.map((b) => <img src={b.src} alt="" />)}
+  </div>
+</section>
+
+<section style="max-width:1280px;margin:0 auto;padding:clamp(36px,5vw,56px) clamp(20px,4vw,56px) 24px">
+  <div style="display:flex;flex-wrap:wrap;gap:16px 48px;justify-content:space-between">
+    <div style="flex:1 1 260px;display:flex;gap:16px;align-items:flex-start">
+      <span style="width:44px;height:44px;border-radius:999px;background:#EEF7E0;display:grid;place-items:center;flex-shrink:0"><svg viewBox="0 0 24 24" style="width:22px;height:22px;fill:none;stroke:#163300;stroke-width:1.6;stroke-linecap:square;stroke-linejoin:miter"><circle cx="11" cy="11" r="6"></circle><path d="M15.5 15.5 L20 20"></path></svg></span>
+      <div><div style="font-weight:600;font-size:17px">15 years doing this</div><p style="font-size:15.5px;line-height:1.5;color:#454745;margin:4px 0 0">Samsung, Visa, Unilever, Vodafone, Somewhere.</p></div>
+    </div>
+    <div style="flex:1 1 260px;display:flex;gap:16px;align-items:flex-start">
+      <span style="width:44px;height:44px;border-radius:999px;background:#EEF7E0;display:grid;place-items:center;flex-shrink:0"><svg viewBox="0 0 24 24" style="width:22px;height:22px;fill:none;stroke:#163300;stroke-width:1.6;stroke-linecap:square;stroke-linejoin:miter"><path d="M3 7 L12 3 L21 7 L12 11 Z"></path><path d="M3 12 L12 16 L21 12"></path><path d="M3 17 L12 21 L21 17"></path></svg></span>
+      <div><div style="font-weight:600;font-size:17px">$100M+ of ads run</div><p style="font-size:15.5px;line-height:1.5;color:#454745;margin:4px 0 0">Across four continents and five industries.</p></div>
+    </div>
+    <div style="flex:1 1 260px;display:flex;gap:16px;align-items:flex-start">
+      <span style="width:44px;height:44px;border-radius:999px;background:#EEF7E0;display:grid;place-items:center;flex-shrink:0"><svg viewBox="0 0 24 24" style="width:22px;height:22px;fill:none;stroke:#163300;stroke-width:1.6;stroke-linecap:square;stroke-linejoin:miter"><circle cx="12" cy="9" r="4"></circle><path d="M4 21 a8 8 0 0 1 16 0"></path></svg></span>
+      <div><div style="font-weight:600;font-size:17px">You get me, not a team</div><p style="font-size:15.5px;line-height:1.5;color:#454745;margin:4px 0 0">A few companies at a time. No account managers.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="work" style="background:#EEF7E0;padding:clamp(56px,7vw,88px) 0;margin-top:32px">
+  <div style="max-width:1280px;margin:0 auto;padding:0 clamp(20px,4vw,56px)">
+    <span style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:#4A6E18">What I do · 01</span>
+    <h2 style="font-family:Archivo,sans-serif;font-weight:900;font-variation-settings:'wdth' 87;text-transform:uppercase;font-size:clamp(34px,4.4vw,60px);line-height:0.92;letter-spacing:-0.03em;margin:16px 0 0;max-width:17ch;text-wrap:balance">Find it. Fix it. Keep it running</h2>
+    <p style="font-size:19px;line-height:1.5;color:#454745;margin:20px 0 0;max-width:60ch">First I find what is broken. Then I fix the things that cost you the most. If you want me to stay on, I keep the whole thing running and tell you every week how it is going.</p>
+
+    <div class="riv-tabs" style="position:relative;display:grid;grid-template-columns:repeat(3,1fr);background:#D9E6C3;border-radius:999px;padding:5px;margin:36px 0 20px;max-width:520px">
+      <div id="tabPill" style="position:absolute;top:5px;left:5px;width:calc((100% - 10px)/3);height:calc(100% - 10px);background:#FFFFFF;border-radius:999px;transition:transform 200ms cubic-bezier(0.2,0.6,0.2,1);transform:translateX(0%)"></div>
+      <button type="button" data-tab="0" style="position:relative;background:transparent;border:0;padding:13px 8px;font-family:'Instrument Sans',sans-serif;font-weight:600;font-size:15px;color:#163300;cursor:pointer;border-radius:999px">Find it</button>
+      <button type="button" data-tab="1" style="position:relative;background:transparent;border:0;padding:13px 8px;font-family:'Instrument Sans',sans-serif;font-weight:600;font-size:15px;color:#163300;cursor:pointer;border-radius:999px">Fix it</button>
+      <button type="button" data-tab="2" style="position:relative;background:transparent;border:0;padding:13px 8px;font-family:'Instrument Sans',sans-serif;font-weight:600;font-size:15px;color:#163300;cursor:pointer;border-radius:999px">Keep it running</button>
+    </div>
+
+    <div data-panel="0" style="display:flex;flex-wrap:wrap;gap:12px;align-items:stretch">
+      <div style="flex:1 1 340px;position:relative;overflow:hidden;background:#163300;border-radius:28px;min-height:440px;display:grid;place-items:center;padding:40px 24px">
+        <div style="position:absolute;width:240px;height:120px;border-radius:999px;background:rgba(255,255,255,0.08);top:52px;left:40px"></div>
+        <div style="position:absolute;width:190px;height:190px;border-radius:999px;border:2px solid rgba(255,255,255,0.22);top:-56px;right:-56px"></div>
+        <div style="position:absolute;width:250px;height:320px;border-radius:999px 999px 0 0;background:#A5E85C;bottom:0;left:50%;transform:translateX(-50%)"></div>
+        <svg viewBox="0 0 24 24" style="position:absolute;bottom:104px;left:50%;transform:translateX(-50%);width:104px;height:104px;fill:none;stroke:#163300;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"><circle cx="11" cy="11" r="6"></circle><path d="M15.5 15.5 L20 20"></path></svg>
+        <div style="position:absolute;width:14px;height:14px;border-radius:999px;background:#A5E85C;bottom:76px;left:56px"></div>
+      </div>
+      <div style="flex:1.05 1 400px;background:#FFFFFF;border-radius:28px;padding:clamp(32px,4vw,52px) clamp(28px,4vw,52px) clamp(28px,4vw,44px);display:flex;flex-direction:column">
+        <span style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:#6F7A64">Step 01 · 2 weeks · fixed price</span>
+        <h3 style="font-family:Archivo,sans-serif;font-weight:800;font-size:clamp(27px,3vw,34px);line-height:1.05;letter-spacing:-0.03em;margin:14px 0 0">Two weeks to find what is losing you money.</h3>
+        <p style="font-size:17px;line-height:1.55;color:#454745;margin:16px 0 26px;max-width:46ch">I go through your ads, your website, your follow-up and your numbers. You get one short document. No slides.</p>
+        <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:30px">
+          <div style="display:flex;gap:14px;align-items:flex-start;font-size:16px;line-height:1.45"><span style="width:8px;height:8px;border-radius:999px;background:#A5E85C;margin-top:8px;flex-shrink:0"></span>Where your customers actually come from</div>
+          <div style="display:flex;gap:14px;align-items:flex-start;font-size:16px;line-height:1.45"><span style="width:8px;height:8px;border-radius:999px;background:#A5E85C;margin-top:8px;flex-shrink:0"></span>Where people give up before they buy</div>
+          <div style="display:flex;gap:14px;align-items:flex-start;font-size:16px;line-height:1.45"><span style="width:8px;height:8px;border-radius:999px;background:#A5E85C;margin-top:8px;flex-shrink:0"></span>Which tools you pay for and do not use</div>
+          <div style="display:flex;gap:14px;align-items:flex-start;font-size:16px;line-height:1.45"><span style="width:8px;height:8px;border-radius:999px;background:#A5E85C;margin-top:8px;flex-shrink:0"></span>A list of fixes for the next 3 months, worst first</div>
+        </div>
+        <div style="margin-top:auto;display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+          <a class="rv-ctadark" href="#close" style="display:inline-flex;align-items:center;gap:10px;font-weight:600;font-size:16px;padding:15px 28px;border-radius:999px">Start here →</a>
+          <span style="font-family:'DM Mono',monospace;font-size:11.5px;letter-spacing:0.12em;text-transform:uppercase;color:#6F7A64">Pay it once. It comes off step 2</span>
+        </div>
+      </div>
+    </div>
+
+    <div data-panel="1" hidden style="display:flex;flex-wrap:wrap;gap:12px;align-items:stretch">
+      <div style="flex:1 1 340px;position:relative;overflow:hidden;background:#163300;border-radius:28px;min-height:440px;display:grid;place-items:center;padding:40px 24px">
+        <div style="position:absolute;width:240px;height:120px;border-radius:999px;background:rgba(255,255,255,0.08);top:52px;left:40px"></div>
+        <div style="position:absolute;width:190px;height:190px;border-radius:999px;border:2px solid rgba(255,255,255,0.22);top:-56px;right:-56px"></div>
+        <div style="position:absolute;width:250px;height:320px;border-radius:999px 999px 0 0;background:#A5E85C;bottom:0;left:50%;transform:translateX(-50%)"></div>
+        <svg viewBox="0 0 24 24" style="position:absolute;bottom:104px;left:50%;transform:translateX(-50%);width:104px;height:104px;fill:none;stroke:#163300;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"><path d="M13 3 L6 13 H11 L9.5 21 L18 10 H12.5 Z"></path></svg>
+        <div style="position:absolute;width:14px;height:14px;border-radius:999px;background:#A5E85C;bottom:76px;left:56px"></div>
+      </div>
+      <div style="flex:1.05 1 400px;background:#FFFFFF;border-radius:28px;padding:clamp(32px,4vw,52px) clamp(28px,4vw,52px) clamp(28px,4vw,44px);display:flex;flex-direction:column">
+        <span style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:#6F7A64">Step 02 · 4 to 6 weeks · priced after step 1</span>
+        <h3 style="font-family:Archivo,sans-serif;font-weight:800;font-size:clamp(27px,3vw,34px);line-height:1.05;letter-spacing:-0.03em;margin:14px 0 0">I fix the big ones myself.</h3>
+        <p style="font-size:17px;line-height:1.55;color:#454745;margin:16px 0 26px;max-width:46ch">Not a team of juniors learning on your account. Me, doing the work, on the things costing you the most.</p>
+        <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:30px">
+          <div style="display:flex;gap:14px;align-items:flex-start;font-size:16px;line-height:1.45"><span style="width:8px;height:8px;border-radius:999px;background:#A5E85C;margin-top:8px;flex-shrink:0"></span>Ads rebuilt around what a customer is worth</div>
+          <div style="display:flex;gap:14px;align-items:flex-start;font-size:16px;line-height:1.45"><span style="width:8px;height:8px;border-radius:999px;background:#A5E85C;margin-top:8px;flex-shrink:0"></span>Website pages people and Google can find</div>
+          <div style="display:flex;gap:14px;align-items:flex-start;font-size:16px;line-height:1.45"><span style="width:8px;height:8px;border-radius:999px;background:#A5E85C;margin-top:8px;flex-shrink:0"></span>Enquiries answered fast, every time</div>
+          <div style="display:flex;gap:14px;align-items:flex-start;font-size:16px;line-height:1.45"><span style="width:8px;height:8px;border-radius:999px;background:#A5E85C;margin-top:8px;flex-shrink:0"></span>Numbers you can trust when you check them</div>
+        </div>
+        <div style="margin-top:auto;display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+          <a class="rv-ctadark" href="#close" style="display:inline-flex;align-items:center;gap:10px;font-weight:600;font-size:16px;padding:15px 28px;border-radius:999px">Talk it through →</a>
+          <span style="font-family:'DM Mono',monospace;font-size:11.5px;letter-spacing:0.12em;text-transform:uppercase;color:#6F7A64">Fixed scope. No surprises</span>
+        </div>
+      </div>
+    </div>
+
+    <div data-panel="2" hidden style="display:flex;flex-wrap:wrap;gap:12px;align-items:stretch">
+      <div style="flex:1 1 340px;position:relative;overflow:hidden;background:#163300;border-radius:28px;min-height:440px;display:grid;place-items:center;padding:40px 24px">
+        <div style="position:absolute;width:240px;height:120px;border-radius:999px;background:rgba(255,255,255,0.08);top:52px;left:40px"></div>
+        <div style="position:absolute;width:190px;height:190px;border-radius:999px;border:2px solid rgba(255,255,255,0.22);top:-56px;right:-56px"></div>
+        <div style="position:absolute;width:250px;height:320px;border-radius:999px 999px 0 0;background:#A5E85C;bottom:0;left:50%;transform:translateX(-50%)"></div>
+        <svg viewBox="0 0 24 24" style="position:absolute;bottom:104px;left:50%;transform:translateX(-50%);width:104px;height:104px;fill:none;stroke:#163300;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7 V12 L16 14"></path></svg>
+        <div style="position:absolute;width:14px;height:14px;border-radius:999px;background:#A5E85C;bottom:76px;left:56px"></div>
+      </div>
+      <div style="flex:1.05 1 400px;background:#FFFFFF;border-radius:28px;padding:clamp(32px,4vw,52px) clamp(28px,4vw,52px) clamp(28px,4vw,44px);display:flex;flex-direction:column">
+        <span style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:#6F7A64">Step 03 · month to month · no contract</span>
+        <h3 style="font-family:Archivo,sans-serif;font-weight:800;font-size:clamp(27px,3vw,34px);line-height:1.05;letter-spacing:-0.03em;margin:14px 0 0">I stay on and keep it working.</h3>
+        <p style="font-size:17px;line-height:1.55;color:#454745;margin:16px 0 26px;max-width:46ch">Most things break again if nobody watches them. I watch them, and I tell you what to do next. Every week, in plain words.</p>
+        <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:30px">
+          <div style="display:flex;gap:14px;align-items:flex-start;font-size:16px;line-height:1.45"><span style="width:8px;height:8px;border-radius:999px;background:#A5E85C;margin-top:8px;flex-shrink:0"></span>One call a week. Decisions, not status updates</div>
+          <div style="display:flex;gap:14px;align-items:flex-start;font-size:16px;line-height:1.45"><span style="width:8px;height:8px;border-radius:999px;background:#A5E85C;margin-top:8px;flex-shrink:0"></span>A dashboard you can read in a minute</div>
+          <div style="display:flex;gap:14px;align-items:flex-start;font-size:16px;line-height:1.45"><span style="width:8px;height:8px;border-radius:999px;background:#A5E85C;margin-top:8px;flex-shrink:0"></span>A message when your ad spend goes strange</div>
+          <div style="display:flex;gap:14px;align-items:flex-start;font-size:16px;line-height:1.45"><span style="width:8px;height:8px;border-radius:999px;background:#A5E85C;margin-top:8px;flex-shrink:0"></span>One page a month you can hand to your board</div>
+        </div>
+        <div style="margin-top:auto;display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+          <a class="rv-ctadark" href="#close" style="display:inline-flex;align-items:center;gap:10px;font-weight:600;font-size:16px;padding:15px 28px;border-radius:999px">Talk it through →</a>
+          <span style="font-family:'DM Mono',monospace;font-size:11.5px;letter-spacing:0.12em;text-transform:uppercase;color:#6F7A64">Stop any month</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="ai" style="background:#F2F5EC;padding:clamp(72px,8vw,110px) 0">
+  <div style="max-width:1280px;margin:0 auto;padding:0 clamp(20px,4vw,56px)">
+    <h2 style="font-family:Archivo,sans-serif;font-weight:900;font-variation-settings:'wdth' 87;text-transform:uppercase;font-size:clamp(32px,4.4vw,60px);line-height:0.92;letter-spacing:-0.03em;margin:0 auto;max-width:16ch;text-align:center;text-wrap:balance">How I use AI</h2>
+    <div style="display:flex;flex-wrap:wrap-reverse;gap:clamp(28px,4vw,56px);align-items:center;margin-top:clamp(40px,5vw,64px)">
+      <div style="flex:1.05 1 400px">
+        <h3 style="font-family:Archivo,sans-serif;font-weight:800;font-size:clamp(28px,3.4vw,40px);line-height:1.05;letter-spacing:-0.03em;margin:0;color:#163300">Software does the boring bits. I do the thinking</h3>
+        <p style="font-size:18px;line-height:1.55;color:#454745;margin:16px 0 0;max-width:48ch">A lot of agencies now sell you the busy work and call it AI. I use it to get the busy work out of the way, so you are paying me for the decisions.</p>
+      </div>
+      <div style="flex:1 1 420px;position:relative;overflow:hidden;background:#163300;border-radius:28px;padding:clamp(28px,3vw,40px)">
+        <div style="position:absolute;width:220px;height:110px;border-radius:999px;background:rgba(255,255,255,0.08);top:-40px;left:-50px"></div>
+        <div style="position:absolute;width:190px;height:190px;border-radius:999px;border:2px solid rgba(255,255,255,0.22);top:-56px;right:-56px"></div>
+        <div style="position:absolute;width:150px;height:150px;border-radius:999px;background:#A5E85C;bottom:-70px;right:-56px"></div>
+        <div style="position:absolute;width:12px;height:12px;border-radius:999px;background:#A5E85C;bottom:26px;left:26px"></div>
+        <div style="position:relative">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;font-family:'Instrument Sans',sans-serif;font-weight:600;font-size:13px;letter-spacing:0.01em;color:rgba(255,255,255,0.55);padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,0.18)"><span>Software does</span><span>I do</span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;padding:16px 0;border-bottom:1px solid rgba(255,255,255,0.18);font-size:16px"><span style="color:rgba(255,255,255,0.78)">Sorting new enquiries</span><span style="color:#FFFFFF">Who we sell to</span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;padding:16px 0;border-bottom:1px solid rgba(255,255,255,0.18);font-size:16px"><span style="color:rgba(255,255,255,0.78)">First drafts of emails</span><span style="color:#FFFFFF">What the ads say</span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;padding:16px 0;border-bottom:1px solid rgba(255,255,255,0.18);font-size:16px"><span style="color:rgba(255,255,255,0.78)">The weekly reports</span><span style="color:#FFFFFF">Where the money goes</span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;padding:16px 0;font-size:16px"><span style="color:rgba(255,255,255,0.78)">Spend warnings</span><span style="color:#FFFFFF">The awkward conversation</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="cost" style="max-width:1280px;margin:0 auto;padding:clamp(72px,8vw,110px) clamp(20px,4vw,56px) 0;text-align:center">
+  <h2 style="font-family:Archivo,sans-serif;font-weight:900;font-variation-settings:'wdth' 87;text-transform:uppercase;font-size:clamp(32px,4.4vw,60px);line-height:0.92;letter-spacing:-0.03em;margin:0 auto;max-width:20ch;text-wrap:balance">The same help for about a third of the price</h2>
+  <p style="font-size:19px;line-height:1.5;color:#454745;margin:20px auto 0;max-width:58ch">I work from Cape Town on purpose. You talk to the person doing the work, and you are not paying for an agency office in New York.</p>
+  <div style="background:#F2F5EC;border-radius:28px;padding:16px clamp(24px,3vw,40px) 24px;margin:44px auto 0;text-align:left;max-width:900px">
+    <div style="display:grid;grid-template-columns:1fr auto;gap:24px;padding:20px 0;border-bottom:1px solid rgba(22,51,0,0.14);font-family:'Instrument Sans',sans-serif;font-weight:600;font-size:13.5px;letter-spacing:0.01em;color:#6F7A64">
+      <span>Who you could hire</span><span>Cost per year</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr auto;gap:24px;padding:22px 0;border-bottom:1px solid rgba(22,51,0,0.14);font-size:18px">
+      <span>A US agency on retainer</span><span style="font-family:Archivo,sans-serif;font-weight:700;letter-spacing:-0.02em">$300–500k</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr auto;gap:24px;padding:22px 0;border-bottom:1px solid rgba(22,51,0,0.14);font-size:18px">
+      <span>A marketing director on staff</span><span style="font-family:Archivo,sans-serif;font-weight:700;letter-spacing:-0.02em">$220–280k</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr auto;gap:24px;padding:22px 0;border-bottom:1px solid rgba(22,51,0,0.14);font-size:18px">
+      <span>A small consultancy</span><span style="font-family:Archivo,sans-serif;font-weight:700;letter-spacing:-0.02em">$180–240k</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr auto;gap:24px;padding:26px 0 20px;font-size:18px;align-items:center">
+      <span style="display:inline-flex;align-items:center;gap:12px;font-weight:600"><span style="width:8px;height:8px;border-radius:999px;background:#A5E85C"></span>Me, month to month</span>
+      <span style="font-family:Archivo,sans-serif;font-weight:900;font-size:clamp(22px,2.4vw,28px);letter-spacing:-0.03em;color:#4A6E18">about a third</span>
+    </div>
+  </div>
+</section>
+
+<section id="notes" style="max-width:1280px;margin:0 auto;padding:clamp(72px,8vw,110px) clamp(20px,4vw,56px) 0">
+  <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:32px">
+    <h2 style="font-family:Archivo,sans-serif;font-weight:900;font-variation-settings:'wdth' 87;text-transform:uppercase;font-size:clamp(30px,3.8vw,52px);line-height:0.92;letter-spacing:-0.03em;margin:0">Things I write down</h2>
+    <div style="display:flex;gap:10px">
+      <button class="rv-railbtn" type="button" data-rail="-1" aria-label="Previous" style="width:44px;height:44px;border-radius:999px;border:1px solid rgba(22,51,0,0.20);color:#163300;font-size:18px;cursor:pointer">←</button>
+      <button class="rv-railbtn" type="button" data-rail="1" aria-label="Next" style="width:44px;height:44px;border-radius:999px;border:1px solid rgba(22,51,0,0.20);color:#163300;font-size:18px;cursor:pointer">→</button>
+    </div>
+  </div>
+  <div class="riv-rail" id="notesRail" style="display:flex;gap:12px;overflow-x:auto;scroll-behavior:smooth;scroll-snap-type:x mandatory;scrollbar-width:none;padding-bottom:8px">
+    <a class="rv-note" href="/blog" style="flex:0 0 clamp(260px,30vw,360px);scroll-snap-align:start;display:flex;flex-direction:column;border-radius:24px;padding:36px;min-height:250px">
+      <span style="font-family:'Instrument Sans',sans-serif;font-weight:600;font-size:13.5px;letter-spacing:0.01em;color:#4A6E18">Ads</span>
+      <h4 style="font-family:Archivo,sans-serif;font-weight:800;font-size:24px;line-height:1.1;letter-spacing:-0.025em;margin:16px 0 12px;text-wrap:balance">Small changes, checked often.</h4>
+      <p style="font-size:16px;line-height:1.55;color:#454745;margin:0;flex:1">Why a small change you can measure beats a big launch nobody checks.</p>
+      <div style="display:flex;justify-content:space-between;font-family:'Instrument Sans',sans-serif;font-weight:600;font-size:13px;letter-spacing:0.01em;color:#6F7A64;margin-top:24px"><span>7 min</span><span>Read →</span></div>
+    </a>
+    <a class="rv-note" href="/blog" style="flex:0 0 clamp(260px,30vw,360px);scroll-snap-align:start;display:flex;flex-direction:column;border-radius:24px;padding:36px;min-height:250px">
+      <span style="font-family:'Instrument Sans',sans-serif;font-weight:600;font-size:13.5px;letter-spacing:0.01em;color:#4A6E18">Money</span>
+      <h4 style="font-family:Archivo,sans-serif;font-weight:800;font-size:24px;line-height:1.1;letter-spacing:-0.025em;margin:16px 0 12px;text-wrap:balance">Saying no is worth money.</h4>
+      <p style="font-size:16px;line-height:1.55;color:#454745;margin:0;flex:1">Half of what I am useful for is the supplier you do not hire and the meeting you do not have.</p>
+      <div style="display:flex;justify-content:space-between;font-family:'Instrument Sans',sans-serif;font-weight:600;font-size:13px;letter-spacing:0.01em;color:#6F7A64;margin-top:24px"><span>5 min</span><span>Read →</span></div>
+    </a>
+    <a class="rv-note" href="/blog" style="flex:0 0 clamp(260px,30vw,360px);scroll-snap-align:start;display:flex;flex-direction:column;border-radius:24px;padding:36px;min-height:250px">
+      <span style="font-family:'Instrument Sans',sans-serif;font-weight:600;font-size:13.5px;letter-spacing:0.01em;color:#4A6E18">Numbers</span>
+      <h4 style="font-family:Archivo,sans-serif;font-weight:800;font-size:24px;line-height:1.1;letter-spacing:-0.025em;margin:16px 0 12px;text-wrap:balance">Count it before you get clever.</h4>
+      <p style="font-size:16px;line-height:1.55;color:#454745;margin:0;flex:1">You cannot make a weekly decision off a hunch and a group chat.</p>
+      <div style="display:flex;justify-content:space-between;font-family:'Instrument Sans',sans-serif;font-weight:600;font-size:13px;letter-spacing:0.01em;color:#6F7A64;margin-top:24px"><span>9 min</span><span>Read →</span></div>
+    </a>
+    <a class="rv-note" href="/blog" style="flex:0 0 clamp(260px,30vw,360px);scroll-snap-align:start;display:flex;flex-direction:column;border-radius:24px;padding:36px;min-height:250px">
+      <span style="font-family:'Instrument Sans',sans-serif;font-weight:600;font-size:13.5px;letter-spacing:0.01em;color:#4A6E18">Reporting</span>
+      <h4 style="font-family:Archivo,sans-serif;font-weight:800;font-size:24px;line-height:1.1;letter-spacing:-0.025em;margin:16px 0 12px;text-wrap:balance">The page I send every month.</h4>
+      <p style="font-size:16px;line-height:1.55;color:#454745;margin:0;flex:1">What moved, what did not, and what I am doing about it.</p>
+      <div style="display:flex;justify-content:space-between;font-family:'Instrument Sans',sans-serif;font-weight:600;font-size:13px;letter-spacing:0.01em;color:#6F7A64;margin-top:24px"><span>4 min</span><span>Read →</span></div>
+    </a>
+  </div>
+</section>
+
+<section id="who" style="background:#163300;color:#FFFFFF;padding:clamp(72px,8vw,110px) 0;margin-top:clamp(72px,8vw,110px)">
+  <div style="max-width:1280px;margin:0 auto;padding:0 clamp(20px,4vw,56px)">
+    <h2 style="font-family:Archivo,sans-serif;font-weight:900;font-variation-settings:'wdth' 87;text-transform:uppercase;font-size:clamp(32px,4.4vw,60px);line-height:0.92;letter-spacing:-0.03em;margin:0 auto;max-width:20ch;text-align:center;color:#FFFFFF;text-wrap:balance">Companies that already make money</h2>
+    <p style="font-size:19px;line-height:1.5;color:rgba(255,255,255,0.78);margin:20px auto 0;max-width:52ch;text-align:center">You have customers. The mess is in everything around them.</p>
+    <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:52px">
+      <div style="flex:1 1 280px;background:rgba(255,255,255,0.08);border-radius:24px;padding:40px">
+        <span style="font-family:'Instrument Sans',sans-serif;font-weight:600;font-size:13.5px;letter-spacing:0.01em;color:#A5E85C">01 · Property</span>
+        <h4 style="font-family:Archivo,sans-serif;font-weight:800;font-size:25px;letter-spacing:-0.025em;margin:16px 0 10px;color:#FFFFFF">Property firms.</h4>
+        <p style="font-size:16px;line-height:1.55;color:rgba(255,255,255,0.78);margin:0">Storage, flats, estate agents, property funds. Raising money, filling units, chasing enquiries.</p>
+      </div>
+      <div style="flex:1 1 280px;background:rgba(255,255,255,0.08);border-radius:24px;padding:40px">
+        <span style="font-family:'Instrument Sans',sans-serif;font-weight:600;font-size:13.5px;letter-spacing:0.01em;color:#A5E85C">02 · Services</span>
+        <h4 style="font-family:Archivo,sans-serif;font-weight:800;font-size:25px;letter-spacing:-0.025em;margin:16px 0 10px;color:#FFFFFF">Boring businesses that do well.</h4>
+        <p style="font-size:16px;line-height:1.55;color:rgba(255,255,255,0.78);margin:0">Builders, factories, accountants, lawyers, agencies. Usually 50 to 500 staff.</p>
+      </div>
+      <div style="flex:1 1 280px;background:rgba(255,255,255,0.08);border-radius:24px;padding:40px">
+        <span style="font-family:'Instrument Sans',sans-serif;font-weight:600;font-size:13.5px;letter-spacing:0.01em;color:#A5E85C">03 · Owners</span>
+        <h4 style="font-family:Archivo,sans-serif;font-weight:800;font-size:25px;letter-spacing:-0.025em;margin:16px 0 10px;color:#FFFFFF">Founders and their teams.</h4>
+        <p style="font-size:16px;line-height:1.55;color:rgba(255,255,255,0.78);margin:0">You do not want a flashy agency. You want one experienced person who tells you the truth.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="about" style="max-width:1000px;margin:0 auto;padding:clamp(72px,8vw,110px) clamp(20px,4vw,56px) 0;text-align:center">
+  <div style="width:clamp(160px,22vw,220px);margin:0 auto;border-radius:999px;overflow:hidden;background:#F2F5EC">
+    <img src="/img/fred-portrait.png" alt="Portrait of Fred Style" style="width:100%;height:auto;display:block">
+  </div>
+  <h2 style="font-family:Archivo,sans-serif;font-weight:900;font-variation-settings:'wdth' 87;text-transform:uppercase;font-size:clamp(32px,4.4vw,60px);line-height:0.92;letter-spacing:-0.03em;margin:32px auto 0;max-width:18ch;text-wrap:balance">I have run ads for Samsung, Visa and Unilever</h2>
+  <p style="font-size:19px;line-height:1.55;color:#454745;margin:20px auto 0;max-width:58ch">Fifteen years of it, in-house and at agencies, most recently a year running growth at Somewhere.com. About $100M of ad money spent across four continents. Now I work for myself, from Cape Town, with a few companies at a time.</p>
+  <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:40px">
+    <div style="flex:1 1 140px;background:#F2F5EC;border-radius:18px;padding:24px">
+      <div style="font-family:Archivo,sans-serif;font-weight:800;font-size:34px;letter-spacing:-0.04em">15</div>
+      <div style="font-family:'Instrument Sans',sans-serif;font-weight:600;font-size:13px;letter-spacing:0.01em;color:#6F7A64;margin-top:8px">Years</div>
+    </div>
+    <div style="flex:1 1 140px;background:#F2F5EC;border-radius:18px;padding:24px">
+      <div style="font-family:Archivo,sans-serif;font-weight:800;font-size:34px;letter-spacing:-0.04em">$100M</div>
+      <div style="font-family:'Instrument Sans',sans-serif;font-weight:600;font-size:13px;letter-spacing:0.01em;color:#6F7A64;margin-top:8px">Ads run</div>
+    </div>
+    <div style="flex:1 1 140px;background:#F2F5EC;border-radius:18px;padding:24px">
+      <div style="font-family:Archivo,sans-serif;font-weight:800;font-size:34px;letter-spacing:-0.04em">04</div>
+      <div style="font-family:'Instrument Sans',sans-serif;font-weight:600;font-size:13px;letter-spacing:0.01em;color:#6F7A64;margin-top:8px">Continents</div>
+    </div>
+    <div style="flex:1 1 140px;background:#F2F5EC;border-radius:18px;padding:24px">
+      <div style="font-family:Archivo,sans-serif;font-weight:800;font-size:34px;letter-spacing:-0.04em">05+</div>
+      <div style="font-family:'Instrument Sans',sans-serif;font-weight:600;font-size:13px;letter-spacing:0.01em;color:#6F7A64;margin-top:8px">Industries</div>
+    </div>
+  </div>
+</section>
+
+<section id="faq" style="max-width:860px;margin:0 auto;padding:clamp(72px,8vw,110px) clamp(20px,4vw,56px)">
+  <h2 style="font-family:Archivo,sans-serif;font-weight:900;font-variation-settings:'wdth' 87;text-transform:uppercase;font-size:clamp(30px,3.8vw,52px);line-height:0.92;letter-spacing:-0.03em;margin:0 0 36px">Questions</h2>
+  <div style="border-top:1px solid rgba(22,51,0,0.14)">
+    <button type="button" data-faq="0" aria-expanded="true" aria-controls="faq-a0" style="width:100%;display:flex;justify-content:space-between;align-items:center;gap:16px;background:transparent;border:0;border-bottom:1px solid rgba(22,51,0,0.14);padding:24px 0;text-align:left;font-family:'Instrument Sans',sans-serif;font-weight:600;font-size:18px;color:#163300;cursor:pointer">How long does the first bit take?<span data-faq-mark="0" style="font-family:Archivo,sans-serif;font-weight:700;font-size:22px;line-height:1;transition:transform 200ms cubic-bezier(0.2,0.6,0.2,1);transform:rotate(45deg)">+</span></button>
+    <p id="faq-a0" data-faq-panel="0" style="font-size:17px;line-height:1.6;color:#454745;margin:0;padding:18px 0 26px;border-bottom:1px solid rgba(22,51,0,0.14)">Two weeks. You get one short document: what is broken, what it is costing you, and what to fix first.</p>
+    <button type="button" data-faq="1" aria-expanded="false" aria-controls="faq-a1" style="width:100%;display:flex;justify-content:space-between;align-items:center;gap:16px;background:transparent;border:0;border-bottom:1px solid rgba(22,51,0,0.14);padding:24px 0;text-align:left;font-family:'Instrument Sans',sans-serif;font-weight:600;font-size:18px;color:#163300;cursor:pointer">Do I have to sign up for months?<span data-faq-mark="1" style="font-family:Archivo,sans-serif;font-weight:700;font-size:22px;line-height:1;transition:transform 200ms cubic-bezier(0.2,0.6,0.2,1);transform:rotate(0deg)">+</span></button>
+    <p id="faq-a1" data-faq-panel="1" hidden style="font-size:17px;line-height:1.6;color:#454745;margin:0;padding:18px 0 26px;border-bottom:1px solid rgba(22,51,0,0.14)">No. The first two weeks are a fixed price on their own. If I carry on and fix things, that fee comes off the next bit. The monthly work can stop any month.</p>
+    <button type="button" data-faq="2" aria-expanded="false" aria-controls="faq-a2" style="width:100%;display:flex;justify-content:space-between;align-items:center;gap:16px;background:transparent;border:0;border-bottom:1px solid rgba(22,51,0,0.14);padding:24px 0;text-align:left;font-family:'Instrument Sans',sans-serif;font-weight:600;font-size:18px;color:#163300;cursor:pointer">Who actually does the work?<span data-faq-mark="2" style="font-family:Archivo,sans-serif;font-weight:700;font-size:22px;line-height:1;transition:transform 200ms cubic-bezier(0.2,0.6,0.2,1);transform:rotate(0deg)">+</span></button>
+    <p id="faq-a2" data-faq-panel="2" hidden style="font-size:17px;line-height:1.6;color:#454745;margin:0;padding:18px 0 26px;border-bottom:1px solid rgba(22,51,0,0.14)">Me. That is the whole point. I take on a few companies at a time so there is nobody to hand you off to.</p>
+    <button type="button" data-faq="3" aria-expanded="false" aria-controls="faq-a3" style="width:100%;display:flex;justify-content:space-between;align-items:center;gap:16px;background:transparent;border:0;border-bottom:1px solid rgba(22,51,0,0.14);padding:24px 0;text-align:left;font-family:'Instrument Sans',sans-serif;font-weight:600;font-size:18px;color:#163300;cursor:pointer">Is the website check really free?<span data-faq-mark="3" style="font-family:Archivo,sans-serif;font-weight:700;font-size:22px;line-height:1;transition:transform 200ms cubic-bezier(0.2,0.6,0.2,1);transform:rotate(0deg)">+</span></button>
+    <p id="faq-a3" data-faq-panel="3" hidden style="font-size:17px;line-height:1.6;color:#454745;margin:0;padding:18px 0 26px;border-bottom:1px solid rgba(22,51,0,0.14)">Yes. It checks nine things on your site in about thirty seconds and shows you what it found. The full write-up comes when we speak.</p>
+    <button type="button" data-faq="4" aria-expanded="false" aria-controls="faq-a4" style="width:100%;display:flex;justify-content:space-between;align-items:center;gap:16px;background:transparent;border:0;border-bottom:1px solid rgba(22,51,0,0.14);padding:24px 0;text-align:left;font-family:'Instrument Sans',sans-serif;font-weight:600;font-size:18px;color:#163300;cursor:pointer">What if I am not a good fit?<span data-faq-mark="4" style="font-family:Archivo,sans-serif;font-weight:700;font-size:22px;line-height:1;transition:transform 200ms cubic-bezier(0.2,0.6,0.2,1);transform:rotate(0deg)">+</span></button>
+    <p id="faq-a4" data-faq-panel="4" hidden style="font-size:17px;line-height:1.6;color:#454745;margin:0;padding:18px 0 26px;border-bottom:1px solid rgba(22,51,0,0.14)">I will say so on the first call. It is a short conversation and it saves us both a lot of time.</p>
+  </div>
+</section>
+
+<section id="close" style="max-width:1280px;margin:0 auto;padding:0 clamp(20px,4vw,56px) 96px">
+  <div style="background:#A5E85C;border-radius:32px;padding:clamp(44px,6vw,80px) clamp(24px,5vw,72px);text-align:center">
+    <h2 style="font-family:Archivo,sans-serif;font-weight:900;font-variation-settings:'wdth' 87;text-transform:uppercase;font-size:clamp(32px,4.6vw,64px);line-height:0.9;letter-spacing:-0.03em;margin:0 auto;max-width:16ch;color:#163300;text-wrap:balance">See what your site is losing</h2>
+    <p style="font-size:18px;line-height:1.55;color:#1C2B18;margin:20px auto 0;max-width:44ch">Type in your website address. Nine checks, about thirty seconds, no charge.</p>
+    <form id="scan-close" method="POST" action="/audit/v3" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;background:#FFFFFF;border-radius:999px;padding:8px 8px 8px 26px;max-width:600px;margin:32px auto 0">
+      <span style="font-family:'Instrument Sans',sans-serif;font-size:15px;color:#6F7A64;flex-shrink:0">https://</span>
+      <input type="text" name="url" required placeholder="type your website address" aria-label="Your website address" autocomplete="off" spellcheck="false" style="flex:1 1 160px;min-width:0;border:0;background:transparent;font-family:'Instrument Sans',sans-serif;font-size:16px;color:#163300;padding:12px 0;outline:none">
+      <input type="hidden" name="source" value="home_close">
+      <button class="rv-submit" type="submit" data-cta="home_close_audit_form_submit" style="display:inline-flex;align-items:center;gap:10px;font-family:'Instrument Sans',sans-serif;font-weight:600;font-size:16px;padding:15px 26px;border:0;border-radius:999px;cursor:pointer;flex-shrink:0">Check my site →</button>
+    </form>
+  </div>
+</section>
+
+<footer style="background:#163300;color:#FFFFFF;padding:72px 0 40px">
+  <div style="max-width:1280px;margin:0 auto;padding:0 clamp(20px,4vw,56px)">
+    <div style="display:flex;flex-wrap:wrap;gap:48px">
+      <div style="flex:1.6 1 260px">
+        <span style="display:inline-flex;align-items:center;gap:0.12em;font-family:'Inter Tight',system-ui,sans-serif;font-weight:700;font-size:28px;letter-spacing:-0.05em;line-height:1;color:#A5E85C">rivett<span style="display:inline-block;width:0.32em;height:0.32em;border-radius:999px;background:#FFFFFF;transform:translateY(0.04em)"></span></span>
+        <p style="font-size:16px;line-height:1.55;color:rgba(255,255,255,0.78);margin:16px 0 0;max-width:32ch">One person. Fifteen years of marketing. No account managers.</p>
+      </div>
+      <div style="flex:1 1 150px;display:flex;flex-direction:column;gap:10px">
+        <span style="font-family:'Instrument Sans',sans-serif;font-weight:600;font-size:13px;letter-spacing:0.01em;color:rgba(255,255,255,0.55);margin-bottom:6px">What I do</span>
+        <a href="#work" style="color:#FFFFFF;font-size:15px">Find it</a>
+        <a href="#work" style="color:#FFFFFF;font-size:15px">Fix it</a>
+        <a href="#work" style="color:#FFFFFF;font-size:15px">Keep it running</a>
+        <a href="#cost" style="color:#FFFFFF;font-size:15px">What it costs</a>
+      </div>
+      <div style="flex:1 1 150px;display:flex;flex-direction:column;gap:10px">
+        <span style="font-family:'Instrument Sans',sans-serif;font-weight:600;font-size:13px;letter-spacing:0.01em;color:rgba(255,255,255,0.55);margin-bottom:6px">Free tools</span>
+        <a href="#scan-close" style="color:#FFFFFF;font-size:15px">Website check</a>
+        <a href="/revenue-leak-mri" style="color:#FFFFFF;font-size:15px">Revenue check</a>
+        <a href="/blog" style="color:#FFFFFF;font-size:15px">All notes</a>
+      </div>
+      <div style="flex:1 1 150px;display:flex;flex-direction:column;gap:10px">
+        <span style="font-family:'Instrument Sans',sans-serif;font-weight:600;font-size:13px;letter-spacing:0.01em;color:rgba(255,255,255,0.55);margin-bottom:6px">Get hold of me</span>
+        <a href="mailto:fred@rivett.tech" style="color:#FFFFFF;font-size:15px">fred@rivett.tech</a>
+        <a href="https://cal.com/fred-style/discovery?overlayCalendar=true" target="_blank" rel="noopener noreferrer" style="color:#FFFFFF;font-size:15px">Book a call</a>
+        <a href="https://www.linkedin.com/in/fredstyle/" target="_blank" rel="noopener noreferrer" style="color:#FFFFFF;font-size:15px">LinkedIn</a>
+      </div>
+    </div>
+    <div style="margin-top:64px;padding-top:24px;border-top:1px solid rgba(255,255,255,0.18);display:flex;justify-content:space-between;flex-wrap:wrap;gap:16px;font-family:'Instrument Sans',sans-serif;font-weight:600;font-size:13.5px;letter-spacing:0.01em;color:rgba(255,255,255,0.55)">
+      <span>© rivett · 2026</span>
+      <span>v2.0 · Cape Town</span>
+    </div>
+  </div>
+</footer>
+
+<script define:vars={{ brands }}>
   (function () {
-    var form = document.getElementById('homeAuditForm');
-    var overlay = document.getElementById('scanOverlay');
-    if (!form) return;
-
-    var logList = document.getElementById('logList');
-    var pctVal = document.getElementById('pctVal');
-    var barFill = document.getElementById('barFill');
-    var elapsed = document.getElementById('elapsed');
-    var scanDomain = document.getElementById('scanDomain');
-    var lanes = overlay ? overlay.querySelectorAll('.scan-side .lane') : [];
-
-    function makeScript(domain) {
-      return [
-        ['run',  'resolve dns ' + domain,                    'A record'],
-        ['ok',   'fetch / robots.txt',                       'parsing'],
-        ['ok',   'fetch / sitemap.xml',                      'parsing'],
-        ['ok',   'fetch /index.html (cold)',                 'live HTML'],
-        ['ok',   'parse <head>',                             'meta, canonical, og:type'],
-        ['ok',   'parse JSON-LD',                            'Organization + WebSite'],
-        ['run',  'PSI · mobile lighthouse',                  'started'],
-        ['ok',   'PSI · core web vitals',                    'LCP / FCP / CLS / INP'],
-        ['ok',   'fingerprint · static',                     'tech detection'],
-        ['run',  'headless · 390x844',                       'Chromium booting'],
-        ['ok',   'headless · scrollWidth + tap targets',     'real DOM'],
-        ['ok',   'fingerprint · runtime',                    'GTM-injected pixels'],
-        ['ok',   'DoH · SPF lookup',                         'Cloudflare 1.1.1.1'],
-        ['ok',   'DoH · DMARC lookup',                       'policy + MX'],
-        ['ok',   'fetch /llms.txt',                          'AEO probe'],
-        ['ok',   'Meta Ad Library',                          'active creatives'],
-        ['ok',   'LinkedIn Ad Library',                      'active creatives'],
-        ['ok',   'Google Ad Library',                        'active creatives'],
-        ['ok',   'score · composite',                        'weighted band'],
-        ['ok',   'memo · render',                            'verdict + fixes'],
-      ];
-    }
-
-    function pad(n) { return n < 10 ? '0' + n : '' + n; }
-    function tsAt(seconds) {
-      var s = Math.floor(seconds);
-      var ms = Math.floor((seconds - s) * 1000);
-      return pad(s) + '.' + pad(Math.floor(ms / 10));
-    }
-
-    var laneTriggers = {
-      0: { start: 1,  end: 5  },
-      1: { start: 14, end: 15 },
-      2: { start: 6,  end: 8  },
-      3: { start: 8,  end: 12 },
-      4: { start: 15, end: 18 },
-      5: { start: 4,  end: 6  },
-      6: { start: 9,  end: 11 },
-      7: { start: 12, end: 14 },
-      8: { start: 11, end: 12 },
-    };
-
-    function setLane(i, state) {
-      var l = lanes[i]; if (!l) return;
-      var st = l.querySelector('.st');
-      l.classList.remove('run', 'done');
-      if (state === 'run')  { l.classList.add('run');  if (st) st.textContent = 'running'; }
-      else if (state === 'done') { l.classList.add('done'); if (st) st.textContent = 'ok'; }
-      else if (st) st.textContent = 'queued';
-    }
-
-    function startScan(domain) {
-      if (!overlay) return;
-      if (scanDomain) scanDomain.textContent = domain;
-      overlay.setAttribute('aria-hidden', 'false');
-      overlay.classList.add('live');
-      if (logList) logList.innerHTML = '';
-      lanes.forEach(function (_, i) { setLane(i, 'queued'); });
-      if (pctVal) pctVal.textContent = '0';
-      if (barFill) barFill.style.right = '100%';
-      if (elapsed) elapsed.textContent = '00.0s';
-
-      var script = makeScript(domain);
-      var totalMs = 26000;
-      var perLine = totalMs / script.length;
-      var startTime = performance.now();
-
-      script.forEach(function (item, i) {
-        setTimeout(function () {
-          var t = (performance.now() - startTime) / 1000;
-          var doneRatio = (i + 1) / script.length;
-          if (pctVal) pctVal.textContent = Math.round(doneRatio * 92);
-          if (barFill) barFill.style.right = (100 - doneRatio * 92) + '%';
-          if (elapsed) elapsed.textContent = tsAt(t) + 's';
-
-          Object.keys(laneTriggers).forEach(function (li) {
-            var trig = laneTriggers[li];
-            if (i >= trig.start && i < trig.end) setLane(parseInt(li, 10), 'run');
-            if (i >= trig.end) setLane(parseInt(li, 10), 'done');
-          });
-
-          if (logList) {
-            var div = document.createElement('span');
-            div.className = 'line';
-            var tag = item[0].toUpperCase();
-            div.innerHTML =
-              '<span class="ts">' + tsAt(t) + 's</span>' +
-              '<span class="tag ' + item[0] + '">[' + tag + ']</span> ' +
-              item[1] +
-              ' <span class="arrow">→</span> <span class="em">' + item[2] + '</span>';
-            logList.appendChild(div);
-            while (logList.children.length > 14) logList.removeChild(logList.firstChild);
-          }
-        }, i * perLine);
+    // ── Tabs (Find it / Fix it / Keep it running) ──
+    var pill = document.getElementById('tabPill');
+    var tabBtns = document.querySelectorAll('[data-tab]');
+    var panels = document.querySelectorAll('[data-panel]');
+    tabBtns.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var i = Number(btn.getAttribute('data-tab'));
+        if (pill) pill.style.transform = 'translateX(' + i * 100 + '%)';
+        panels.forEach(function (p) {
+          p.hidden = Number(p.getAttribute('data-panel')) !== i;
+        });
       });
-
-      setTimeout(function () {
-        lanes.forEach(function (_, i) { setLane(i, 'done'); });
-        var stall = 95;
-        var stallTimer = setInterval(function () {
-          if (stall >= 99) { clearInterval(stallTimer); return; }
-          stall += 0.4;
-          if (pctVal) pctVal.textContent = Math.round(stall);
-          if (barFill) barFill.style.right = (100 - stall) + '%';
-          var t = (performance.now() - startTime) / 1000;
-          if (elapsed) elapsed.textContent = tsAt(t) + 's';
-        }, 1500);
-      }, totalMs + 200);
-    }
-
-    form.addEventListener('submit', function () {
-      var input = form.querySelector('input[name="url"]');
-      var normalized = '';
-      if (input) {
-        normalized = input.value.trim().replace(/^https?:\/\//, '').replace(/\/$/, '');
-        input.value = normalized;
-      }
-      // One submit = one event. This used to also fire audit_form_submitted,
-      // doubling every count downstream.
-      if (window.posthog && window.posthog.capture) {
-        window.posthog.capture('audit_v3_form_submitted', {
-          surface: 'homepage',
-          form_id: 'homeAuditForm',
-          input_domain: normalized,
-          source: 'home_preview',
-          path: window.location.pathname,
-        }, { send_instantly: true, transport: 'sendBeacon' });
-      }
-      // Don't preventDefault — the form POSTs naturally to /audit/v3.
-      // The browser waits up to ~30s for the response while this overlay
-      // animates. When /audit/v3 returns, the new page replaces this one
-      // and the overlay dies with it.
-      startScan(normalized || 'somewhere.com');
     });
-  })();
-</script>
 
-<script is:inline>
-  // Smart scroll motion: progress line, one-shot sheen on section italics,
-  // and counters on the proof-number blocks. All IntersectionObserver-driven,
-  // no library, respects prefers-reduced-motion.
-  (function () {
-    var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (reduced) return;
-
-    // -- 1. Scroll progress line at top of viewport.
-    var fill = document.getElementById('scrollProgressFill');
-    if (fill) {
-      var rafPending = false;
-      function updateProgress() {
-        rafPending = false;
-        var doc = document.documentElement;
-        var max = (doc.scrollHeight - doc.clientHeight) || 1;
-        var pct = Math.min(100, Math.max(0, (window.scrollY / max) * 100));
-        fill.style.width = pct.toFixed(2) + '%';
-      }
-      function onScroll() {
-        if (rafPending) return;
-        rafPending = true;
-        requestAnimationFrame(updateProgress);
-      }
-      window.addEventListener('scroll', onScroll, { passive: true });
-      updateProgress();
-    }
-
-    // -- 2. One-shot sheen sweep on section italics as they scroll in.
-    var italics = document.querySelectorAll(
-      '.audit-first-home h2 .ital, .audit-first-home h3 .ital'
-    );
-    if (italics.length && 'IntersectionObserver' in window) {
-      var italObs = new IntersectionObserver(function (entries) {
-        entries.forEach(function (e) {
-          if (e.isIntersecting) {
-            e.target.classList.add('in-view');
-            italObs.unobserve(e.target);
-          }
+    // ── FAQ accordion. Clicking the open row closes it (state -1). ──
+    var open = 0;
+    document.querySelectorAll('[data-faq]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var i = Number(btn.getAttribute('data-faq'));
+        open = open === i ? -1 : i;
+        document.querySelectorAll('[data-faq-panel]').forEach(function (p) {
+          p.hidden = Number(p.getAttribute('data-faq-panel')) !== open;
         });
-      }, { threshold: 0.4, rootMargin: '0px 0px -10% 0px' });
-      italics.forEach(function (el) { italObs.observe(el); });
-    }
+        document.querySelectorAll('[data-faq-mark]').forEach(function (m) {
+          m.style.transform =
+            Number(m.getAttribute('data-faq-mark')) === open ? 'rotate(45deg)' : 'rotate(0deg)';
+        });
+        document.querySelectorAll('[data-faq]').forEach(function (b) {
+          b.setAttribute('aria-expanded', String(Number(b.getAttribute('data-faq')) === open));
+        });
+      });
+    });
 
-    // -- 3. Number counters on the proof / track-record numboxes.
-    // Parses the leading number out of the .v text, animates 0 → target,
-    // preserves the existing suffix markup. Skips non-numeric or range
-    // values ("60–85", "0 / 15") so they stay static. Counters within
-    // the same .numbox row stagger by 110ms each so they don't all fire
-    // at once - reads more deliberate, less SaaS-landing-page.
-    var nums = document.querySelectorAll('.audit-first-home .numbox .v');
-    if (nums.length && 'IntersectionObserver' in window) {
-      function animateNumber(el, delay) {
-        var original = el.innerHTML;
-        var m = el.textContent.trim().match(/^(\$?)(\d+)([MK]?)/);
-        if (!m) return;
-        var prefix = m[1] || '';
-        var target = parseInt(m[2], 10);
-        var suffix = m[3] || '';
-        if (target <= 0) return;
-        var italMatch = original.match(/<span class="ital"[^>]*>[\s\S]*<\/span>/);
-        var italHtml = italMatch ? ' ' + italMatch[0] : '';
-        var pad = (m[2].length > 1 && m[2].charAt(0) === '0') ? m[2].length : 0;
+    // ── Notes rail arrows ──
+    var rail = document.getElementById('notesRail');
+    document.querySelectorAll('[data-rail]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        if (!rail) return;
+        var dir = Number(btn.getAttribute('data-rail'));
+        rail.scrollBy({ left: dir * Math.min(rail.clientWidth * 0.8, 400), behavior: 'smooth' });
+      });
+    });
 
-        // Show the starting value (0) immediately so there is no flash of
-        // the final number while we wait for the stagger delay.
-        var zeroStr = pad ? String(0).padStart(pad, '0') : '0';
-        el.innerHTML = prefix + zeroStr + suffix + italHtml;
-
+    // ── Brand logo strip. Every 6s all three slots roll to the next brand:
+    // the current face slides up and out, the queued face slides into place,
+    // then both reset instantly with the indices advanced by one.
+    var slots = Array.prototype.slice.call(document.querySelectorAll('.riv-logoslot'));
+    if (slots.length && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      var N = brands.length;
+      var idx = 0;
+      var paint = function (slot, brand, face) {
+        var img = slot.querySelector('[data-face="' + face + '"] img');
+        if (!img) return;
+        img.src = brand.src;
+        img.alt = face === 'cur' ? brand.name : '';
+        img.style.height = brand.h;
+        img.style.width = brand.w || '100%';
+      };
+      setInterval(function () {
+        slots.forEach(function (slot) {
+          var cur = slot.querySelector('[data-face="cur"]');
+          var next = slot.querySelector('[data-face="next"]');
+          cur.style.transition = next.style.transition = 'transform 900ms cubic-bezier(0.55,0,0.1,1)';
+          cur.style.transform = 'translateY(-100%)';
+          next.style.transform = 'translateY(0)';
+        });
         setTimeout(function () {
-          var startTime = null;
-          var duration = 2200;
-          function step(t) {
-            if (!startTime) startTime = t;
-            var p = Math.min(1, (t - startTime) / duration);
-            // ease-out-quart - very gentle deceleration, settles softly
-            var eased = 1 - Math.pow(1 - p, 4);
-            var v = Math.round(eased * target);
-            var vStr = pad ? String(v).padStart(pad, '0') : String(v);
-            el.innerHTML = prefix + vStr + suffix + italHtml;
-            if (p < 1) {
-              requestAnimationFrame(step);
-            } else {
-              el.innerHTML = original;
-            }
-          }
-          requestAnimationFrame(step);
-        }, delay || 0);
-      }
-      var numObs = new IntersectionObserver(function (entries) {
-        // Group entries by their containing .numbox so we can stagger
-        // siblings without staggering numbers in a different block.
-        var batches = {};
-        var batchKey = 0;
-        entries.forEach(function (e) {
-          if (!e.isIntersecting) return;
-          var parent = e.target.closest('.numbox') || e.target.parentNode;
-          var key = parent.__rivBatchKey || (parent.__rivBatchKey = ++batchKey);
-          (batches[key] = batches[key] || []).push(e.target);
-          numObs.unobserve(e.target);
-        });
-        Object.keys(batches).forEach(function (k) {
-          batches[k].forEach(function (el, i) {
-            animateNumber(el, i * 110);
+          idx = idx + 1;
+          slots.forEach(function (slot) {
+            var k = Number(slot.getAttribute('data-slot'));
+            var cur = slot.querySelector('[data-face="cur"]');
+            var next = slot.querySelector('[data-face="next"]');
+            cur.style.transition = next.style.transition = 'none';
+            cur.style.transform = 'translateY(0)';
+            next.style.transform = 'translateY(100%)';
+            paint(slot, brands[(idx + k * 2) % N], 'cur');
+            paint(slot, brands[(idx + 1 + k * 2) % N], 'next');
           });
-        });
-      }, { threshold: 0.6 });
-      nums.forEach(function (el) { numObs.observe(el); });
+        }, 1000);
+      }, 6000);
     }
   })();
 </script>
+</HomeBase>

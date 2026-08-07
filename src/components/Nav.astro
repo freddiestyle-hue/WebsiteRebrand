@@ -7,7 +7,7 @@ const path = Astro.url.pathname;
 const mriActive = current === 'mri' || path.startsWith('/revenue-leak-mri');
 const toolsActive = mriActive;
 const diagnosticActive = path === '/diagnostic' || path.startsWith('/diagnostic/');
-const auditPreviewHref = '/#homeAuditForm';
+const auditPreviewHref = '/#scan';
 ---
 <header class="site-header" data-scrolled="false">
   <nav class="header-inner" aria-label="Primary">
@@ -15,7 +15,7 @@ const auditPreviewHref = '/#homeAuditForm';
       rivett<span class="dot-mark" aria-hidden="true"></span>
     </a>
     <ul class="nav-links">
-      <li><a href="/#modules">Work</a></li>
+      <li><a href="/#work">Work</a></li>
       <li class={diagnosticActive ? 'current-li' : ''}>
         <a href="/diagnostic" class={diagnosticActive ? 'current' : ''}>Diagnostic</a>
       </li>
@@ -52,7 +52,7 @@ const auditPreviewHref = '/#homeAuditForm';
     rivett<span class="dot-mark" aria-hidden="true"></span>
   </a>
   <ul class="mobile-links">
-    <li><a href="/#modules">Work</a></li>
+    <li><a href="/#work">Work</a></li>
     <li><a href="/diagnostic">Diagnostic</a></li>
     <li class="mobile-tools">
       <span>Tools</span>

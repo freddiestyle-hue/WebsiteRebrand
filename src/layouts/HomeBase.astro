@@ -1,0 +1,67 @@
+---
+// Bare layout for the 2026 rebrand homepage.
+//
+// The rebrand handoff ships the page as a self-contained document: its own
+// nav, its own footer, its own reset. Base.astro injects the v1 chrome
+// (site header, floating CTA, tokens/components/global CSS) which would
+// fight it, so this layout carries only the head — meta, schema, analytics —
+// and hands the body straight to the page.
+import PostHog from '../components/PostHog.astro';
+import JsonLd from '../components/seo/JsonLd.astro';
+import { organizationSchema, websiteSchema, safeBuild } from '../utils/schema';
+import { buildCanonicalUrl } from '../utils/canonicalUrl';
+import '../styles/rivett-fonts.css';
+
+interface Props {
+  title: string;
+  description: string;
+  ogImage?: string;
+  extraSchema?: Array<Record<string, unknown>>;
+}
+
+const { title, description, ogImage, extraSchema = [] } = Astro.props;
+
+const canonical = buildCanonicalUrl(Astro.url.pathname);
+const ogImageUrl = ogImage ?? new URL('/og-default.png', Astro.site).toString();
+
+const sitewideSchema = [
+  safeBuild(() => organizationSchema, 'Organization'),
+  safeBuild(() => websiteSchema, 'WebSite'),
+  ...extraSchema,
+].filter(Boolean) as Array<Record<string, unknown>>;
+---
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>{title}</title>
+  <meta name="description" content={description} />
+  <link rel="canonical" href={canonical} />
+  <meta name="author" content="Fred Style" />
+  <meta property="og:title" content={title} />
+  <meta property="og:description" content={description} />
+  <meta property="og:url" content={canonical} />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Rivett" />
+  <meta property="og:image" content={ogImageUrl} />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content={title} />
+  <meta name="twitter:description" content={description} />
+  <meta name="twitter:image" content={ogImageUrl} />
+  <link rel="alternate" type="application/rss+xml" title="Rivett Field Notes" href="/rss.xml" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon/favicon-32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon/favicon-16.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/favicon/apple-touch-icon.png" />
+  <link rel="manifest" href="/site.webmanifest" />
+  <meta name="theme-color" content="#163300" />
+  {sitewideSchema.map((s) => <JsonLd schema={s} />)}
+  <PostHog capturePageview={true} optOutByDefault={false} />
+</head>
+<body>
+  <slot />
+</body>
+</html>
