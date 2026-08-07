@@ -1,13 +1,13 @@
 :root {
   --paper: #FFFFFF;
-  --paper-2: #F4F2ED;
-  --paper-3: #EBE6DC;
-  --ink: #0E1A2C;
-  --ink-dim: #3A4658;
+  --paper-2: #F2F5EC;
+  --paper-3: #EEF7E0;
+  --ink: #163300;
+  --ink-dim: #454745;
   --ink-faint: #5F6B7D;
-  --line: rgba(14,26,44,0.14);
-  --line-strong: rgba(14,26,44,0.28);
-  --accent: #8FBF3F;
+  --line: rgba(22,51,0,0.14);
+  --line-strong: rgba(22,51,0,0.28);
+  --accent: #A5E85C;
   --accent-deep: #4A6E18;
   --grotesk: 'Inter Tight','Inter',system-ui,sans-serif;
   --mono: 'DM Mono',ui-monospace,monospace;
@@ -23,7 +23,7 @@ input:focus,textarea:focus{outline:none}
 textarea{resize:none;overflow-y:auto}
 
 /* progress bar */
-.progress{position:fixed;top:0;left:0;right:0;height:2px;background:rgba(14,26,44,0.06);z-index:50}
+.progress{position:fixed;top:0;left:0;right:0;height:2px;background:rgba(22,51,0,0.06);z-index:50}
 .progress .bar{height:100%;background:var(--accent-deep);transform-origin:left;transition:transform 400ms var(--ease)}
 
 /* top wordmark */

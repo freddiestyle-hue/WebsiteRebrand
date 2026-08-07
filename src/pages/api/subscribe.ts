@@ -89,15 +89,15 @@ function buildHtmlEmail(payload: SubscribeMessage) {
   return `
     <!doctype html>
     <html>
-      <body style="margin:0;padding:0;background:#F4F2ED;color:#0E1A2C;">
+      <body style="margin:0;padding:0;background:#F2F5EC;color:#163300;">
         <main style="max-width:640px;margin:0 auto;padding:40px 24px;background:#FFFFFF;">
           <div style="font-family:'DM Mono',ui-monospace,monospace;font-size:12px;text-transform:uppercase;color:#4A6E18;margin-bottom:16px;">
             Rivett Field Notes subscription
           </div>
-          <h1 style="font-family:'Inter Tight',Inter,Arial,sans-serif;font-size:32px;line-height:1.12;margin:0 0 18px;color:#0E1A2C;">
+          <h1 style="font-family:'Inter Tight',Inter,Arial,sans-serif;font-size:32px;line-height:1.12;margin:0 0 18px;color:#163300;">
             ${escapeHtml(payload.email)}
           </h1>
-          <div style="font-family:Inter,Arial,sans-serif;font-size:16px;line-height:1.7;color:#3A4658;">
+          <div style="font-family:Inter,Arial,sans-serif;font-size:16px;line-height:1.7;color:#454745;">
             <p><strong>Name:</strong> ${escapeHtml(payload.name || 'Not provided')}</p>
             <p><strong>Source:</strong> ${escapeHtml(payload.source)}</p>
             <p><strong>Path:</strong> ${escapeHtml(payload.path || 'Not provided')}</p>

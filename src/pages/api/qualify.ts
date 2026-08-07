@@ -99,11 +99,11 @@ function buildHtmlEmail(
     const answer = renderAnswerHtml(question, answers[question.id]);
 
     return `
-      <section style="padding:24px 0;border-bottom:1px solid rgba(14,26,44,0.14);">
+      <section style="padding:24px 0;border-bottom:1px solid rgba(22,51,0,0.14);">
         <div style="font-family:'DM Mono',ui-monospace,monospace;font-size:12px;line-height:1.5;text-transform:uppercase;color:#4A6E18;margin-bottom:12px;">
           ${index + 1} &rarr; ${escapeHtml(question.text)}
         </div>
-        <div style="font-family:Inter,Arial,sans-serif;font-size:17px;line-height:1.6;color:#0E1A2C;white-space:pre-wrap;">
+        <div style="font-family:Inter,Arial,sans-serif;font-size:17px;line-height:1.6;color:#163300;white-space:pre-wrap;">
           ${answer || '<span style="color:#5F6B7D;font-style:italic;">Skipped</span>'}
         </div>
       </section>
@@ -113,15 +113,15 @@ function buildHtmlEmail(
   return `
     <!doctype html>
     <html>
-      <body style="margin:0;padding:0;background:#F4F2ED;color:#0E1A2C;">
+      <body style="margin:0;padding:0;background:#F2F5EC;color:#163300;">
         <main style="max-width:720px;margin:0 auto;padding:40px 24px;background:#FFFFFF;">
           <div style="font-family:'DM Mono',ui-monospace,monospace;font-size:12px;text-transform:uppercase;color:#4A6E18;margin-bottom:16px;">
             Rivett questionnaire · ${escapeHtml(config.slug)}
           </div>
-          <h1 style="font-family:'Inter Tight',Inter,Arial,sans-serif;font-size:32px;line-height:1.12;margin:0 0 12px;color:#0E1A2C;">
+          <h1 style="font-family:'Inter Tight',Inter,Arial,sans-serif;font-size:32px;line-height:1.12;margin:0 0 12px;color:#163300;">
             ${escapeHtml(config.prospect_name)}
           </h1>
-          <p style="font-family:Inter,Arial,sans-serif;font-size:15px;line-height:1.6;margin:0;color:#3A4658;">
+          <p style="font-family:Inter,Arial,sans-serif;font-size:15px;line-height:1.6;margin:0;color:#454745;">
             ${answeredCount} of ${config.questions.length} answered${submittedAt ? ` · Submitted ${escapeHtml(submittedAt)}` : ''}
           </p>
           <div style="margin-top:20px;">

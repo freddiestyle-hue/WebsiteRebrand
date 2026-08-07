@@ -112,8 +112,8 @@ const fetchedDisplay = state.fetchedAt.replace('T', ' ').slice(0, 19) + ' UTC';
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 1px;
-    background: var(--line, rgba(14,26,44,0.14));
-    border: 1px solid var(--line, rgba(14,26,44,0.14));
+    background: var(--line, rgba(22,51,0,0.14));
+    border: 1px solid var(--line, rgba(22,51,0,0.14));
   }
   @media (max-width: 720px) {
     .wave3-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -123,24 +123,24 @@ const fetchedDisplay = state.fetchedAt.replace('T', ' ').slice(0, 19) + ' UTC';
   }
   .tile {
     padding: 1.25rem 1.25rem 1.1rem;
-    background: var(--paper-2, #F4F2ED);
+    background: var(--paper-2, #F2F5EC);
   }
   .tile-status-go {
     background: linear-gradient(180deg,
-      color-mix(in srgb, var(--accent, #3F7553) 8%, var(--paper-2, #F4F2ED)) 0%,
-      var(--paper-2, #F4F2ED) 80%);
+      color-mix(in srgb, var(--accent, #3F7553) 8%, var(--paper-2, #F2F5EC)) 0%,
+      var(--paper-2, #F2F5EC) 80%);
   }
   .tile-status-wait {
     background: linear-gradient(180deg,
-      color-mix(in srgb, var(--signal-halt, #B8860B) 8%, var(--paper-2, #F4F2ED)) 0%,
-      var(--paper-2, #F4F2ED) 80%);
+      color-mix(in srgb, var(--signal-halt, #B8860B) 8%, var(--paper-2, #F2F5EC)) 0%,
+      var(--paper-2, #F2F5EC) 80%);
   }
   .lab {
     font-family: var(--mono, 'DM Mono', monospace);
     font-size: 0.68rem;
     text-transform: uppercase;
     letter-spacing: 0.1em;
-    color: var(--ink-faint, #7A8597);
+    color: var(--ink-faint, #6F7A64);
     margin-bottom: 0.5rem;
   }
   .val {
@@ -148,7 +148,7 @@ const fetchedDisplay = state.fetchedAt.replace('T', ' ').slice(0, 19) + ' UTC';
     font-size: clamp(1.6rem, 3vw, 2.25rem);
     font-weight: 700;
     line-height: 1;
-    color: var(--ink, #0E1A2C);
+    color: var(--ink, #163300);
     letter-spacing: -0.02em;
   }
   .sub {
@@ -165,7 +165,7 @@ const fetchedDisplay = state.fetchedAt.replace('T', ' ').slice(0, 19) + ' UTC';
     font-size: 0.7rem;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    color: var(--ink-faint, #7A8597);
+    color: var(--ink-faint, #6F7A64);
     display: flex;
     flex-wrap: wrap;
     gap: 0.6rem;

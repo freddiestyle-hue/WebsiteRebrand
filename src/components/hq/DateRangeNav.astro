@@ -47,8 +47,8 @@ const toIso = range.toIso.slice(0, 10);
     display: flex;
     gap: 0.1rem;
     padding: 0.15rem;
-    background: var(--paper-2, #F4F2ED);
-    border: 1px solid var(--line, rgba(14,26,44,0.14));
+    background: var(--paper-2, #F2F5EC);
+    border: 1px solid var(--line, rgba(22,51,0,0.14));
     border-radius: 0;
   }
   .opt {
@@ -58,7 +58,7 @@ const toIso = range.toIso.slice(0, 10);
     padding: 0.3rem 0.6rem;
     font-family: var(--mono, 'DM Mono', monospace);
     font-size: 0.72rem;
-    color: var(--ink-dim, #3A4658);
+    color: var(--ink-dim, #454745);
     text-decoration: none;
     border-radius: 0;
     border: 0;
@@ -68,16 +68,16 @@ const toIso = range.toIso.slice(0, 10);
     transition: background 80ms, color 80ms;
   }
   .opt:hover {
-    color: var(--ink, #0E1A2C);
+    color: var(--ink, #163300);
     background: var(--paper, #FFFFFF);
   }
   .opt--active {
-    background: var(--ink, #0E1A2C);
+    background: var(--ink, #163300);
     color: var(--paper, #FFFFFF);
     font-weight: 500;
   }
   .opt--active:hover {
-    background: var(--ink, #0E1A2C);
+    background: var(--ink, #163300);
     color: var(--paper, #FFFFFF);
   }
 
@@ -90,12 +90,12 @@ const toIso = range.toIso.slice(0, 10);
     align-items: center;
     list-style: none;
     padding: 0.3rem 0.6rem;
-    border: 1px solid var(--line, rgba(14,26,44,0.14));
+    border: 1px solid var(--line, rgba(22,51,0,0.14));
     border-radius: 0;
-    background: var(--paper-2, #F4F2ED);
+    background: var(--paper-2, #F2F5EC);
   }
   details summary::-webkit-details-marker { display: none; }
-  details summary:hover { background: var(--paper, #FFFFFF); color: var(--ink, #0E1A2C); }
+  details summary:hover { background: var(--paper, #FFFFFF); color: var(--ink, #163300); }
   details summary .chev {
     margin-left: 0.4rem;
     transition: transform 120ms;
@@ -112,11 +112,11 @@ const toIso = range.toIso.slice(0, 10);
   }
   .form input[type="date"] {
     padding: 0.25rem 0.4rem;
-    border: 1px solid var(--line-strong, rgba(14,26,44,0.28));
+    border: 1px solid var(--line-strong, rgba(22,51,0,0.28));
     border-radius: 0;
     font-family: var(--mono, 'DM Mono', monospace);
     font-size: 0.72rem;
-    color: var(--ink, #0E1A2C);
+    color: var(--ink, #163300);
     background: var(--paper, #FFFFFF);
   }
   .form input[type="date"]:focus {
@@ -125,12 +125,12 @@ const toIso = range.toIso.slice(0, 10);
   }
   .arrow {
     font-family: var(--mono, 'DM Mono', monospace);
-    color: var(--ink-faint, #7A8597);
+    color: var(--ink-faint, #6F7A64);
     font-size: 0.8rem;
   }
   .opt--apply {
-    background: var(--accent, #8FBF3F);
-    color: var(--ink, #0E1A2C);
+    background: var(--accent, #A5E85C);
+    color: var(--ink, #163300);
     font-weight: 500;
     padding: 0.3rem 0.7rem;
   }

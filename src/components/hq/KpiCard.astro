@@ -111,7 +111,7 @@ function deltaText(): string {
 <style>
   .kpi {
     padding: 16px 22px 14px;
-    border-right: 1px solid var(--line, rgba(14,26,44,0.14));
+    border-right: 1px solid var(--line, rgba(22,51,0,0.14));
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -122,7 +122,7 @@ function deltaText(): string {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    color: var(--ink-faint, #7A8597);
+    color: var(--ink-faint, #6F7A64);
   }
   .lab-ic { color: currentColor; flex-shrink: 0; }
   .lab {
@@ -130,7 +130,7 @@ function deltaText(): string {
     font-size: 10.5px;
     text-transform: uppercase;
     letter-spacing: 0.22em;
-    color: var(--ink-faint, #7A8597);
+    color: var(--ink-faint, #6F7A64);
   }
   .mid {
     display: grid;
@@ -143,11 +143,11 @@ function deltaText(): string {
     font-weight: 700;
     line-height: 1;
     letter-spacing: -0.03em;
-    color: var(--ink, #0E1A2C);
+    color: var(--ink, #163300);
     font-variant-numeric: tabular-nums;
   }
   .spark-wrap {
-    color: var(--ink, #0E1A2C);
+    color: var(--ink, #163300);
     width: 84px;
     height: 28px;
   }
@@ -156,7 +156,7 @@ function deltaText(): string {
     font-size: 10.5px;
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: var(--ink-faint, #7A8597);
+    color: var(--ink-faint, #6F7A64);
     margin-top: 2px;
   }
   .delta b {
@@ -165,16 +165,16 @@ function deltaText(): string {
   }
   .delta--up b { color: var(--accent-deep, #4A6E18); }
   .delta--down b { color: #9A2B2B; }
-  .delta--flat b { color: var(--ink-faint, #7A8597); }
-  .prev { color: var(--ink-faint, #7A8597); }
-  .sub-only { color: var(--ink-faint, #7A8597); }
+  .delta--flat b { color: var(--ink-faint, #6F7A64); }
+  .prev { color: var(--ink-faint, #6F7A64); }
+  .sub-only { color: var(--ink-faint, #6F7A64); }
 
   .hint {
     margin-top: 4px;
-    font-family: var(--serif, 'Newsreader', Georgia, serif);
+    font-family: var(--serif, Archivo, 'Inter Tight', system-ui, sans-serif);
     font-style: italic;
     font-size: 12px;
-    color: var(--ink-faint, #7A8597);
+    color: var(--ink-faint, #6F7A64);
     line-height: 1.4;
   }
 

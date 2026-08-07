@@ -1,0 +1,494 @@
+/* ============================================================
+   RIVETT v2.0 — brand override layer
+
+   tokens.css re-points colour and type tokens at the 2026 brand, which
+   moves everything that consumes tokens. This file carries what a token
+   cannot express: the display face, the death of the serif italic, pill
+   buttons, soft corners, and the green site chrome.
+
+   Loaded AFTER components.css, so it wins on equal specificity. Heading
+   rules are scoped to #main because the v1 component rules are
+   class-based (.rel-card h3, article.prose h2 …) and would otherwise
+   out-rank a bare element selector.
+
+   v1 -> v2: navy/paper/sharp/serif-italic
+          -> green/sage/soft/one-face-two-weights.
+   ============================================================ */
+
+/* ============================================================
+   0. Kill synthetic obliques
+   ============================================================
+
+   v1 leaned on a serif italic for its secondary voice, and ~260 call
+   sites still ask for `font-style: italic`. v2 ships no italic face, so
+   the browser was faking one by shearing Archivo — the single ugliest
+   artefact of the migration. Turning font synthesis off makes every one
+   of those call sites render upright in the real face, without having to
+   hunt down each selector.
+
+   Real emphasis in running prose is the exception: <em>/<i> keep
+   synthesis on, so body copy still gets a slant where an author meant
+   one. */
+#main,
+#main *,
+.questionnaire-body,
+.questionnaire-body * {
+  font-synthesis-style: none;
+}
+#main em,
+#main i,
+.questionnaire-body em,
+.questionnaire-body i {
+  font-synthesis-style: auto;
+}
+
+/* ============================================================
+   1. Typography — Archivo carries the headlines
+   ============================================================ */
+
+#main :is(h1, h2, h3, h4, h5),
+#main .title,
+#main .section-title {
+  font-family: var(--display);
+  font-variation-settings: var(--display-wdth);
+  font-weight: 800;
+  letter-spacing: var(--track-h);
+}
+
+/* The v1 headline device was a grotesk phrase followed by a serif italic
+   phrase. v2 has no serif, so these fragments become the same face,
+   upright — otherwise the browser synthesises an oblique Archivo, which
+   is the one thing worse than the wrong face. */
+#main .ital,
+#main .em,
+#main h1 .ital,
+#main h2 .ital,
+#main h2 .em,
+#main h3 .ital,
+#main .numbox .item .v .ital {
+  font-family: var(--display);
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: var(--track-h);
+  color: var(--ink-dim);
+}
+
+/* Editorial emphasis inside prose is body emphasis, not a brand device:
+   keep it italic, keep it in the body face. */
+#main article.prose p em,
+#main .faq .a em,
+#main .tldr p em {
+  font-family: var(--grotesk);
+  font-style: italic;
+  color: inherit;
+}
+
+/* Pull quotes read as a statement in v2, not a literary aside. */
+#main .pull blockquote {
+  font-family: var(--display);
+  font-variation-settings: var(--display-wdth);
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: var(--track-h-md);
+}
+
+/* Mono is still the label voice — restate it after the heading rule above
+   in case a label is marked up as a heading. */
+#main :is(h1, h2, h3, h4) .stamp,
+#main .stamp,
+#main .label,
+#main .kicker {
+  font-family: var(--mono);
+  font-variation-settings: normal;
+  font-weight: 400;
+  letter-spacing: var(--track-mono);
+}
+
+/* ============================================================
+   2. Buttons — everything is a pill
+   ============================================================ */
+
+.btn,
+#main .btn,
+#main button.btn,
+#main a.btn {
+  border-radius: var(--r-pill);
+  font-family: var(--grotesk);
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  font-size: 16px;
+  padding: 15px 28px;
+  transition: background-color var(--dur-1) var(--ease),
+              color var(--dur-1) var(--ease),
+              border-color var(--dur-1) var(--ease);
+}
+#main .btn--solid,
+#main .btn--lg.btn--solid {
+  background: var(--ink);
+  color: var(--on-ink);
+  border-color: var(--ink);
+}
+#main .btn--solid:hover {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+}
+#main .btn:not(.btn--solid):not(.btn--inverse):not(.btn--ghost-on-ink):hover {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+}
+#main .btn--inverse {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+}
+#main .btn--inverse:hover {
+  background: var(--on-ink);
+  color: var(--ink);
+  border-color: var(--on-ink);
+}
+
+/* Inputs pick up the soft corner too. */
+#main input[type='text'],
+#main input[type='email'],
+#main input[type='url'],
+#main input[type='search'],
+#main select,
+#main textarea {
+  border-radius: var(--r-sm);
+  font-family: var(--grotesk);
+}
+
+/* ============================================================
+   3. Surfaces — soft corners, filled instead of hairlined
+   ============================================================ */
+
+#main .tldr,
+#main .pull,
+#main .numbox,
+#main .rel-card,
+#main .end-cta .inner,
+#main .subscribe-box,
+#main .card,
+#main .panel {
+  border-radius: var(--r-lg);
+}
+
+#main .tldr,
+#main .numbox,
+#main .subscribe-box {
+  background: var(--paper-2);
+  border-color: transparent;
+}
+
+#main .rel-card {
+  background: var(--paper-2);
+  border: 0;
+  padding: 32px;
+}
+#main .rel-card:hover {
+  background: var(--paper-3);
+}
+
+/* A dark block in v2 is the brand green with a generous radius. */
+#main .end-cta .inner {
+  background: var(--ink);
+  border-radius: var(--r-2xl);
+}
+
+/* Tag/pill chrome */
+#main .tag,
+#main .chip,
+#main .pill {
+  border-radius: var(--r-pill);
+}
+
+/* ============================================================
+   4. Site header — the green bar from the homepage
+   ============================================================ */
+
+.site-header {
+  background: var(--ink);
+  border-bottom: 1px solid transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.site-header[data-scrolled='true'] {
+  background: var(--ink);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-bottom-color: var(--on-ink-line);
+}
+.site-header .header-inner {
+  padding: 22px clamp(20px, 4vw, 56px);
+}
+.site-header .wordmark {
+  font-family: var(--wordmark);
+  font-weight: 700;
+  letter-spacing: -0.05em;
+  color: var(--accent);
+}
+.site-header .wordmark .dot-mark {
+  background: var(--on-ink);
+}
+.site-header .nav-links {
+  font-family: var(--grotesk);
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--on-ink);
+  gap: 30px;
+}
+.site-header .header-inner a,
+.site-header .tools-menu summary {
+  color: var(--on-ink);
+}
+.site-header .header-inner a:hover,
+.site-header .header-inner a.current,
+.site-header .tools-menu summary:hover,
+.site-header .tools-menu summary.current {
+  color: var(--accent);
+}
+.site-header .tools-menu summary::after {
+  color: var(--on-ink-faint);
+}
+.site-header .tools-panel {
+  background: var(--paper);
+  border: 0;
+  border-radius: var(--r-lg);
+  box-shadow: 0 18px 40px rgba(22, 51, 0, 0.18);
+  padding: 10px;
+}
+.site-header .tools-panel a {
+  border-bottom: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  color: var(--ink);
+}
+.site-header .tools-panel a:hover,
+.site-header .tools-panel a.current {
+  background: var(--paper-3);
+  color: var(--ink);
+}
+.site-header .tools-panel span {
+  font-family: var(--grotesk);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.site-header .tools-panel small {
+  color: var(--ink-faint);
+}
+.site-header .header-inner .cta {
+  background: var(--accent);
+  border: 0;
+  border-radius: var(--r-pill);
+  color: var(--accent-ink);
+  font-family: var(--grotesk);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  padding: 12px 22px;
+}
+.site-header .header-inner .cta:hover {
+  background: var(--on-ink);
+  color: var(--ink);
+}
+.site-header .menu-bar {
+  background: var(--on-ink);
+}
+
+/* Mobile menu inherits the dark surface. */
+.mobile-menu {
+  background: var(--ink);
+  color: var(--on-ink);
+}
+.mobile-menu a,
+.mobile-menu .mobile-close,
+.mobile-menu .mobile-tools > span {
+  color: var(--on-ink);
+}
+.mobile-menu .wordmark {
+  color: var(--accent);
+}
+.mobile-menu .wordmark .dot-mark {
+  background: var(--on-ink);
+}
+.mobile-menu .mobile-links {
+  font-family: var(--grotesk);
+  text-transform: none;
+  letter-spacing: 0;
+}
+.mobile-menu .mobile-cta {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border: 0;
+  border-radius: var(--r-pill);
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 600;
+}
+.mobile-menu .mobile-foot {
+  color: var(--on-ink-faint);
+}
+
+/* ============================================================
+   5. Site footer — the green slab from the homepage
+   ============================================================ */
+
+footer.site {
+  background: var(--ink);
+  color: var(--on-ink);
+  border-top: 0;
+  padding: 72px 0 40px;
+}
+footer.site a {
+  color: var(--on-ink);
+  font-family: var(--grotesk);
+  font-size: 15px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+footer.site a:hover {
+  color: var(--accent);
+}
+footer.site .col-h,
+footer.site .foot-meta,
+footer.site .row > span {
+  color: var(--on-ink-faint);
+  font-family: var(--grotesk);
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.01em;
+  text-transform: none;
+}
+footer.site .wordmark,
+footer.site .foot-wm {
+  font-family: var(--wordmark);
+  font-weight: 700;
+  font-size: 28px;
+  letter-spacing: -0.05em;
+  color: var(--accent);
+}
+footer.site .wordmark .dot-mark,
+footer.site .foot-wm .dot-mark {
+  background: var(--on-ink);
+}
+footer.site .row {
+  border-top-color: var(--on-ink-line);
+}
+
+/* ============================================================
+   6. Remaining v1 square chrome
+   ============================================================ */
+
+/* Blog category filters: a hairlined segmented box becomes a row of pills. */
+.blog-index .filters {
+  border: 0;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-family: var(--grotesk);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.blog-index .filters button {
+  border: 0;
+  border-left: 0;
+  border-radius: var(--r-pill);
+  background: var(--paper-2);
+  padding: 10px 18px;
+  color: var(--ink-faint);
+}
+.blog-index .filters button:hover {
+  background: var(--paper-3);
+  color: var(--ink);
+}
+.blog-index .filters button.on {
+  background: var(--ink);
+  color: var(--on-ink);
+}
+
+/* Share row on a note. */
+#main aside.rail .share a {
+  border: 0;
+  border-radius: var(--r-pill);
+  background: var(--paper-2);
+  color: var(--ink-faint);
+}
+#main aside.rail .share a:hover {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: transparent;
+}
+
+/* Any remaining submit control — diagnostic intake, subscribe, MRI. */
+#main button[type='submit'],
+#main input[type='submit'],
+.questionnaire-body button[type='submit'] {
+  border-radius: var(--r-pill);
+  font-family: var(--grotesk);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* Diagnostic intake (diagnostic-cro.css) — its own button and card
+   vocabulary, predating the .btn family. */
+#main .btn-solid,
+#main .btn-out {
+  border-radius: var(--r-pill);
+  font-family: var(--grotesk);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  padding: 15px 28px;
+}
+#main .btn-solid:hover {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+}
+#main .btn-out:hover {
+  background: var(--paper-3);
+}
+#main .input,
+#main .radios,
+#main .proc-card,
+#main .proof-C {
+  border-radius: var(--r-sm);
+}
+#main .proc-card,
+#main .proof-C {
+  border-radius: var(--r-lg);
+}
+
+/* ============================================================
+   7. Floating CTA — lime pill, not a dark capsule
+   ============================================================ */
+
+.floating-cta {
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-family: var(--grotesk);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  box-shadow: 0 8px 28px rgba(22, 51, 0, 0.22);
+}
+.floating-cta:hover,
+.floating-cta:focus-visible {
+  box-shadow: 0 12px 36px rgba(22, 51, 0, 0.3);
+}
+.floating-cta-dot {
+  background: var(--ink);
+  box-shadow: none;
+}

@@ -140,18 +140,18 @@ function buildDigestHtml(input: DigestInput, topN: TopProspect[]): string {
       const heatColor =
         heat === 'CTA CLICK' ? '#4A6E18'
         : heat === 'DEEP READ' ? '#4A6E18'
-        : heat === 'WARM' ? '#8FBF3F'
-        : '#3A4658';
+        : heat === 'WARM' ? '#A5E85C'
+        : '#454745';
       return `
         <tr>
-          <td style="padding:10px 8px;border-bottom:1px solid rgba(14,26,44,0.14);font-family:'DM Mono',monospace;font-size:11px;color:${heatColor};font-weight:600;letter-spacing:0.08em;white-space:nowrap;">${heat}</td>
-          <td style="padding:10px 8px;border-bottom:1px solid rgba(14,26,44,0.14);">
-            <div style="font-weight:600;color:#0E1A2C;">${p.prospect}</div>
-            <div style="font-family:'DM Mono',monospace;font-size:12px;color:#7A8597;margin-top:2px;">
+          <td style="padding:10px 8px;border-bottom:1px solid rgba(22,51,0,0.14);font-family:'DM Mono',monospace;font-size:11px;color:${heatColor};font-weight:600;letter-spacing:0.08em;white-space:nowrap;">${heat}</td>
+          <td style="padding:10px 8px;border-bottom:1px solid rgba(22,51,0,0.14);">
+            <div style="font-weight:600;color:#163300;">${p.prospect}</div>
+            <div style="font-family:'DM Mono',monospace;font-size:12px;color:#6F7A64;margin-top:2px;">
               ${dwellHuman(p.total_dwell_seconds)} dwell · ${p.unique_sessions} session(s) · ${p.total_views} view(s)
             </div>
           </td>
-          <td style="padding:10px 8px;border-bottom:1px solid rgba(14,26,44,0.14);font-family:'DM Mono',monospace;font-size:12px;color:#7A8597;text-align:right;white-space:nowrap;">${timeAgo(p.last_view)}</td>
+          <td style="padding:10px 8px;border-bottom:1px solid rgba(22,51,0,0.14);font-family:'DM Mono',monospace;font-size:12px;color:#6F7A64;text-align:right;white-space:nowrap;">${timeAgo(p.last_view)}</td>
         </tr>
       `;
     })
@@ -159,47 +159,47 @@ function buildDigestHtml(input: DigestInput, topN: TopProspect[]): string {
 
   return `<!doctype html>
 <html><head><meta charset="utf-8"><title>Rivett HQ digest</title></head>
-<body style="margin:0;padding:24px;background:#F4F2ED;font-family:-apple-system,BlinkMacSystemFont,'Inter Tight',sans-serif;color:#0E1A2C;">
-<div style="max-width:640px;margin:0 auto;background:#fff;border:1px solid rgba(14,26,44,0.14);border-radius:6px;overflow:hidden;">
+<body style="margin:0;padding:24px;background:#F2F5EC;font-family:-apple-system,BlinkMacSystemFont,'Inter Tight',sans-serif;color:#163300;">
+<div style="max-width:640px;margin:0 auto;background:#fff;border:1px solid rgba(22,51,0,0.14);border-radius:6px;overflow:hidden;">
 
-  <div style="padding:18px 22px;background:#0E1A2C;color:#fff;">
+  <div style="padding:18px 22px;background:#163300;color:#fff;">
     <div style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;opacity:0.7;">Rivett HQ · daily digest</div>
     <div style="margin-top:4px;font-size:20px;font-weight:600;letter-spacing:-0.02em;">${input.actionQueue.length} prospect${input.actionQueue.length === 1 ? '' : 's'} waiting for follow-up</div>
   </div>
 
-  <div style="padding:18px 22px;border-bottom:1px solid rgba(14,26,44,0.14);">
+  <div style="padding:18px 22px;border-bottom:1px solid rgba(22,51,0,0.14);">
     <table style="width:100%;border-collapse:collapse;">
       <tr>
-        <td style="padding:6px 0;font-family:'DM Mono',monospace;font-size:11px;color:#7A8597;letter-spacing:0.08em;text-transform:uppercase;">CTA clicks today</td>
-        <td style="padding:6px 0;text-align:right;font-weight:600;font-variant-numeric:tabular-nums;">${input.ctaClicksToday} <span style="color:#7A8597;font-weight:400;font-size:13px;">(${input.ctaClicks7d} this week)</span></td>
+        <td style="padding:6px 0;font-family:'DM Mono',monospace;font-size:11px;color:#6F7A64;letter-spacing:0.08em;text-transform:uppercase;">CTA clicks today</td>
+        <td style="padding:6px 0;text-align:right;font-weight:600;font-variant-numeric:tabular-nums;">${input.ctaClicksToday} <span style="color:#6F7A64;font-weight:400;font-size:13px;">(${input.ctaClicks7d} this week)</span></td>
       </tr>
       <tr>
-        <td style="padding:6px 0;font-family:'DM Mono',monospace;font-size:11px;color:#7A8597;letter-spacing:0.08em;text-transform:uppercase;">Memo views today</td>
-        <td style="padding:6px 0;text-align:right;font-weight:600;font-variant-numeric:tabular-nums;">${input.memoViewsToday} <span style="color:#7A8597;font-weight:400;font-size:13px;">(${input.memoViews7d} this week)</span></td>
+        <td style="padding:6px 0;font-family:'DM Mono',monospace;font-size:11px;color:#6F7A64;letter-spacing:0.08em;text-transform:uppercase;">Memo views today</td>
+        <td style="padding:6px 0;text-align:right;font-weight:600;font-variant-numeric:tabular-nums;">${input.memoViewsToday} <span style="color:#6F7A64;font-weight:400;font-size:13px;">(${input.memoViews7d} this week)</span></td>
       </tr>
       <tr>
-        <td style="padding:6px 0;font-family:'DM Mono',monospace;font-size:11px;color:#7A8597;letter-spacing:0.08em;text-transform:uppercase;">Engaged reads today</td>
+        <td style="padding:6px 0;font-family:'DM Mono',monospace;font-size:11px;color:#6F7A64;letter-spacing:0.08em;text-transform:uppercase;">Engaged reads today</td>
         <td style="padding:6px 0;text-align:right;font-weight:600;font-variant-numeric:tabular-nums;">${input.totalEngagedToday}</td>
       </tr>
     </table>
   </div>
 
   ${topN.length > 0 ? `
-  <div style="padding:18px 22px;border-bottom:1px solid rgba(14,26,44,0.14);">
-    <div style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#7A8597;margin-bottom:10px;">Top of the queue</div>
+  <div style="padding:18px 22px;border-bottom:1px solid rgba(22,51,0,0.14);">
+    <div style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#6F7A64;margin-bottom:10px;">Top of the queue</div>
     <table style="width:100%;border-collapse:collapse;">${queueRows}</table>
   </div>
   ` : `
-  <div style="padding:22px;font-family:'Newsreader',Georgia,serif;font-style:italic;color:#7A8597;">
+  <div style="padding:22px;font-family:'Newsreader',Georgia,serif;font-style:italic;color:#6F7A64;">
     Queue is empty. Either you're caught up or your outreach hasn't generated engagement signal yet today.
   </div>
   `}
 
   <div style="padding:18px 22px;text-align:center;">
-    <a href="${input.hqUrl}" style="display:inline-block;padding:10px 22px;background:#0E1A2C;color:#fff;text-decoration:none;border-radius:4px;font-family:'DM Mono',monospace;font-size:13px;font-weight:500;">Open HQ →</a>
+    <a href="${input.hqUrl}" style="display:inline-block;padding:10px 22px;background:#163300;color:#fff;text-decoration:none;border-radius:4px;font-family:'DM Mono',monospace;font-size:13px;font-weight:500;">Open HQ →</a>
   </div>
 
-  <div style="padding:14px 22px;background:#F4F2ED;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:#7A8597;text-align:center;">
+  <div style="padding:14px 22px;background:#F2F5EC;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:#6F7A64;text-align:center;">
     rivett · sent ${new Date().toISOString().slice(0, 10)}
   </div>
 
@@ -250,23 +250,23 @@ export async function sendHotAlertEmail(input: HotAlertInput): Promise<{ ok: boo
 
   const html = `<!doctype html>
 <html><head><meta charset="utf-8"></head>
-<body style="margin:0;padding:24px;background:#F4F2ED;font-family:-apple-system,BlinkMacSystemFont,'Inter Tight',sans-serif;color:#0E1A2C;">
+<body style="margin:0;padding:24px;background:#F2F5EC;font-family:-apple-system,BlinkMacSystemFont,'Inter Tight',sans-serif;color:#163300;">
 <div style="max-width:560px;margin:0 auto;background:#fff;border:2px solid #4A6E18;border-radius:6px;overflow:hidden;">
   <div style="padding:16px 22px;background:#4A6E18;color:#fff;">
     <div style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;opacity:0.85;">Rivett HQ · hot signal</div>
     <div style="margin-top:4px;font-size:20px;font-weight:600;letter-spacing:-0.02em;">${input.signal}</div>
   </div>
   <div style="padding:20px 22px;">
-    <div style="font-size:22px;font-weight:700;color:#0E1A2C;letter-spacing:-0.02em;">${input.prospect}</div>
-    ${geo ? `<div style="font-family:'DM Mono',monospace;font-size:12px;color:#7A8597;margin-top:4px;letter-spacing:0.05em;">${geo} · ${new Date(input.whenIso).toUTCString()}</div>` : ''}
-    ${input.detail ? `<p style="margin:12px 0 0;color:#3A4658;line-height:1.5;">${input.detail}</p>` : ''}
+    <div style="font-size:22px;font-weight:700;color:#163300;letter-spacing:-0.02em;">${input.prospect}</div>
+    ${geo ? `<div style="font-family:'DM Mono',monospace;font-size:12px;color:#6F7A64;margin-top:4px;letter-spacing:0.05em;">${geo} · ${new Date(input.whenIso).toUTCString()}</div>` : ''}
+    ${input.detail ? `<p style="margin:12px 0 0;color:#454745;line-height:1.5;">${input.detail}</p>` : ''}
   </div>
   <div style="padding:0 22px 20px;display:flex;gap:8px;flex-wrap:wrap;">
-    ${input.replayUrl ? `<a href="${input.replayUrl}" style="display:inline-block;padding:9px 16px;background:#0E1A2C;color:#fff;text-decoration:none;border-radius:4px;font-family:'DM Mono',monospace;font-size:12px;font-weight:500;">Watch replay →</a>` : ''}
-    <a href="${input.memoUrl}" style="display:inline-block;padding:9px 16px;background:#fff;color:#0E1A2C;border:1px solid rgba(14,26,44,0.28);text-decoration:none;border-radius:4px;font-family:'DM Mono',monospace;font-size:12px;font-weight:500;">Open memo</a>
-    <a href="${input.hqUrl}" style="display:inline-block;padding:9px 16px;background:#fff;color:#0E1A2C;border:1px solid rgba(14,26,44,0.28);text-decoration:none;border-radius:4px;font-family:'DM Mono',monospace;font-size:12px;font-weight:500;">Open HQ</a>
+    ${input.replayUrl ? `<a href="${input.replayUrl}" style="display:inline-block;padding:9px 16px;background:#163300;color:#fff;text-decoration:none;border-radius:4px;font-family:'DM Mono',monospace;font-size:12px;font-weight:500;">Watch replay →</a>` : ''}
+    <a href="${input.memoUrl}" style="display:inline-block;padding:9px 16px;background:#fff;color:#163300;border:1px solid rgba(22,51,0,0.28);text-decoration:none;border-radius:4px;font-family:'DM Mono',monospace;font-size:12px;font-weight:500;">Open memo</a>
+    <a href="${input.hqUrl}" style="display:inline-block;padding:9px 16px;background:#fff;color:#163300;border:1px solid rgba(22,51,0,0.28);text-decoration:none;border-radius:4px;font-family:'DM Mono',monospace;font-size:12px;font-weight:500;">Open HQ</a>
   </div>
-  <div style="padding:14px 22px;background:#F4F2ED;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:#7A8597;text-align:center;">
+  <div style="padding:14px 22px;background:#F2F5EC;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:#6F7A64;text-align:center;">
     rivett · act fast — engagement decays
   </div>
 </div>

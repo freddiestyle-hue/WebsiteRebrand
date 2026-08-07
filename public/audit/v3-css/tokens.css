@@ -485,18 +485,18 @@
 :root {
   /* ---------- Surface ---------- */
   --paper:        #FFFFFF;
-  --paper-2:      #F4F2ED;
-  --paper-3:      #EBE6DC;
-  --paper-4:      #DDD7C9;     /* deepest paper, used for code blocks, table heads */
-  --sage:         #E8F0D9;     /* tinted accent surface */
-  --sage-2:       #D5E3B7;     /* sage hover/active */
+  --paper-2:      #F2F5EC;
+  --paper-3:      #EEF7E0;
+  --paper-4:      #D9E6C3;     /* deepest paper, used for code blocks, table heads */
+  --sage:         #EEF7E0;     /* tinted accent surface */
+  --sage-2:       #D9E6C3;     /* sage hover/active */
 
   /* ---------- Ink ---------- */
-  --ink:          #0E1A2C;     /* primary type, dark surface bg */
-  --ink-2:        #1B2940;     /* dark surface raised */
-  --ink-dim:      #3A4658;     /* secondary type, italic serif on light */
-  --ink-faint:    #7A8597;     /* meta strip, captions */
-  --ink-soft:     #B6BCC6;     /* disabled, dividers on dark */
+  --ink:          #163300;     /* primary type, dark surface bg */
+  --ink-2:        #1D4200;     /* dark surface raised */
+  --ink-dim:      #454745;     /* secondary type, italic serif on light */
+  --ink-faint:    #6F7A64;     /* meta strip, captions */
+  --ink-soft:     #A9B49E;     /* disabled, dividers on dark */
 
   /* ---------- On-ink (inverse text) ---------- */
   --on-ink:           #FFFFFF;
@@ -507,14 +507,14 @@
   --on-ink-line-2:    rgba(255,255,255,0.32);
 
   /* ---------- Lines ---------- */
-  --line:         rgba(14,26,44,0.14);
-  --line-strong: rgba(14,26,44,0.28);
-  --line-soft:   rgba(14,26,44,0.06);
+  --line:         rgba(22,51,0,0.14);
+  --line-strong: rgba(22,51,0,0.28);
+  --line-soft:   rgba(22,51,0,0.06);
 
   /* ---------- Accent (the only colour) ---------- */
-  --accent:       #8FBF3F;     /* primary green — the dot, hover fills */
+  --accent:       #A5E85C;     /* primary green — the dot, hover fills */
   --accent-deep:  #4A6E18;     /* AA on paper — small text, focus rings */
-  --accent-bg:    #F2F7E5;     /* sub-sage tint for callout backgrounds */
+  --accent-bg:    #EEF7E0;     /* sub-sage tint for callout backgrounds */
 
   /* ---------- Signal (functional, used sparingly) ---------- */
   --signal-warn:  #B8651F;     /* amber-rust — used in MRI risk bars only */
@@ -522,8 +522,11 @@
   /* No success colour — that's the accent. No info colour — that's ink-dim. */
 
   /* ---------- Type families ---------- */
-  --grotesk:      'Inter Tight', system-ui, -apple-system, sans-serif;
-  --serif:        'Newsreader', Georgia, 'Times New Roman', serif;
+  --grotesk:      'Instrument Sans', system-ui, -apple-system, sans-serif;
+  --display:      Archivo, 'Inter Tight', system-ui, sans-serif;
+  --display-wdth: 'wdth' 87;
+  --accent-ink:   #163300;
+  --serif:        Archivo, 'Inter Tight', system-ui, sans-serif;  /* v2 has no serif */
   --mono:         'DM Mono', ui-monospace, 'SF Mono', Menlo, monospace;
 
   /* ---------- Tracking ---------- */
@@ -909,3 +912,19 @@ hr.rule--strong { border-top-color: var(--line-strong); }
 .on-ink h1, .on-ink h2, .on-ink h3, .on-ink h4 { color: var(--on-ink); }
 .on-ink .lede { color: var(--on-ink-italic); }
 .on-ink .body-md { color: var(--on-ink-dim); }
+
+/* ============================================================
+   RIVETT v2.0 — 2026 rebrand
+   The report is token-driven, so the palette above carries it. These
+   two rules cover what tokens cannot: v2 ships no italic face, so the
+   serif-italic call sites inherited from v1 would render as a sheared
+   Archivo. Headlines move to the display face.
+   ============================================================ */
+*, *::before, *::after { font-synthesis-style: none; }
+em, i { font-synthesis-style: auto; }
+h1, h2, h3, h4 {
+  font-family: var(--display);
+  font-variation-settings: var(--display-wdth);
+  font-weight: 800;
+}
+.btn, button.btn, a.btn { border-radius: var(--r-pill); }

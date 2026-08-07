@@ -1,6 +1,8 @@
 ---
 import '../styles/tokens.css';
 import '../styles/global.css';
+import '../styles/rivett-fonts.css';
+import '../styles/brand-v2.css';
 
 interface Props {
   title: string;
@@ -12,7 +14,7 @@ const {
   description = 'Private Rivett pre-call questionnaire.',
 } = Astro.props;
 
-const fontHref = 'https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400;1,6..72,500&display=swap';
+// Webfonts are self-hosted (styles/rivett-fonts.css) since the v2 rebrand.
 ---
 <!doctype html>
 <html lang="en">
@@ -26,9 +28,6 @@ const fontHref = 'https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;
   <meta property="og:description" content={description} />
   <meta property="og:type" content="website" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href={fontHref} rel="stylesheet" />
 </head>
 <body class="questionnaire-body">
   <slot />

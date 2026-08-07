@@ -212,7 +212,7 @@ function buildHtmlEmail(c: EmailContext) {
   const auditIdLine = c.auditId ? `<strong>Audit ID:</strong> ${escapeHtml(c.auditId)}<br />` : '';
   const nameLine = c.name ? `<strong>Name:</strong> ${escapeHtml(c.name)}<br />` : '';
   const contextBlock = c.context
-    ? `<div style="margin:18px 0 0;padding:14px 16px;background:#F4F2ED;border-left:3px solid #8FBF3F;font-family:'Inter Tight',Inter,Arial,sans-serif;font-size:14px;line-height:1.55;color:#3A4658;"><strong style="color:#0E1A2C;">Context:</strong><br />${escapeHtml(c.context).replace(/\n/g, '<br />')}</div>`
+    ? `<div style="margin:18px 0 0;padding:14px 16px;background:#F2F5EC;border-left:3px solid #A5E85C;font-family:'Inter Tight',Inter,Arial,sans-serif;font-size:14px;line-height:1.55;color:#454745;"><strong style="color:#163300;">Context:</strong><br />${escapeHtml(c.context).replace(/\n/g, '<br />')}</div>`
     : '';
   const linkLine = c.auditRunUrl
     ? `<a href="${escapeHtml(c.auditRunUrl)}" style="color:#4A6E18;text-decoration:underline;">Open the audit they saw →</a>`
@@ -221,15 +221,15 @@ function buildHtmlEmail(c: EmailContext) {
   return `
     <!doctype html>
     <html>
-      <body style="margin:0;padding:0;background:#F4F2ED;color:#0E1A2C;">
-        <main style="max-width:560px;margin:0 auto;padding:32px 24px;background:#FFFFFF;border:1px solid rgba(14,26,44,0.14);">
+      <body style="margin:0;padding:0;background:#F2F5EC;color:#163300;">
+        <main style="max-width:560px;margin:0 auto;padding:32px 24px;background:#FFFFFF;border:1px solid rgba(22,51,0,0.14);">
           <div style="font-family:'DM Mono',ui-monospace,monospace;font-size:11px;text-transform:uppercase;letter-spacing:0.14em;color:#4A6E18;margin-bottom:14px;">
             Rivett audit · new lead
           </div>
-          <h1 style="font-family:'Inter Tight',Inter,Arial,sans-serif;font-size:24px;line-height:1.2;margin:0 0 8px;color:#0E1A2C;letter-spacing:-0.02em;">
+          <h1 style="font-family:'Inter Tight',Inter,Arial,sans-serif;font-size:24px;line-height:1.2;margin:0 0 8px;color:#163300;letter-spacing:-0.02em;">
             ${escapeHtml(c.auditedUrl)}
           </h1>
-          <p style="font-family:'Inter Tight',Inter,Arial,sans-serif;font-size:15px;line-height:1.6;margin:0 0 24px;color:#3A4658;">
+          <p style="font-family:'Inter Tight',Inter,Arial,sans-serif;font-size:15px;line-height:1.6;margin:0 0 24px;color:#454745;">
             <strong>Email:</strong> <a href="mailto:${escapeHtml(c.email)}" style="color:#4A6E18;">${escapeHtml(c.email)}</a><br />
             ${nameLine}
             ${scoreLine}
@@ -237,8 +237,8 @@ function buildHtmlEmail(c: EmailContext) {
             <strong>Submitted:</strong> ${escapeHtml(c.submittedAt)}
           </p>
           ${contextBlock}
-          ${linkLine ? `<div style="padding:14px 0;border-top:1px solid rgba(14,26,44,0.14);font-family:'DM Mono',ui-monospace,monospace;font-size:13px;">${linkLine}</div>` : ''}
-          <p style="margin-top:24px;font-family:'Newsreader',Georgia,serif;font-style:italic;font-size:14px;color:#7A8597;">
+          ${linkLine ? `<div style="padding:14px 0;border-top:1px solid rgba(22,51,0,0.14);font-family:'DM Mono',ui-monospace,monospace;font-size:13px;">${linkLine}</div>` : ''}
+          <p style="margin-top:24px;font-family:'Newsreader',Georgia,serif;font-style:italic;font-size:14px;color:#6F7A64;">
             They submitted the audit gate form. Reply directly to start the conversation.
           </p>
         </main>

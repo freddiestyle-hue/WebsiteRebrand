@@ -200,28 +200,28 @@ function buildHtmlEmail(payload: MriLeadMessage) {
   return `
     <!doctype html>
     <html>
-      <body style="margin:0;padding:0;background:#F4F2ED;color:#0E1A2C;">
+      <body style="margin:0;padding:0;background:#F2F5EC;color:#163300;">
         <main style="max-width:720px;margin:0 auto;padding:40px 24px;background:#FFFFFF;">
           <div style="font-family:'DM Mono',ui-monospace,monospace;font-size:12px;text-transform:uppercase;color:#4A6E18;margin-bottom:16px;">
             Rivett Revenue MRI lead
           </div>
-          <h1 style="font-family:'Inter Tight',Inter,Arial,sans-serif;font-size:32px;line-height:1.12;margin:0 0 12px;color:#0E1A2C;">
+          <h1 style="font-family:'Inter Tight',Inter,Arial,sans-serif;font-size:32px;line-height:1.12;margin:0 0 12px;color:#163300;">
             ${escapeHtml(payload.company || payload.email)}
           </h1>
-          <p style="font-family:Inter,Arial,sans-serif;font-size:15px;line-height:1.6;margin:0;color:#3A4658;">
+          <p style="font-family:Inter,Arial,sans-serif;font-size:15px;line-height:1.6;margin:0;color:#454745;">
             <strong>Email:</strong> ${escapeHtml(payload.email)}<br />
             <strong>Company:</strong> ${escapeHtml(payload.company || 'Not provided')}<br />
             <strong>Source:</strong> ${escapeHtml(payload.source)}<br />
             <strong>Path:</strong> ${escapeHtml(payload.path)}<br />
             <strong>Submitted:</strong> ${escapeHtml(payload.submittedAt)}
           </p>
-          <section style="margin-top:28px;padding-top:24px;border-top:1px solid rgba(14,26,44,0.14);">
+          <section style="margin-top:28px;padding-top:24px;border-top:1px solid rgba(22,51,0,0.14);">
             <h2 style="font-family:'DM Mono',ui-monospace,monospace;font-size:12px;text-transform:uppercase;letter-spacing:0.18em;color:#4A6E18;margin:0 0 16px;">
               Readout
             </h2>
             ${renderRows(payload.readout, true)}
           </section>
-          <section style="margin-top:28px;padding-top:24px;border-top:1px solid rgba(14,26,44,0.14);">
+          <section style="margin-top:28px;padding-top:24px;border-top:1px solid rgba(22,51,0,0.14);">
             <h2 style="font-family:'DM Mono',ui-monospace,monospace;font-size:12px;text-transform:uppercase;letter-spacing:0.18em;color:#4A6E18;margin:0 0 16px;">
               Inputs
             </h2>
@@ -252,8 +252,8 @@ function buildTextEmail(payload: MriLeadMessage) {
 
 function renderRows(values: Record<string, number>, money = false) {
   return Object.entries(values).map(([key, value]) => `
-    <div style="display:flex;justify-content:space-between;gap:24px;padding:10px 0;border-bottom:1px solid rgba(14,26,44,0.08);font-family:Inter,Arial,sans-serif;font-size:15px;color:#0E1A2C;">
-      <span style="color:#3A4658;">${escapeHtml(formatKey(key))}</span>
+    <div style="display:flex;justify-content:space-between;gap:24px;padding:10px 0;border-bottom:1px solid rgba(22,51,0,0.08);font-family:Inter,Arial,sans-serif;font-size:15px;color:#163300;">
+      <span style="color:#454745;">${escapeHtml(formatKey(key))}</span>
       <strong>${escapeHtml(formatValue(key, value, money))}</strong>
     </div>
   `).join('');

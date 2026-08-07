@@ -20,34 +20,34 @@ const live = data.active_sessions > 0;
     align-items: center;
     gap: 0.4rem;
     padding: 0.3rem 0.7rem;
-    border: 1px solid var(--line, rgba(14,26,44,0.14));
+    border: 1px solid var(--line, rgba(22,51,0,0.14));
     border-radius: 999px;
-    background: var(--paper-2, #F4F2ED);
+    background: var(--paper-2, #F2F5EC);
     font-family: var(--mono, 'DM Mono', monospace);
     font-size: 0.7rem;
-    color: var(--ink-dim, #3A4658);
+    color: var(--ink-dim, #454745);
   }
   .dot {
     display: inline-block;
     width: 6px;
     height: 6px;
     border-radius: 999px;
-    background: var(--ink-faint, #7A8597);
+    background: var(--ink-faint, #6F7A64);
   }
   .active--on .dot {
-    background: var(--accent, #8FBF3F);
-    box-shadow: 0 0 0 0 var(--accent, #8FBF3F);
+    background: var(--accent, #A5E85C);
+    box-shadow: 0 0 0 0 var(--accent, #A5E85C);
     animation: pulse 1.6s infinite;
   }
   .active--on {
-    border-color: var(--accent, #8FBF3F);
-    background: var(--accent-bg, #F2F7E5);
+    border-color: var(--accent, #A5E85C);
+    background: var(--accent-bg, #EEF7E0);
     color: var(--accent-deep, #4A6E18);
   }
   .count {
     font-weight: 600;
     font-variant-numeric: tabular-nums;
-    color: var(--ink, #0E1A2C);
+    color: var(--ink, #163300);
   }
   .active--on .count { color: var(--accent-deep, #4A6E18); }
   .lab {

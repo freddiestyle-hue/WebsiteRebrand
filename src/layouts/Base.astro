@@ -2,6 +2,8 @@
 import '../styles/tokens.css';
 import '../styles/components.css';
 import '../styles/global.css';
+import '../styles/rivett-fonts.css';
+import '../styles/brand-v2.css';
 import PostHog from '../components/PostHog.astro';
 import Nav from '../components/Nav.astro';
 import BookingProvider from '../components/diagnostic/BookingProvider.astro';
@@ -44,7 +46,8 @@ const {
   extraSchema = [],
 } = Astro.props;
 
-const fontHref = `https://fonts.googleapis.com/css2?family=${fontWeights}&family=DM+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&display=swap`;
+// Webfonts are self-hosted (styles/rivett-fonts.css) since the v2 rebrand.
+// `fontWeights` is kept on Props so existing callers keep compiling.
 const canonical = buildCanonicalUrl(Astro.url.pathname);
 const ogImageUrl = ogImage ?? new URL('/og-default.png', Astro.site).toString();
 const authorName = article?.author ?? 'Fred Style';
@@ -108,10 +111,7 @@ const showFloatingCta = !(
   <link rel="icon" type="image/png" sizes="16x16" href="/favicon/favicon-16.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="/favicon/apple-touch-icon.png" />
   <link rel="manifest" href="/site.webmanifest" />
-  <meta name="theme-color" content="#8FBF3F" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href={fontHref} rel="stylesheet" />
+  <meta name="theme-color" content="#163300" />
   {sitewideSchema.map((s) => <JsonLd schema={s} />)}
   <PostHog capturePageview={posthogCapturePageview} optOutByDefault={posthogOptOutByDefault} />
 </head>
@@ -178,7 +178,7 @@ const showFloatingCta = !(
     align-items: center;
     gap: 10px;
     padding: 12px 18px 12px 16px;
-    background: var(--ink, #0E1A2C);
+    background: var(--ink, #163300);
     color: var(--on-ink, #ffffff);
     border-radius: 999px;
     font-family: var(--mono, 'DM Mono', monospace);
@@ -208,7 +208,7 @@ const showFloatingCta = !(
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: var(--accent, #8FBF3F);
+    background: var(--accent, #A5E85C);
     box-shadow: 0 0 8px rgba(143, 191, 63, 0.6);
     animation: floating-cta-pulse 2.4s ease-in-out infinite;
   }

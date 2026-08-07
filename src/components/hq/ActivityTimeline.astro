@@ -234,13 +234,13 @@ const pointsJson = JSON.stringify(
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 0;
-    border: 1px solid var(--line, rgba(14,26,44,0.14));
+    border: 1px solid var(--line, rgba(22,51,0,0.14));
     border-radius: 0;
     overflow: hidden;
   }
   .total {
     padding: 0.85rem 1rem;
-    border-right: 1px solid var(--line, rgba(14,26,44,0.14));
+    border-right: 1px solid var(--line, rgba(22,51,0,0.14));
   }
   .total:last-child { border-right: 0; }
   .total .lab {
@@ -248,7 +248,7 @@ const pointsJson = JSON.stringify(
     font-size: 0.65rem;
     text-transform: uppercase;
     letter-spacing: 0.12em;
-    color: var(--ink-faint, #7A8597);
+    color: var(--ink-faint, #6F7A64);
     margin-bottom: 0.3rem;
   }
   .total .val {
@@ -262,13 +262,13 @@ const pointsJson = JSON.stringify(
     margin-top: 0.3rem;
     font-family: var(--mono, 'DM Mono', monospace);
     font-size: 0.7rem;
-    color: var(--ink-faint, #7A8597);
+    color: var(--ink-faint, #6F7A64);
   }
 
   /* Chart container is relative so the tooltip can absolute-position over the svg */
   .chart-wrap {
     position: relative;
-    border: 1px solid var(--line, rgba(14,26,44,0.14));
+    border: 1px solid var(--line, rgba(22,51,0,0.14));
     border-radius: 0;
     padding: 1rem 0.5rem 0.75rem;
     background: var(--paper, #FFFFFF);
@@ -282,17 +282,17 @@ const pointsJson = JSON.stringify(
   .hit { cursor: crosshair; }
 
   /* Grid + lines */
-  .grid { stroke: var(--line, rgba(14,26,44,0.14)); stroke-width: 1; }
+  .grid { stroke: var(--line, rgba(22,51,0,0.14)); stroke-width: 1; }
   .grid--mid { stroke-dasharray: 2 4; }
   .line { fill: none; stroke-width: 2; }
-  .line--pageviews { stroke: var(--ink, #0E1A2C); }
+  .line--pageviews { stroke: var(--ink, #163300); }
   .line--visitors { stroke: var(--accent-deep, #4A6E18); stroke-width: 1.5; stroke-dasharray: 4 3; }
-  .dot--pageviews { fill: var(--ink, #0E1A2C); }
+  .dot--pageviews { fill: var(--ink, #163300); }
   .dot--visitors { fill: var(--accent-deep, #4A6E18); }
 
   /* Hover guide */
   .hover-line {
-    stroke: var(--line-strong, rgba(14,26,44,0.28));
+    stroke: var(--line-strong, rgba(22,51,0,0.28));
     stroke-width: 1;
     stroke-dasharray: 2 3;
     opacity: 0;
@@ -307,7 +307,7 @@ const pointsJson = JSON.stringify(
     pointer-events: none;
     transition: opacity 80ms;
   }
-  .hover-dot--pageviews { stroke: var(--ink, #0E1A2C); }
+  .hover-dot--pageviews { stroke: var(--ink, #163300); }
   .hover-dot--visitors { stroke: var(--accent-deep, #4A6E18); }
   .hover-dot--on { opacity: 1; }
 
@@ -318,12 +318,12 @@ const pointsJson = JSON.stringify(
     left: 0;
     min-width: 130px;
     padding: 0.5rem 0.65rem;
-    background: var(--ink, #0E1A2C);
+    background: var(--ink, #163300);
     color: var(--paper, #FFFFFF);
     border-radius: 0;
     font-family: var(--mono, 'DM Mono', monospace);
     font-size: 0.72rem;
-    box-shadow: 0 4px 12px rgba(14,26,44,0.18);
+    box-shadow: 0 4px 12px rgba(22,51,0,0.18);
     pointer-events: none;
     opacity: 0;
     transform: translateY(-4px);
@@ -363,7 +363,7 @@ const pointsJson = JSON.stringify(
     padding: 0 0.25rem;
     font-family: var(--mono, 'DM Mono', monospace);
     font-size: 0.7rem;
-    color: var(--ink-faint, #7A8597);
+    color: var(--ink-faint, #6F7A64);
   }
   .legend {
     display: flex;
@@ -372,7 +372,7 @@ const pointsJson = JSON.stringify(
     padding: 0 0.25rem;
     font-family: var(--mono, 'DM Mono', monospace);
     font-size: 0.7rem;
-    color: var(--ink-dim, #3A4658);
+    color: var(--ink-dim, #454745);
   }
   .leg {
     display: inline-flex;
@@ -385,12 +385,12 @@ const pointsJson = JSON.stringify(
     width: 14px;
     height: 2px;
   }
-  .leg--pageviews::before { background: var(--ink, #0E1A2C); }
+  .leg--pageviews::before { background: var(--ink, #163300); }
   .leg--visitors::before { background: var(--accent-deep, #4A6E18); }
 
   @media (max-width: 640px) {
     .totals { grid-template-columns: 1fr; }
-    .total { border-right: 0; border-bottom: 1px solid var(--line, rgba(14,26,44,0.14)); }
+    .total { border-right: 0; border-bottom: 1px solid var(--line, rgba(22,51,0,0.14)); }
     .total:last-child { border-bottom: 0; }
   }
 </style>

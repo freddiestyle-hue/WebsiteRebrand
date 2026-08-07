@@ -1,9 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" role="img" aria-label="Rivett B1 mark">
-  <circle cx="40" cy="40" r="40" fill="#8FBF3F"/>
-  <text x="40" y="58" text-anchor="middle"
-        font-family="Inter Tight, system-ui, sans-serif"
-        font-weight="700"
-        font-size="56"
-        letter-spacing="-3"
-        fill="#0E1A2C">r</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="Rivett mark">
+  <title>Rivett mark</title>
+  <rect width="120" height="120" fill="#163300"></rect>
+  <path d="M30 120 a30 30 0 0 1 60 0 Z" fill="#A5E85C" transform="translate(0,-18)"></path>
+  <text x="60" y="66" text-anchor="middle" font-family="Inter Tight, system-ui, sans-serif" font-weight="700" font-size="34" fill="#FFFFFF" letter-spacing="-1">r</text>
+  <circle cx="74" cy="66" r="4" fill="#A5E85C"></circle>
 </svg>

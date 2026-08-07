@@ -64,42 +64,42 @@ function prettySource(src: string): string {
 
 <style>
   .empty {
-    font-family: var(--serif, 'Newsreader', Georgia, serif);
+    font-family: var(--serif, Archivo, 'Inter Tight', system-ui, sans-serif);
     font-style: italic;
-    color: var(--ink-faint, #7A8597);
+    color: var(--ink-faint, #6F7A64);
     padding: 1.5rem 0;
   }
   .tbl { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
   .tbl th, .tbl td {
     text-align: left; padding: 0.6rem 0.5rem;
-    border-bottom: 1px solid var(--line, rgba(14,26,44,0.14));
+    border-bottom: 1px solid var(--line, rgba(22,51,0,0.14));
   }
   .tbl thead th {
     font-family: var(--mono, 'DM Mono', monospace);
     font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em;
-    font-weight: 500; color: var(--ink-faint, #7A8597);
-    border-bottom-color: var(--line-strong, rgba(14,26,44,0.28));
+    font-weight: 500; color: var(--ink-faint, #6F7A64);
+    border-bottom-color: var(--line-strong, rgba(22,51,0,0.28));
   }
   .th-rank, .td-rank {
     font-family: var(--mono, 'DM Mono', monospace);
-    color: var(--ink-faint, #7A8597); width: 3rem;
+    color: var(--ink-faint, #6F7A64); width: 3rem;
   }
   .th-num, .td-num {
     text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap;
   }
   .td-src { font-weight: 500; }
-  .src-direct { color: var(--ink-faint, #7A8597); font-style: italic; font-weight: 400; }
-  .src-domain { color: var(--ink, #0E1A2C); }
+  .src-direct { color: var(--ink-faint, #6F7A64); font-style: italic; font-weight: 400; }
+  .src-domain { color: var(--ink, #163300); }
   .td-pct { width: 140px; }
   .pct-bar {
     display: inline-block; width: 70px; height: 6px;
-    background: var(--paper-3, #EBE6DC); border-radius: 999px;
+    background: var(--paper-3, #EEF7E0); border-radius: 999px;
     overflow: hidden; vertical-align: middle; margin-right: 0.5rem;
   }
-  .pct-fill { display: block; height: 100%; background: var(--accent, #8FBF3F); }
+  .pct-fill { display: block; height: 100%; background: var(--accent, #A5E85C); }
   .pct-val {
     font-family: var(--mono, 'DM Mono', monospace);
     font-size: 0.75rem;
-    color: var(--ink-dim, #3A4658);
+    color: var(--ink-dim, #454745);
   }
 </style>

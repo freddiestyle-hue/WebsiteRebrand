@@ -12,10 +12,12 @@ import PostHog from '../components/PostHog.astro';
     <PostHog />
     <style is:global>
       @import '../styles/tokens.css';
+      @import '../styles/rivett-fonts.css';
 
   :root { --sp-9: calc(var(--sp-8) + var(--sp-1)); }
 
-  *, *::before, *::after { box-sizing: border-box; }
+  *, *::before, *::after { box-sizing: border-box; font-synthesis-style: none; }
+  em, i { font-synthesis-style: auto; }
   html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: var(--paper); color: var(--ink); font-family: var(--grotesk); -webkit-font-smoothing: antialiased; }
 
   /* ---------- chrome ---------- */
@@ -24,7 +26,7 @@ import PostHog from '../components/PostHog.astro';
 
   .topbar { position: fixed; top: 0; left: 0; right: 0; padding: 22px 32px; display: flex; justify-content: space-between; align-items: center; z-index: 50; pointer-events: none; }
   .topbar > * { pointer-events: auto; }
-  .wordmark { display: inline-flex; align-items: center; gap: 0.12em; font-family: var(--grotesk); font-weight: 700; font-size: 18px; letter-spacing: -0.05em; color: var(--ink); text-decoration: none; }
+  .wordmark { display: inline-flex; align-items: center; gap: 0.12em; font-family: var(--wordmark); font-weight: 700; font-size: 18px; letter-spacing: -0.05em; color: var(--ink); text-decoration: none; }
   .wordmark:focus-visible { outline: 1px solid currentColor; outline-offset: 6px; }
   .dot-mark { width: 0.32em; height: 0.32em; border-radius: var(--r-pill); background: var(--accent); transform: translateY(0.04em); display: inline-block; }
   .counter { font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); display: flex; align-items: center; gap: 16px; }
@@ -34,7 +36,7 @@ import PostHog from '../components/PostHog.astro';
   .botbar > * { pointer-events: auto; }
   .botbar kbd { font-family: var(--mono); font-size: 10px; padding: 3px 7px; border: var(--bw-hair) solid var(--line-strong); background: var(--paper); color: var(--ink-dim); border-radius: 3px; margin: 0 2px; }
   .botbar .nav-btns { display: flex; gap: 10px; }
-  .botbar button { font: inherit; font-size: 10.5px; letter-spacing: var(--track-mono); text-transform: uppercase; background: none; border: var(--bw-hair) solid var(--line-strong); color: var(--ink-dim); padding: 6px 12px; cursor: pointer; transition: all 160ms ease; font-family: var(--mono); }
+  .botbar button { font: inherit; font-size: 10.5px; letter-spacing: var(--track-mono); text-transform: uppercase; background: none; border: var(--bw-hair) solid var(--line-strong); border-radius: var(--r-pill); color: var(--ink-dim); padding: 6px 14px; cursor: pointer; transition: all 160ms ease; font-family: var(--mono); }
   .botbar button:hover:not(:disabled) { background: var(--ink); color: var(--on-ink); border-color: var(--ink); }
   .botbar button:disabled { opacity: 0.3; cursor: not-allowed; }
 
@@ -60,13 +62,13 @@ import PostHog from '../components/PostHog.astro';
   .qnum b { color: var(--ink); font-weight: 500; }
   .qnum .arrow { display: inline-block; width: 12px; height: 8px; margin-right: 8px; vertical-align: middle; }
 
-  h1.cover { font-family: var(--grotesk); font-weight: 700; font-size: var(--t-h-xxl); line-height: var(--lh-h); letter-spacing: var(--track-h); margin: var(--sp-5) 0 0; text-wrap: balance; opacity: 0; animation: rise 700ms cubic-bezier(.2,.8,.2,1) 200ms forwards; }
-  h1.cover .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); letter-spacing: -0.02em; }
+  h1.cover { font-family: var(--display); font-variation-settings: var(--display-wdth); font-weight: 800; font-size: var(--t-h-xxl); line-height: var(--lh-h); letter-spacing: var(--track-h); margin: var(--sp-5) 0 0; text-wrap: balance; opacity: 0; animation: rise 700ms cubic-bezier(.2,.8,.2,1) 200ms forwards; }
+  h1.cover .ital { font-family: var(--display); font-style: normal; font-weight: 800; color: var(--ink-dim); letter-spacing: -0.02em; }
 
-  h2.q { font-family: var(--grotesk); font-weight: 700; font-size: clamp(34px, 5.2vw, 64px); line-height: 1; letter-spacing: var(--track-display); margin: 0; text-wrap: balance; opacity: 0; animation: rise 640ms cubic-bezier(.2,.8,.2,1) 180ms forwards; }
-  h2.q .ital { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--ink-dim); letter-spacing: -0.02em; }
+  h2.q { font-family: var(--display); font-variation-settings: var(--display-wdth); font-weight: 800; font-size: clamp(34px, 5.2vw, 64px); line-height: 1; letter-spacing: var(--track-display); margin: 0; text-wrap: balance; opacity: 0; animation: rise 640ms cubic-bezier(.2,.8,.2,1) 180ms forwards; }
+  h2.q .ital { font-family: var(--display); font-style: normal; font-weight: 800; color: var(--ink-dim); letter-spacing: -0.02em; }
 
-  .dek { font-family: var(--serif); font-style: italic; font-size: clamp(17px, 1.7vw, 21px); line-height: 1.45; color: var(--ink-dim); margin: var(--sp-6) 0 0; max-width: 660px; opacity: 0; animation: rise 600ms cubic-bezier(.2,.8,.2,1) 320ms forwards; }
+  .dek { font-family: var(--grotesk); font-style: normal; font-size: clamp(17px, 1.7vw, 21px); line-height: 1.45; color: var(--ink-dim); margin: var(--sp-6) 0 0; max-width: 660px; opacity: 0; animation: rise 600ms cubic-bezier(.2,.8,.2,1) 320ms forwards; }
 
   .helptext { font-family: var(--grotesk); font-size: 14px; line-height: 1.5; color: var(--ink-faint); margin: var(--sp-4) 0 0; max-width: 560px; opacity: 0; animation: rise 600ms cubic-bezier(.2,.8,.2,1) 380ms forwards; }
 
@@ -83,20 +85,20 @@ import PostHog from '../components/PostHog.astro';
   .slider-field .label { font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); display: block; margin-bottom: 14px; }
   .slider-field .value-row { display: flex; align-items: baseline; gap: 12px; margin-bottom: 24px; }
   .slider-field .value { font-family: var(--grotesk); font-weight: 700; font-size: clamp(40px, 5.5vw, 64px); letter-spacing: -0.02em; color: var(--ink); }
-  .slider-field .unit { font-family: var(--serif); font-style: italic; font-size: 24px; color: var(--ink-dim); }
+  .slider-field .unit { font-family: var(--grotesk); font-style: normal; font-size: 24px; color: var(--ink-dim); }
   .slider-field input[type="range"] { width: 100%; -webkit-appearance: none; appearance: none; background: var(--paper-2); height: 4px; outline: 0; cursor: pointer; }
   .slider-field input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 22px; height: 22px; background: var(--accent); border: 2px solid var(--ink); border-radius: 50%; cursor: grab; transition: transform 120ms ease; }
   .slider-field input[type="range"]::-webkit-slider-thumb:active { transform: scale(1.15); cursor: grabbing; }
   .slider-field input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; background: var(--accent); border: 2px solid var(--ink); border-radius: 50%; cursor: grab; }
   .slider-field .ticks { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 10px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--ink-faint); margin-top: 12px; }
-  .slider-field .anno { font-family: var(--serif); font-style: italic; font-size: 14px; color: var(--ink-dim); margin-top: 16px; }
+  .slider-field .anno { font-family: var(--grotesk); font-style: normal; font-size: 14px; color: var(--ink-dim); margin-top: 16px; }
 
   /* ---------- buttons ---------- */
-  .start { margin-top: var(--sp-9); display: inline-flex; align-items: center; gap: 12px; background: var(--ink); color: var(--on-ink); border: 0; padding: 18px 28px; font: inherit; font-weight: 600; font-size: 16px; letter-spacing: -0.005em; cursor: pointer; opacity: 0; animation: rise 600ms cubic-bezier(.2,.8,.2,1) 480ms forwards; transition: transform 160ms ease, background 160ms ease; }
+  .start { margin-top: var(--sp-9); display: inline-flex; align-items: center; gap: 12px; background: var(--ink); color: var(--on-ink); border: 0; border-radius: var(--r-pill); padding: 18px 30px; font: inherit; font-weight: 600; font-size: 16px; letter-spacing: -0.005em; cursor: pointer; opacity: 0; animation: rise 600ms cubic-bezier(.2,.8,.2,1) 480ms forwards; transition: transform 160ms ease, background 160ms ease; }
   .start:hover { background: var(--accent-deep); transform: translateY(-1px); }
   .start kbd { font-family: var(--mono); font-size: 11px; padding: 3px 7px; background: var(--ink-2); color: var(--on-ink-dim); border-radius: 3px; }
 
-  .ok { display: inline-flex; align-items: center; gap: 10px; background: var(--ink); color: var(--on-ink); border: 0; padding: 12px 18px; font: inherit; font-weight: 500; font-size: 14px; cursor: pointer; margin-top: var(--sp-7); transition: transform 160ms ease, background 160ms ease; opacity: 0; animation: rise 600ms cubic-bezier(.2,.8,.2,1) 540ms forwards; font-family: var(--grotesk); }
+  .ok { display: inline-flex; align-items: center; gap: 10px; background: var(--ink); color: var(--on-ink); border: 0; border-radius: var(--r-pill); padding: 14px 24px; font: inherit; font-weight: 500; font-size: 14px; cursor: pointer; margin-top: var(--sp-7); transition: transform 160ms ease, background 160ms ease; opacity: 0; animation: rise 600ms cubic-bezier(.2,.8,.2,1) 540ms forwards; font-family: var(--grotesk); }
   .ok:hover { background: var(--accent-deep); transform: translateY(-1px); }
   .ok kbd { font-family: var(--mono); font-size: 10px; padding: 2px 5px; background: var(--ink-2); color: var(--on-ink-dim); border-radius: 2px; }
   .ok .ic { display: inline-block; width: 12px; }
@@ -119,8 +121,8 @@ import PostHog from '../components/PostHog.astro';
   /* hero strip */
   .leak-hero { display: grid; grid-template-columns: 1.55fr 1fr; gap: var(--sp-9); align-items: end; padding-bottom: var(--sp-9); border-bottom: var(--bw-hair) solid var(--ink-2); opacity: 0; animation: rise 700ms cubic-bezier(.2,.8,.2,1) 160ms forwards; }
   .reveal .r-label { font-family: var(--mono); font-size: 11px; letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--on-ink); display: block; margin-bottom: 16px; opacity: 0.75; }
-  .leak-hero .amount { font-family: var(--grotesk); font-weight: 800; font-size: clamp(56px, 7.4vw, 104px); line-height: 0.92; letter-spacing: var(--track-display); color: var(--accent); }
-  .leak-hero .amount .unit { font-family: var(--serif); font-style: italic; font-weight: 400; font-size: 0.28em; color: var(--on-ink-dim); margin-left: 0.12em; letter-spacing: -0.02em; }
+  .leak-hero .amount { font-family: var(--display); font-variation-settings: var(--display-wdth); font-weight: 900; font-size: clamp(56px, 7.4vw, 104px); line-height: 0.92; letter-spacing: var(--track-display); color: var(--accent); }
+  .leak-hero .amount .unit { font-family: var(--grotesk); font-style: normal; font-weight: 500; font-size: 0.28em; color: var(--on-ink-dim); margin-left: 0.12em; letter-spacing: -0.02em; }
   .leak-hero .annual { margin-top: var(--sp-5); font-family: var(--grotesk); font-size: 14px; color: var(--on-ink-dim); display: flex; gap: 10px; align-items: baseline; }
   .leak-hero .annual b { color: var(--on-ink); font-weight: 600; }
   .leak-hero .score-col { padding-left: var(--sp-7); border-left: var(--bw-hair) solid var(--ink-2); }

@@ -76,9 +76,9 @@ function pct(n: number): string {
 
 <style>
   .empty {
-    font-family: var(--serif, 'Newsreader', Georgia, serif);
+    font-family: var(--serif, Archivo, 'Inter Tight', system-ui, sans-serif);
     font-style: italic;
-    color: var(--ink-faint, #7A8597);
+    color: var(--ink-faint, #6F7A64);
     padding: 1.5rem 0;
   }
   .splits {
@@ -89,8 +89,8 @@ function pct(n: number): string {
   }
   .split {
     padding: 1rem;
-    background: var(--paper-2, #F4F2ED);
-    border: 1px solid var(--line, rgba(14,26,44,0.14));
+    background: var(--paper-2, #F2F5EC);
+    border: 1px solid var(--line, rgba(22,51,0,0.14));
     border-radius: 0;
   }
   .split .lab {
@@ -98,7 +98,7 @@ function pct(n: number): string {
     font-size: 0.7rem;
     text-transform: uppercase;
     letter-spacing: 0.1em;
-    color: var(--ink-faint, #7A8597);
+    color: var(--ink-faint, #6F7A64);
     margin-bottom: 0.3rem;
   }
   .split .val {
@@ -110,23 +110,23 @@ function pct(n: number): string {
   .split .sub {
     margin-top: 0.3rem;
     font-size: 0.8rem;
-    color: var(--ink-dim, #3A4658);
+    color: var(--ink-dim, #454745);
   }
 
   .tbl { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
   .tbl th, .tbl td {
     text-align: left; padding: 0.6rem 0.5rem;
-    border-bottom: 1px solid var(--line, rgba(14,26,44,0.14));
+    border-bottom: 1px solid var(--line, rgba(22,51,0,0.14));
   }
   .tbl thead th {
     font-family: var(--mono, 'DM Mono', monospace);
     font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em;
-    font-weight: 500; color: var(--ink-faint, #7A8597);
-    border-bottom-color: var(--line-strong, rgba(14,26,44,0.28));
+    font-weight: 500; color: var(--ink-faint, #6F7A64);
+    border-bottom-color: var(--line-strong, rgba(22,51,0,0.28));
   }
   .th-rank, .td-rank {
     font-family: var(--mono, 'DM Mono', monospace);
-    color: var(--ink-faint, #7A8597); width: 3rem;
+    color: var(--ink-faint, #6F7A64); width: 3rem;
   }
   .th-num, .td-num {
     text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap;

@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" role="img" aria-label="Rivett mark">
   <title>Rivett mark</title>
-  <rect width="80" height="80" fill="#0E1A2C"></rect>
+  <rect width="80" height="80" fill="#163300"></rect>
   <path d="M22 60 V20 H44 a12 12 0 0 1 12 12 v0 a12 12 0 0 1 -12 12 H30 l16 16" fill="none" stroke="#FFFFFF" stroke-width="6" stroke-linecap="square" stroke-linejoin="miter"></path>
-  <circle cx="62" cy="60" r="6" fill="#8FBF3F"></circle>
+  <circle cx="62" cy="60" r="6" fill="#A5E85C"></circle>
 </svg>

@@ -44,34 +44,34 @@ const { cities } = Astro.props;
 
 <style>
   .empty {
-    font-family: var(--serif, 'Newsreader', Georgia, serif);
+    font-family: var(--serif, Archivo, 'Inter Tight', system-ui, sans-serif);
     font-style: italic;
-    color: var(--ink-faint, #7A8597);
+    color: var(--ink-faint, #6F7A64);
     padding: 1.5rem 0;
   }
   .tbl { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
   .tbl th, .tbl td {
     text-align: left; padding: 0.6rem 0.5rem;
-    border-bottom: 1px solid var(--line, rgba(14,26,44,0.14));
+    border-bottom: 1px solid var(--line, rgba(22,51,0,0.14));
   }
   .tbl thead th {
     font-family: var(--mono, 'DM Mono', monospace);
     font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em;
-    font-weight: 500; color: var(--ink-faint, #7A8597);
-    border-bottom-color: var(--line-strong, rgba(14,26,44,0.28));
+    font-weight: 500; color: var(--ink-faint, #6F7A64);
+    border-bottom-color: var(--line-strong, rgba(22,51,0,0.28));
   }
   .th-rank, .td-rank {
     font-family: var(--mono, 'DM Mono', monospace);
-    color: var(--ink-faint, #7A8597); width: 3rem;
+    color: var(--ink-faint, #6F7A64); width: 3rem;
   }
   .th-num, .td-num {
     text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap;
   }
-  .td-city { font-weight: 500; color: var(--ink, #0E1A2C); }
-  .td-region, .td-country { color: var(--ink-dim, #3A4658); }
-  .row--dc td { color: var(--ink-faint, #7A8597); }
+  .td-city { font-weight: 500; color: var(--ink, #163300); }
+  .td-region, .td-country { color: var(--ink-dim, #454745); }
+  .row--dc td { color: var(--ink-faint, #6F7A64); }
   .row--dc .td-city { font-weight: 400; }
-  .row--self td { background: var(--paper-2, #F4F2ED); }
+  .row--self td { background: var(--paper-2, #F2F5EC); }
 
   .tag {
     display: inline-block;
@@ -83,7 +83,7 @@ const { cities } = Astro.props;
     letter-spacing: 0.05em;
     font-weight: 500;
   }
-  .tag--ok { background: var(--accent-bg, #F2F7E5); color: var(--accent-deep, #4A6E18); }
-  .tag--dc { background: var(--paper-3, #EBE6DC); color: var(--ink-faint, #7A8597); }
-  .tag--self { background: var(--paper-3, #EBE6DC); color: var(--ink-dim, #3A4658); }
+  .tag--ok { background: var(--accent-bg, #EEF7E0); color: var(--accent-deep, #4A6E18); }
+  .tag--dc { background: var(--paper-3, #EEF7E0); color: var(--ink-faint, #6F7A64); }
+  .tag--self { background: var(--paper-3, #EEF7E0); color: var(--ink-dim, #454745); }
 </style>

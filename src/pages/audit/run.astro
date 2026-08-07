@@ -266,7 +266,7 @@ function splitDisplay(kicker: string): { roman: string; italic: string; dek: str
     background: var(--paper, #FFFFFF);
     border: 1px solid var(--accent-deep, #4A6E18);
     padding: 28px 28px 24px;
-    box-shadow: 0 16px 48px rgba(14, 26, 44, 0.18);
+    box-shadow: 0 16px 48px rgba(22, 51, 0, 0.18);
   }
   .rec-gate-eyebrow {
     font-family: 'DM Mono', ui-monospace, monospace;
@@ -283,19 +283,19 @@ function splitDisplay(kicker: string): { roman: string; italic: string; dek: str
     letter-spacing: -0.02em;
     line-height: 1.2;
     margin: 0 0 12px;
-    color: var(--ink, #0E1A2C);
+    color: var(--ink, #163300);
   }
   .rec-gate-title .ital {
-    font-family: 'Newsreader', Georgia, serif;
+    font-family: Archivo, 'Inter Tight', system-ui, sans-serif;
     font-style: italic;
     font-weight: 400;
-    color: var(--ink-dim, #3A4658);
+    color: var(--ink-dim, #454745);
   }
   .rec-gate-body {
     font-family: 'Inter Tight', system-ui, sans-serif;
     font-size: 14px;
     line-height: 1.55;
-    color: var(--ink-dim, #3A4658);
+    color: var(--ink-dim, #454745);
     margin: 0 0 18px;
   }
   .rec-gate-form {
@@ -308,9 +308,9 @@ function splitDisplay(kicker: string): { roman: string; italic: string; dek: str
     padding: 12px 14px;
     font-family: 'Inter Tight', system-ui, sans-serif;
     font-size: 15px;
-    color: var(--ink, #0E1A2C);
-    background: var(--paper-2, #F4F2ED);
-    border: 1px solid var(--line-strong, rgba(14,26,44,0.28));
+    color: var(--ink, #163300);
+    background: var(--paper-2, #F2F5EC);
+    border: 1px solid var(--line-strong, rgba(22,51,0,0.28));
     outline: none;
     transition: border-color 120ms, background 120ms;
   }
@@ -332,7 +332,7 @@ function splitDisplay(kicker: string): { roman: string; italic: string; dek: str
     transition: background 120ms, transform 80ms;
     white-space: nowrap;
   }
-  .rec-gate-form button:hover { background: var(--ink, #0E1A2C); border-color: var(--ink, #0E1A2C); }
+  .rec-gate-form button:hover { background: var(--ink, #163300); border-color: var(--ink, #163300); }
   .rec-gate-form button:active { transform: translateY(1px); }
   .rec-gate-form button:disabled {
     opacity: 0.55;
@@ -357,11 +357,11 @@ function splitDisplay(kicker: string): { roman: string; italic: string; dek: str
   .rec-gate-status.err { color: #9A2B2B; }
   .rec-gate-status.ok { color: var(--accent-deep, #4A6E18); }
   .rec-gate-fine {
-    font-family: 'Newsreader', Georgia, serif;
+    font-family: Archivo, 'Inter Tight', system-ui, sans-serif;
     font-style: italic;
     font-size: 12.5px;
     line-height: 1.55;
-    color: var(--ink-faint, #7A8597);
+    color: var(--ink-faint, #6F7A64);
     margin: 0;
   }
   @media (max-width: 640px) {

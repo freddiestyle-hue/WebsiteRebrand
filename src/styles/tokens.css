@@ -1,14 +1,109 @@
 /* ============================================================
-   RIVETT SITE TOKEN BRIDGE
-   Canonical values live in ../../rivett-ds/tokens.css.
-   Do not add source values here.
+   RIVETT SITE TOKEN BRIDGE — v2.0 (2026 rebrand)
+
+   rivett-ds/tokens.css stays as it is: it is the v1.0 system, and the
+   DS package's own spec pages document those values as written. It is
+   still imported here for the base resets and the .system-* page chrome
+   that /hq consumes.
+
+   Everything below re-points the same token NAMES at the v2 brand from
+   the homepage handoff, so every component that already consumes tokens
+   moves to the new brand without being touched. Shape and type changes
+   that tokens cannot express live in brand-v2.css.
+
+   v1 -> v2 in one line: navy + warm paper + sharp corners
+                      -> deep green + sage + soft corners.
    ============================================================ */
 
 @import '../../rivett-ds/tokens.css';
 
 :root {
-  /* Site compatibility aliases. Production components consume v1.0 tokens
-     while rivett-ds/tokens.css remains the single source of truth. */
+  /* ---------- Surface ---------- */
+  --paper:        #FFFFFF;
+  --paper-2:      #F2F5EC;     /* pale grey-green — alternating sections */
+  --paper-3:      #EEF7E0;     /* sage — feature sections, icon chips */
+  --paper-4:      #D9E6C3;     /* deepest sage — tab tracks, table heads */
+  --sage:         #EEF7E0;
+  --sage-2:       #D9E6C3;
+
+  /* ---------- Ink ----------
+     The v2 dark surface is the brand green, not a navy. Everything that
+     asked for "ink" (dark panels, primary type) now reads green. */
+  --ink:          #163300;
+  --ink-2:        #1D4200;     /* raised block on a dark surface */
+  --ink-dim:      #454745;     /* body copy on light */
+  --ink-faint:    #6F7A64;     /* meta, captions, mono labels */
+  --ink-soft:     #A9B49E;     /* disabled, dividers on dark */
+
+  /* ---------- On-ink (inverse text) ---------- */
+  --on-ink:           #FFFFFF;
+  --on-ink-dim:       rgba(255,255,255,0.78);
+  --on-ink-italic:    rgba(255,255,255,0.62);
+  --on-ink-faint:     rgba(255,255,255,0.55);
+  --on-ink-line:      rgba(255,255,255,0.18);
+  --on-ink-line-2:    rgba(255,255,255,0.32);
+  --on-ink-fill:      rgba(255,255,255,0.08);   /* card on a dark section */
+
+  /* ---------- Lines ---------- */
+  --line:        rgba(22,51,0,0.14);
+  --line-strong: rgba(22,51,0,0.28);
+  --line-soft:   rgba(22,51,0,0.06);
+
+  /* ---------- Accent ---------- */
+  --accent:       #A5E85C;     /* lime — dots, fills, CTA blocks */
+  --accent-deep:  #4A6E18;     /* AA on paper — small text, focus rings */
+  --accent-bg:    #EEF7E0;
+  --accent-ink:   #163300;     /* type that sits on top of --accent */
+  --accent-ink-2: #1C2B18;     /* body copy on top of --accent */
+
+  /* ---------- Signal ---------- */
+  --signal-warn:  #B8651F;
+  --signal-halt:  #9A2B2B;
+
+  /* ---------- Type families ----------
+     v2 splits what v1 merged: Archivo carries every headline, Instrument
+     Sans carries body and UI. --grotesk keeps its name because ~200 call
+     sites consume it; it just means "the UI face" now. */
+  --display:      Archivo, 'Inter Tight', system-ui, sans-serif;
+  --grotesk:      'Instrument Sans', system-ui, -apple-system, sans-serif;
+  --mono:         'DM Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --wordmark:     'Inter Tight', system-ui, sans-serif;
+  /* No serif in v2. --serif is re-pointed rather than removed so the ~260
+     legacy call sites degrade to the display face instead of to Georgia.
+     brand-v2.css strips the italics that came with them. */
+  --serif:        var(--display);
+
+  /* Display face axis settings — the handoff sets 'wdth' 87 on every
+     headline, which is what gives the condensed poster look. */
+  --display-wdth: 'wdth' 87;
+
+  /* ---------- Tracking ---------- */
+  --track-mono:       0.22em;
+  --track-mono-tight: 0.16em;
+  --track-tighter:   -0.03em;
+  --track-display:   -0.035em;
+  --track-h:         -0.03em;
+  --track-h-md:      -0.03em;
+  --track-h-sm:      -0.025em;
+
+  /* ---------- Radii ----------
+     The single biggest shape change: v1 was square by default. */
+  --r-0:    0;
+  --r-sm:   8px;        /* inputs, tags, small chrome */
+  --r-md:   18px;       /* stat tiles, compact cards */
+  --r-lg:   24px;       /* standard card */
+  --r-xl:   28px;       /* feature panel */
+  --r-2xl:  32px;       /* full-width CTA block */
+  --r-pill: 999px;
+
+  /* ---------- Elevation ----------
+     v2 is flat: surfaces separate by fill and radius, not shadow. */
+  --shadow-0: none;
+  --shadow-1: none;
+  --shadow-2: 0 8px 24px -10px rgba(22,51,0,0.18);
+
+  /* ---------- Site compatibility aliases ----------
+     Unchanged from v1 — these map old component names onto the scale. */
   --fs-mono-xs: var(--t-caption);
   --fs-mono-sm: var(--t-meta);
   --fs-mono-md: var(--t-body-sm);

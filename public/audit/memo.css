@@ -17,7 +17,7 @@
   --line:rgba(26,24,20,0.16);
   --line-strong:rgba(26,24,20,0.34);
   /* v0.2 canonical accent (matches rivett-ds/tokens.css and src/styles/tokens.css) */
-  --accent:#8FBF3F;
+  --accent:#A5E85C;
   --accent-deep:#4A6E18;
   /* Type */
   --grotesk:'Inter Tight',system-ui,sans-serif;

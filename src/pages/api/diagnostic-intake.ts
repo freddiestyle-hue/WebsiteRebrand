@@ -147,31 +147,31 @@ function escapeHtml(value: string) {
 
 function buildHtmlEmail(payload: IntakeMessage) {
   const notesBlock = payload.notes
-    ? `<section style="margin-top:28px;padding-top:24px;border-top:1px solid rgba(14,26,44,0.14);">
+    ? `<section style="margin-top:28px;padding-top:24px;border-top:1px solid rgba(22,51,0,0.14);">
          <h2 style="font-family:'DM Mono',ui-monospace,monospace;font-size:12px;text-transform:uppercase;letter-spacing:0.18em;color:#4A6E18;margin:0 0 12px;">Where are the numbers</h2>
-         <p style="font-family:Inter,Arial,sans-serif;font-size:15px;line-height:1.65;color:#0E1A2C;white-space:pre-wrap;margin:0;">${escapeHtml(payload.notes)}</p>
+         <p style="font-family:Inter,Arial,sans-serif;font-size:15px;line-height:1.65;color:#163300;white-space:pre-wrap;margin:0;">${escapeHtml(payload.notes)}</p>
        </section>`
-    : `<section style="margin-top:28px;padding-top:24px;border-top:1px solid rgba(14,26,44,0.14);">
-         <p style="font-family:Inter,Arial,sans-serif;font-size:13px;line-height:1.5;color:#7A8597;font-style:italic;margin:0;">No intake notes provided. Ask in the reply.</p>
+    : `<section style="margin-top:28px;padding-top:24px;border-top:1px solid rgba(22,51,0,0.14);">
+         <p style="font-family:Inter,Arial,sans-serif;font-size:13px;line-height:1.5;color:#6F7A64;font-style:italic;margin:0;">No intake notes provided. Ask in the reply.</p>
        </section>`;
 
   return `<!doctype html>
 <html>
-  <body style="margin:0;padding:0;background:#F4F2ED;color:#0E1A2C;">
+  <body style="margin:0;padding:0;background:#F2F5EC;color:#163300;">
     <main style="max-width:720px;margin:0 auto;padding:40px 24px;background:#FFFFFF;">
       <div style="font-family:'DM Mono',ui-monospace,monospace;font-size:12px;text-transform:uppercase;letter-spacing:0.18em;color:#4A6E18;margin-bottom:16px;">
         Rivett diagnostic intake
       </div>
-      <h1 style="font-family:'Inter Tight',Inter,Arial,sans-serif;font-size:30px;line-height:1.15;margin:0 0 12px;color:#0E1A2C;">
+      <h1 style="font-family:'Inter Tight',Inter,Arial,sans-serif;font-size:30px;line-height:1.15;margin:0 0 12px;color:#163300;">
         ${escapeHtml(payload.name)}
       </h1>
-      <p style="font-family:Inter,Arial,sans-serif;font-size:15px;line-height:1.6;margin:0;color:#3A4658;">
+      <p style="font-family:Inter,Arial,sans-serif;font-size:15px;line-height:1.6;margin:0;color:#454745;">
         <strong>Email:</strong> <a href="mailto:${escapeHtml(payload.email)}" style="color:#4A6E18;">${escapeHtml(payload.email)}</a><br />
         <strong>Path:</strong> ${escapeHtml(payload.path)}<br />
         <strong>Submitted:</strong> ${escapeHtml(payload.submittedAt)}
       </p>
       ${notesBlock}
-      <p style="margin-top:32px;font-family:'DM Mono',ui-monospace,monospace;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#7A8597;">
+      <p style="margin-top:32px;font-family:'DM Mono',ui-monospace,monospace;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#6F7A64;">
         Reply within 24 hours. Cal modal opened on submit — they may have already booked a slot.
       </p>
     </main>
