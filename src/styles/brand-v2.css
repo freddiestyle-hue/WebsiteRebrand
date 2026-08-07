@@ -108,7 +108,7 @@
    2. Buttons — everything is a pill
    ============================================================ */
 
-.btn,
+body .btn,
 #main .btn,
 #main button.btn,
 #main a.btn {
@@ -209,31 +209,31 @@
    4. Site header — the green bar from the homepage
    ============================================================ */
 
-.site-header {
+header.site-header {
   background: var(--ink);
   border-bottom: 1px solid transparent;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
-.site-header[data-scrolled='true'] {
+header.site-header[data-scrolled='true'] {
   background: var(--ink);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   border-bottom-color: var(--on-ink-line);
 }
-.site-header .header-inner {
+header.site-header .header-inner {
   padding: 22px clamp(20px, 4vw, 56px);
 }
-.site-header .wordmark {
+header.site-header .wordmark {
   font-family: var(--wordmark);
   font-weight: 700;
   letter-spacing: -0.05em;
   color: var(--accent);
 }
-.site-header .wordmark .dot-mark {
+header.site-header .wordmark .dot-mark {
   background: var(--on-ink);
 }
-.site-header .nav-links {
+header.site-header .nav-links {
   font-family: var(--grotesk);
   font-size: 16px;
   font-weight: 500;
@@ -242,47 +242,47 @@
   color: var(--on-ink);
   gap: 30px;
 }
-.site-header .header-inner a,
-.site-header .tools-menu summary {
+header.site-header .header-inner a,
+header.site-header .tools-menu summary {
   color: var(--on-ink);
 }
-.site-header .header-inner a:hover,
-.site-header .header-inner a.current,
-.site-header .tools-menu summary:hover,
-.site-header .tools-menu summary.current {
+header.site-header .header-inner a:hover,
+header.site-header .header-inner a.current,
+header.site-header .tools-menu summary:hover,
+header.site-header .tools-menu summary.current {
   color: var(--accent);
 }
-.site-header .tools-menu summary::after {
+header.site-header .tools-menu summary::after {
   color: var(--on-ink-faint);
 }
-.site-header .tools-panel {
+header.site-header .tools-panel {
   background: var(--paper);
   border: 0;
   border-radius: var(--r-lg);
   box-shadow: 0 18px 40px rgba(22, 51, 0, 0.18);
   padding: 10px;
 }
-.site-header .tools-panel a {
+header.site-header .tools-panel a {
   border-bottom: 1px solid var(--line);
   border-radius: var(--r-sm);
   color: var(--ink);
 }
-.site-header .tools-panel a:hover,
-.site-header .tools-panel a.current {
+header.site-header .tools-panel a:hover,
+header.site-header .tools-panel a.current {
   background: var(--paper-3);
   color: var(--ink);
 }
-.site-header .tools-panel span {
+header.site-header .tools-panel span {
   font-family: var(--grotesk);
   font-size: 15px;
   font-weight: 600;
   letter-spacing: 0;
   text-transform: none;
 }
-.site-header .tools-panel small {
+header.site-header .tools-panel small {
   color: var(--ink-faint);
 }
-.site-header .header-inner .cta {
+header.site-header .header-inner .cta {
   background: var(--accent);
   border: 0;
   border-radius: var(--r-pill);
@@ -294,36 +294,36 @@
   text-transform: none;
   padding: 12px 22px;
 }
-.site-header .header-inner .cta:hover {
+header.site-header .header-inner .cta:hover {
   background: var(--on-ink);
   color: var(--ink);
 }
-.site-header .menu-bar {
+header.site-header .menu-bar {
   background: var(--on-ink);
 }
 
 /* Mobile menu inherits the dark surface. */
-.mobile-menu {
+#mobile-menu.mobile-menu {
   background: var(--ink);
   color: var(--on-ink);
 }
-.mobile-menu a,
-.mobile-menu .mobile-close,
-.mobile-menu .mobile-tools > span {
+#mobile-menu.mobile-menu a,
+#mobile-menu.mobile-menu .mobile-close,
+#mobile-menu.mobile-menu .mobile-tools > span {
   color: var(--on-ink);
 }
-.mobile-menu .wordmark {
+#mobile-menu.mobile-menu .wordmark {
   color: var(--accent);
 }
-.mobile-menu .wordmark .dot-mark {
+#mobile-menu.mobile-menu .wordmark .dot-mark {
   background: var(--on-ink);
 }
-.mobile-menu .mobile-links {
+#mobile-menu.mobile-menu .mobile-links {
   font-family: var(--grotesk);
   text-transform: none;
   letter-spacing: 0;
 }
-.mobile-menu .mobile-cta {
+#mobile-menu.mobile-menu .mobile-cta {
   background: var(--accent);
   color: var(--accent-ink);
   border: 0;
@@ -332,7 +332,7 @@
   letter-spacing: 0;
   font-weight: 600;
 }
-.mobile-menu .mobile-foot {
+#mobile-menu.mobile-menu .mobile-foot {
   color: var(--on-ink-faint);
 }
 
@@ -340,25 +340,25 @@
    5. Site footer — the green slab from the homepage
    ============================================================ */
 
-footer.site {
+body footer.site {
   background: var(--ink);
   color: var(--on-ink);
   border-top: 0;
   padding: 72px 0 40px;
 }
-footer.site a {
+body footer.site a {
   color: var(--on-ink);
   font-family: var(--grotesk);
   font-size: 15px;
   letter-spacing: 0;
   text-transform: none;
 }
-footer.site a:hover {
+body footer.site a:hover {
   color: var(--accent);
 }
-footer.site .col-h,
-footer.site .foot-meta,
-footer.site .row > span {
+body footer.site .col-h,
+body footer.site .foot-meta,
+body footer.site .row > span {
   color: var(--on-ink-faint);
   font-family: var(--grotesk);
   font-weight: 600;
@@ -366,19 +366,19 @@ footer.site .row > span {
   letter-spacing: 0.01em;
   text-transform: none;
 }
-footer.site .wordmark,
-footer.site .foot-wm {
+body footer.site .wordmark,
+body footer.site .foot-wm {
   font-family: var(--wordmark);
   font-weight: 700;
   font-size: 28px;
   letter-spacing: -0.05em;
   color: var(--accent);
 }
-footer.site .wordmark .dot-mark,
-footer.site .foot-wm .dot-mark {
+body footer.site .wordmark .dot-mark,
+body footer.site .foot-wm .dot-mark {
   background: var(--on-ink);
 }
-footer.site .row {
+body footer.site .row {
   border-top-color: var(--on-ink-line);
 }
 
@@ -387,7 +387,7 @@ footer.site .row {
    ============================================================ */
 
 /* Blog category filters: a hairlined segmented box becomes a row of pills. */
-.blog-index .filters {
+body .blog-index .filters {
   border: 0;
   gap: 8px;
   flex-wrap: wrap;
@@ -397,7 +397,7 @@ footer.site .row {
   letter-spacing: 0;
   text-transform: none;
 }
-.blog-index .filters button {
+body .blog-index .filters button {
   border: 0;
   border-left: 0;
   border-radius: var(--r-pill);
@@ -405,11 +405,11 @@ footer.site .row {
   padding: 10px 18px;
   color: var(--ink-faint);
 }
-.blog-index .filters button:hover {
+body .blog-index .filters button:hover {
   background: var(--paper-3);
   color: var(--ink);
 }
-.blog-index .filters button.on {
+body .blog-index .filters button.on {
   background: var(--ink);
   color: var(--on-ink);
 }
@@ -474,7 +474,7 @@ footer.site .row {
    7. Floating CTA — lime pill, not a dark capsule
    ============================================================ */
 
-.floating-cta {
+body a.floating-cta {
   background: var(--accent);
   color: var(--accent-ink);
   font-family: var(--grotesk);
@@ -484,11 +484,11 @@ footer.site .row {
   text-transform: none;
   box-shadow: 0 8px 28px rgba(22, 51, 0, 0.22);
 }
-.floating-cta:hover,
-.floating-cta:focus-visible {
+body a.floating-cta:hover,
+body a.floating-cta:focus-visible {
   box-shadow: 0 12px 36px rgba(22, 51, 0, 0.3);
 }
-.floating-cta-dot {
+body .floating-cta-dot {
   background: var(--ink);
   box-shadow: none;
 }
