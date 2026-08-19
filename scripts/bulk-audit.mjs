@@ -10,7 +10,8 @@
 //   node scripts/bulk-audit.mjs <input.csv> --no-resume
 //
 // Input CSV must have a `domain` column (case-insensitive). A `company`
-// column is carried through if present.
+// column is carried through if present. A `person` or `first_name` column
+// is POSTed as firstName so the memo can greet the prospect.
 //
 // Crash-safety:
 // - The output CSV is rewritten atomically (temp file + rename) after every
@@ -229,8 +230,9 @@ const BROWSER_HEADERS = {
   'accept-language': 'en-US,en;q=0.9',
 };
 
-async function postAudit(base, domain) {
+async function postAudit(base, domain, firstName) {
   const body = new URLSearchParams({ url: domain });
+  if (firstName) body.set('firstName', firstName);
   const res = await withTimeout(
     (signal) =>
       fetch(`${base}/audit/v3`, {
@@ -315,6 +317,7 @@ function emptyRow(domain, company) {
 // triggered a fresh audit POST (it counts toward the cost estimate); it is
 // false for a --skip-cached hit.
 async function auditOne(base, domain, company, opts) {
+  const firstName = opts.firstName || '';
   const startedAt = Date.now();
   const row = emptyRow(domain, company);
 
@@ -345,7 +348,7 @@ async function auditOne(base, domain, company, opts) {
     for (let attempt = 1; attempt <= 2; attempt++) {
       row.attempts = String(attempt);
       try {
-        const { status } = await postAudit(base, domain);
+        const { status } = await postAudit(base, domain, firstName);
         lastStatus = status;
         if (status >= 200 && status < 400) {
           // Verify the slug landed in KV (silent KV failures happen).
@@ -509,11 +512,16 @@ async function main() {
     exit(2);
   }
   const companyCol = header.find((h) => h.toLowerCase() === 'company');
+  const firstNameCol = header.find((h) => {
+    const k = String(h).toLowerCase().replace(/\s+/g, '_');
+    return k === 'first_name' || k === 'firstname' || k === 'person';
+  });
 
   let queue = rows
     .map((r) => ({
       domain: (r[domainCol] || '').trim(),
       company: companyCol ? (r[companyCol] || '').trim() : '',
+      firstName: firstNameCol ? (r[firstNameCol] || '').trim() : '',
     }))
     .filter((r) => r.domain);
   if (opts.limit) queue = queue.slice(0, opts.limit);
@@ -571,7 +579,7 @@ async function main() {
   await runPool(
     todo,
     opts.concurrency,
-    ({ domain, company }) => auditOne(opts.base, domain, company, opts),
+    ({ domain, company, firstName }) => auditOne(opts.base, domain, company, { ...opts, firstName }),
     ({ row, fresh }) => {
       completed++;
       freshByDomain.set(row.domain, row);
