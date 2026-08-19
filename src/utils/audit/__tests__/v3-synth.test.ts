@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { synthesizeDiagnosis, buildMemoFromAudit, type EnrichmentBundle } from '../v3-synth';
+import { synthesizeDiagnosis, buildMemoFromAudit, cleanGivenName, type EnrichmentBundle } from '../v3-synth';
 import type { AuditResult, CheckResult } from '../engine';
 import type { PageSpeedResult } from '../pagespeed';
 import type { AdsResult } from '../ads-check';
@@ -611,5 +611,144 @@ describe('rollupReliability weight-aware cascade (Upgrade 8)', () => {
     const memo = buildMemoFromAudit(audit);
     const target = memo.verdictCells.find((c) => c.icon === 'target');
     expect(target?.reliability).toBe('verified');
+  });
+});
+
+
+describe('cleanGivenName', () => {
+  it('keeps a real given name and title-cases it', () => {
+    expect(cleanGivenName('howard')).toBe('Howard');
+    expect(cleanGivenName('Mary-Jane')).toBe('Mary-Jane');
+    expect(cleanGivenName("o'brien")).toBe("O'Brien");
+    expect(cleanGivenName('Howard Brooks')).toBe('Howard');
+  });
+
+  it('rejects email local-parts, role words, and C. Moore', () => {
+    expect(cleanGivenName('info@brookscomfortzone.com')).toBeNull();
+    expect(cleanGivenName('hello@example.com')).toBeNull();
+    expect(cleanGivenName('office@x.com')).toBeNull();
+    expect(cleanGivenName('admin@x.com')).toBeNull();
+    expect(cleanGivenName('contact@x.com')).toBeNull();
+    expect(cleanGivenName('support@x.com')).toBeNull();
+    expect(cleanGivenName('sales@x.com')).toBeNull();
+    expect(cleanGivenName('service@x.com')).toBeNull();
+    expect(cleanGivenName('design@x.com')).toBeNull();
+    expect(cleanGivenName('napps@x.com')).toBeNull();
+    expect(cleanGivenName('cp@x.com')).toBeNull();
+    expect(cleanGivenName('C. Moore')).toBeNull();
+    expect(cleanGivenName('info')).toBeNull();
+    expect(cleanGivenName('team')).toBeNull();
+    expect(cleanGivenName('there')).toBeNull();
+    expect(cleanGivenName('a')).toBeNull();
+  });
+});
+
+describe('rankedFixes Brooks-shaped (needs-improvement + ads + homepage form)', () => {
+  const BROOKS_SPEED: PageSpeedResult = {
+    strategy: 'mobile',
+    lcpMs: 15400,
+    inpMs: null,
+    cls: null,
+    fcpMs: 3300,
+    ttfbMs: null,
+    performanceScore: 57,
+    band: 'needs-improvement',
+  };
+
+  function brooksAudit() {
+    return mkAudit([
+      mkCheck({
+        id: 'tracking-meta-pixel',
+        category: 'tracking',
+        passed: false,
+        weight: 1,
+        reliability: 'verified',
+        label: 'Meta Pixel',
+        finding:
+          'No Meta Pixel detected. If you are spending on Meta ads, the algorithm cannot learn from conversions on this page. Install the pixel and configure the lead event.',
+      }),
+      mkCheck({
+        id: 'conversion-scheduling-link',
+        category: 'conversion',
+        passed: false,
+        weight: 1,
+        reliability: 'verified',
+        label: 'Self-serve scheduling link',
+        finding:
+          'No self-serve scheduling. Every meeting needs email back-and-forth. Add Calendly or Cal.com to the contact area.',
+      }),
+      mkCheck({
+        id: 'conversion-form-on-page',
+        category: 'conversion',
+        passed: true,
+        reliability: 'verified',
+        label: 'Form available on the site',
+      }),
+    ]);
+  }
+
+  function brooksEnrich() {
+    return mkEnrich({
+      pageSpeed: BROOKS_SPEED,
+      ads: { metaActive: 0, googleActive: 12, linkedinActive: 0 } as AdsResult,
+      deliverability: { dmarcPresent: false } as DeliverabilityResult,
+      headless: {
+        conversionPath: {
+          primaryCtaText: 'Get a quote',
+          outcome: 'form-on-homepage',
+          clicksToForm: 0,
+        },
+      } as never,
+    });
+  }
+
+  it('move 1 is speed and cites LCP, score, and ad count', () => {
+    const memo = buildMemoFromAudit(brooksAudit(), brooksEnrich());
+    expect(memo.synthesis?.primaryIssue?.dimension).toBe('Page speed');
+    expect(memo.rankedFixes[0].what).toMatch(/load time/i);
+    expect(memo.rankedFixes[0].what).toMatch(/15\.4s/);
+    expect(memo.rankedFixes[0].what).toMatch(/57\/100/);
+    const blob = `${memo.rankedFixes[0].what} ${memo.rankedFixes[0].why}`;
+    expect(blob).toMatch(/15\.4s/);
+    expect(blob).toMatch(/57\/100/);
+    expect(blob).toMatch(/12/);
+    expect(memo.rankedFixes[0].what).not.toMatch(/DMARC/);
+    expect(memo.rankedFixes[0].what).not.toMatch(/Meta Pixel/);
+    expect(memo.rankedFixes[0].what).not.toMatch(/scheduling|Calendly/i);
+  });
+
+  it('does not emit Meta Pixel on Google-only ads, or Calendly when a homepage form exists', () => {
+    const memo = buildMemoFromAudit(brooksAudit(), brooksEnrich());
+    const blob = memo.rankedFixes.map((f) => `${f.what} ${f.why}`).join(' | ');
+    expect(blob).not.toMatch(/Meta Pixel/);
+    expect(blob).not.toMatch(/Calendly|scheduling link/i);
+  });
+
+  it('stores a cleaned firstName and ignores junk', () => {
+    const kept = buildMemoFromAudit(brooksAudit(), brooksEnrich(), { firstName: 'howard' });
+    expect(kept.firstName).toBe('Howard');
+    expect(MemoSchema.safeParse(kept).success).toBe(true);
+    const junk = buildMemoFromAudit(brooksAudit(), brooksEnrich(), {
+      firstName: 'info@brookscomfortzone.com',
+    });
+    expect(junk.firstName).toBeNull();
+    const initial = buildMemoFromAudit(brooksAudit(), brooksEnrich(), { firstName: 'C. Moore' });
+    expect(initial.firstName).toBeNull();
+  });
+
+  it('emits Meta Pixel when Meta ads are running', () => {
+    const memo = buildMemoFromAudit(
+      brooksAudit(),
+      mkEnrich({
+        pageSpeed: BROOKS_SPEED,
+        ads: { metaActive: 4, googleActive: 0, linkedinActive: 0 } as AdsResult,
+        deliverability: { dmarcPresent: true } as DeliverabilityResult,
+        headless: {
+          conversionPath: { primaryCtaText: 'Get a quote', outcome: 'form-on-homepage', clicksToForm: 0 },
+        } as never,
+      }),
+    );
+    const blob = memo.rankedFixes.map((f) => f.what).join(' | ');
+    expect(blob).toMatch(/Meta Pixel/);
   });
 });
