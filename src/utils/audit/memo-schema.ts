@@ -208,6 +208,7 @@ const MemoSchemaBase = z.object({
   // missing keys or undefined, and a memo with `"industry": null` would
   // fail validation and 500 the route.
   companyName: z.string().nullish(),
+  firstName: z.string().nullish(),
   industry: z.string().nullish(),
   employees: z.union([z.string(), z.number()]).nullish(),
   state: z.string().nullish(),

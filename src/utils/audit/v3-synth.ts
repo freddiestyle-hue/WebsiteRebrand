@@ -31,6 +31,62 @@ import type { HeadlessResult } from './headless-check';
 import type { LandingAuditResult, LandingPageResult } from './landing-check';
 import type { PixelMeasurement } from './tracking';
 
+
+const GENERIC_GIVEN_NAMES = new Set([
+  'info',
+  'hello',
+  'office',
+  'admin',
+  'contact',
+  'support',
+  'sales',
+  'service',
+  'design',
+  'napps',
+  'cp',
+  'team',
+  'there',
+  'owner',
+  'manager',
+  'director',
+  'president',
+  'founder',
+  'ceo',
+  'cto',
+  'cfo',
+  'staff',
+  'webmaster',
+  'billing',
+  'help',
+  'noreply',
+  'user',
+  'guest',
+]);
+
+// Stored given name only. Letters plus optional hyphen/apostrophe, 2-30 chars.
+// Rejects email local-parts, role words, and initials like "C. Moore".
+export function cleanGivenName(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  if (trimmed.includes('@')) return null;
+  if (/^[A-Za-z]\.\s/.test(trimmed)) return null;
+  const token = trimmed.split(/\s+/)[0] ?? '';
+  if (!/^[A-Za-z][A-Za-z'-]{1,29}$/.test(token)) return null;
+  if (GENERIC_GIVEN_NAMES.has(token.toLowerCase())) return null;
+  return token
+    .split(/([-'])/)
+    .map((part) => {
+      if (part === '-' || part === "'" || !part) return part;
+      return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
+    })
+    .join('');
+}
+
+export interface MemoExtras {
+  firstName?: string | null;
+}
+
 export interface EnrichmentBundle {
   deliverability: DeliverabilityResult | null;
   mobile: MobileRenderingResult | null;
@@ -1278,7 +1334,11 @@ export function synthesizeDiagnosis(
   return { primaryIssue, crossSignals, verifiedCount, softCount };
 }
 
-export function buildMemoFromAudit(audit: AuditResult, enrich?: EnrichmentBundle): Memo {
+export function buildMemoFromAudit(
+  audit: AuditResult,
+  enrich?: EnrichmentBundle,
+  extras?: MemoExtras,
+): Memo {
   const slug = generateSlug(audit.hostname);
 
   // Two distinct cells: "How Google sees you" (search basics — crawl,
@@ -1321,37 +1381,69 @@ export function buildMemoFromAudit(audit: AuditResult, enrich?: EnrichmentBundle
   // Ranked fixes: enrichment-driven priorities first (page speed, DMARC, viewport
   // are the highest-leverage wins when broken), then top failing audit checks.
   //
+  // Speed ticket: poor, needs-improvement, or LCP over 2.5s. Synthesis already
+  // treats needs-improvement as speedSlow; the ticket list has to match.
+  //
   // Ad-spending operators are different. When the operator is actively running
-  // paid ads, conversion gaps and pixel gaps cost real money per click - they
-  // outweigh /llms.txt or schema fixes that only matter for organic traffic.
-  // Boost conversion + tracking categories above everything else in that case
-  // so the Top 3 Fixes reflect the operator's actual exposure.
-  const adsRunning =
-    !!(enrich?.ads &&
-      ((enrich.ads.metaActive ?? 0) +
-        (enrich.ads.googleActive ?? 0) +
-        (enrich.ads.linkedinActive ?? 0)) > 0);
+  // paid ads, conversion gaps and pixel gaps cost real money per click. Boost
+  // conversion + tracking above organic hygiene in that case, but do not emit
+  // Meta Pixel unless Meta ads > 0, and do not emit a Calendly ticket when a
+  // homepage form (or one-click form) already exists.
+  const adsMeta = enrich?.ads?.metaActive ?? 0;
+  const adsGoogle = enrich?.ads?.googleActive ?? 0;
+  const adsLinkedin = enrich?.ads?.linkedinActive ?? 0;
+  const adsTotal = adsMeta + adsGoogle + adsLinkedin;
+  const adsRunning = adsTotal > 0;
+  const formOnPath =
+    enrich?.headless?.conversionPath?.outcome === 'form-on-homepage' ||
+    enrich?.headless?.conversionPath?.outcome === 'form-after-click';
   const AD_OPERATOR_PRIORITY: ReadonlySet<CheckResult['category']> = new Set([
     'conversion',
     'tracking',
   ]);
+  const suppressFailedCheck = (c: CheckResult): boolean => {
+    if (c.id === 'tracking-meta-pixel' && adsMeta <= 0) return true;
+    if (c.id === 'conversion-scheduling-link' && formOnPath) return true;
+    return false;
+  };
   const failed = audit.checks
     .filter(isApplicableFailure)
+    .filter((c) => !suppressFailedCheck(c))
     .sort((a, b) => {
       if (adsRunning) {
-        const aBoost = AD_OPERATOR_PRIORITY.has(a.category) ? 100 : 0;
-        const bBoost = AD_OPERATOR_PRIORITY.has(b.category) ? 100 : 0;
+        const aMeta = a.id === 'tracking-meta-pixel';
+        const bMeta = b.id === 'tracking-meta-pixel';
+        const aBoost =
+          AD_OPERATOR_PRIORITY.has(a.category) && (!aMeta || adsMeta > 0) ? 100 : 0;
+        const bBoost =
+          AD_OPERATOR_PRIORITY.has(b.category) && (!bMeta || adsMeta > 0) ? 100 : 0;
         if (aBoost !== bBoost) return bBoost - aBoost;
       }
       return b.weight - a.weight;
     });
-  const enrichmentFixes: RankedFix[] = [];
 
-  if (enrich?.pageSpeed && enrich.pageSpeed.band === 'poor') {
+  type TaggedFix = RankedFix & { key: string };
+  const enrichmentFixes: TaggedFix[] = [];
+
+  const ps = enrich?.pageSpeed;
+  const lcpOver = ps?.lcpMs != null && ps.lcpMs > 2500;
+  const speedNeeded = !!ps && (ps.band === 'poor' || ps.band === 'needs-improvement' || lcpOver);
+  if (speedNeeded && ps) {
+    const scoreBit =
+      ps.performanceScore != null ? `${Math.round(ps.performanceScore)}/100` : null;
+    const adWord = adsTotal === 1 ? 'ad' : 'ads';
+    const adCite =
+      adsTotal > 0
+        ? ` ${adsTotal} paid ${adWord} ${adsTotal === 1 ? 'is' : 'are'} sending clicks into that delay.`
+        : '';
+    const scoreCite = scoreBit ? ` and scores ${scoreBit} on mobile` : '';
     enrichmentFixes.push({
       rank: 0,
-      what: `Cut mobile load time. Current LCP: ${fmtMs(enrich.pageSpeed.lcpMs)}.`,
-      why: `Google flags anything over 2.5 seconds as poor. Ad conversions drop roughly seven percent per second of delay. This is the highest-leverage performance work.`,
+      key: 'Page speed',
+      what: scoreBit
+        ? `Cut mobile load time. Current LCP: ${fmtMs(ps.lcpMs)}. Score ${scoreBit}.`
+        : `Cut mobile load time. Current LCP: ${fmtMs(ps.lcpMs)}.`,
+      why: `The homepage takes ${fmtMs(ps.lcpMs)} to paint the largest content (Google's good threshold is 2.5s)${scoreCite}.${adCite} Ad conversions drop roughly seven percent per second of delay.`,
       effort: 'med',
       impact: 'high',
     });
@@ -1360,6 +1452,7 @@ export function buildMemoFromAudit(audit: AuditResult, enrich?: EnrichmentBundle
   if (enrich?.deliverability && enrich.deliverability.dmarcPresent === false) {
     enrichmentFixes.push({
       rank: 0,
+      key: 'Email reputation',
       what: `Publish a DMARC record with a quarantine or reject policy.`,
       why: `Without DMARC, anyone can send mail pretending to be you. Mail providers increasingly use DMARC presence as a deliverability signal. Twenty minutes to add, takes effect within hours.`,
       effort: 'low',
@@ -1370,12 +1463,19 @@ export function buildMemoFromAudit(audit: AuditResult, enrich?: EnrichmentBundle
   if (enrich?.mobile && !enrich.mobile.viewportPresent) {
     enrichmentFixes.push({
       rank: 0,
+      key: 'How it behaves on mobile',
       what: `Add the viewport meta tag.`,
       why: `Without <code>&lt;meta name="viewport"&gt;</code>, phones render the page at desktop width. Visitors zoom and pinch to read. One line of HTML in the head.`,
       effort: 'low',
       impact: 'high',
     });
   }
+
+  const checkKey = (c: CheckResult): string => {
+    if (c.category === 'conversion') return 'Conversion path';
+    if (c.category === 'tracking') return 'What you measure';
+    return c.label;
+  };
 
   let rankedFixes: RankedFix[];
   if (failed.length === 0 && enrichmentFixes.length === 0) {
@@ -1389,17 +1489,41 @@ export function buildMemoFromAudit(audit: AuditResult, enrich?: EnrichmentBundle
       },
     ];
   } else {
-    const combined: RankedFix[] = [
+    const combined: TaggedFix[] = [
       ...enrichmentFixes,
-      ...failed.slice(0, 3).map((c) => ({
+      ...failed.slice(0, 5).map((c) => ({
         rank: 0,
+        key: checkKey(c),
         what: c.label.trim().endsWith('.') ? c.label : `${c.label}.`,
         why: c.finding,
         effort: effortFor(c),
         impact: impactFor(c),
       })),
     ];
-    rankedFixes = combined.slice(0, 3).map((f, i) => ({ ...f, rank: i + 1 }));
+    const primary = synthesis.primaryIssue;
+    if (primary) {
+      const matchKeys = new Set<string>([primary.dimension]);
+      if (primary.icon === 'bolt') matchKeys.add('Page speed');
+      if (primary.icon === 'mail') matchKeys.add('Email reputation');
+      if (primary.icon === 'eye') matchKeys.add('Conversion path');
+      const dim = primary.dimension.replace(/\.$/, '').toLowerCase();
+      const idx = combined.findIndex((f) => {
+        if (matchKeys.has(f.key)) return true;
+        const what = f.what.replace(/\.$/, '').toLowerCase();
+        return what === dim || what.startsWith(`${dim} `) || dim.startsWith(what);
+      });
+      if (idx > 0) {
+        const [hit] = combined.splice(idx, 1);
+        combined.unshift(hit);
+      }
+    }
+    rankedFixes = combined.slice(0, 3).map((f, i) => ({
+      rank: i + 1,
+      what: f.what,
+      why: f.why,
+      effort: f.effort,
+      impact: f.impact,
+    }));
   }
 
   // Cover italic clause: short and punchy. This text drops into the H1 at
@@ -1460,6 +1584,7 @@ export function buildMemoFromAudit(audit: AuditResult, enrich?: EnrichmentBundle
     slug,
     domain: audit.hostname,
     companyName: null,
+    firstName: cleanGivenName(extras?.firstName),
     industry: null,
     employees: null,
     state: null,

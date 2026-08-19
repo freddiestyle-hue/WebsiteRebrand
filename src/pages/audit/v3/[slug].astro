@@ -15,7 +15,6 @@ import PostHog from '../../../components/PostHog.astro';
 import type { Memo, VerdictCell, VerdictIcon } from '../../../utils/audit/memo-schema';
 import { isValidV3Slug } from '../../../utils/audit/slug';
 import { pickHeroFinding } from '../../../utils/audit/pick-hero';
-import { pickRelatedNotes } from '../../../utils/audit/related-notes';
 import slugToIcp from '../../../utils/audit/slug-to-icp.json';
 import icpVoice from '../../../utils/audit/icp-voice.json';
 import { lockedMeta, deriveTone } from '../../../utils/audit/locked-observation';
@@ -169,6 +168,12 @@ const scorePercent = cached
   ? Math.round((cached.scoreNumeric / Math.max(cached.scoreMax, 1)) * 100)
   : 0;
 const companyName = memo?.companyName ?? memo?.domain ?? cached?.hostname ?? '';
+// Greet only from the stored given name on the memo. Never from email
+// local-parts, utm_recipient, shortlink recipient, or a role word.
+const firstName =
+  typeof memo?.firstName === 'string' && memo.firstName.trim()
+    ? memo.firstName.trim()
+    : '';
 
 // All 9 findings render, ungated. The hero is the prose above; the cards are
 // the evidence. No cell is skipped.
@@ -177,7 +182,6 @@ const verdictCells: VerdictCell[] = memo?.verdictCells ?? [];
 // Prioritized-plan preview: the top-3 ranked fixes. The full order and the
 // revenue math behind it is what the call is for.
 const topFixes = (memo?.rankedFixes ?? []).slice(0, 3);
-const relatedNotes = memo ? pickRelatedNotes(memo, 3) : [];
 
 // Numbered dimension codes mirror the v3.astro 9-cell legend so prospects
 // see consistent numbering across the public form path and the gated path.
@@ -376,6 +380,15 @@ const SCORE_GRADE = gradeFor(scorePercent);
   }
   @media (max-width: 880px) {
     .hero { grid-template-columns: 1fr; gap: var(--sp-7); }
+  }
+  .hero .greet {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: clamp(26px, 2.8vw, 38px);
+    line-height: 1.15;
+    letter-spacing: -0.015em;
+    color: var(--ink);
+    margin: 0 0 var(--sp-3);
   }
   .hero .kicker {
     font-family: var(--mono);
@@ -1107,6 +1120,7 @@ const SCORE_GRADE = gradeFor(scorePercent);
           <span>Scan · <b>9 of 9</b></span>
         </div>
 
+        {firstName ? <p class="greet">{firstName},</p> : null}
         <div class="kicker">Diagnosis</div>
         <p class="lede">{heroData.pageHero}</p>
 
@@ -1129,8 +1143,8 @@ const SCORE_GRADE = gradeFor(scorePercent);
         ) : null}
 
         <div class="cta-block">
-          <a class="btn btn--pri" href={CAL_URL} data-cta="memo_book_call" data-cta-location="memo_hero">Book 30 min with Fred <span aria-hidden="true">→</span></a>
-          <p class="cta-trust">Thirty minutes with Fred. We walk through your audit, not a slide deck.</p>
+          <a class="btn btn--pri" href={CAL_URL} data-cta="memo_book_call" data-cta-location="memo_hero">Book 15 min with Fred <span aria-hidden="true">→</span></a>
+          <p class="cta-trust">Fifteen minutes with Fred. We walk through your audit, not a slide deck.</p>
         </div>
       </div>
 
@@ -1342,33 +1356,9 @@ const SCORE_GRADE = gradeFor(scorePercent);
       </section>
     ) : null}
 
-    {relatedNotes.length > 0 ? (
-      <section class="related-notes">
-        <div class="rn-lab">What to read next · related to this audit</div>
-        <h2 class="rn-h">Three notes <span class="ital">on the gaps this audit found.</span></h2>
-        <div class="rn-grid">
-          {relatedNotes.map((n) => (
-            <a
-              class="rn-card"
-              href={`/blog/${n.slug}`}
-              data-cta="memo_related"
-              data-cta-location="memo_footer"
-              data-content-slug={n.slug}
-              target="_blank"
-              rel="noopener"
-            >
-              <h3 class="rn-title">{n.title}</h3>
-              <p class="rn-hook">{n.hook}</p>
-              <span class="rn-more">Read note <span aria-hidden="true">→</span></span>
-            </a>
-          ))}
-        </div>
-      </section>
-    ) : null}
-
     <section class="closer">
       <div>
-        <div style="font-family: var(--mono); font-size: var(--t-meta); letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--accent); margin-bottom: var(--sp-3);">● 30 min · no deck</div>
+        <div style="font-family: var(--mono); font-size: var(--t-meta); letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--accent); margin-bottom: var(--sp-3);">● 15 min · no deck</div>
         <h2>
           Pick a time.<br/>
           <span class="ital">We go through the fix order together.</span>
@@ -1376,11 +1366,7 @@ const SCORE_GRADE = gradeFor(scorePercent);
         <p>You've seen all nine findings and the first three moves. The call is the rest of the order, the revenue math behind the ranking, and the things a browser scan can't reach: your pipeline, your follow-up, your numbers.</p>
         <div class="actions">
           <a class="btn btn--inv" href={CAL_URL} data-cta="memo_book_call" data-cta-location="memo_closer">Book a call <span aria-hidden="true">→</span></a>
-          <a class="btn btn--sec" href="/audit/v3" style="border-color: var(--on-ink-line-2); color: var(--on-ink);" data-cta="memo_audit_another" data-cta-location="memo_closer">Audit another domain</a>
         </div>
-        <p class="ramp-ramp">
-          <a href="/revenue-leak-mri" data-cta="memo_to_mri" data-cta-location="memo_closer">Or run the Revenue Leak MRI yourself first <span aria-hidden="true">→</span></a>
-        </p>
       </div>
       <div class="sig">
         <span style="display:block; color: var(--accent); margin-bottom: var(--sp-2);">● Signature</span>
@@ -1782,7 +1768,6 @@ const SCORE_GRADE = gradeFor(scorePercent);
     ['.industry-voice', 'industry_voice'],
     ['.locked-section', 'findings'],
     ['.plan-preview', 'plan_preview'],
-    ['.related-notes', 'related_notes'],
     ['.closer', 'closer'],
   ];
   var seenSections = new Set();
