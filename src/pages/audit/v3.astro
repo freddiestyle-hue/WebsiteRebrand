@@ -80,6 +80,9 @@ if (isPOST && !memo) {
   try {
     const form = await Astro.request.formData();
     submittedUrl = String(form.get('url') ?? '').trim();
+    const submittedFirstName = String(
+      form.get('firstName') ?? form.get('first_name') ?? '',
+    ).trim();
     if (!submittedUrl) {
       inputError = 'Type a domain to audit.';
     } else {
@@ -173,7 +176,7 @@ if (isPOST && !memo) {
           enrichment = {
             deliverability, mobile, pageSpeed, ads, techStack, techStackRuntime, headless, landing,
           };
-          memo = buildMemoFromAudit(audit, enrichment);
+          memo = buildMemoFromAudit(audit, enrichment, { firstName: submittedFirstName });
           v3Slug = v3SlugFromDomain(audit.hostname);
 
           // Persist for sharing. Fire-and-forget so a KV outage never blocks
